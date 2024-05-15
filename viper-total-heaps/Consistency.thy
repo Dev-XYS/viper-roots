@@ -12,8 +12,10 @@ inductive total_heap_consistent_unfold_n :: "'a total_context \<Rightarrow> 'a t
   \<rbrakk> \<Longrightarrow>
     total_heap_consistent_unfold_n ctxt \<phi> 0"
 | UnfoldStep: "\<lbrakk>
-    \<And> pred_id vs q. q = get_mp_total \<phi> (pred_id, vs) \<Longrightarrow> q > 0 \<Longrightarrow>
+    \<And> pred_id vs q \<phi>'. q = get_mp_total \<phi> (pred_id, vs) \<Longrightarrow> q > 0 \<Longrightarrow>
       unfold_rel ctxt (\<lambda>_. True) pred_id vs q \<phi> \<phi>' \<and> valid_heap_mask (get_mh_total \<phi>') \<and>
+      \<comment> \<open>Do we need \<^term>\<open>valid_heap_mask\<close> above? It should be equivalent without it?
+         Is it easy to prove? Which one is easier to use? Same questions apply to the other definition.\<close>
       total_heap_consistent_unfold_n ctxt \<phi>' n
   \<rbrakk> \<Longrightarrow>
     total_heap_consistent_unfold_n ctxt \<phi> (Suc n)"
@@ -29,7 +31,7 @@ inductive total_heap_consistent_amount_unfold_n :: "'a total_context \<Rightarro
   \<rbrakk> \<Longrightarrow>
     total_heap_consistent_amount_unfold_n ctxt \<phi> 0"
 | UnfoldStep: "\<lbrakk>
-    \<And> pred_id vs q. q \<le> get_mp_total \<phi> (pred_id, vs) \<Longrightarrow> q > 0 \<Longrightarrow>
+    \<And> pred_id vs q \<phi>'. q \<le> get_mp_total \<phi> (pred_id, vs) \<Longrightarrow> q > 0 \<Longrightarrow>
       unfold_rel ctxt (\<lambda>_. True) pred_id vs q \<phi> \<phi>' \<and> valid_heap_mask (get_mh_total \<phi>') \<and>
       total_heap_consistent_unfold_n ctxt \<phi>' n
   \<rbrakk> \<Longrightarrow>
