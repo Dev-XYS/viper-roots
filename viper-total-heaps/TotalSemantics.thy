@@ -406,6 +406,7 @@ inductive_cases RedExhaleFailure_case: "red_stmt_total ctxt R \<Lambda> (Exhale 
 inductive_cases RedAssertNormal_case: "red_stmt_total ctxt R \<Lambda> (Assert A) \<omega> (RNormal \<omega>')"
 inductive_cases RedAssertFailure_case: "red_stmt_total ctxt R \<Lambda> (Assert A) \<omega> RFailure"
 inductive_cases RedScope_case: "red_stmt_total ctxt R \<Lambda> (Scope \<tau> scopeBody) \<omega> res_unshift"
+inductive_cases RedUnfold_case: "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
 
 lemmas red_stmt_total_inversion_thms =
    RedSkip_case

@@ -1,5 +1,5 @@
 theory Consistency
-  imports TotalExpressions
+  imports TotalExpressions TotalSemantics
 begin
 
 section \<open>Definition\<close>
@@ -13,7 +13,7 @@ inductive total_heap_consistent_unfold_n_all :: "'a total_context \<Rightarrow> 
     total_heap_consistent_unfold_n_all ctxt \<phi> 0"
 | UnfoldStep: "\<lbrakk>
     \<And> pred_id vs q \<phi>'. q = get_mp_total \<phi> (pred_id, vs) \<Longrightarrow> q > 0 \<Longrightarrow>
-      unfold_rel ctxt (\<lambda>_. True) pred_id vs q \<phi> \<phi>' \<and> valid_heap_mask (get_mh_total \<phi>') \<and>
+      unfold_rel ctxt (\<lambda>_. True) pred_id vs q \<phi> \<phi>' \<and>
       \<comment> \<open>Do we need \<^term>\<open>valid_heap_mask\<close> above? It should be equivalent without it?
          Is it easy to prove? Which one is easier to use? Same questions apply to the other definition.\<close>
       total_heap_consistent_unfold_n_all ctxt \<phi>' n
@@ -32,10 +32,12 @@ inductive total_heap_consistent_unfold_n :: "'a total_context \<Rightarrow> 'a t
     total_heap_consistent_unfold_n ctxt \<phi> 0"
 | UnfoldStep: "\<lbrakk>
     \<And> pred_id vs q \<phi>'. q \<le> get_mp_total \<phi> (pred_id, vs) \<Longrightarrow> q > 0 \<Longrightarrow>
-      unfold_rel ctxt (\<lambda>_. True) pred_id vs q \<phi> \<phi>' \<and> valid_heap_mask (get_mh_total \<phi>') \<and>
+      unfold_rel ctxt (\<lambda>_. True) pred_id vs q \<phi> \<phi>' \<and>
       total_heap_consistent_unfold_n ctxt \<phi>' n
   \<rbrakk> \<Longrightarrow>
     total_heap_consistent_unfold_n ctxt \<phi> (Suc n)"
+
+inductive_cases UnfoldStep_cases: "total_heap_consistent_unfold_n ctxt \<phi> (Suc n)"
 
 definition total_heap_consistent :: "'a total_context \<Rightarrow> 'a total_state \<Rightarrow> bool" where
   "total_heap_consistent ctxt \<phi> \<equiv> \<forall> n. total_heap_consistent_unfold_n ctxt \<phi> n"
@@ -71,6 +73,48 @@ proof (rule iff_intro)
   qed
 next
   show "?RHS \<longrightarrow> ?LHS" sorry
+qed
+
+
+section \<open>Preservation of State Consistency\<close>
+
+lemma assignment_preserves_state_consistency:
+  assumes "get_total_full \<omega> = \<phi>"
+  assumes "total_heap_consistent ctxt \<phi>"
+  assumes "red_stmt_total ctxt R \<Lambda> (LocalAssign x e) \<omega> (RNormal \<omega>')"
+  assumes "get_total_full \<omega>' = \<phi>'"
+  shows "total_heap_consistent ctxt \<phi>'"
+proof -
+  obtain v where "\<omega>' = update_var_total \<omega> x v" using assms(3) red_stmt_total.simps by blast \<comment> \<open>Quite slow. Why?\<close>
+  hence "\<phi> = \<phi>'" using assms(1,4) by force
+  thus ?thesis using assms(2) by auto
+qed
+
+lemma unfold_preserves_state_consistency:
+  assumes "get_total_full \<omega> = \<phi>"
+  assumes "total_heap_consistent ctxt \<phi>"
+  assumes "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
+  assumes "get_total_full \<omega>' = \<phi>'"
+  shows "total_heap_consistent ctxt \<phi>'"
+proof -
+  obtain v_args v_p where
+    res: "th_result_rel (0 < v_p \<and> v_p \<le> Rep_preal (get_mp_total (get_total_full \<omega>) (pred_id, v_args))) True
+      {\<omega>'. \<exists>\<phi>'. \<omega>' = \<omega>\<lparr>get_total_full := \<phi>'\<rparr> \<and> unfold_rel ctxt R pred_id v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>' \<and> R \<omega>'}
+      (RNormal \<omega>')"
+    using assms(3) RedUnfold_case by blast
+  define W' where "W' = {\<omega>'. \<exists>\<phi>'. \<omega>' = \<omega>\<lparr>get_total_full := \<phi>'\<rparr> \<and> unfold_rel ctxt R pred_id v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>' \<and> R \<omega>'}"
+  hence "\<omega>' \<in> W'" using res th_result_rel_normal by blast
+  hence "unfold_rel ctxt R pred_id v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>'" using W'_def assms(4) by force
+  hence unfold: "unfold_rel ctxt (\<lambda>_. True) pred_id v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>'" sorry
+  show "total_heap_consistent ctxt \<phi>'"
+  proof (simp add: total_heap_consistent_def, standard)
+    fix n
+    from assms(2) have "total_heap_consistent_unfold_n ctxt \<phi> (Suc n)" using total_heap_consistent_def by blast
+    moreover from res have "0 < v_p \<and> v_p \<le> Rep_preal (get_mp_total \<phi> (pred_id, v_args))" using th_result_rel_normal assms(1) by blast
+    moreover note unfold
+    ultimately show "total_heap_consistent_unfold_n ctxt \<phi>' n" using UnfoldStep_cases
+      by (metis le_less less_eq_preal.rep_eq not_less prat_non_negative zero_preal.rep_eq)
+  qed
 qed
 
 end
