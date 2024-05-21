@@ -55,6 +55,17 @@ lemma iff_intro:
   shows "P \<longleftrightarrow> Q"
   using assms by blast
 
+lemma field_update_preserves_mask:
+  assumes "\<omega>' = update_hh_loc_total_full \<omega> (addr,f) v"
+  shows "get_mh_total (get_total_full \<omega>) = get_mh_total (get_total_full \<omega>')"
+  using assms update_hh_loc_total_full.simps by fastforce
+
+lemma red_inhale_weaker_consistency:
+assumes "red_inhale ctxt R A \<omega> (RNormal \<omega>')"
+    and "\<And>x. R x \<Longrightarrow> R' x"
+  shows "red_inhale ctxt R' A \<omega> (RNormal \<omega>')"
+  sorry
+
 
 section \<open>Theorems\<close>
 
@@ -105,16 +116,27 @@ proof -
   define W' where "W' = {\<omega>'. \<exists>\<phi>'. \<omega>' = \<omega>\<lparr>get_total_full := \<phi>'\<rparr> \<and> unfold_rel ctxt R pred_id v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>' \<and> R \<omega>'}"
   hence "\<omega>' \<in> W'" using res th_result_rel_normal by blast
   hence "unfold_rel ctxt R pred_id v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>'" using W'_def assms(4) by force
-  hence unfold: "unfold_rel ctxt (\<lambda>_. True) pred_id v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>'" sorry
+  hence unfold: "unfold_rel ctxt (\<lambda>_. True) pred_id v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>'"
+    apply (rule UnfoldRel_case)
+    by (fastforce intro!: UnfoldRelStep dest: red_inhale_weaker_consistency[where ?R'="\<lambda>_. True"])
   show "total_heap_consistent ctxt \<phi>'"
   proof (simp add: total_heap_consistent_def, standard)
     fix n
     from assms(2) have "total_heap_consistent_unfold_n ctxt \<phi> (Suc n)" using total_heap_consistent_def by blast
-    moreover from res have "0 < v_p \<and> v_p \<le> Rep_preal (get_mp_total \<phi> (pred_id, v_args))" using th_result_rel_normal assms(1) by blast
+    moreover from res have "0 < v_p \<and> v_p \<le> Rep_preal (get_mp_total \<phi> (pred_id, v_args))"
+      using th_result_rel_normal assms(1) by blast
     moreover note unfold
     ultimately show "total_heap_consistent_unfold_n ctxt \<phi>' n" using UnfoldStep_cases
       by (metis le_less less_eq_preal.rep_eq not_less prat_non_negative zero_preal.rep_eq)
   qed
 qed
+
+lemma field_assignment_preserves_state_consistency:
+  assumes "get_total_full \<omega> = \<phi>"
+  assumes "total_heap_consistent ctxt \<phi>"
+  assumes "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal \<omega>')"
+  assumes "get_total_full \<omega>' = \<phi>'"
+  shows "total_heap_consistent ctxt \<phi>'"
+  sorry
 
 end

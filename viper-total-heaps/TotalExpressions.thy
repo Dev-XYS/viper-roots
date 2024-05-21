@@ -655,6 +655,10 @@ lemmas red_inhale_elims =
   InhImp_case
   InhPure_case
 
+subsubsection \<open>Unfold\<close>
+
+inductive_cases UnfoldRel_case: "unfold_rel ctxt R pred_id vs q \<phi> \<phi>'"
+
 subsection \<open>Helper lemmas\<close>
 
 lemma red_pure_exps_total_list_all2:
