@@ -47,17 +47,17 @@ section \<open>Auxiliary Lemmas\<close>
 
 lemma forall_implies:
   assumes "\<And> n. P n \<Longrightarrow> Q n"
-  shows "(\<forall> n. P n) \<longrightarrow> (\<forall> n. Q n)"
+    shows "(\<forall> n. P n) \<longrightarrow> (\<forall> n. Q n)"
   by (simp add: assms)
 
 lemma iff_intro:
   assumes "P \<longrightarrow> Q" and "Q \<longrightarrow> P"
-  shows "P \<longleftrightarrow> Q"
+    shows "P \<longleftrightarrow> Q"
   using assms by blast
 
 lemma field_update_preserves_mask:
   assumes "\<omega>' = update_hh_loc_total_full \<omega> (addr,f) v"
-  shows "get_mh_total (get_total_full \<omega>) = get_mh_total (get_total_full \<omega>')"
+    shows "get_mh_total (get_total_full \<omega>) = get_mh_total (get_total_full \<omega>')"
   using assms update_hh_loc_total_full.simps by fastforce
 
 lemma inhale_perm_single_weaker_consistency:
@@ -74,7 +74,7 @@ lemma th_result_rel_weaker_consistency:
 
 lemma red_pure_exp_weaker_consistency:
   assumes "ctxt, R, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t res"
-  shows "ctxt, R', \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t res"
+    shows "ctxt, R', \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t res"
   oops
 
 lemma red_inhale_weaker_consistency:
@@ -133,10 +133,10 @@ section \<open>Preservation of State Consistency\<close>
 
 lemma assignment_preserves_state_consistency:
   assumes "get_total_full \<omega> = \<phi>"
-  assumes "total_heap_consistent ctxt \<phi>"
-  assumes "red_stmt_total ctxt R \<Lambda> (LocalAssign x e) \<omega> (RNormal \<omega>')"
-  assumes "get_total_full \<omega>' = \<phi>'"
-  shows "total_heap_consistent ctxt \<phi>'"
+      and "total_heap_consistent ctxt \<phi>"
+      and "red_stmt_total ctxt R \<Lambda> (LocalAssign x e) \<omega> (RNormal \<omega>')"
+      and "get_total_full \<omega>' = \<phi>'"
+    shows "total_heap_consistent ctxt \<phi>'"
 proof -
   obtain v where "\<omega>' = update_var_total \<omega> x v" using assms(3) red_stmt_total.simps by blast \<comment> \<open>Quite slow. Why?\<close>
   hence "\<phi> = \<phi>'" using assms(1,4) by force
@@ -145,10 +145,10 @@ qed
 
 lemma unfold_preserves_state_consistency:
   assumes "get_total_full \<omega> = \<phi>"
-  assumes "total_heap_consistent ctxt \<phi>"
-  assumes "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
-  assumes "get_total_full \<omega>' = \<phi>'"
-  shows "total_heap_consistent ctxt \<phi>'"
+      and "total_heap_consistent ctxt \<phi>"
+      and "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
+      and "get_total_full \<omega>' = \<phi>'"
+    shows "total_heap_consistent ctxt \<phi>'"
 proof -
   obtain v_args v_p where
     res: "th_result_rel (0 < v_p \<and> v_p \<le> Rep_preal (get_mp_total (get_total_full \<omega>) (pred_id, v_args))) True
@@ -175,10 +175,10 @@ qed
 
 lemma field_assignment_preserves_state_consistency:
   assumes "get_total_full \<omega> = \<phi>"
-  assumes "total_heap_consistent ctxt \<phi>"
-  assumes "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal \<omega>')"
-  assumes "get_total_full \<omega>' = \<phi>'"
-  shows "total_heap_consistent ctxt \<phi>'"
+      and "total_heap_consistent ctxt \<phi>"
+      and "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal \<omega>')"
+      and "get_total_full \<omega>' = \<phi>'"
+    shows "total_heap_consistent ctxt \<phi>'"
   sorry
 
 end
