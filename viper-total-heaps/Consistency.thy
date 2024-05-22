@@ -60,11 +60,53 @@ lemma field_update_preserves_mask:
   shows "get_mh_total (get_total_full \<omega>) = get_mh_total (get_total_full \<omega>')"
   using assms update_hh_loc_total_full.simps by fastforce
 
+lemma inhale_perm_single_weaker_consistency:
+  assumes "\<And>x. R x \<Longrightarrow> R' x"
+    shows "inhale_perm_single R \<omega> (the_address r, f) (Some (Abs_preal p)) \<subseteq> inhale_perm_single R' \<omega> (the_address r, f) (Some (Abs_preal p))"
+  by (simp add: Collect_mono_iff assms inhale_perm_single_def)
+
+lemma th_result_rel_weaker_consistency:
+  assumes "th_result_rel b\<^sub>1 b\<^sub>2 W (RNormal \<omega>)"
+      and "b\<^sub>2 \<Longrightarrow> b\<^sub>2'"
+      and "W \<subseteq> W'"
+    shows "th_result_rel b\<^sub>1 b\<^sub>2' W' (RNormal \<omega>)"
+  by (metis THResultNormal_alt assms subset_iff th_result_rel_normal)
+
+lemma red_pure_exp_weaker_consistency:
+  assumes "ctxt, R, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t res"
+  shows "ctxt, R', \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t res"
+  oops
+
 lemma red_inhale_weaker_consistency:
-assumes "red_inhale ctxt R A \<omega> (RNormal \<omega>')"
-    and "\<And>x. R x \<Longrightarrow> R' x"
-  shows "red_inhale ctxt R' A \<omega> (RNormal \<omega>')"
-  sorry
+  assumes "red_inhale ctxt R A \<omega> (RNormal \<omega>')"
+      and "\<And>x. R x \<Longrightarrow> R' x"
+    shows "red_inhale ctxt R' A \<omega> (RNormal \<omega>')"
+  apply (rule red_inhale.cases[of ctxt R A \<omega> "RNormal \<omega>'"])
+              apply (simp add: assms)
+             apply auto
+proof -
+  fix e_r r e_p p f
+  assume "A = Atomic (Acc e_r f (PureExp e_p))"
+     and ref: "ctxt, R, Some \<omega> \<turnstile> \<langle>e_r;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+     and perm: "ctxt, R, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+     and res_original: "th_result_rel (0 \<le> p)
+            ((if r = Null then {\<omega>} else inhale_perm_single R \<omega> (the_address r, f) (Some (Abs_preal p))) \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null))
+            (if r = Null then {\<omega>} else inhale_perm_single R \<omega> (the_address r, f) (Some (Abs_preal p)))
+            (RNormal \<omega>')"
+  define W where W: "W = (if r = Null then {\<omega>} else inhale_perm_single R \<omega> (the_address r, f) (Some (Abs_preal p)))"
+  hence res: "th_result_rel (0 \<le> p) (W \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null)) W (RNormal \<omega>')" using res_original by blast
+  define W' where W': "W' = (if r = Null then {\<omega>} else inhale_perm_single R' \<omega> (the_address r, f) (Some (Abs_preal p)))"
+  hence "W \<subseteq> W'" using inhale_perm_single_weaker_consistency by (metis W assms(2) order_refl)
+  hence res': "th_result_rel (0 \<le> p) (W' \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null)) W' (RNormal \<omega>')"
+    by (metis (mono_tags, lifting) res subset_empty th_result_rel_weaker_consistency)
+  show "red_inhale ctxt R' (Atomic (Acc e_r f (PureExp e_p))) \<omega> (RNormal \<omega>')"
+  proof (rule InhAcc)
+    show "ctxt, R', Some \<omega> \<turnstile> \<langle>e_r;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" sorry
+    show "ctxt, R', Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)" sorry
+    from W' show "W' = (if r = Null then {\<omega>} else inhale_perm_single R' \<omega> (the_address r, f) (Some (Abs_preal p)))" by blast
+    from res' show "th_result_rel (0 \<le> p) (W' \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null)) W' (RNormal \<omega>')" by blast
+  qed
+  oops
 
 
 section \<open>Theorems\<close>
