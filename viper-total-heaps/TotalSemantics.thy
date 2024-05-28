@@ -407,6 +407,7 @@ inductive_cases RedAssertNormal_case: "red_stmt_total ctxt R \<Lambda> (Assert A
 inductive_cases RedAssertFailure_case: "red_stmt_total ctxt R \<Lambda> (Assert A) \<omega> RFailure"
 inductive_cases RedScope_case: "red_stmt_total ctxt R \<Lambda> (Scope \<tau> scopeBody) \<omega> res_unshift"
 inductive_cases RedUnfold_case: "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
+inductive_cases RedFold_case: "red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
 inductive_cases RedFieldAssign_case: "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal (update_hh_loc_total_full \<omega> (addr,f) v))"
 
 lemmas red_stmt_total_inversion_thms =

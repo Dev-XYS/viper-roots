@@ -13,7 +13,7 @@ inductive total_heap_consistent_unfold_n_all :: "'a total_context \<Rightarrow> 
     total_heap_consistent_unfold_n_all ctxt \<phi> 0"
 | UnfoldStep: "\<lbrakk>
     \<And> pred_id vs q \<phi>'. q = get_mp_total \<phi> (pred_id, vs) \<Longrightarrow> q > 0 \<Longrightarrow>
-      unfold_rel ctxt (\<lambda>_. True) pred_id vs q \<phi> \<phi>' \<and>
+      unfold_rel ctxt (\<lambda>_. True) pred_id vs q \<phi> \<phi>' \<Longrightarrow>
       \<comment> \<open>Do we need \<^term>\<open>valid_heap_mask\<close> above? It should be equivalent without it?
          Is it easy to prove? Which one is easier to use? Same questions apply to the other definition.\<close>
       total_heap_consistent_unfold_n_all ctxt \<phi>' n
@@ -32,7 +32,7 @@ inductive total_heap_consistent_unfold_n :: "'a total_context \<Rightarrow> 'a t
     total_heap_consistent_unfold_n ctxt \<phi> 0"
 | UnfoldStep: "\<lbrakk>
     \<And> pred_id vs q \<phi>'. q \<le> get_mp_total \<phi> (pred_id, vs) \<Longrightarrow> q > 0 \<Longrightarrow>
-      unfold_rel ctxt (\<lambda>_. True) pred_id vs q \<phi> \<phi>' \<and>
+      unfold_rel ctxt (\<lambda>_. True) pred_id vs q \<phi> \<phi>' \<Longrightarrow>
       total_heap_consistent_unfold_n ctxt \<phi>' n
   \<rbrakk> \<Longrightarrow>
     total_heap_consistent_unfold_n ctxt \<phi> (Suc n)"
@@ -108,6 +108,11 @@ proof -
   qed
   oops
 
+lemma fold_unfold_is_identity:
+  assumes "fold_rel ctxt R pred_id v_args (Abs_preal v_p) \<omega> (RNormal \<omega>')"
+  shows "unfold_rel ctxt R pred_id v_args (Abs_preal v_p) (get_total_full \<omega>') (get_total_full \<omega>)"
+  sorry
+
 
 section \<open>Theorems\<close>
 
@@ -169,9 +174,30 @@ proof -
       using th_result_rel_normal assms(1) by blast
     moreover note unfold
     ultimately show "total_heap_consistent_unfold_n ctxt \<phi>' n" using UnfoldStep_cases
-      by (metis le_less less_eq_preal.rep_eq not_less prat_non_negative zero_preal.rep_eq)
+      sorry
   qed
 qed
+
+lemma fold_preserves_state_consistency:
+  assumes "get_total_full \<omega> = \<phi>"
+      and "total_heap_consistent ctxt \<phi>"
+      and "red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
+      and "get_total_full \<omega>' = \<phi>'"
+    shows "total_heap_consistent ctxt \<phi>'"
+proof (simp add: total_heap_consistent_def, standard)
+  from assms(3) obtain v_args v_p where
+    "red_pure_exps_total ctxt R (Some \<omega>) e_args \<omega> (Some v_args)" and
+    "ctxt, R, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
+    "fold_rel ctxt R pred_id v_args (Abs_preal v_p) \<omega> (RNormal \<omega>')"
+    using RedFold_case by blast
+  hence unfold: "unfold_rel ctxt R pred_id v_args (Abs_preal v_p) (get_total_full \<omega>') (get_total_full \<omega>)"
+    using fold_unfold_is_identity assms(1,4) by blast
+  fix n
+  show "total_heap_consistent_unfold_n ctxt \<phi>' n"
+  proof -
+    from assms(2) have "total_heap_consistent_unfold_n ctxt \<phi> (Suc n)"
+      by (simp add: Consistency.total_heap_consistent_def)
+    oops
 
 lemma field_assignment_preserves_state_consistency:
   assumes "get_total_full \<omega> = \<phi>"
