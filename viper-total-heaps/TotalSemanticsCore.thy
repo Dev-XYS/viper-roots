@@ -89,8 +89,20 @@ ShiftPartial:
      q \<noteq> 0;
      mp' = mp( (pred_id,vs) := p - q );
      fnm' = fnm( (pred_id,vs) := Some (nested_mask_multiply pnm ((p - q) / p)) );
-     nm' = NM mh np' fnm' \<rbrakk> \<Longrightarrow> 
+     nm' = NM mh np' fnm' \<rbrakk> \<Longrightarrow>
      shift_up ctxt pred_id vs q nm (nested_mask_merge nm' (nested_mask_multiply pnm (q / p)))"
+| ShiftAll:
+  "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
+     ViperLang.predicate_decl.body pred_decl = Some pred_body;
+     mh = get_mh nm;
+     mp = get_mp nm;
+     Some pnm = get_nm nm (pred_id,vs);
+     p = mp (pred_id,vs);
+     p \<noteq> 0;
+     mp' = mp( (pred_id,vs) := 0 );
+     fnm' = fnm( (pred_id,vs) := None );
+     nm' = NM mh np' fnm' \<rbrakk> \<Longrightarrow>
+     shift_up ctxt pred_id vs p nm (nested_mask_merge nm' pnm)"
 
 \<comment> \<open>End \<^term>\<open>shift_up\<close>\<close>
 
