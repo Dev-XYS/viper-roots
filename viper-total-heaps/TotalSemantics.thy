@@ -1,7 +1,7 @@
 section \<open>Total heap semantics of statements\<close>
 
 theory TotalSemantics
-imports ViperCommon.ViperLang TotalExpressions "HOL-Eisbach.Eisbach" "HOL-Eisbach.Eisbach_Tools"
+imports ViperCommon.ViperLang TotalSemanticsCore "HOL-Eisbach.Eisbach" "HOL-Eisbach.Eisbach_Tools"
 begin
 
 definition vals_well_typed :: "('a \<Rightarrow> abs_type) \<Rightarrow> ('a val) list \<Rightarrow> vtyp list \<Rightarrow> bool"
@@ -168,9 +168,9 @@ lemma havoc_locs_state_same_trace: "\<omega>' \<in> havoc_locs_state ctxt \<omeg
   unfolding havoc_locs_state_def
   by force
 
-lemma havoc_locs_state_same_mask: "\<omega>' \<in> havoc_locs_state ctxt \<omega> locs \<Longrightarrow> get_m_total_full \<omega>' = get_m_total_full \<omega>"
+(* lemma havoc_locs_state_same_mask: "\<omega>' \<in> havoc_locs_state ctxt \<omega> locs \<Longrightarrow> get_m_total_full \<omega>' = get_m_total_full \<omega>"
   unfolding havoc_locs_state_def
-  by force
+  by force *)
 
 lemma havoc_locs_state_well_typed_heap: "\<omega>' \<in> havoc_locs_state ctxt \<omega> locs \<Longrightarrow> 
                                     total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>')"  
@@ -598,7 +598,7 @@ text \<open>Many of the theorems are parametrized by the state consistency. Many
 certain properties on the state consistency. The following well-formedness definition captures
 these properties.\<close>
 
-definition wf_total_consistency 
+(* definition wf_total_consistency 
   where "wf_total_consistency ctxt R Rt \<equiv> 
                mono_prop_downward R \<and>
                (\<forall>\<omega>. is_empty_total_full \<omega> \<longrightarrow> R \<omega>) \<and>
@@ -769,6 +769,6 @@ definition havoc_vars_state :: "'a full_total_state \<Rightarrow> var set \<Righ
       red_stmt_total ctxt R \<Lambda> loop_body \<omega> (RNormal \<omega>AfterInh);            \<comment>\<open>failure option 4\<close>
       red_stmt_total ctxt R \<Lambda> (Exhale invariant) \<omega>AfterInh RFailure \<rbrakk> \<Longrightarrow> \<comment>\<open>failure option 5\<close>
       red_stmt_total ctxt R \<Lambda> (While cond invariant loop_body) \<omega> RFailure"
-*)
+*) *)
 
 end

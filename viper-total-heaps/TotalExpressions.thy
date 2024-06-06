@@ -745,7 +745,7 @@ fun is_positive_permission :: "'a total_context \<Rightarrow> pure_exp exp_or_wi
   | "is_positive_permission ctxt (PureExp e) \<omega> = (extract_perm_from_val (red_pure_exp_total_fun ctxt e \<omega>) > 0)"
 
 
-fun assertion_heap_snapshot :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> heap_loc set"
+(* fun assertion_heap_snapshot :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> heap_loc set"
   where 
    "assertion_heap_snapshot ctxt (Atomic (Pure e)) \<omega> = {}"
  | "assertion_heap_snapshot ctxt (Atomic (Acc e f e_p)) \<omega> = 
@@ -788,7 +788,7 @@ definition pheap_consistent :: "'a total_context \<Rightarrow> 'a full_total_sta
           option_fold (\<lambda> pred_body. get_hp_total_full \<omega> (pred_id, vs) = 
                         (assertion_heap_snapshot ctxt pred_body (update_store_total \<omega> (nth_option vs)), assertion_predicate_snapshot ctxt pred_body (update_store_total \<omega> (nth_option vs))) )
                       True
-                      (ViperLang.predicate_decl.body pred_decl)"
+                      (ViperLang.predicate_decl.body pred_decl)" *)
 
 \<comment>\<open>alternative with pheap:
 inductive total_heap_consistent :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> bool"

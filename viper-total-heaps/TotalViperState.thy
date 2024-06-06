@@ -35,11 +35,32 @@ fun get_lhset_pheap :: "'a predicate_heap \<Rightarrow> 'a predicate_loc \<Right
 fun get_lpset_pheap :: "'a predicate_heap \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a predicate_loc set"
   where "get_lpset_pheap hp lp = snd (hp lp)"
 
+datatype 'a nested_mask = NM field_mask "'a predicate_mask" "('a predicate_loc \<rightharpoonup> 'a nested_mask)"
+
+fun get_mh :: "'a nested_mask \<Rightarrow> field_mask"
+  where "get_mh (NM mh _ _) = mh"
+
+fun get_mp :: "'a nested_mask \<Rightarrow> 'a predicate_mask"
+  where "get_mp (NM _ mp _) = mp"
+
+fun get_fnm :: "'a nested_mask \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask)"
+  where "get_fnm (NM _ _ fnm) = fnm"
+
 record 'a total_state =
    get_hh_total :: "'a total_heap"
-   get_hp_total :: "'a predicate_heap"
-   get_mh_total :: "field_mask"
-   get_mp_total :: "'a predicate_mask"
+   get_nm_total :: "'a nested_mask"
+
+fun get_mh_total :: "('a, 'b) total_state_scheme \<Rightarrow> field_mask"
+  where "get_mh_total \<phi> = (case get_nm_total \<phi> of (NM mh _ _) \<Rightarrow> mh)"
+
+fun mh_total_update :: "('a, 'b) total_state_scheme \<Rightarrow> field_mask \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "mh_total_update \<phi> mh = (case get_nm_total \<phi> of (NM _ mp nm) \<Rightarrow> \<phi>\<lparr> get_nm_total := NM mh mp nm \<rparr>)"
+
+fun get_mp_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_mask"
+  where "get_mp_total \<phi> = (case get_nm_total \<phi> of (NM _ mp _) \<Rightarrow> mp)"
+
+fun mp_total_update :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_mask \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "mp_total_update \<phi> mp = (case get_nm_total \<phi> of (NM mh _ nm) \<Rightarrow> \<phi>\<lparr> get_nm_total := NM mh mp nm \<rparr>)"
 
 type_synonym 'a total_trace = "label \<rightharpoonup> 'a total_state"
 
@@ -51,7 +72,7 @@ record 'a full_total_state = (*= "'a store \<times> 'a total_trace \<times> 'a t
   get_total_full :: "'a total_state"
 
 
-subsection \<open>Order\<close>
+(* subsection \<open>Order\<close>
 
 lemma zero_mask_less_eq_mask: "zero_mask \<le> m"
   unfolding  zero_mask_def le_fun_def
@@ -289,15 +310,15 @@ lemma less_eq_full_total_stateE:
   shows P
   using assms
   unfolding less_eq_full_total_state_ext_def
-  by blast
+  by blast *)
 
 subsection \<open>Destructors \<close>
 
 fun get_hh_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> 'a total_heap"
   where "get_hh_total_full \<omega> = get_hh_total (get_total_full \<omega>)"
 
-fun get_hp_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> 'a predicate_heap"
-  where "get_hp_total_full \<omega> = get_hp_total (get_total_full \<omega>)"
+fun get_nm_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> 'a nested_mask"
+  where "get_nm_total_full \<omega> = get_nm_total (get_total_full \<omega>)"
 
 fun get_mh_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> field_mask"
   where "get_mh_total_full \<omega> = get_mh_total (get_total_full \<omega>)"
@@ -317,7 +338,7 @@ lemma is_empty_total_wf_mask: "is_empty_total_full \<omega> \<Longrightarrow> wf
   unfolding is_empty_total_full_def is_empty_total_def
   by (simp add: wf_zero_mask)
 
-lemma is_empty_total_less_eq:
+(* lemma is_empty_total_less_eq:
   assumes "is_empty_total \<phi>" and
           "get_hh_total \<phi> = get_hh_total \<phi>'" and
           "get_hp_total \<phi> = get_hp_total \<phi>'" and
@@ -362,6 +383,6 @@ lemma get_trace_empty_full_total_state [simp]: "get_trace_total (empty_full_tota
 
 lemma is_empty_empty_full_total_state: "is_empty_total_full (empty_full_total_state \<sigma> t hh hp)"
   unfolding is_empty_total_full_def is_empty_total_def empty_full_total_state_def
-  by simp
+  by simp *)
 
 end

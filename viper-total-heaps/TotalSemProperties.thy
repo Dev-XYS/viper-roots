@@ -40,7 +40,7 @@ lemma free_var_subexp:
   by (cases e) auto  
 
 
-lemma less_eq_valid_locs_subset_total_state:
+(* lemma less_eq_valid_locs_subset_total_state:
   assumes "\<omega> \<le> \<omega>'"
   shows "get_valid_locs \<omega> \<subseteq> get_valid_locs \<omega>'"
 proof -
@@ -61,7 +61,7 @@ proof -
     thus "lh \<in> get_valid_locs \<omega>'"
       by (simp add: get_valid_locs_def)
   qed
-qed  
+qed *)
 
 subsection \<open>Well-typed store\<close>
 
@@ -362,7 +362,7 @@ qed (rule HOL.TrueI)+
 \<comment>\<open>The generalization of the following lemma to function calls will require a restriction on the function interpretation,
    which states that the mask has no effect on function values.\<close>
 
-lemma red_pure_exp_only_differ_on_mask:
+(* lemma red_pure_exp_only_differ_on_mask:
   shows "ctxt, StateCons, \<omega>def_opt \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t resE \<Longrightarrow>
          no_perm_pure_exp e \<and> no_unfolding_pure_exp e \<Longrightarrow>
          get_store_total \<omega> = get_store_total \<omega>' \<and> 
@@ -419,7 +419,7 @@ next
   by (auto intro: red_exp_inhale_unfold_intros)
 next
   case (RedOld \<omega> l \<phi> \<omega>_def e v)
-  then show ?case 
+  then show ?case
   by (auto intro: red_exp_inhale_unfold_intros)
 next
   case (RedOldFailure \<omega> l \<omega>_def e)
@@ -477,7 +477,7 @@ next
   case (RedExpListNil \<omega>_def \<omega>)
   then show ?case 
   by (auto intro: red_exp_inhale_unfold_intros)
-qed (rule HOL.TrueI)+
+qed (rule HOL.TrueI)+ *)
 
 subsection \<open>Inhale\<close>
 
@@ -497,12 +497,12 @@ lemma inhale_perm_single_trace_same:
   unfolding inhale_perm_single_def
   by auto
 
-lemma inhale_perm_single_heap_same:
+(* lemma inhale_perm_single_heap_same:
   assumes  "\<omega>' \<in> inhale_perm_single R \<omega> lh popt"
   shows "get_h_total_full \<omega>' = get_h_total_full \<omega>"
   using assms
   unfolding inhale_perm_single_def
-  by fastforce
+  by fastforce *)
 
 lemma inhale_perm_single_pred_store_same:
   assumes  "\<omega>' \<in> inhale_perm_single_pred R \<omega> lh popt"
@@ -518,7 +518,7 @@ lemma inhale_perm_single_pred_trace_same:
   unfolding inhale_perm_single_pred_def
   by auto
 
-lemma inhale_perm_single_pred_heap_same:
+(* lemma inhale_perm_single_pred_heap_same:
   assumes  "\<omega>' \<in> inhale_perm_single_pred R \<omega> lh popt"
   shows "get_h_total_full \<omega>' = get_h_total_full \<omega>"
   using assms 
@@ -2597,7 +2597,7 @@ next
 next
   case (RedSeq \<Lambda> s1 \<omega> \<omega>' s2 res)
   then show ?case by fastforce
-qed (simp_all)
+qed (simp_all) *)
 
 lemma free_var_atomic_assertion_map_free_var_pure_exp:                                                            
   "free_var_assertion (Atomic A) = \<Union> (set (map free_var_pure_exp (sub_expressions_atomic A)))"
@@ -2641,7 +2641,7 @@ lemma inhale_perm_single_similar:
   unfolding inhale_perm_single_def
   oops
 
-lemma inhale_perm_single_Some_non_empty_preserve:
+(* lemma inhale_perm_single_Some_non_empty_preserve:
   assumes WfConsistent: "wf_total_consistency ctxt R Rt"
       and OnlyStoreDifferent: "get_total_full \<omega> = get_total_full \<omega>' \<and> get_trace_total \<omega> = get_trace_total \<omega>'"
       and InhPermSingle1: "inhale_perm_single R \<omega> lh (Some p) \<noteq> {}"
@@ -2678,12 +2678,12 @@ proof -
   qed
   then show ?thesis 
     by blast
-qed
+qed *)
 
 
 subsection \<open>Temp\<close>
 
-lemma red_pure_exp_inhale_store_same_on_free_var:
+(* lemma red_pure_exp_inhale_store_same_on_free_var:
   shows "ctxt, R, \<omega>_def_opt \<turnstile> \<langle>e;\<omega>1\<rangle> [\<Down>]\<^sub>t resE \<Longrightarrow>
          \<omega>_def_opt = Some \<omega>_def \<Longrightarrow>
         supported_pure_exp e \<Longrightarrow>
@@ -3034,7 +3034,7 @@ proof (rule allI | rule impI)+
       unfolding assertion_framing_state_def
       by blast
   qed
-qed
+qed *)
 
 lemma exh_if_total_map_stmt_result_total:
   assumes "b \<longleftrightarrow> b'"
@@ -3056,7 +3056,7 @@ lemma red_exhale_accI:
   apply (rule TotalSemantics.ExhAcc)
   using assms by auto
 
-lemma exhale_same_on_free_var:
+(* lemma exhale_same_on_free_var:
   assumes "red_exhale ctxt StateCons \<omega>def1 A \<omega>1 res1"
       and "res2 = map_stmt_result_total (\<lambda>\<omega>. \<omega> \<lparr> get_store_total := get_store_total \<omega>2 \<rparr>) res1"
       and "\<And> x. x \<in> free_var_assertion A \<Longrightarrow> get_store_total \<omega>1 x = get_store_total \<omega>2 x"
@@ -3213,6 +3213,6 @@ next
   then show ?case 
     using ExhSubExpFailure    
     by (auto intro: TotalSemantics.ExhSubExpFailure)
-qed (simp_all)
+qed (simp_all) *)
 
 end

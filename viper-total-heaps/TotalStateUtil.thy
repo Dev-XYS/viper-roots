@@ -35,45 +35,35 @@ fun get_m_total :: "('a, 'b) total_state_scheme \<Rightarrow> field_mask \<times
   where "get_m_total \<omega> = (get_mh_total \<omega>, get_mp_total \<omega>)"
 
 fun update_m_total :: "('a, 'b) total_state_scheme \<Rightarrow> field_mask \<times> 'a predicate_mask \<Rightarrow> ('a, 'b) total_state_scheme"
-  where "update_m_total \<omega> m = \<omega>\<lparr> get_mh_total := fst m, get_mp_total := snd m \<rparr>"
+  where "update_m_total \<omega> m = mp_total_update (mh_total_update \<omega> (fst m)) (snd m)"
 
 fun update_hh_loc_total :: "'a total_state \<Rightarrow> heap_loc \<Rightarrow> 'a val \<Rightarrow> 'a total_state"
   where "update_hh_loc_total \<omega> l v = \<omega>\<lparr>get_hh_total := (get_hh_total \<omega>)(l := v)\<rparr>"
 
 fun update_mh_loc_total :: "'a total_state \<Rightarrow> heap_loc \<Rightarrow> preal \<Rightarrow> 'a total_state"
-  where "update_mh_loc_total \<omega> l p = \<omega>\<lparr>get_mh_total := (get_mh_total \<omega>)(l := p)\<rparr>"
+  where "update_mh_loc_total \<omega> l p = mh_total_update \<omega> ((get_mh_total \<omega>)(l := p))"
 
 fun update_mp_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a total_state"
-  where "update_mp_loc_total \<omega> lp p = \<omega>\<lparr>get_mp_total := (get_mp_total \<omega>)(lp := p)\<rparr>"
+  where "update_mp_loc_total \<omega> lp p = mp_total_update \<omega> ((get_mp_total \<omega>)(lp := p))"
 
 fun update_mh_total :: "'a total_state \<Rightarrow> field_mask \<Rightarrow> 'a total_state"
-  where "update_mh_total \<omega> mh = \<omega>\<lparr>get_mh_total := mh\<rparr>"
+  where "update_mh_total \<omega> mh = mh_total_update \<omega> mh"
 
 fun update_mp_total :: "'a total_state \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a total_state"
-  where "update_mp_total \<omega> mp = \<omega>\<lparr>get_mp_total := mp\<rparr>"
+  where "update_mp_total \<omega> mp = mp_total_update \<omega> mp"
 
 fun update_hh_total :: "'a total_state \<Rightarrow> 'a total_heap \<Rightarrow> 'a total_state"
   where "update_hh_total \<omega> hh = \<omega>\<lparr>get_hh_total := hh\<rparr>"
 
-fun update_hp_total :: "'a total_state \<Rightarrow> 'a predicate_heap \<Rightarrow> 'a total_state"
-  where "update_hp_total \<omega> hp = \<omega>\<lparr>get_hp_total := hp\<rparr>"
+(* fun update_hp_total :: "'a total_state \<Rightarrow> 'a predicate_heap \<Rightarrow> 'a total_state"
+  where "update_hp_total \<omega> hp = \<omega>\<lparr>get_hp_total := hp\<rparr>" *)
 
 subsection \<open>heap and mask in full total state\<close>
 
 subsubsection \<open>Definitions\<close>
 
-fun get_h_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> 'a total_heap \<times> 'a predicate_heap"
-  where "get_h_total_full \<omega> = (get_hh_total_full \<omega>, get_hp_total_full \<omega>)"
-
-fun update_h_total_full :: "'a full_total_state \<Rightarrow> 'a total_heap \<Rightarrow> 'a predicate_heap \<Rightarrow> 'a full_total_state"
-  where "update_h_total_full \<omega> hh hp = 
-              \<omega>\<lparr> get_total_full := update_hp_total (update_hh_total (get_total_full \<omega>) hh) hp \<rparr>"
-
 fun update_hh_total_full ::  "'a full_total_state \<Rightarrow> 'a total_heap \<Rightarrow> 'a full_total_state"
   where "update_hh_total_full \<omega> hh = \<omega>\<lparr> get_total_full := update_hh_total (get_total_full \<omega>) hh \<rparr>"
-
-fun update_hp_total_full ::  "'a full_total_state \<Rightarrow> 'a predicate_heap \<Rightarrow> 'a full_total_state"
-  where "update_hp_total_full \<omega> hp = \<omega>\<lparr> get_total_full := update_hp_total (get_total_full \<omega>) hp \<rparr>"
 
 fun update_hh_loc_total_full :: "'a full_total_state \<Rightarrow> heap_loc \<Rightarrow> 'a val \<Rightarrow> 'a full_total_state"
   where "update_hh_loc_total_full \<omega> l v = 
@@ -102,17 +92,17 @@ fun update_mp_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_
 
 subsubsection \<open>Lemmas\<close>
 
-lemma update_hh_h_total: "update_hh_total_full \<omega> hh' = update_h_total_full \<omega> hh' (get_hp_total_full \<omega>)"
-  by simp
-
-lemma update_hp_h_total: "update_hp_total_full \<omega> hp' = update_h_total_full \<omega> (get_hh_total_full \<omega>) hp'"
-  by simp
+(* lemma test:
+  assumes "a = b"
+  shows "\<omega>\<lparr> get_total_full := a\<rparr> = \<omega>\<lparr> get_total_full := b \<rparr>"
+  using assms by force
 
 lemma update_mh_m_total: "update_mh_total_full \<omega> mh' = update_m_total_full \<omega> mh' (get_mp_total_full \<omega>)"
-  by simp
+  unfolding update_mh_total_full.simps update_m_total_full.simps
+  apply (rule test) oops
 
 lemma update_mp_m_total: "update_mp_total_full \<omega> mp' = update_m_total_full \<omega> (get_mh_total_full \<omega>) mp'"
-  by simp
+  by simp *)
 
 subsection \<open>Shifting stores\<close>
 
@@ -142,7 +132,7 @@ definition total_heap_well_typed :: "program \<Rightarrow> ('a \<Rightarrow> abs
 
 subsection \<open>Ordering lemmas\<close>
 
-lemma less_eq_full_total_stateD_2:
+(* lemma less_eq_full_total_stateD_2:
   assumes "\<omega>1 \<le> \<omega>2"
   shows "get_h_total_full \<omega>1 = get_h_total_full \<omega>2 \<and>
          get_mh_total_full \<omega>1 \<le> get_mh_total_full \<omega>2 \<and>     
@@ -160,7 +150,7 @@ proof -
 
   show ?thesis
     apply (insert assms)
-    by (fastforce intro: less_eq_total_stateI dest: less_eq_total_stateD simp: *)
+    by (fastforce intro: less_eq_total_stateI dest: less_eq_total_stateD simp: * )
 qed
 
 lemma update_mp_loc_total_mono:
@@ -173,7 +163,7 @@ proof -
 
   show ?thesis
     apply (insert assms)
-    by (fastforce intro: less_eq_total_stateI dest: less_eq_total_stateD simp: *)
+    by (fastforce intro: less_eq_total_stateI dest: less_eq_total_stateD simp: * )
 qed
 
 lemma update_mh_loc_total_full_mono:
@@ -185,7 +175,7 @@ proof -
     by blast
 
   show ?thesis
-    apply (insert assms *)
+    apply (insert assms * )
     apply (rule less_eq_full_total_stateI2)
     by (fastforce dest: less_eq_full_total_stateD)+
 qed
@@ -199,7 +189,7 @@ proof -
     by blast
 
   show ?thesis
-    apply (insert assms *)
+    apply (insert assms * )
     apply (rule less_eq_full_total_stateI2)
     by (fastforce dest: less_eq_full_total_stateD)+
 qed
@@ -210,7 +200,7 @@ proof
   fix x
   show "m1 x \<le> (m1 x) + (m2 x)"
     by (simp add: padd_pgte)
-qed  
+qed *)
 
 subsection \<open>General helper lemmas\<close>
 
@@ -287,7 +277,7 @@ proof
     by (metis (mono_tags, lifting) SepAlgebra.plus_preal_def add_masks_def plus_funI)
 qed
 
-subsection \<open>Partial commutative monoid instantiation\<close>
+(* subsection \<open>Partial commutative monoid instantiation\<close>
 
 lemma plus_masks_defined: "(m1 :: ('a, preal) abstract_mask) ## m2"
   unfolding defined_def
@@ -624,11 +614,11 @@ proof -
     apply (intro conjI)
   proof -
     show "\<exists>y. get_total_full \<omega>' \<oplus> \<phi>_diff = Some y"
-      by (metis *)
+      by (metis * )
   next
     fix A \<comment>\<open>LHS irrelevant\<close>
     show "A \<longrightarrow> \<omega> = \<omega>'\<lparr>get_total_full := the (get_total_full \<omega>' \<oplus> \<phi>_diff)\<rparr>"
-    proof (rule impI, simp add: *)
+    proof (rule impI, simp add: * )
       show "\<omega> = \<omega>'\<lparr>get_total_full := get_total_full \<omega>\<rparr>"
         apply (rule full_total_state.equality)
         using assms by auto
@@ -1127,6 +1117,6 @@ proof -
       using valid_heap_maskD[of m0 l, OF assms(1)] \<open>m0 = add_masks m1 m2\<close> assms(1) wf_mask_simple_def wf_mask_simple_false_preserved 
       by blast
   qed
-qed
+qed *)
 
 end
