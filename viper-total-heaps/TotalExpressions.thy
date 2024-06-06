@@ -18,7 +18,7 @@ for \<^term>\<open>(f::'a heapfun_repr) vs \<omega>\<close> are
 \<^item> \<^term>\<open>Some (Val v)\<close>: There is no typing issue and the function call is well-defined. The resulting value is \<^term>\<open>v\<close>.
 \<close>
 
-subsection\<open>General auxiliary definitions\<close>
+subsection \<open>General auxiliary definitions\<close>
 
 datatype 'a stmt_result_total = RMagic | RFailure | RNormal "'a full_total_state"
 
@@ -75,6 +75,7 @@ lemma th_result_rel_magic:
   shows "res = RMagic"
   using assms
   by (cases) auto
+
 
 definition get_valid_locs :: "'a full_total_state \<Rightarrow> heap_loc set"
   where "get_valid_locs \<omega> = {lh |lh. pgt (get_mh_total_full \<omega> lh) pnone}"
