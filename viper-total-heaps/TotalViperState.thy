@@ -37,30 +37,42 @@ fun get_lpset_pheap :: "'a predicate_heap \<Rightarrow> 'a predicate_loc \<Right
 
 datatype 'a nested_mask = NM field_mask "'a predicate_mask" "('a predicate_loc \<rightharpoonup> 'a nested_mask)"
 
-fun get_mh :: "'a nested_mask \<Rightarrow> field_mask"
-  where "get_mh (NM mh _ _) = mh"
+fun get_mh_nm :: "'a nested_mask \<Rightarrow> field_mask"
+  where "get_mh_nm (NM mh _ _) = mh"
 
-fun get_mp :: "'a nested_mask \<Rightarrow> 'a predicate_mask"
-  where "get_mp (NM _ mp _) = mp"
+fun get_mp_nm :: "'a nested_mask \<Rightarrow> 'a predicate_mask"
+  where "get_mp_nm (NM _ mp _) = mp"
 
-fun get_fnm :: "'a nested_mask \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask)"
-  where "get_fnm (NM _ _ fnm) = fnm"
+fun get_fnm_nm :: "'a nested_mask \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask)"
+  where "get_fnm_nm (NM _ _ fnm) = fnm"
 
 record 'a total_state =
    get_hh_total :: "'a total_heap"
    get_nm_total :: "'a nested_mask"
 
 fun get_mh_total :: "('a, 'b) total_state_scheme \<Rightarrow> field_mask"
-  where "get_mh_total \<phi> = (case get_nm_total \<phi> of (NM mh _ _) \<Rightarrow> mh)"
+  where "get_mh_total \<phi> = get_mh_nm (get_nm_total \<phi>)"
 
 fun mh_total_update :: "('a, 'b) total_state_scheme \<Rightarrow> field_mask \<Rightarrow> ('a, 'b) total_state_scheme"
-  where "mh_total_update \<phi> mh = (case get_nm_total \<phi> of (NM _ mp nm) \<Rightarrow> \<phi>\<lparr> get_nm_total := NM mh mp nm \<rparr>)"
+  where "mh_total_update \<phi> mh = (case get_nm_total \<phi> of (NM _ mp fnm) \<Rightarrow> \<phi>\<lparr> get_nm_total := NM mh mp fnm \<rparr>)"
 
 fun get_mp_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_mask"
-  where "get_mp_total \<phi> = (case get_nm_total \<phi> of (NM _ mp _) \<Rightarrow> mp)"
+  where "get_mp_total \<phi> = get_mp_nm (get_nm_total \<phi>)"
 
 fun mp_total_update :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_mask \<Rightarrow> ('a, 'b) total_state_scheme"
-  where "mp_total_update \<phi> mp = (case get_nm_total \<phi> of (NM mh _ nm) \<Rightarrow> \<phi>\<lparr> get_nm_total := NM mh mp nm \<rparr>)"
+  where "mp_total_update \<phi> mp = (case get_nm_total \<phi> of (NM mh _ fnm) \<Rightarrow> \<phi>\<lparr> get_nm_total := NM mh mp fnm \<rparr>)"
+
+fun get_fnm_total :: "('a, 'b) total_state_scheme \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask)"
+  where "get_fnm_total \<phi> = get_fnm_nm (get_nm_total \<phi>)"
+
+fun fnm_total_update :: "('a, 'b) total_state_scheme \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask) \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "fnm_total_update \<phi> fnm = (case get_nm_total \<phi> of (NM mh mp _) \<Rightarrow> \<phi>\<lparr> get_nm_total := NM mh mp fnm \<rparr>)"
+
+fun get_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
+  where "get_nm_loc_total \<phi> lp = get_fnm_total \<phi> lp"
+
+fun nm_loc_total_update :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "nm_loc_total_update \<phi> lp nm = fnm_total_update \<phi> ((get_fnm_total \<phi>)(lp := nm))"
 
 type_synonym 'a total_trace = "label \<rightharpoonup> 'a total_state"
 

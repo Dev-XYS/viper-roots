@@ -20,67 +20,12 @@ datatype 'a result_total = RMagic | RFailure | RNormal "'a full_total_state"
 
 subsection \<open>Shift Operations\<close>
 
-(* TODO: Move these utility definitions elsewhere. *)
-definition fun_comb :: "('a \<Rightarrow> 'b) \<Rightarrow> ('b \<Rightarrow> 'b \<Rightarrow> 'c) \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> ('a \<Rightarrow> 'c)" ("_ +\<lbrakk> _ \<rbrakk>+ _") where
-  "(f +\<lbrakk>c\<rbrakk>+ g) x = c (f x) (g x)"
-
-definition pfun_comb :: "('a \<rightharpoonup> 'b) \<Rightarrow> ('b \<Rightarrow> 'b \<Rightarrow> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b)" ("_ +\<lparr> _ \<rparr>+ _") where
-  "(f +\<lparr>c\<rparr>+ g) x = combine_options c (f x) (g x)"
-
-(* The following \<^keyword>\<open>fun\<close> definition does not work (or only work if we prove termination). *)
-(*
-fun nested_mask_merge :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
-  "nested_mask_merge (NM mh\<^sub>1 mp\<^sub>1 nm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 nm\<^sub>2) = (NM (mh\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mh\<^sub>2) (mp\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mp\<^sub>2) (nm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ nm\<^sub>2))"
-*)
-
-abbreviation nested_mask_rel :: "('a nested_mask \<times> 'a nested_mask) set"
-  where "nested_mask_rel \<equiv> {(nm, (NM mh mp fnm)) | nm mh mp fnm ploc. nm \<in> set_option (fnm ploc)}"
-
-lemma wf_nested_mask_rel: "wf nested_mask_rel"
-  unfolding wf_def
-  apply (rule allI | rule impI)+
-  apply (rule nested_mask.induct)
-  by blast
-
-function (sequential) nested_mask_merge :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
-  "nested_mask_merge (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) =
-                (NM (mh\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mh\<^sub>2) (mp\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mp\<^sub>2)
-                (\<lambda>p. (case (fnm\<^sub>1 p) of None \<Rightarrow> (fnm\<^sub>2 p) | Some nm\<^sub>1 \<Rightarrow> (case (fnm\<^sub>2 p) of None \<Rightarrow> Some nm\<^sub>1 | Some nm\<^sub>2 \<Rightarrow> Some (nested_mask_merge nm\<^sub>1 nm\<^sub>2))))) "
-  by (pat_completeness) auto
-termination
-   \<comment>\<open>"nested_mask_rel <*lex*> {}" would be sufficient here, since the first argument becomes smaller always\<close>
-  apply (relation "nested_mask_rel <*lex*> nested_mask_rel")
-  using wf_nested_mask_rel
-   apply blast
-  by auto
-
-text \<open>Defining \<^const>\<open>nested_mask_merge\<close> directly using \<^term>\<open>(nm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ nm\<^sub>2)\<close> but not sure how to do the termination proof in that case.
-      So, we instead show the equivalence separately in a lemma and replace the rewrite rule in the simpset with the lemma.\<close>
-
-declare nested_mask_merge.simps [simp del]
-
-lemma nested_mask_merge_combine_options[simp]:
-  "nested_mask_merge (NM mh\<^sub>1 mp\<^sub>1 nm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 nm\<^sub>2) = (NM (mh\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mh\<^sub>2) (mp\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mp\<^sub>2) (nm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ nm\<^sub>2))"
-  unfolding pfun_comb_def combine_options_def
-  by (simp add: nested_mask_merge.simps)
-
-\<comment> \<open>Auxiliary definitions for multiplying the mask\<close>
-
-function (sequential) nested_mask_multiply :: "'a nested_mask \<Rightarrow> preal \<Rightarrow> 'a nested_mask" where
-  "nested_mask_multiply (NM mh mp fnm) p = NM ((\<lambda>x. x * p) \<circ> mh) ((\<lambda>x. x * p) \<circ> mp) ((map_option (\<lambda>nm. nested_mask_multiply nm p)) \<circ> fnm)"
-  by (pat_completeness) auto
-termination
-  apply (relation "nested_mask_rel <*lex*> {}")
-  using wf_nested_mask_rel
-   apply blast
-  by fastforce
-
 \<comment> \<open>Begin \<^term>\<open>shift_up\<close>\<close>
 (* \<^term>\<open>shift_up\<close> only "unfolds" the specified predicate by one level.
    It does not check if the body of the predicate being unfolded is satisfied. *)
 
 inductive shift_up :: "'a total_context \<Rightarrow> predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool" where
-ShiftPartial:
+  ShiftPartial:
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
      mh = get_mh nm;
@@ -123,6 +68,21 @@ fun sub_pure_exp_total :: "pure_exp \<Rightarrow> pure_exp list" where
 | "sub_pure_exp_total (FunApp _ exps) = exps"
 | "sub_pure_exp_total (Unfolding _ exps e) = exps"
 | "sub_pure_exp_total _ = []"
+
+fun sub_expressions_exp_or_wildcard :: "pure_exp exp_or_wildcard \<Rightarrow> pure_exp list" where
+  "sub_expressions_exp_or_wildcard (PureExp e) = [e]"
+| "sub_expressions_exp_or_wildcard Wildcard = []"
+
+fun sub_expressions_atomic :: "pure_exp atomic_assert \<Rightarrow> pure_exp list" where
+  "sub_expressions_atomic (Pure e) = [e]"
+| "sub_expressions_atomic (Acc x f p) = x # sub_expressions_exp_or_wildcard p"
+| "sub_expressions_atomic (AccPredicate P exps p) = exps @ sub_expressions_exp_or_wildcard p"
+
+fun direct_sub_expressions_assertion :: "assertion \<Rightarrow> pure_exp list" where
+  "direct_sub_expressions_assertion (Atomic A) = sub_expressions_atomic A"
+| "direct_sub_expressions_assertion (Imp e A) = [e]"
+| "direct_sub_expressions_assertion (CondAssert e A B) = [e]"
+| "direct_sub_expressions_assertion _ = []"
 
 inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_state option \<Rightarrow> pure_exp \<Rightarrow> 'a full_total_state \<Rightarrow> 'a extended_val \<Rightarrow> bool" ("_, _ \<turnstile> ((\<langle>_;_\<rangle>) [\<Down>]\<^sub>t _)" [51,51,0,51,51] 81) and
   red_pure_exps_total :: "'a total_context \<Rightarrow> 'a full_total_state option \<Rightarrow> pure_exp list \<Rightarrow> 'a full_total_state \<Rightarrow> (('a val) list) option \<Rightarrow> bool"
@@ -216,17 +176,19 @@ inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_st
    ctxt, \<omega>_def \<turnstile> \<langle>Perm e f; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal v))"
 
 \<comment>\<open>Unfolding\<close>
+\<comment> \<open>Viper allows unfolding a fraction of a predicate. Not reflected in the semantics?
+     e.g. unfolding acc(P(x), 1/2) in x.f == 1\<close>
 | RedUnfolding:
   "\<lbrakk> ctxt, None \<turnstile> \<langle>ubody; \<omega>\<rangle> [\<Down>]\<^sub>t v \<rbrakk> \<Longrightarrow>
    ctxt, None \<turnstile> \<langle>Unfolding p es ubody; \<omega>\<rangle> [\<Down>]\<^sub>t v"
 | RedUnfoldingDefNoPred:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>_def) es \<omega> (Some vs);
      ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     \<not> (pgte (get_mp_total_full \<omega>_def (pred_id,vs)) pwrite) \<rbrakk> \<Longrightarrow> \<comment>\<open>insufficient permission\<close>
+     get_mp_total_full \<omega>_def (pred_id,vs) < 1 \<rbrakk> \<Longrightarrow> \<comment>\<open>insufficient permission\<close>
    ctxt, (Some \<omega>_def) \<turnstile> \<langle>Unfolding p es ubody ; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
 | RedUnfoldingDef:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>_def) es \<omega> (Some vs);
-     shift_up ctxt p vs pwrite (get_nm_total_full \<omega>_def) nm';
+     shift_up ctxt p vs 1 (get_nm_total_full \<omega>_def) nm';
      \<omega>'_def = \<omega>_def \<lparr> get_total_full := get_total_full \<omega>_def \<lparr> get_nm_total := nm' \<rparr> \<rparr>;
      ctxt, (Some \<omega>'_def) \<turnstile> \<langle>ubody; \<omega>\<rangle> [\<Down>]\<^sub>t v \<rbrakk> \<Longrightarrow>
    ctxt, (Some \<omega>_def) \<turnstile> \<langle>Unfolding p es ubody ; \<omega>\<rangle> [\<Down>]\<^sub>t v"
@@ -250,40 +212,155 @@ inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_st
   "red_pure_exps_total ctxt \<omega>_def Nil \<omega> (Some Nil)"
 
 
+subsection \<open>Exhale\<close>
+
+fun exh_if_total :: "bool \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total"  where
+  "exh_if_total False _ = RFailure"
+| "exh_if_total True \<omega> = RNormal \<omega>"
+
+inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool"
+  for ctxt :: "'a total_context" and \<omega>0 :: "'a full_total_state" where
+
+\<comment>\<open>exhale acc(e.f, p)\<close>
+  ExhAcc:
+  "\<lbrakk> mh = get_mh_total_full \<omega>;
+     ctxt, (Some \<omega>0) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
+     ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
+     a = the_address r
+   \<rbrakk> \<Longrightarrow>
+   red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega>
+     (exh_if_total (p \<ge> 0 \<and> (if r = Null then p = 0 else mh (a,f) \<ge> Abs_preal p))
+                    (if r = Null then \<omega> else update_mh_loc_total_full \<omega> (a,f) ((mh (a,f)) - (Abs_preal p))))"
+
+\<comment>\<open>Exhaling wildcard removes some non-zero permission that is less than the current permission held.\<close>
+| ExhAccWildcard:
+  "\<lbrakk> mh = get_mh_total_full \<omega>;
+     ctxt, (Some \<omega>0) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
+     a = the_address r;
+     \<comment>\<open>\<^term>\<open>q\<close> satisfies the right-hand side if \<^prop>\<open>mh (a,f) \<noteq> 0\<close> (thm prat_exists_stricly_smaller_nonzero).
+     If \<^prop>\<open>mh (a,f) \<noteq> 0\<close> does not hold, then the exhale fails and the value of q is irrelevant. \<close>
+     q = (SOME p. p \<noteq> 0 \<and> mh (a,f) > p)
+   \<rbrakk> \<Longrightarrow>
+   red_exhale ctxt \<omega>0 (Atomic (Acc e_r f Wildcard)) \<omega>
+     (exh_if_total (mh (a,f) \<noteq> 0 \<and> r \<noteq> Null)
+                    (update_mh_loc_total_full \<omega> (a,f) q))"
+\<comment>\<open>exhale acc(P(es), p)\<close>
+| ExhAccPred:
+  "\<lbrakk> mp = get_mp_total_full \<omega>;
+     red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args);
+     ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)
+   \<rbrakk> \<Longrightarrow>
+   red_exhale ctxt \<omega>0 (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega>
+     (exh_if_total (p \<ge> 0 \<and> mp (pred_id, v_args) \<ge> Abs_preal p)
+                   (update_mp_loc_total_full \<omega> (pred_id, v_args) (mp (pred_id, v_args) - (Abs_preal p))))"
+| ExhAccPredWildcard:
+  "\<lbrakk> mp = get_mp_total_full \<omega>;
+     red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args);
+     \<comment>\<open>q satisfies the right-hand side if \<^prop>\<open>mp (pred_id, v_args) \<noteq> 0\<close> (thm prat_exists_strictly_smaller_nonzero).
+     If \<^prop>\<open>mp (pred_id, v_args) \<noteq> 0\<close> does not hold, then the exhale fails and the value of q is irrelevant.\<close>
+     q = (SOME p. p \<noteq> 0 \<and> mp (pred_id, v_args) > p)
+   \<rbrakk> \<Longrightarrow>
+   red_exhale ctxt \<omega>0 (Atomic (AccPredicate pred_id e_args Wildcard)) \<omega>
+     (exh_if_total (mp (pred_id, v_args) \<noteq> 0)
+                   (update_mp_loc_total_full \<omega> (pred_id, v_args) q))"
+
+| ExhPure:
+  "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<rbrakk> \<Longrightarrow>
+   red_exhale ctxt \<omega>0 (Atomic (Pure e)) \<omega> (exh_if_total b \<omega>)"
+
+\<comment>\<open>exhale A && B\<close>
+| ExhStarNormal:
+  "\<lbrakk> red_exhale ctxt \<omega>0 A \<omega> (RNormal \<omega>');
+    red_exhale ctxt \<omega>0 B \<omega>' res
+   \<rbrakk> \<Longrightarrow>
+   red_exhale ctxt \<omega>0 (A && B) \<omega> res"
+| ExhStarFailure:
+  "\<lbrakk> red_exhale ctxt \<omega>0 A \<omega> RFailure \<rbrakk> \<Longrightarrow>
+   red_exhale ctxt \<omega>0 (A && B) \<omega> RFailure"
+
+\<comment>\<open>exhale A \<longrightarrow> B\<close>
+| ExhImpTrue:
+  "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
+     red_exhale ctxt \<omega>0 A \<omega> res
+   \<rbrakk> \<Longrightarrow>
+   red_exhale ctxt \<omega>0 (Imp e A) \<omega> res"
+| ExhImpFalse:
+  "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False) \<rbrakk> \<Longrightarrow>
+   red_exhale ctxt \<omega>0 (Imp e A) \<omega> (RNormal \<omega>)"
+
+\<comment>\<open>exhale e ? A : B\<close>
+| ExhCondTrue:
+  "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
+     red_exhale ctxt \<omega>0 A \<omega> res
+   \<rbrakk> \<Longrightarrow>
+   red_exhale ctxt \<omega>0 (CondAssert e A B) \<omega> res"
+| ExhCondFalse:
+  "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
+     red_exhale ctxt \<omega>0 B \<omega> res
+   \<rbrakk> \<Longrightarrow>
+   red_exhale ctxt \<omega>0 (CondAssert e A B) \<omega> res"
+
+\<comment>\<open>If a \<^emph>\<open>direct\<close> subexpression is not well-defined, then this results in failure.\<close>
+| ExhSubExpFailure:
+  "\<lbrakk> direct_sub_expressions_assertion A \<noteq> [];
+     red_pure_exps_total ctxt (Some \<omega>0) (direct_sub_expressions_assertion A) \<omega> None
+   \<rbrakk> \<Longrightarrow>
+   red_exhale ctxt \<omega>0 A \<omega> RFailure"
+
+
+subsection \<open>Satisfiability\<close>
+
+
+
+
 subsection \<open>Inhale\<close>
+
+(* The general question is, if we put consistent checks inside inhale or inside statement reduction. *)
 
 definition inhale_perm_single :: "'a full_total_state \<Rightarrow> heap_loc \<Rightarrow> preal option \<Rightarrow> 'a full_total_state set"
   where "inhale_perm_single \<omega> lh p_opt =
     { \<omega>'| \<omega>' q.
-            option_fold ((=) q) (q \<noteq> pnone) p_opt \<and>
+            option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
             get_mh_total_full \<omega> lh + q \<le> 1 \<and>  \<comment> \<open>There can be at most 1 field permission\<close>
                \<comment> \<open>Do we really need the check here? Or it is covered in consistency?\<close>
-            \<omega>' = update_mh_loc_total_full \<omega> lh ((get_mh_total_full \<omega> lh) + q)
+            \<omega>' = update_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + q)
+    }"
+
+definition inhale_perm_single_pred :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal option \<Rightarrow> 'a full_total_state set"
+  where "inhale_perm_single_pred \<omega> lp p_opt = 
+    { \<omega>'| \<omega>' q nm.
+            option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
+            \<comment> \<open>sat lp q nm \<and>\<close> \<comment> \<open>Needs to decide the signature of \<^term>\<open>sat\<close>\<close>
+            \<omega>' = add_to_nm_loc_total_full (update_mp_loc_total_full \<omega> lp (get_mp_total_full \<omega> lp + q)) lp nm
     }"
 
 inductive red_inhale :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool" where
 \<comment>\<open>Atomic inhale\<close>
-InhAcc:
+  InhAcc:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
      ctxt, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      W' = (if r = Null then {\<omega>} else inhale_perm_single \<omega> (the_address r,f) (Some (Abs_preal p)));
-     th_result_rel (p \<ge> 0) (W' \<noteq> {} \<and> (p > 0 \<longrightarrow> r \<noteq> Null)) W' res \<rbrakk> \<Longrightarrow>
+     th_result_rel (p \<ge> 0) (W' \<noteq> {} \<and> (p > 0 \<longrightarrow> r \<noteq> Null)) W' res
+   \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (Atomic (Acc e_r f (PureExp e_p))) \<omega> res"
 | InhAccPred:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
      ctxt, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      W' = inhale_perm_single_pred \<omega> (pred_id, v_args) (Some (Abs_preal p));
-     th_result_rel (p \<ge> 0) (W' \<noteq> {}) W' res \<rbrakk> \<Longrightarrow>
+     th_result_rel (p \<ge> 0) (W' \<noteq> {}) W' res
+   \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega> res"
 | InhAccWildcard:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
      W' = inhale_perm_single \<omega> (the_address r,f) None;
-     th_result_rel True (W' \<noteq> {} \<and> r \<noteq> Null) W' res \<rbrakk> \<Longrightarrow>
+     th_result_rel True (W' \<noteq> {} \<and> r \<noteq> Null) W' res
+   \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (Atomic (Acc e_r f Wildcard)) \<omega> res"
 | InhAccPredWildcard:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
      W' = inhale_perm_single_pred \<omega> (pred_id, v_args) None;
-     th_result_rel True (W' \<noteq> {}) W' res \<rbrakk> \<Longrightarrow>
+     th_result_rel True (W' \<noteq> {}) W' res
+   \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (Atomic (AccPredicate pred_id e_args Wildcard)) \<omega> res"
 | InhPure:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<rbrakk> \<Longrightarrow>
@@ -292,32 +369,38 @@ InhAcc:
 \<comment>\<open>Connectives inhale\<close>
 | InhStarNormal:
   "\<lbrakk> red_inhale ctxt A \<omega> (RNormal \<omega>'');
-     red_inhale ctxt B \<omega>'' res\<rbrakk> \<Longrightarrow>
+     red_inhale ctxt B \<omega>'' res
+   \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (A && B) \<omega> res"
 | InhStarFailureMagic:
   "\<lbrakk> red_inhale ctxt A \<omega> resA;
-     resA = RFailure \<or> resA = RMagic \<rbrakk> \<Longrightarrow>
+     resA = RFailure \<or> resA = RMagic
+   \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (A && B) \<omega> resA"
 | InhImpTrue:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True));
-     red_inhale ctxt A \<omega> res \<rbrakk> \<Longrightarrow>
+     red_inhale ctxt A \<omega> res
+   \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (Imp e A) \<omega> res"
 | InhImpFalse:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False) \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (Imp e A) \<omega> (RNormal \<omega>)"
 | InhCondAssertTrue:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True));
-    red_inhale ctxt A \<omega> res \<rbrakk> \<Longrightarrow>
+    red_inhale ctxt A \<omega> res
+   \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (CondAssert e A B) \<omega> res"
 | InhCondAssertFalse:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
-    red_inhale ctxt B \<omega> res \<rbrakk> \<Longrightarrow>
+    red_inhale ctxt B \<omega> res
+   \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (CondAssert e A B) \<omega> res"
 
-\<comment>\<open>If a \<^emph>\<open>direct\<close> subexpression is not well-defined, then this result in failure.\<close>
+\<comment>\<open>If a \<^emph>\<open>direct\<close> subexpression is not well-defined, then this results in failure.\<close>
 | InhSubExpFailure:
   "\<lbrakk> (direct_sub_expressions_assertion A) \<noteq> [];
-     red_pure_exps_total ctxt (Some \<omega>) (direct_sub_expressions_assertion A) \<omega> None \<rbrakk> \<Longrightarrow>
+     red_pure_exps_total ctxt (Some \<omega>) (direct_sub_expressions_assertion A) \<omega> None
+   \<rbrakk> \<Longrightarrow>
    red_inhale ctxt A \<omega> RFailure"
 
 
