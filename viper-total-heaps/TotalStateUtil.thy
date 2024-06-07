@@ -75,7 +75,7 @@ fun update_store_total :: "'a full_total_state \<Rightarrow> 'a store \<Rightarr
 
 subsection \<open>update_trace_total\<close>
 
-fun update_trace_total :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a total_trace \<Rightarrow> ('a, 'b) full_total_state_scheme" 
+fun update_trace_total :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a total_trace \<Rightarrow> ('a, 'b) full_total_state_scheme"
   where "update_trace_total \<omega> \<pi> = \<omega>\<lparr>get_trace_total := \<pi>\<rparr>"
 
 lemma update_trace_total_store_same: "get_store_total (update_trace_total \<omega> \<pi>) = get_store_total \<omega>"
@@ -130,14 +130,14 @@ fun update_hh_total_full ::  "'a full_total_state \<Rightarrow> 'a total_heap \<
   where "update_hh_total_full \<omega> hh = \<omega>\<lparr> get_total_full := update_hh_total (get_total_full \<omega>) hh \<rparr>"
 
 fun update_hh_loc_total_full :: "'a full_total_state \<Rightarrow> heap_loc \<Rightarrow> 'a val \<Rightarrow> 'a full_total_state"
-  where "update_hh_loc_total_full \<omega> l v = 
+  where "update_hh_loc_total_full \<omega> l v =
         \<omega>\<lparr> get_total_full := update_hh_loc_total (get_total_full \<omega>) l v \<rparr>"
 
 fun get_m_total_full :: "'a full_total_state \<Rightarrow> field_mask \<times> 'a predicate_mask"
   where "get_m_total_full \<omega> = (get_mh_total_full \<omega>, get_mp_total_full \<omega>)"
 
 fun update_m_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> field_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> ('a,'b) full_total_state_scheme"
-  where "update_m_total_full \<omega> m pm = 
+  where "update_m_total_full \<omega> m pm =
               \<omega>\<lparr> get_total_full := update_mp_total (update_mh_total (get_total_full \<omega>) m) pm \<rparr>"
 
 fun update_mh_total_full :: "'a full_total_state \<Rightarrow> field_mask \<Rightarrow> 'a full_total_state"
@@ -147,12 +147,15 @@ fun update_mp_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_mask
   where "update_mp_total_full \<omega> mp = \<omega>\<lparr> get_total_full := update_mp_total (get_total_full \<omega>) mp \<rparr>"
 
 fun update_mh_loc_total_full :: "'a full_total_state \<Rightarrow> heap_loc \<Rightarrow> preal \<Rightarrow> 'a full_total_state"
-  where "update_mh_loc_total_full \<omega> l p = 
+  where "update_mh_loc_total_full \<omega> l p =
         \<omega>\<lparr> get_total_full := update_mh_loc_total (get_total_full \<omega>) l p \<rparr>"
 
 fun update_mp_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a full_total_state"
-  where "update_mp_loc_total_full \<omega> lp p = 
+  where "update_mp_loc_total_full \<omega> lp p =
         \<omega>\<lparr> get_total_full := update_mp_loc_total (get_total_full \<omega>) lp p \<rparr>"
+
+fun get_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
+  where "get_nm_loc_total_full \<omega> lp = get_nm_loc_total (get_total_full \<omega>) lp"
 
 fun add_to_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a full_total_state"
   where "add_to_nm_loc_total_full \<omega> lp nm =
@@ -175,17 +178,17 @@ lemma update_mp_m_total: "update_mp_total_full \<omega> mp' = update_m_total_ful
 subsection \<open>Shifting stores\<close>
 
 fun shift_and_add_state_total :: "'a full_total_state \<Rightarrow> 'a val \<Rightarrow> 'a full_total_state"
-  where 
+  where
     "shift_and_add_state_total \<omega> v = update_store_total \<omega> (shift_and_add (get_store_total \<omega>) v)"
 
 fun unshift_state_total :: "nat \<Rightarrow> 'a full_total_state \<Rightarrow> 'a full_total_state"
   where
-   "unshift_state_total n \<omega> = update_store_total \<omega> (unshift_2 n (get_store_total \<omega>))"  
+   "unshift_state_total n \<omega> = update_store_total \<omega> (unshift_2 n (get_store_total \<omega>))"
 
 fun shift_state_total
   where "shift_state_total n \<omega> = update_store_total \<omega> (DeBruijn.shift n (get_store_total \<omega>))"
 
-lemma shift_1_shift_and_add_total: 
+lemma shift_1_shift_and_add_total:
   "shift_and_add_state_total \<omega> y = update_var_total (shift_state_total 1 \<omega>) 0 y"
   apply (simp add: shift_and_add_def)
   apply (rule full_total_state.equality)
@@ -195,7 +198,7 @@ lemma shift_1_shift_and_add_total:
 subsection \<open>Well-typed states\<close>
 
 definition total_heap_well_typed :: "program \<Rightarrow> ('a \<Rightarrow> abs_type) \<Rightarrow> 'a total_heap \<Rightarrow> bool"
-  where "total_heap_well_typed Pr \<Delta> h \<equiv>                      
+  where "total_heap_well_typed Pr \<Delta> h \<equiv>
            \<forall>loc \<tau>. declared_fields Pr (snd loc) = Some \<tau> \<longrightarrow> has_type \<Delta> \<tau> (h loc)"
 
 subsection \<open>Ordering lemmas\<close>
@@ -203,17 +206,17 @@ subsection \<open>Ordering lemmas\<close>
 (* lemma less_eq_full_total_stateD_2:
   assumes "\<omega>1 \<le> \<omega>2"
   shows "get_h_total_full \<omega>1 = get_h_total_full \<omega>2 \<and>
-         get_mh_total_full \<omega>1 \<le> get_mh_total_full \<omega>2 \<and>     
+         get_mh_total_full \<omega>1 \<le> get_mh_total_full \<omega>2 \<and>
          get_mp_total_full \<omega>1 \<le> get_mp_total_full \<omega>2"
-  using assms 
-  by (fastforce dest: less_eq_full_total_stateD less_eq_total_stateD)  
+  using assms
+  by (fastforce dest: less_eq_full_total_stateD less_eq_total_stateD)
 
 lemma update_mh_loc_total_mono:
   assumes "\<omega>1 \<le> \<omega>2" and "p1 \<le> p2"
   shows "update_mh_loc_total \<omega>1 l p1 \<le> update_mh_loc_total \<omega>2 l p2"
 proof -
   have *: "(get_mh_total \<omega>1)(l := p1) \<le> (get_mh_total \<omega>2)(l := p2)"
-    using assms 
+    using assms
     by (simp add: le_funD le_funI less_eq_total_stateD)
 
   show ?thesis
@@ -226,7 +229,7 @@ lemma update_mp_loc_total_mono:
   shows "update_mp_loc_total \<omega>1 l p1 \<le> update_mp_loc_total \<omega>2 l p2"
 proof -
   have *: "(get_mp_total \<omega>1)(l := p1) \<le> (get_mp_total \<omega>2)(l := p2)"
-    using assms 
+    using assms
     by (simp add: le_funD le_funI less_eq_total_stateD)
 
   show ?thesis
@@ -298,7 +301,7 @@ proof
 qed
 
 lemma minus_preal_gte:
-  assumes "p \<ge> (q :: preal)" 
+  assumes "p \<ge> (q :: preal)"
   shows "p - (p - q) = q"
   using assms Rep_preal_inject minus_preal.rep_eq psub_smaller by fastforce
 
@@ -332,7 +335,7 @@ proof
     from this obtain p where "m l = padd (m' l) p"
       using preal_gte_padd
       by blast
-      
+
     hence "Some (m l) = (m' l) \<oplus> p"
       unfolding plus_preal_def
       by simp
@@ -355,9 +358,9 @@ instantiation total_state_ext :: (type,type) pcm
 begin
 
 definition plus_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a,'b) total_state_ext \<Rightarrow> ('a,'b) total_state_ext option"
-  where "plus_total_state_ext \<phi>1 \<phi>2 = 
-              (let (mh1, mp1, mh2, mp2) = (get_mh_total \<phi>1, get_mp_total \<phi>1, get_mh_total \<phi>2, get_mp_total \<phi>2) in 
-                   if get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and> get_hp_total \<phi>1 = get_hp_total \<phi>2 \<and> 
+  where "plus_total_state_ext \<phi>1 \<phi>2 =
+              (let (mh1, mp1, mh2, mp2) = (get_mh_total \<phi>1, get_mp_total \<phi>1, get_mh_total \<phi>2, get_mp_total \<phi>2) in
+                   if get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and> get_hp_total \<phi>1 = get_hp_total \<phi>2 \<and>
                       total_state.more \<phi>1 = total_state.more \<phi>2
                    then Some (update_m_total \<phi>1 (the (mh1 \<oplus> mh2), the (mp1 \<oplus> mp2)))
                    else None)"
@@ -372,7 +375,7 @@ instance proof
   let ?mh_c = "get_mh_total c"
   let ?mp_c = "get_mp_total c"
 
-  obtain mh_ab where MhEqAB: "?mh_a \<oplus> ?mh_b = Some mh_ab" 
+  obtain mh_ab where MhEqAB: "?mh_a \<oplus> ?mh_b = Some mh_ab"
     using plus_masks_defined
     unfolding defined_def
     by blast
@@ -384,7 +387,7 @@ instance proof
 
   note MEqAB = MhEqAB MpEqAB
 
-  obtain mh_bc where MhEqBC: "?mh_b \<oplus> ?mh_c = Some mh_bc" 
+  obtain mh_bc where MhEqBC: "?mh_b \<oplus> ?mh_c = Some mh_bc"
     using plus_masks_defined
     unfolding defined_def
     by blast
@@ -396,10 +399,10 @@ instance proof
 
   note MEqBC = MhEqBC MpEqBC
 
-  show "a \<oplus> b = b \<oplus> a" 
+  show "a \<oplus> b = b \<oplus> a"
     unfolding plus_total_state_ext_def
-    by (simp add: commutative)      
-  
+    by (simp add: commutative)
+
   show "a \<oplus> b = Some ab \<and> b \<oplus> c = Some bc \<Longrightarrow> ab \<oplus> c = a \<oplus> bc"
   proof -
     have *: "mh_ab \<oplus> get_mh_total c = get_mh_total a \<oplus> mh_bc"
@@ -438,7 +441,7 @@ instance proof
 
     from B have *: "?mh_c \<oplus> ?mh_c = Some ?mh_c \<and> ?mp_c \<oplus> ?mp_c = Some ?mp_c"
       unfolding plus_total_state_ext_def
-      
+
     proof (clarsimp simp: MEqCC split: if_split if_split_asm)
       assume "c = c\<lparr>get_mh_total := mh_cc, get_mp_total := mp_cc\<rparr>"
       have "get_mh_total c = mh_cc"
@@ -462,7 +465,7 @@ instance proof
     thus ?thesis
       unfolding plus_total_state_ext_def
       by (clarsimp simp: MEqAB MEqBC split: if_split if_split_asm)
-  qed    
+  qed
 qed
 
 end
@@ -475,13 +478,13 @@ begin
    the traces to be the same.\<close>
 
 definition plus_full_total_state_ext :: "('a,'b) full_total_state_ext \<Rightarrow> ('a,'b) full_total_state_ext \<Rightarrow> ('a,'b) full_total_state_ext option"
-  where "plus_full_total_state_ext \<omega>1 \<omega>2 = 
-            (if get_store_total \<omega>1 = get_store_total \<omega>2 \<and> 
-                get_trace_total \<omega>1 = get_trace_total \<omega>2 \<and> 
+  where "plus_full_total_state_ext \<omega>1 \<omega>2 =
+            (if get_store_total \<omega>1 = get_store_total \<omega>2 \<and>
+                get_trace_total \<omega>1 = get_trace_total \<omega>2 \<and>
                 get_total_full \<omega>1 ## get_total_full \<omega>2 \<and>
                 full_total_state.more \<omega>1 = full_total_state.more \<omega>2 then
                 Some (\<omega>1\<lparr>get_total_full := the (get_total_full \<omega>1 \<oplus> get_total_full \<omega>2) \<rparr>)
-            else 
+            else
                 None)"
 
 instance
@@ -533,15 +536,15 @@ proof
 
     moreover from \<open>?B\<close> have "Some ?ct = ?ct \<oplus> ?ct"
       unfolding plus_full_total_state_ext_def defined_def
-      apply (simp split: if_split if_split_asm)      
+      apply (simp split: if_split if_split_asm)
       by (metis full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3))
 
     ultimately have "Some ?at = ?at \<oplus> ?at"
       using positivity by blast
 
-    thus ?thesis 
+    thus ?thesis
       unfolding plus_full_total_state_ext_def defined_def
-      by (metis full_total_state.surjective full_total_state.update_convs(3) option.discI option.sel)   
+      by (metis full_total_state.surjective full_total_state.update_convs(3) option.discI option.sel)
   qed
 qed
 
@@ -560,26 +563,26 @@ proof -
 qed
 
 lemma core_mask_zero_mask: "zero_mask = |m :: ('a, preal) abstract_mask|"
-proof 
+proof
   fix x
   show "zero_mask x = |m| x"
     unfolding zero_mask_def
     by (simp add: core_fun core_preal_def)
 qed
 
-lemma total_state_plus_defined: 
+lemma total_state_plus_defined:
   assumes "a \<oplus> b = Some c"
   shows "get_hh_total a = get_hh_total b \<and> get_hp_total a = get_hp_total b \<and> total_state.more a = total_state.more b \<and>
          get_hh_total a = get_hh_total c \<and> get_hp_total a = get_hp_total c \<and> total_state.more a = total_state.more c"
   using assms
   unfolding plus_total_state_ext_def
-  by (clarsimp split: if_split_asm ) 
+  by (clarsimp split: if_split_asm )
 
 lemma plus_Some_total_state_eq:
   assumes "\<phi> \<oplus> \<phi>' = Some \<phi>sum"
   shows "\<phi>sum = \<phi> \<lparr> get_mh_total := add_masks (get_mh_total \<phi>) (get_mh_total \<phi>'),
                     get_mp_total := add_masks (get_mp_total \<phi>) (get_mp_total \<phi>') \<rparr>"
-  using assms 
+  using assms
   unfolding plus_total_state_ext_def
   by (simp split: if_split_asm add: mask_plus_Some)
 
@@ -587,7 +590,7 @@ lemma plus_Some_full_total_state_eq:
   assumes "\<omega> \<oplus> \<omega>' = Some \<omega>sum"
   shows "\<omega>sum = update_m_total_full \<omega> (add_masks (get_mh_total_full \<omega>) (get_mh_total_full \<omega>'))
                                       (add_masks (get_mp_total_full \<omega>) (get_mp_total_full \<omega>'))"
-  using assms 
+  using assms
   unfolding plus_full_total_state_ext_def defined_def
   by (fastforce split: if_split_asm dest: plus_Some_total_state_eq)
 
@@ -605,7 +608,7 @@ lemma plus_total_state_zero_mask:
   using assms
   unfolding plus_total_state_ext_def
   apply simp
-  by (metis (no_types, lifting) commutative option.sel plus_mask_zero_mask_neutral total_state.surjective total_state.update_convs(3) total_state.update_convs(4))  
+  by (metis (no_types, lifting) commutative option.sel plus_mask_zero_mask_neutral total_state.surjective total_state.update_convs(3) total_state.update_convs(4))
 
 lemma plus_full_total_state_zero_mask:
   assumes "get_store_total \<omega> = get_store_total \<omega>' \<and> get_trace_total \<omega> = get_trace_total \<omega>' \<and> get_h_total_full \<omega> = get_h_total_full \<omega>' \<and>
@@ -615,7 +618,7 @@ lemma plus_full_total_state_zero_mask:
 proof -
   have "get_total_full \<omega>' \<oplus> get_total_full \<omega> = Some (get_total_full \<omega>)"
     apply (rule plus_total_state_zero_mask)
-    using assms 
+    using assms
     by simp_all
 
   thus ?thesis
@@ -623,7 +626,7 @@ proof -
   using plus_total_state_zero_mask assms
   by simp
 qed
-  
+
 lemma full_total_state_greater_only_mask_changed:
   assumes "\<omega> \<succeq> \<omega>'"
   shows "get_store_total \<omega> = get_store_total \<omega>' \<and>
@@ -631,19 +634,19 @@ lemma full_total_state_greater_only_mask_changed:
          get_h_total_full \<omega> = get_h_total_full \<omega>' \<and>
          full_total_state.more \<omega> = full_total_state.more \<omega>'"
   using assms
-  unfolding greater_def 
+  unfolding greater_def
   unfolding plus_full_total_state_ext_def defined_def plus_total_state_ext_def
   by (force split: if_split if_split_asm)
 
 lemma succ_total_stateI:
   assumes "get_mh_total \<phi> \<succeq> get_mh_total \<phi>'"  (is "?mh \<succeq> ?mh'")
       and "get_mp_total \<phi> \<succeq> get_mp_total \<phi>'"  (is "?mp \<succeq> ?mp'")
-      and "get_hh_total \<phi> = get_hh_total \<phi>'" 
-      and "get_hp_total \<phi> = get_hp_total \<phi>'" 
+      and "get_hh_total \<phi> = get_hh_total \<phi>'"
+      and "get_hp_total \<phi> = get_hp_total \<phi>'"
       and "total_state.more \<phi> = total_state.more \<phi>'"
     shows "\<phi> \<succeq> \<phi>'"
 proof -
-  from assms(1-2) obtain mh_diff mp_diff where 
+  from assms(1-2) obtain mh_diff mp_diff where
     Eqns: "?mh' \<oplus> mh_diff = Some ?mh" "?mp' \<oplus> mp_diff = Some ?mp"
     by (auto simp: greater_def)
 
@@ -651,7 +654,7 @@ proof -
     unfolding plus_total_state_ext_def
     apply (simp add: Eqns)
     apply (rule total_state.equality)
-    using assms 
+    using assms
     by auto
 
   thus ?thesis
@@ -660,7 +663,7 @@ proof -
 qed
 
 lemma succ_full_total_stateI:
-  assumes "get_mh_total_full \<omega> \<succeq> get_mh_total_full \<omega>'" 
+  assumes "get_mh_total_full \<omega> \<succeq> get_mh_total_full \<omega>'"
       and "get_mp_total_full \<omega> \<succeq> get_mp_total_full \<omega>'"
       and "get_h_total_full \<omega> = get_h_total_full \<omega>'"
       and "get_store_total \<omega> = get_store_total \<omega>'"
@@ -702,7 +705,7 @@ lemma greater_full_total_state_total_state:
   shows "get_total_full \<omega> \<succeq> get_total_full \<omega>'"
   using assms
   unfolding greater_def plus_full_total_state_ext_def
-  by (metis defined_def full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3) option.distinct(1) option.exhaust_sel option.sel)  
+  by (metis defined_def full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3) option.distinct(1) option.exhaust_sel option.sel)
 
 
 lemma total_state_greater_mask:
@@ -716,7 +719,7 @@ proof -
 
   hence "get_mh_total \<phi> = add_masks (get_mh_total \<phi>') (get_mh_total \<phi>a)" and
         "get_mp_total \<phi> = add_masks (get_mp_total \<phi>') (get_mp_total \<phi>a)"
-    using plus_Some_total_state_eq 
+    using plus_Some_total_state_eq
     by fastforce+
 
   thus ?thesis
@@ -724,7 +727,7 @@ proof -
     unfolding greater_def
     by metis
 qed
-      
+
 lemma full_total_state_greater_mask:
   assumes "\<omega> \<succeq> \<omega>'"
   shows "get_mh_total_full \<omega> \<succeq> get_mh_total_full \<omega>' \<and> get_mp_total_full \<omega> \<succeq> get_mp_total_full \<omega>'"
@@ -737,7 +740,7 @@ proof
   assume "\<omega> \<succeq> \<omega>'"
 
   from this obtain \<omega>2 where Sum: "\<omega>' \<oplus> \<omega>2 = Some \<omega>"
-    by (auto simp add: greater_def) 
+    by (auto simp add: greater_def)
 
   show "\<omega> \<ge> \<omega>'"
     unfolding plus_Some_total_state_eq[OF Sum]
@@ -770,7 +773,7 @@ next
 
     thus "get_mp_total \<omega> hl = padd (get_mp_total \<omega>' hl) (get_mp_total \<omega> hl - get_mp_total \<omega>' hl)"
       by (simp add:Rep_preal_inject[symmetric] minus_preal.rep_eq plus_preal.rep_eq)
-  qed  
+  qed
 
   have "Some \<omega> = \<omega>' \<oplus> (\<omega> \<lparr> get_mh_total := ?mh2, get_mp_total := ?mp2 \<rparr>)"
     unfolding plus_total_state_ext_def
@@ -786,15 +789,15 @@ lemma full_total_state_succ_implies_gte:
   shows "\<omega> \<ge> \<omega>'"
 proof -
   from assms obtain \<omega>2 where Sum: "\<omega>' \<oplus> \<omega>2 = Some \<omega>"
-    by (auto simp add: greater_def) 
+    by (auto simp add: greater_def)
 
   show "\<omega> \<ge> \<omega>'"
     unfolding plus_Some_full_total_state_eq[OF Sum]
     apply (rule less_eq_full_total_stateI)
        apply simp
       apply simp
-    using less_eq_add_masks plus_Some_full_total_state_eq[OF Sum] \<open>\<omega> \<succeq> \<omega>'\<close> 
-          greater_full_total_state_total_state total_state_greater_equiv 
+    using less_eq_add_masks plus_Some_full_total_state_eq[OF Sum] \<open>\<omega> \<succeq> \<omega>'\<close>
+          greater_full_total_state_total_state total_state_greater_equiv
      apply blast
     by simp
 qed
@@ -805,15 +808,15 @@ lemma full_total_state_gte_implies_succ:
   shows "(\<omega> :: 'a full_total_state) \<succeq> \<omega>'"
 proof -
   from \<open>\<omega> \<ge> \<omega>'\<close> have "get_total_full \<omega> \<ge> get_total_full \<omega>'"
-    using less_eq_full_total_state_ext_def 
+    using less_eq_full_total_state_ext_def
     by auto
 
-  hence "get_total_full \<omega> \<succeq> get_total_full \<omega>'"    
+  hence "get_total_full \<omega> \<succeq> get_total_full \<omega>'"
     by (simp add: total_state_greater_equiv)
 
   thus "\<omega> \<succeq> \<omega>'"
     using TraceEq less_eq_full_total_stateD
-    using assms(1) less_eq_full_total_stateD_2 succ_full_total_stateI total_state_greater_mask 
+    using assms(1) less_eq_full_total_stateD_2 succ_full_total_stateI total_state_greater_mask
     by fastforce
 qed
 
@@ -833,7 +836,7 @@ instance proof
     apply simp
     using plus_mask_zero_mask_neutral
     by (metis option.sel total_state.surjective total_state.update_convs(3) total_state.update_convs(4))
-    
+
 
   show "Some |x| = |x| \<oplus> |x|"
     unfolding core_total_state_ext_def plus_total_state_ext_def
@@ -847,7 +850,7 @@ instance proof
 
     have *: "get_mh_total c = zero_mask \<and> get_mp_total c = zero_mask"
     proof -
-      note MaskPlusEq = 
+      note MaskPlusEq =
           mask_plus_Some[of "get_mh_total x" "get_mh_total c"]
           mask_plus_Some[of "get_mp_total x" "get_mp_total c"]
 
@@ -856,11 +859,11 @@ instance proof
         apply (simp split: if_split_asm)
         apply (simp add: MaskPlusEq)
         using add_masks_self_zero_mask
-        by (metis total_state.ext_inject total_state.surjective total_state.update_convs(3) total_state.update_convs(4))        
-    qed       
+        by (metis total_state.ext_inject total_state.surjective total_state.update_convs(3) total_state.update_convs(4))
+    qed
 
     show ?thesis
-      unfolding core_total_state_ext_def plus_total_state_ext_def 
+      unfolding core_total_state_ext_def plus_total_state_ext_def
      apply (rule exI[where ?x="c\<lparr> get_mh_total := zero_mask, get_mp_total := zero_mask \<rparr>"])
      apply (simp add: * split: if_split if_split_asm)
       apply (simp add: plus_mask_zero_mask_neutral[simplified commutative])
@@ -872,12 +875,12 @@ instance proof
     unfolding core_total_state_ext_def plus_total_state_ext_def
     by (clarsimp split: if_split if_split_asm simp: plus_mask_zero_mask_neutral)
 
-  show "Some a = b \<oplus> x \<Longrightarrow> Some a = b \<oplus> y \<Longrightarrow> |x| = |y| \<Longrightarrow> x = y" (is "?A \<Longrightarrow> ?B \<Longrightarrow> _ \<Longrightarrow> _") 
-    \<comment>\<open>\<^prop>\<open>|x| = |y|\<close> is not needed, since it is always the case if he heap of \<^term>\<open>x\<close> and \<^term>\<open>y\<close> 
+  show "Some a = b \<oplus> x \<Longrightarrow> Some a = b \<oplus> y \<Longrightarrow> |x| = |y| \<Longrightarrow> x = y" (is "?A \<Longrightarrow> ?B \<Longrightarrow> _ \<Longrightarrow> _")
+    \<comment>\<open>\<^prop>\<open>|x| = |y|\<close> is not needed, since it is always the case if he heap of \<^term>\<open>x\<close> and \<^term>\<open>y\<close>
        are the same, which it must be because of the first two assumptions\<close>
   proof -
     assume ?A and ?B
-    
+
     from \<open>?A\<close> have Eqx1: "a = b \<lparr> get_mh_total := add_masks (get_mh_total b) (get_mh_total x),
                             get_mp_total := add_masks (get_mp_total b) (get_mp_total x) \<rparr>"
       using plus_Some_total_state_eq
@@ -904,7 +907,7 @@ instance proof
 
     thus ?thesis
       by (metis \<open>?A\<close> \<open>?B\<close> total_state.equality total_state_plus_defined)
-  qed     
+  qed
 qed
 
 end
@@ -912,11 +915,11 @@ end
 instantiation full_total_state_ext :: (type,type) pcm_with_core
 begin
 
-text \<open>In the following, we do not take the core of the trace, because the addition of states is 
+text \<open>In the following, we do not take the core of the trace, because the addition of states is
       defined only if the traces are the same.\<close>
 
 definition core_full_total_state_ext :: "('a,'b) full_total_state_ext \<Rightarrow> ('a, 'b) full_total_state_ext"
-  where "core_full_total_state_ext \<omega> = 
+  where "core_full_total_state_ext \<omega> =
             \<omega> \<lparr> get_total_full := |get_total_full \<omega>| \<rparr>"
 instance proof
   fix a b c x y :: "('a,'b) full_total_state_ext"
@@ -926,23 +929,23 @@ instance proof
   let ?ct = "get_total_full c"
   let ?xt = "get_total_full x"
   let ?yt = "get_total_full y"
-  
+
 
   show "Some x = x \<oplus> |x|"
   proof -
-    from core_is_smaller[where ?x = ?xt] 
+    from core_is_smaller[where ?x = ?xt]
     show ?thesis
       unfolding core_full_total_state_ext_def plus_full_total_state_ext_def defined_def
-      using option.sel  
+      using option.sel
       by (fastforce split: if_split_asm)
   qed
 
   show "Some |x| = |x| \<oplus> |x|"
   proof -
-    from core_is_pure[where ?x = ?xt] 
+    from core_is_pure[where ?x = ?xt]
     show ?thesis
       unfolding core_full_total_state_ext_def plus_full_total_state_ext_def defined_def
-      using option.sel  
+      using option.sel
       by (fastforce split: if_split_asm)
   qed
 
@@ -952,7 +955,7 @@ instance proof
     hence "Some ?xt = ?xt \<oplus> ?ct"
       by (blast intro: plus_Some_full_total_state_total_state)
 
-    from core_max[OF plus_Some_full_total_state_total_state[OF \<open>?A\<close>]] obtain rt where Eq_xt: "Some |?xt| = ?ct \<oplus> rt" 
+    from core_max[OF plus_Some_full_total_state_total_state[OF \<open>?A\<close>]] obtain rt where Eq_xt: "Some |?xt| = ?ct \<oplus> rt"
       by blast
 
     let ?r = "x \<lparr> get_total_full := rt \<rparr>"
@@ -978,11 +981,11 @@ instance proof
     show ?thesis
       unfolding core_full_total_state_ext_def plus_full_total_state_ext_def defined_def
       apply (simp split: if_split_asm if_split)
-      using core_sum[OF *] 
-      by (metis (no_types, lifting) \<open>?A\<close> full_total_state.surjective full_total_state.update_convs(3) option.distinct(1) option.sel plus_full_total_state_ext_def)      
+      using core_sum[OF *]
+      by (metis (no_types, lifting) \<open>?A\<close> full_total_state.surjective full_total_state.update_convs(3) option.distinct(1) option.sel plus_full_total_state_ext_def)
   qed
 
-  
+
   show "Some a = b \<oplus> x \<Longrightarrow> Some a = b \<oplus> y \<Longrightarrow> |x| = |y| \<Longrightarrow> x = y" (is "?A \<Longrightarrow> ?B \<Longrightarrow> ?C \<Longrightarrow> _")
   proof -
     assume "?A" and "?B" and "?C"
@@ -1020,8 +1023,8 @@ lemma full_total_state_defined_core_same:
   assumes "(\<omega> :: 'a full_total_state) ## \<omega>'"
   shows "|\<omega>| = |\<omega>'|"
   using assms total_state_defined_core_same
-  unfolding defined_def plus_full_total_state_ext_def core_full_total_state_ext_def  
-  by (fastforce split: if_split_asm)    
+  unfolding defined_def plus_full_total_state_ext_def core_full_total_state_ext_def
+  by (fastforce split: if_split_asm)
 
 lemma full_total_state_defined_core_same_2:
   assumes "(\<omega> :: 'a full_total_state) \<oplus> \<omega>' = Some \<omega>''"
@@ -1033,7 +1036,7 @@ lemma full_total_state_defined_core_same_2:
 
 lemma minus_total_state:
   assumes "\<phi> \<succeq> \<phi>'"
-  shows "\<phi> \<ominus> \<phi>' = \<phi> \<lparr> get_mh_total := get_mh_total \<phi> - get_mh_total \<phi>', 
+  shows "\<phi> \<ominus> \<phi>' = \<phi> \<lparr> get_mh_total := get_mh_total \<phi> - get_mh_total \<phi>',
                       get_mp_total := get_mp_total \<phi> - get_mp_total \<phi>' \<rparr>" (is "_ = ?\<Delta>")
 proof -
   from assms minus_exists obtain \<phi>m
@@ -1043,7 +1046,7 @@ proof -
   hence "\<phi>m = \<phi> \<ominus> \<phi>'"
     using minusI by auto
 
-  from PlusSome have 
+  from PlusSome have
      PlusMh: "get_mh_total \<phi> = add_masks (get_mh_total \<phi>') (get_mh_total \<phi>m)" and
      PlusMp: "get_mp_total \<phi> = add_masks (get_mp_total \<phi>') (get_mp_total \<phi>m)"
     unfolding plus_total_state_ext_def
@@ -1092,14 +1095,14 @@ proof -
     by force
 
   hence "\<omega>m = \<omega> \<ominus> \<omega>'"
-    using minusI 
+    using minusI
     by metis
 
   from plus_Some_full_total_state_eq[OF PlusSome] have
      PlusMh: "get_mh_total_full \<omega> = add_masks (get_mh_total_full \<omega>') (get_mh_total_full \<omega>m)" and
      PlusMp: "get_mp_total_full \<omega> = add_masks (get_mp_total_full \<omega>') (get_mp_total_full \<omega>m)"
     by simp_all
-    
+
 
   have "get_mh_total_full \<omega>m = get_mh_total_full \<omega> - get_mh_total_full \<omega>'"
     using add_masks_minus PlusMh
@@ -1114,7 +1117,7 @@ proof -
                                get_h_total_full \<omega> = get_h_total_full \<omega>m \<and>
                                full_total_state.more \<omega> = full_total_state.more \<omega>m"
     by (metis \<open>\<omega>m = \<omega> \<ominus> \<omega>'\<close> core_is_smaller minus_equiv_def_any_elem minus_full_total_state_only_mask_different option.discI plus_full_total_state_ext_def)
-    
+
   ultimately have "\<omega>m = ?\<Delta>"
     using minus_total_state[OF greater_full_total_state_total_state[OF assms]]
     by simp
@@ -1128,18 +1131,18 @@ lemma minus_full_total_state_mask:
   shows "get_mh_total_full (\<omega> \<ominus> \<omega>') = get_mh_total_full \<omega> - get_mh_total_full \<omega>' \<and>
          get_mp_total_full (\<omega> \<ominus> \<omega>') = get_mp_total_full \<omega> - get_mp_total_full \<omega>'"
 proof -
-  from minus_full_total_state[OF assms] 
+  from minus_full_total_state[OF assms]
   have "get_total_full (\<omega> \<ominus> \<omega>') = get_total_full \<omega> \<ominus> get_total_full \<omega>'" (is "_ = ?\<phi> \<ominus> ?\<phi>'")
     by simp
 
   thus ?thesis
-  using greater_full_total_state_total_state[OF assms, THEN minus_total_state] 
+  using greater_full_total_state_total_state[OF assms, THEN minus_total_state]
   by simp
 qed
 
 subsection \<open>Monotonicity relationship\<close>
 
-text \<open>The following lemma shows for \<^typ>\<open>'a full_total_state\<close> that downwards monotonicity w.r.t. 
+text \<open>The following lemma shows for \<^typ>\<open>'a full_total_state\<close> that downwards monotonicity w.r.t.
 the order type class is at least as strong as downwards monotoncity w.r.t. order defined via the pcm
 addition. The converse is not true, because the order type class instantiation is a larger relation
 (since traces need not be equal as opposed to the pcm addition case where traces must be equal).\<close>
@@ -1182,7 +1185,7 @@ proof -
       by (simp add: add_masks_def)
 
     thus "pwrite \<ge> (m1 l)"
-      using valid_heap_maskD[of m0 l, OF assms(1)] \<open>m0 = add_masks m1 m2\<close> assms(1) wf_mask_simple_def wf_mask_simple_false_preserved 
+      using valid_heap_maskD[of m0 l, OF assms(1)] \<open>m0 = add_masks m1 m2\<close> assms(1) wf_mask_simple_def wf_mask_simple_false_preserved
       by blast
   qed
 qed *)

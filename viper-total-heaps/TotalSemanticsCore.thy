@@ -310,7 +310,24 @@ inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Ri
 
 subsection \<open>Satisfiability\<close>
 
+inductive sat_n :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> nat \<Rightarrow> bool"
+  for ctxt :: "'a total_context" where
+  SatBase:
+  "sat_n ctxt \<omega> A 0"
+| SatStep:
+  "\<lbrakk> red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>');
+     \<phi>' = get_total_full \<omega>';
+     get_mh_total \<phi>' = (\<lambda>_. 0);
+     get_mp_total \<phi>' = (\<lambda>_. 0); \<comment> \<open>All top-level permissions should be exhaled.\<close>
+     \<And>pred_id vs p nm' \<omega>''. get_mp_total_full \<omega> (pred_id,vs) = p \<Longrightarrow> p > 0 \<Longrightarrow>
+       Some nm' = get_nm_loc_total_full \<omega> (pred_id,vs) \<Longrightarrow>
+       \<omega>'' = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>'\<lparr> get_nm_total := nm' \<rparr> \<rparr> \<Longrightarrow>
+       sat_n ctxt \<omega>'' A n
+   \<rbrakk> \<Longrightarrow>
+   sat_n ctxt \<omega> A (Suc n)"
 
+definition sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> bool"
+  where "sat ctxt \<omega> A \<equiv> \<forall>n. sat_n ctxt \<omega> A n"
 
 
 subsection \<open>Inhale\<close>
@@ -327,7 +344,7 @@ definition inhale_perm_single :: "'a full_total_state \<Rightarrow> heap_loc \<R
     }"
 
 definition inhale_perm_single_pred :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal option \<Rightarrow> 'a full_total_state set"
-  where "inhale_perm_single_pred \<omega> lp p_opt = 
+  where "inhale_perm_single_pred \<omega> lp p_opt =
     { \<omega>'| \<omega>' q nm.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
             \<comment> \<open>sat lp q nm \<and>\<close> \<comment> \<open>Needs to decide the signature of \<^term>\<open>sat\<close>\<close>
