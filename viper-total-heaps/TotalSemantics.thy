@@ -103,7 +103,7 @@ definition exhale_perm_single :: "preal mask \<Rightarrow> heap_loc \<Rightarrow
                m' = m(lh := (m lh) - q)
        }"
 
-inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a stmt_result_total \<Rightarrow> bool"
+(* inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a stmt_result_total \<Rightarrow> bool"
   for ctxt :: "'a total_context" and R :: "'a full_total_state \<Rightarrow> bool" and \<omega>0 :: "'a full_total_state"
   where
 
@@ -185,12 +185,15 @@ inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
 | ExhSubExpFailure:
   "\<lbrakk> direct_sub_expressions_assertion A \<noteq> [];
      red_pure_exps_total ctxt R (Some \<omega>0) (direct_sub_expressions_assertion A) \<omega> None  \<rbrakk> \<Longrightarrow>
-     red_exhale ctxt R \<omega>0 A \<omega> RFailure"
+     red_exhale ctxt R \<omega>0 A \<omega> RFailure" *)
 
-inductive_cases ExhStar_case: "red_exhale ctxt R \<omega>0 (A && B) m_pm res"
+
+(* If we put inhale, exhale, etc. into another file, we should move the following lemmas somewhere else. *)
+
+inductive_cases ExhStar_case: "red_exhale ctxt \<omega>0 (A && B) m_pm res"
 
 lemma ExhPure_case:
-  assumes "red_exhale ctxt R \<omega>0 (Atomic (Pure e)) \<omega> res"
+  assumes "red_exhale ctxt \<omega>0 (Atomic (Pure e)) \<omega> res"
       and "\<And>b. ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<Longrightarrow> res = (exh_if_total b \<omega>) \<Longrightarrow> P"
       and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<Longrightarrow> res = RFailure \<Longrightarrow> P"
     shows "P"

@@ -1,7 +1,7 @@
 section \<open>Core Semantics\<close>
 
 theory TotalSemanticsCore
-  imports ViperCommon.ViperLang ViperCommon.ValueAndBasicState TotalViperState ViperCommon.Binop ViperCommon.DeBruijn ViperCommon.PredicatesUtil TotalStateUtil
+  imports ViperCommon.ViperLang ViperCommon.ValueAndBasicState TotalViperState ViperCommon.Binop ViperCommon.DeBruijn ViperCommon.PredicatesUtil TotalStateUtil TotalResult
 begin
 
 
@@ -15,7 +15,14 @@ record 'a total_context =
   fun_interp_total :: "'a interp"
   absval_interp_total :: "'a \<Rightarrow> abs_type"
 
-datatype 'a result_total = RMagic | RFailure | RNormal "'a full_total_state"
+
+(* Some helper definitions. Not sure where to put these. *)
+
+definition get_valid_locs :: "'a full_total_state \<Rightarrow> heap_loc set"
+  where "get_valid_locs \<omega> = {lh |lh. pgt (get_mh_total_full \<omega> lh) pnone}"
+
+definition get_writeable_locs :: "'a full_total_state \<Rightarrow> heap_loc set"
+  where "get_writeable_locs \<omega> = {lh |lh. (get_mh_total_full \<omega> lh) = pwrite}"
 
 
 subsection \<open>Shift Operations\<close>
