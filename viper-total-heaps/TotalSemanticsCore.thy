@@ -118,7 +118,7 @@ inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_st
      eval_binop_lazy v1 bop = None;
      \<comment>\<open>The following premise makes sure in this case that the binary operation does not reduce if
        e1 evaluates to a value that renders the binary operation ill-typed\<close>
-     (\<exists> v2. eval_binop v1 bop v2 \<noteq> BinopTypeFailure)\<rbrakk> \<Longrightarrow>
+     (\<exists> v2. eval_binop v1 bop v2 \<noteq> BinopTypeFailure) \<rbrakk> \<Longrightarrow>
    ctxt, \<omega>_def \<turnstile> \<langle>Binop e1 bop e2; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
 | RedBinopOpFailure:
   "\<lbrakk> ctxt, \<omega>_def \<turnstile> \<langle>e1; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1;
@@ -430,9 +430,12 @@ inductive red_inhale :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 
 
 subsection \<open>Unfold\<close>
 
-\<comment> \<open>Begin \<^term>\<open>unfold_rel\<close>\<close>
 (* \<^term>\<open>unfold_rel\<close> unfolds a consistent predicate. *)
 
-\<comment> \<open>End \<^term>\<open>unfold_rel\<close>\<close>
+inductive unfold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a total_state \<Rightarrow> 'a total_state \<Rightarrow> bool"
+
+subsection \<open>Fold\<close>
+
+inductive fold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool"
 
 end
