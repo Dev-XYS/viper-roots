@@ -312,7 +312,9 @@ inductive red_stmt_total :: "'a total_context \<Rightarrow> ('a full_total_state
 \<comment>\<open>Atomic statements\<close>
   RedSkip: "red_stmt_total ctxt R \<Lambda> Skip \<omega> (RNormal \<omega>)"
 | RedInhale:
-  "\<lbrakk> red_inhale ctxt A \<omega> res \<rbrakk> \<Longrightarrow>
+  "\<lbrakk> red_inhale ctxt A \<omega> res;
+     res = RNormal \<omega>' \<Longrightarrow> R \<omega>'
+   \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Inhale A) \<omega> res"
 
 \<comment>\<open>Note that exhale is demonic here (even locally). For instance, exhale acc(x.f, wildcard) * acc(x.f, 1/2)

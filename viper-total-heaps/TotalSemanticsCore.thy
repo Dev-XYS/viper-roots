@@ -60,6 +60,22 @@ inductive shift_up :: "'a total_context \<Rightarrow> predicate_ident \<Rightarr
 
 \<comment> \<open>End \<^term>\<open>shift_up\<close>\<close>
 
+\<comment> \<open>Begin \<^term>\<open>shift_down\<close>\<close>
+
+(* TODO *)
+
+\<comment> \<open>End \<^term>\<open>shift_down\<close>\<close>
+
+
+subsection \<open>Consistency\<close>
+
+(* TODO *)
+definition loc_consistent :: "heap_loc \<Rightarrow> bool" where
+  "loc_consistent l = True"
+
+definition consistent :: "'a nested_mask \<Rightarrow> bool" where
+  "consistent nm \<equiv> \<forall>l. loc_consistent l"
+
 
 subsection \<open>Pure Expression Evaluation\<close>
 
@@ -317,24 +333,26 @@ inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Ri
 
 subsection \<open>Satisfiability\<close>
 
-inductive sat_n :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> nat \<Rightarrow> bool"
+inductive sat_n :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> nat \<Rightarrow> bool"
   for ctxt :: "'a total_context" where
   SatBase:
-  "sat_n ctxt \<omega> A 0"
+  "sat_n ctxt \<omega> ploc p 0"
 | SatStep:
-  "\<lbrakk> red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>');
+  "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
+     ViperLang.predicate_decl.body pred_decl = Some pred_body;
+     red_exhale ctxt \<omega> (syntactic_mult (Rep_preal p) pred_body) \<omega> (RNormal \<omega>');
      \<phi>' = get_total_full \<omega>';
      get_mh_total \<phi>' = (\<lambda>_. 0);
      get_mp_total \<phi>' = (\<lambda>_. 0); \<comment> \<open>All top-level permissions should be exhaled.\<close>
-     \<And>pred_id vs p nm' \<omega>''. get_mp_total_full \<omega> (pred_id,vs) = p \<Longrightarrow> p > 0 \<Longrightarrow>
+     \<And>pred_id vs q nm' \<omega>''. get_mp_total_full \<omega> (pred_id,vs) = q \<Longrightarrow> q > 0 \<Longrightarrow>
        Some nm' = get_nm_loc_total_full \<omega> (pred_id,vs) \<Longrightarrow>
        \<omega>'' = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>'\<lparr> get_nm_total := nm' \<rparr> \<rparr> \<Longrightarrow>
-       sat_n ctxt \<omega>'' A n
+       sat_n ctxt \<omega>'' (pred_id,vs) q n
    \<rbrakk> \<Longrightarrow>
-   sat_n ctxt \<omega> A (Suc n)"
+   sat_n ctxt \<omega> ploc p (Suc n)"
 
-definition sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> bool"
-  where "sat ctxt \<omega> A \<equiv> \<forall>n. sat_n ctxt \<omega> A n"
+definition sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool"
+  where "sat ctxt \<omega> p ploc \<equiv> \<forall>n. sat_n ctxt \<omega> p ploc n"
 
 
 subsection \<open>Inhale\<close>
@@ -350,12 +368,12 @@ definition inhale_perm_single :: "'a full_total_state \<Rightarrow> heap_loc \<R
             \<omega>' = update_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + q)
     }"
 
-definition inhale_perm_single_pred :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal option \<Rightarrow> 'a full_total_state set"
-  where "inhale_perm_single_pred \<omega> lp p_opt =
-    { \<omega>'| \<omega>' q nm.
+definition inhale_perm_single_pred :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal option \<Rightarrow> 'a full_total_state set"
+  where "inhale_perm_single_pred ctxt \<omega> lp p_opt =
+    { \<omega>'| \<omega>' \<omega>_inh q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
-            \<comment> \<open>sat lp q nm \<and>\<close> \<comment> \<open>Needs to decide the signature of \<^term>\<open>sat\<close>\<close>
-            \<omega>' = add_to_nm_loc_total_full (update_mp_loc_total_full \<omega> lp (get_mp_total_full \<omega> lp + q)) lp nm
+            sat ctxt \<omega>_inh lp q \<and> \<comment> \<open>Needs to decide the signature of \<^term>\<open>sat\<close>\<close>
+            \<omega>' = add_to_nm_loc_total_full (update_mp_loc_total_full \<omega> lp (get_mp_total_full \<omega> lp + q)) lp (get_nm_total_full \<omega>_inh)
     }"
 
 inductive red_inhale :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool" where
@@ -370,7 +388,7 @@ inductive red_inhale :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 
 | InhAccPred:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
      ctxt, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
-     W' = inhale_perm_single_pred \<omega> (pred_id, v_args) (Some (Abs_preal p));
+     W' = inhale_perm_single_pred ctxt \<omega> (pred_id, v_args) (Some (Abs_preal p));
      th_result_rel (p \<ge> 0) (W' \<noteq> {}) W' res
    \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega> res"
@@ -382,7 +400,7 @@ inductive red_inhale :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 
    red_inhale ctxt (Atomic (Acc e_r f Wildcard)) \<omega> res"
 | InhAccPredWildcard:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
-     W' = inhale_perm_single_pred \<omega> (pred_id, v_args) None;
+     W' = inhale_perm_single_pred ctxt \<omega> (pred_id, v_args) None;
      th_result_rel True (W' \<noteq> {}) W' res
    \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (Atomic (AccPredicate pred_id e_args Wildcard)) \<omega> res"
