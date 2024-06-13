@@ -268,6 +268,7 @@ inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Ri
      (exh_if_total (mh (a,f) \<noteq> 0 \<and> r \<noteq> Null)
                     (update_mh_loc_total_full \<omega> (a,f) q))"
 \<comment>\<open>exhale acc(P(es), p)\<close>
+\<comment> \<open>TODO: remove the corresponding fraction of the nested mask when exhaling a predicate\<close>
 | ExhAccPred:
   "\<lbrakk> mp = get_mp_total_full \<omega>;
      red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args);
@@ -294,7 +295,7 @@ inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Ri
 \<comment>\<open>exhale A && B\<close>
 | ExhStarNormal:
   "\<lbrakk> red_exhale ctxt \<omega>0 A \<omega> (RNormal \<omega>');
-    red_exhale ctxt \<omega>0 B \<omega>' res
+     red_exhale ctxt \<omega>0 B \<omega>' res
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt \<omega>0 (A && B) \<omega> res"
 | ExhStarFailure:
@@ -429,12 +430,12 @@ inductive red_inhale :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 
    red_inhale ctxt (Imp e A) \<omega> (RNormal \<omega>)"
 | InhCondAssertTrue:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True));
-    red_inhale ctxt A \<omega> res
+     red_inhale ctxt A \<omega> res
    \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (CondAssert e A B) \<omega> res"
 | InhCondAssertFalse:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
-    red_inhale ctxt B \<omega> res
+     red_inhale ctxt B \<omega> res
    \<rbrakk> \<Longrightarrow>
    red_inhale ctxt (CondAssert e A B) \<omega> res"
 
@@ -450,10 +451,42 @@ subsection \<open>Unfold\<close>
 
 (* \<^term>\<open>unfold_rel\<close> unfolds a consistent predicate. *)
 
-inductive unfold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a total_state \<Rightarrow> 'a total_state \<Rightarrow> bool"
+inductive unfold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a total_state \<Rightarrow> 'a total_state \<Rightarrow> bool" where
+  UnfoldRel:
+  "\<lbrakk> shift_up ctxt pred_id vs p nm nm';
+     get_nm_total \<phi> = nm;
+     get_nm_total \<phi>' = nm'
+   \<rbrakk> \<Longrightarrow>
+   unfold_rel ctxt pred_id vs p \<phi> \<phi>'"
 
 subsection \<open>Fold\<close>
 
-inductive fold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool"
+inductive fold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool" where
+  FoldRelNormal:
+  "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
+     ViperLang.predicate_decl.body pred_decl = Some pred_body;
+     q \<noteq> 0;
+     \<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>;
+     red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal q) pred_body) \<omega>0 (RNormal \<omega>1);
+     nm_exh = nested_mask_subtract (get_nm_total_full \<omega>0) (get_nm_total_full \<omega>1);
+     \<omega>' = \<lparr> get_store_total = get_store_total \<omega>,
+            get_trace_total = get_trace_total \<omega>,
+            get_total_full = add_to_nm_loc_total
+              (update_mp_loc_total (get_total_full \<omega>1) (pred_id,vs) (get_mp_total (get_total_full \<omega>1) (pred_id, vs) + q))
+              (pred_id,vs) nm_exh
+              \<comment> \<open>The code is a bit messy here. What we describe is first increasing the permission mask by q, and then merging the nested mask with the exhaled nested mask.\<close>
+          \<rparr>
+   \<rbrakk> \<Longrightarrow>
+   fold_rel ctxt pred_id vs q \<omega> (RNormal \<omega>')"
+| FoldRelFailure:
+  "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
+     ViperLang.predicate_decl.body pred_decl = Some pred_body;
+     q \<noteq> 0;
+     \<omega>0 = \<lparr> get_store_total = nth_option vs,
+            get_trace_total = Map.empty,
+            get_total_full = get_total_full \<omega> \<rparr>;
+     red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal q) pred_body) \<omega>0 RFailure
+   \<rbrakk> \<Longrightarrow>
+   fold_rel ctxt pred_id vs q \<omega> RFailure"
 
 end

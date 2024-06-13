@@ -64,6 +64,32 @@ termination
    apply blast
   by fastforce
 
+\<comment> \<open>Mask subtraction\<close>
+
+fun field_mask_sub :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask" where
+  "field_mask_sub nm\<^sub>1 nm\<^sub>2 l = nm\<^sub>1 l - nm\<^sub>2 l"
+
+fun predicate_mask_sub :: "'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a predicate_mask" where
+  "predicate_mask_sub nm\<^sub>1 nm\<^sub>2 l = nm\<^sub>1 l - nm\<^sub>2 l"
+
+
+lemma combine_options_cong [fundef_cong]:
+  "(\<not> Option.is_none x \<Longrightarrow> \<not> Option.is_none y \<Longrightarrow> f (the x) (the y) = g (the x) (the y)) \<Longrightarrow> combine_options f x y = combine_options g x y"
+  by (simp add: Option.is_none_def combine_options_def option.case_eq_if)
+
+lemma pfun_comb_cong [fundef_cong]:
+  "(\<And> x y. x \<in> range f \<Longrightarrow> y \<in> range g \<Longrightarrow> combine_options c\<^sub>1 x y = combine_options c\<^sub>2 x y) \<Longrightarrow> (f +\<lparr>c\<^sub>1\<rparr>+ g) = (f +\<lparr>c\<^sub>2\<rparr>+ g)"
+  unfolding pfun_comb_def by auto
+
+function (sequential) nested_mask_subtract :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
+  "nested_mask_subtract (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) = NM (field_mask_sub mh\<^sub>1 mh\<^sub>2) (predicate_mask_sub mp\<^sub>1 mp\<^sub>2) (fnm\<^sub>1 +\<lparr>nested_mask_subtract\<rparr>+ fnm\<^sub>2)"
+  by (pat_completeness) auto
+termination
+  apply (relation "nested_mask_rel <*lex*> {}")
+  using wf_nested_mask_rel
+   apply blast
+  using Option.is_none_def by fastforce
+
 
 subsection \<open>update_store_total\<close>
 
