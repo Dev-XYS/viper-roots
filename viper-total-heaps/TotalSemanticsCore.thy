@@ -217,7 +217,7 @@ inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_st
    ctxt, (Some \<omega>_def) \<turnstile> \<langle>Unfolding p es ubody ; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
 | RedUnfoldingDef:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>_def) es \<omega> (Some vs);
-     shift_up ctxt p vs 1 (get_nm_total_full \<omega>_def) nm';
+     shift_up p vs 1 (get_nm_total_full \<omega>_def) nm';
      \<omega>'_def = \<omega>_def \<lparr> get_total_full := get_total_full \<omega>_def \<lparr> get_nm_total := nm' \<rparr> \<rparr>;
      ctxt, (Some \<omega>'_def) \<turnstile> \<langle>ubody; \<omega>\<rangle> [\<Down>]\<^sub>t v \<rbrakk> \<Longrightarrow>
    ctxt, (Some \<omega>_def) \<turnstile> \<langle>Unfolding p es ubody ; \<omega>\<rangle> [\<Down>]\<^sub>t v"
@@ -459,7 +459,7 @@ subsection \<open>Unfold\<close>
 
 inductive unfold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a total_state \<Rightarrow> 'a total_state \<Rightarrow> bool" where
   UnfoldRel:
-  "\<lbrakk> shift_up ctxt pred_id vs p nm nm';
+  "\<lbrakk> shift_up pred_id vs p nm nm';
      get_nm_total \<phi> = nm;
      get_nm_total \<phi>' = nm'
    \<rbrakk> \<Longrightarrow>
