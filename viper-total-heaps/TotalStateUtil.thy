@@ -1181,7 +1181,7 @@ lemma mono_prop_downward_ord_implies_mono_prop_downward:
   shows "mono_prop_downward StateCons"
   using assms full_total_state_succ_implies_gte
   unfolding mono_prop_downward_ord_def mono_prop_downward_def
-  by blast
+  by blast *)
 
 subsection \<open>valid mask (TODO: move to ViperLang?)\<close>
 
@@ -1217,6 +1217,6 @@ proof -
       using valid_heap_maskD[of m0 l, OF assms(1)] \<open>m0 = add_masks m1 m2\<close> assms(1) wf_mask_simple_def wf_mask_simple_false_preserved
       by blast
   qed
-qed *)
+qed
 
 end

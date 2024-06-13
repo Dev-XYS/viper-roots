@@ -46,6 +46,9 @@ fun get_mp_nm :: "'a nested_mask \<Rightarrow> 'a predicate_mask"
 fun get_fnm_nm :: "'a nested_mask \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask)"
   where "get_fnm_nm (NM _ _ fnm) = fnm"
 
+fun get_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
+  where "get_nm_loc_nm (NM _ _ fnm) loc = fnm loc"
+
 record 'a total_state =
    get_hh_total :: "'a total_heap"
    get_nm_total :: "'a nested_mask"

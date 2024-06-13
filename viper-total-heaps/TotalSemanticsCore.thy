@@ -31,32 +31,28 @@ subsection \<open>Shift Operations\<close>
 (* \<^term>\<open>shift_up\<close> only "unfolds" the specified predicate by one level.
    It does not check if the body of the predicate being unfolded is satisfied. *)
 
-inductive shift_up :: "'a total_context \<Rightarrow> predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool" where
+inductive shift_up :: "predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool" where
   ShiftPartial:
-  "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     ViperLang.predicate_decl.body pred_decl = Some pred_body;
-     mh = get_mh nm;
-     mp = get_mp nm;
-     Some pnm = get_nm nm (pred_id,vs);
+  "\<lbrakk> mh = get_mh_nm nm;
+     mp = get_mp_nm nm;
+     Some pnm = get_nm_loc_nm nm (pred_id,vs);
      p = mp (pred_id,vs);
      p > q;
      q \<noteq> 0;
      mp' = mp( (pred_id,vs) := p - q );
      fnm' = fnm( (pred_id,vs) := Some (nested_mask_multiply pnm ((p - q) / p)) );
      nm' = NM mh np' fnm' \<rbrakk> \<Longrightarrow>
-     shift_up ctxt pred_id vs q nm (nested_mask_merge nm' (nested_mask_multiply pnm (q / p)))"
+     shift_up pred_id vs q nm (nested_mask_merge nm' (nested_mask_multiply pnm (q / p)))"
 | ShiftAll:
-  "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     ViperLang.predicate_decl.body pred_decl = Some pred_body;
-     mh = get_mh nm;
-     mp = get_mp nm;
-     Some pnm = get_nm nm (pred_id,vs);
+  "\<lbrakk> mh = get_mh_nm nm;
+     mp = get_mp_nm nm;
+     Some pnm = get_nm_loc_nm nm (pred_id,vs);
      p = mp (pred_id,vs);
      p \<noteq> 0;
      mp' = mp( (pred_id,vs) := 0 );
      fnm' = fnm( (pred_id,vs) := None );
      nm' = NM mh np' fnm' \<rbrakk> \<Longrightarrow>
-     shift_up ctxt pred_id vs p nm (nested_mask_merge nm' pnm)"
+     shift_up pred_id vs p nm (nested_mask_merge nm' pnm)"
 
 \<comment> \<open>End \<^term>\<open>shift_up\<close>\<close>
 
@@ -66,15 +62,25 @@ inductive shift_up :: "'a total_context \<Rightarrow> predicate_ident \<Rightarr
 
 \<comment> \<open>End \<^term>\<open>shift_down\<close>\<close>
 
-
 subsection \<open>Consistency\<close>
 
-(* TODO *)
-definition loc_consistent :: "heap_loc \<Rightarrow> bool" where
-  "loc_consistent l = True"
+inductive total_heap_consistent_unfold_n :: "'a nested_mask \<Rightarrow> nat \<Rightarrow> bool"
+  where
+  Zero:
+  "\<lbrakk> valid_heap_mask (get_mh_nm nm)
+   \<rbrakk> \<Longrightarrow>
+   total_heap_consistent_unfold_n nm 0"
+| UnfoldStep:
+  "\<lbrakk> \<And> pred_id vs q nm'. q \<le> get_mp_nm nm (pred_id,vs) \<Longrightarrow> q > 0 \<Longrightarrow>
+         shift_up pred_id vs q nm nm' \<Longrightarrow>
+         total_heap_consistent_unfold_n nm' n
+   \<rbrakk> \<Longrightarrow>
+   total_heap_consistent_unfold_n nm (Suc n)"
 
-definition consistent :: "'a nested_mask \<Rightarrow> bool" where
-  "consistent nm \<equiv> \<forall>l. loc_consistent l"
+inductive_cases UnfoldStep_cases: "total_heap_consistent_unfold_n nm (Suc n)"
+
+definition total_heap_consistent :: "'a total_state \<Rightarrow> bool" where
+  "total_heap_consistent \<phi> \<equiv> \<forall> n. total_heap_consistent_unfold_n (get_nm_total \<phi>) n"
 
 
 subsection \<open>Pure Expression Evaluation\<close>
