@@ -4,7 +4,7 @@ begin
 
 \<comment> \<open>Local variable assignment preserves state consistency.\<close>
 
-lemma assignment_preserves_state_consistency:
+lemma var_assignment_preserves_state_consistency:
   assumes "get_total_full \<omega> = \<phi>"
       and "total_heap_consistent \<phi>"
       and "red_stmt_total ctxt R \<Lambda> (LocalAssign x e) \<omega> (RNormal \<omega>')"
@@ -43,6 +43,24 @@ proof -
     ultimately show "total_heap_consistent_unfold_n (get_nm_total \<phi>') n"
       by (smt (z3) Abs_preal_inverse UnfoldStep_cases assms(1) get_mp_total.simps get_mp_total_full.simps less_eq_preal.rep_eq less_preal.rep_eq mem_Collect_eq result th_result_rel_normal unfold_rel.cases zero_preal.rep_eq)
   qed
+qed
+
+\<comment> \<open>Field assignment preserves state consistency.\<close>
+
+lemma field_assignment_preserves_state_consistency:
+  assumes "get_total_full \<omega> = \<phi>"
+      and "total_heap_consistent \<phi>"
+      and "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal \<omega>')"
+      and "get_total_full \<omega>' = \<phi>'"
+    shows "total_heap_consistent \<phi>'"
+proof -
+  obtain addr v where "ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address addr))" and
+    "\<omega>' = update_hh_loc_total_full \<omega> (addr,f) v"
+    using assms(3) red_stmt_total.simps by blast (* This is quite slow. Any better method? *)
+  hence "get_nm_total \<phi> = get_nm_total \<phi>'"
+    using assms(1,4) by force
+  thus ?thesis using assms(2)
+    by (simp add: total_heap_consistent_def)
 qed
 
 end
