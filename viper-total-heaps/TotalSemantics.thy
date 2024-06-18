@@ -430,7 +430,7 @@ always has at least one failure transition. This is in-sync with the Carbon impl
 \<comment>\<open>One should be able to prove that if \<omega> is unfolding consistent, then so is \<omega>' after a fold, without
   explicitly pruning states. This is because folds just replace permissions with a predicate instance
   (and even if there is a wildcard, we know that there must be at least one transition for the
- newly generated predicate instance, namely the one before the fold)\<close>
+  newly generated predicate instance, namely the one before the fold)\<close>
 | RedFold:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
      ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p);
