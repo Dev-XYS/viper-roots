@@ -46,11 +46,6 @@ inductive shift_up :: "predicate_ident \<Rightarrow> ('a val list) \<Rightarrow>
 
 \<comment> \<open>End \<^const>\<open>shift_up\<close>\<close>
 
-\<comment> \<open>Begin \<^term>\<open>shift_down\<close>\<close>
-
-(* TODO *)
-
-\<comment> \<open>End \<^term>\<open>shift_down\<close>\<close>
 
 subsection \<open>Consistency\<close>
 
@@ -330,10 +325,110 @@ inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Ri
 
 subsection \<open>Satisfiability\<close>
 
-inductive sat_n :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> nat \<Rightarrow> bool"
+fun zero_mh :: "field_mask" where
+  "zero_mh _ = 0"
+
+fun zero_mp :: "'a predicate_mask" where
+  "zero_mp _ = 0"
+
+fun singleton_mh :: "heap_loc \<Rightarrow> preal \<Rightarrow> field_mask" where
+  "singleton_mh loc p l = (if l = loc then p else 0)"
+
+fun singleton_mp :: "'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a predicate_mask" where
+  "singleton_mp ploc p pl = (if pl = ploc then p else 0)"
+
+fun is_singleton_mh :: "heap_loc \<Rightarrow> field_mask \<Rightarrow> bool" where
+  "is_singleton_mh loc mh = (\<exists>p > 0. mh = singleton_mh loc p)"
+
+fun is_singleton_mp :: "'a predicate_loc \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
+  "is_singleton_mp ploc mp = (\<exists>p > 0. mp = singleton_mp ploc p)"
+
+inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> bool"
+  for ctxt :: "'a total_context" and \<omega> :: "'a full_total_state" where
+
+\<comment>\<open>sat acc(e.f, p)
+  The mask must have exactly p amount of permission.\<close>
+  SatAcc:
+  "\<lbrakk> mh = get_mh_total_full \<omega>;
+     ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
+     ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
+     a = the_address r;
+     p \<ge> 0;
+     if r = Null then p = 0 else mh = singleton_mh (a,f) (Abs_preal p);
+     get_mp_total_full \<omega> = zero_mp
+   \<rbrakk> \<Longrightarrow>
+   sat ctxt \<omega> (Atomic (Acc e_r f (PureExp e_p)))"
+
+\<comment>\<open>A wildcard permission accepts any positive amount of permission.\<close>
+| SatAccWildcard:
+  "\<lbrakk> mh = get_mh_total_full \<omega>;
+     ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
+     a = the_address r;
+     \<comment>\<open>\<^term>\<open>q\<close> satisfies the right-hand side if \<^prop>\<open>mh (a,f) \<noteq> 0\<close> (thm prat_exists_stricly_smaller_nonzero).
+     If \<^prop>\<open>mh (a,f) \<noteq> 0\<close> does not hold, then the exhale fails and the value of q is irrelevant. \<close>
+     r \<noteq> Null;
+     is_singleton_mh (a,f) mh
+   \<rbrakk> \<Longrightarrow>
+   sat ctxt \<omega> (Atomic (Acc e_r f Wildcard))"
+
+\<comment>\<open>sat acc(P(es), p)\<close>
+\<comment> \<open>TODO: remove the corresponding fraction of the nested mask when exhaling a predicate\<close>
+| SatAccPred:
+  "\<lbrakk> mp = get_mp_total_full \<omega>;
+     red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
+     ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
+     p \<ge> 0;
+     mh = singleton_mp (pred_id,v_args) (Abs_preal p)
+   \<rbrakk> \<Longrightarrow>
+   sat ctxt \<omega> (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
+
+| SatAccPredWildcard:
+  "\<lbrakk> mp = get_mp_total_full \<omega>;
+     red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
+     is_singleton_mp (pred_id,v_args) mp
+   \<rbrakk> \<Longrightarrow>
+   sat ctxt \<omega> (Atomic (AccPredicate pred_id e_args Wildcard))"
+
+| SatPure:
+  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True) \<rbrakk> \<Longrightarrow>
+   sat ctxt \<omega> (Atomic (Pure e))"
+
+\<comment>\<open>sat A && B\<close>
+| SatStar:
+  "\<lbrakk> sat ctxt \<omega> A;
+     sat ctxt \<omega> B
+   \<rbrakk> \<Longrightarrow>
+   sat ctxt \<omega> (A && B)" \<comment> \<open>TODO: split the state\<close>
+
+\<comment>\<open>sat A \<longrightarrow> B\<close>
+| SatImpTrue:
+  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
+     sat ctxt \<omega> A
+   \<rbrakk> \<Longrightarrow>
+   sat ctxt \<omega> (Imp e A)"
+| SatImpFalse:
+  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False) \<rbrakk> \<Longrightarrow>
+   sat ctxt \<omega> (Imp e A)"
+
+\<comment>\<open>sat e ? A : B\<close>
+| SatCondTrue:
+  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
+     sat ctxt \<omega> A
+   \<rbrakk> \<Longrightarrow>
+   sat ctxt \<omega> (CondAssert e A B)"
+| SatCondFalse:
+  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
+     sat ctxt \<omega> B
+   \<rbrakk> \<Longrightarrow>
+   sat ctxt \<omega> (CondAssert e A B)"
+
+
+subsection \<open>External Consistency\<close>
+
+inductive consistent_external_n :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> nat \<Rightarrow> bool"
   for ctxt :: "'a total_context" where
   SatBase:
-  "sat_n ctxt \<omega> ploc p 0"
+  "consistent_external_n ctxt \<omega> ploc p 0"
 | SatStep:
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
@@ -346,10 +441,10 @@ inductive sat_n :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightar
        \<omega>'' = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>'\<lparr> get_nm_total := nm' \<rparr> \<rparr> \<Longrightarrow>
        sat_n ctxt \<omega>'' (pred_id,vs) q n
    \<rbrakk> \<Longrightarrow>
-   sat_n ctxt \<omega> ploc p (Suc n)"
+   consistent_external_n ctxt \<omega> ploc p (Suc n)"
 
-definition sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool"
-  where "sat ctxt \<omega> p ploc \<equiv> \<forall>n. sat_n ctxt \<omega> p ploc n"
+definition consistent_external :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool"
+  where "consistent_external ctxt \<omega> ploc p \<equiv> \<forall>n. consistent_external_n ctxt \<omega> ploc p n"
 
 
 subsection \<open>Inhale\<close>
@@ -369,7 +464,8 @@ definition inhale_perm_single_pred :: "'a total_context \<Rightarrow> 'a full_to
   where "inhale_perm_single_pred ctxt \<omega> lp p_opt =
     { \<omega>'| \<omega>' \<omega>_inh q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
-            sat ctxt \<omega>_inh lp q \<and> \<comment> \<open>Needs to decide the signature of \<^term>\<open>sat\<close>\<close>
+            consistent_external ctxt \<omega>_inh lp q \<and> \<comment> \<open>Needs to decide the signature of \<^term>\<open>sat\<close>\<close>
+            \<comment> \<open>TODO\<close>
             \<omega>' = add_to_nm_loc_total_full (update_mp_loc_total_full \<omega> lp (get_mp_total_full \<omega> lp + q)) lp (get_nm_total_full \<omega>_inh)
     }"
 
@@ -452,6 +548,7 @@ inductive unfold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Righta
   "\<lbrakk> shift_up pred_id vs p nm nm';
      get_nm_total \<phi> = nm;
      get_nm_total \<phi>' = nm'
+     \<comment> \<open>TODO\<close>
    \<rbrakk> \<Longrightarrow>
    unfold_rel ctxt pred_id vs p \<phi> \<phi>'"
 
