@@ -47,7 +47,7 @@ inductive shift_up :: "predicate_ident \<Rightarrow> ('a val list) \<Rightarrow>
 \<comment> \<open>End \<^const>\<open>shift_up\<close>\<close>
 
 
-subsection \<open>Consistency\<close>
+subsection \<open>Internal Consistency\<close>
 
 inductive total_heap_consistent_unfold_n :: "'a nested_mask \<Rightarrow> nat \<Rightarrow> bool"
   where
@@ -258,6 +258,7 @@ inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Ri
    red_exhale ctxt \<omega>0 (Atomic (Acc e_r f Wildcard)) \<omega>
      (exh_if_total (mh (a,f) \<noteq> 0 \<and> r \<noteq> Null)
                     (update_mh_loc_total_full \<omega> (a,f) q))"
+
 \<comment>\<open>exhale acc(P(es), p)\<close>
 \<comment> \<open>TODO: remove the corresponding fraction of the nested mask when exhaling a predicate\<close>
 | ExhAccPred:
@@ -432,14 +433,11 @@ inductive consistent_external_n :: "'a total_context \<Rightarrow> 'a full_total
 | SatStep:
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
-     red_exhale ctxt \<omega> (syntactic_mult (Rep_preal p) pred_body) \<omega> (RNormal \<omega>');
-     \<phi>' = get_total_full \<omega>';
-     get_mh_total \<phi>' = (\<lambda>_. 0);
-     get_mp_total \<phi>' = (\<lambda>_. 0); \<comment> \<open>All top-level permissions should be exhaled.\<close>
+     sat ctxt \<omega> (syntactic_mult (Rep_preal p) pred_body);
      \<And>pred_id vs q nm' \<omega>''. get_mp_total_full \<omega> (pred_id,vs) = q \<Longrightarrow> q > 0 \<Longrightarrow>
        Some nm' = get_nm_loc_total_full \<omega> (pred_id,vs) \<Longrightarrow>
        \<omega>'' = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>'\<lparr> get_nm_total := nm' \<rparr> \<rparr> \<Longrightarrow>
-       sat_n ctxt \<omega>'' (pred_id,vs) q n
+       consistent_external_n ctxt \<omega>'' (pred_id,vs) q n
    \<rbrakk> \<Longrightarrow>
    consistent_external_n ctxt \<omega> ploc p (Suc n)"
 
