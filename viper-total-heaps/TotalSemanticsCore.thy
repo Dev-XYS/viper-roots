@@ -344,8 +344,16 @@ fun is_singleton_mh :: "heap_loc \<Rightarrow> field_mask \<Rightarrow> bool" wh
 fun is_singleton_mp :: "'a predicate_loc \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
   "is_singleton_mp ploc mp = (\<exists>p > 0. mp = singleton_mp ploc p)"
 
+fun proportional_split :: "'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> bool" where
+  "proportional_split \<omega> \<omega>\<^sub>1 \<omega>\<^sub>2 = ((\<forall>l. get_mh_total_full \<omega>\<^sub>1 l + get_mh_total_full \<omega>\<^sub>2 l = get_mh_total_full \<omega> l) \<and>
+    (\<forall>pl. get_mp_total_full \<omega>\<^sub>1 pl + get_mp_total_full \<omega>\<^sub>2 pl = get_mp_total_full \<omega> pl \<and>
+      get_nm_loc_total_full \<omega>\<^sub>1 pl = nested_mask_multiply_option (get_nm_loc_total_full \<omega> pl)
+        (get_mp_total_full \<omega>\<^sub>1 pl / get_mp_total_full \<omega> pl) \<and>
+      get_nm_loc_total_full \<omega>\<^sub>2 pl = nested_mask_multiply_option (get_nm_loc_total_full \<omega> pl)
+        (get_mp_total_full \<omega>\<^sub>2 pl / get_mp_total_full \<omega> pl)))"
+
 inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> bool"
-  for ctxt :: "'a total_context" and \<omega> :: "'a full_total_state" where
+  for ctxt :: "'a total_context" where
 
 \<comment>\<open>sat acc(e.f, p)
   The mask must have exactly p amount of permission.\<close>
@@ -396,8 +404,9 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
 
 \<comment>\<open>sat A && B\<close>
 | SatStar:
-  "\<lbrakk> sat ctxt \<omega> A;
-     sat ctxt \<omega> B
+  "\<lbrakk> proportional_split \<omega> \<omega>\<^sub>1 \<omega>\<^sub>2;
+     sat ctxt \<omega>\<^sub>1 A;
+     sat ctxt \<omega>\<^sub>2 B
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> (A && B)" \<comment> \<open>TODO: split the state\<close>
 

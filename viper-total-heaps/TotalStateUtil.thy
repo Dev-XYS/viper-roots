@@ -64,6 +64,11 @@ termination
    apply blast
   by fastforce
 
+fun nested_mask_multiply_option :: "'a nested_mask option \<Rightarrow> preal \<Rightarrow> 'a nested_mask option" where
+  "nested_mask_multiply_option None _ = None"
+| "nested_mask_multiply_option (Some nm) p = (if p = 0 then None else Some (nested_mask_multiply nm p))"
+
+
 \<comment> \<open>Mask subtraction\<close>
 
 fun field_mask_sub :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask" where
