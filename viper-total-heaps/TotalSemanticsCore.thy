@@ -435,11 +435,9 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
 
 subsection \<open>External Consistency\<close>
 
-inductive consistent_external_n :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> nat \<Rightarrow> bool"
+inductive consistent_external :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool"
   for ctxt :: "'a total_context" where
-  SatBase:
-  "consistent_external_n ctxt \<omega> ploc p 0"
-| SatStep:
+  SatStep:
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
      sat ctxt \<omega> (syntactic_mult (Rep_preal p) pred_body);
@@ -447,12 +445,18 @@ inductive consistent_external_n :: "'a total_context \<Rightarrow> 'a full_total
      \<And>pred_id vs q nm' \<omega>''. get_mp_total_full \<omega> (pred_id,vs) = q \<Longrightarrow> q > 0 \<Longrightarrow>
        Some nm' = get_nm_loc_total_full \<omega> (pred_id,vs) \<Longrightarrow>
        \<omega>'' = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := nm' \<rparr> \<rparr> \<Longrightarrow>
-       consistent_external_n ctxt \<omega>'' (pred_id,vs) q n
+       consistent_external ctxt \<omega>'' (pred_id,vs) q
    \<rbrakk> \<Longrightarrow>
-   consistent_external_n ctxt \<omega> ploc p (Suc n)"
+   consistent_external ctxt \<omega> ploc p"
 
-definition consistent_external :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool"
-  where "consistent_external ctxt \<omega> ploc p \<equiv> \<forall>n. consistent_external_n ctxt \<omega> ploc p n"
+\<comment> \<open>Using inductive might be better than using a function.
+    The generated @{thm consistent_external.simps} is equivalent to the function definition below.
+    And the inductive definition gives us more?
+    Question: How does the inductive definition prove termination? Or does it even prove it?
+    "\<not> P \<Longrightarrow> P" is not accepted as a valid inductive definition. \<close>
+
+
+\<comment> \<open>An alternative definition with function\<close>
 
 abbreviation nested_mask_embedded_in_full_total_state_rel :: "('a full_total_state \<times> 'a full_total_state) set"
   where "nested_mask_embedded_in_full_total_state_rel \<equiv> {
