@@ -435,22 +435,28 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
 
 subsection \<open>External Consistency\<close>
 
-inductive consistent_external :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool"
+inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool" and
+          consistent_external :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> bool"
   for ctxt :: "'a total_context" where
   SatStep:
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
      sat ctxt \<omega> (syntactic_mult (Rep_preal p) pred_body);
      \<phi> = get_total_full \<omega>;
-     \<And>pred_id vs q nm' \<omega>''. get_mp_total_full \<omega> (pred_id,vs) = q \<Longrightarrow> q > 0 \<Longrightarrow>
+     consistent_external ctxt \<omega>
+   \<rbrakk> \<Longrightarrow>
+   consistent_external_wrt_ploc ctxt \<omega> ploc p"
+| SatAll:
+  "\<lbrakk> \<And>pred_id vs q. get_mp_total_full \<omega> (pred_id,vs) = q \<Longrightarrow> (q = 0) = (get_nm_loc_total_full \<omega> (pred_id,vs) = None);
+     \<And>pred_id vs q nm' \<omega>''. get_mp_total_full \<omega> (pred_id,vs) = q \<Longrightarrow>
        Some nm' = get_nm_loc_total_full \<omega> (pred_id,vs) \<Longrightarrow>
        \<omega>'' = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := nm' \<rparr> \<rparr> \<Longrightarrow>
-       consistent_external ctxt \<omega>'' (pred_id,vs) q
+       consistent_external_wrt_ploc ctxt \<omega>'' (pred_id,vs) q
    \<rbrakk> \<Longrightarrow>
-   consistent_external ctxt \<omega> ploc p"
+   consistent_external ctxt \<omega>"
 
 \<comment> \<open>Using inductive might be better than using a function.
-    The generated @{thm consistent_external.simps} is equivalent to the function definition below.
+    The generated @{thm consistent_external_wrt_ploc.simps} is equivalent to the function definition below.
     And the inductive definition gives us more?
     Question: How does the inductive definition prove termination? Or does it even prove it?
     "\<not> P \<Longrightarrow> P" is not accepted as a valid inductive definition. \<close>
@@ -466,9 +472,9 @@ lemma wf_nested_mask_embedded_in_full_total_state_rel: "wf nested_mask_embedded_
   unfolding wf_def
   apply (rule allI | rule impI)+ sorry
 
-function consistent_external' :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool"
+function consistent_external_wrt_ploc' :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool"
   where
-  "consistent_external' ctxt \<omega> ploc p = (\<exists> pred_id pred_decl pred_body \<phi>.
+  "consistent_external_wrt_ploc' ctxt \<omega> ploc p = (\<exists> pred_id pred_decl pred_body \<phi>.
      ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl \<and>
      ViperLang.predicate_decl.body pred_decl = Some pred_body \<and>
      sat ctxt \<omega> (syntactic_mult (Rep_preal p) pred_body) \<and>
@@ -476,7 +482,7 @@ function consistent_external' :: "'a total_context \<Rightarrow> 'a full_total_s
      (\<forall>pred_id vs q nm' \<omega>''. get_mp_total_full \<omega> (pred_id,vs) = q \<longrightarrow> q > 0 \<longrightarrow>
        Some nm' = get_nm_loc_total_full \<omega> (pred_id,vs) \<longrightarrow>
        \<omega>'' = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := nm' \<rparr> \<rparr> \<longrightarrow>
-       consistent_external' ctxt \<omega>'' (pred_id,vs) q))"
+       consistent_external_wrt_ploc' ctxt \<omega>'' (pred_id,vs) q))"
   by (pat_completeness) auto
 termination
   apply (relation "{} <*lex*> nested_mask_embedded_in_full_total_state_rel <*lex*> {}")
@@ -517,7 +523,7 @@ definition inhale_perm_single_pred :: "'a total_context \<Rightarrow> 'a full_to
   where "inhale_perm_single_pred ctxt \<omega> lp p_opt =
     { \<omega>'| \<omega>' \<omega>_inh q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
-            consistent_external ctxt \<omega>_inh lp q \<and>
+            consistent_external_wrt_ploc ctxt \<omega>_inh lp q \<and>
             \<comment> \<open>TODO\<close>
             \<omega>' = add_to_nm_loc_total_full (update_mp_loc_total_full \<omega> lp (get_mp_total_full \<omega> lp + q)) lp (get_nm_total_full \<omega>_inh)
     }"

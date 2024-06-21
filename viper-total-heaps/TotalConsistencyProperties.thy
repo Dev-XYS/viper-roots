@@ -4,7 +4,7 @@ begin
 
 \<comment> \<open>Local variable assignment preserves internal state consistency.\<close>
 
-lemma var_assignment_preserves_state_consistency:
+lemma var_assignment_preserves_internal_consistency:
   assumes "get_total_full \<omega> = \<phi>"
       and "total_heap_consistent \<phi>"
       and "red_stmt_total ctxt R \<Lambda> (LocalAssign x e) \<omega> (RNormal \<omega>')"
@@ -18,7 +18,7 @@ qed
 
 \<comment> \<open>Unfold statement preserves internal state consistency.\<close>
 
-lemma unfold_preserves_state_consistency:
+lemma unfold_preserves_internal_consistency:
   assumes "get_total_full \<omega> = \<phi>"
       and "total_heap_consistent \<phi>"
       and "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
@@ -47,7 +47,7 @@ qed
 
 \<comment> \<open>Field assignment preserves internal state consistency.\<close>
 
-lemma field_assignment_preserves_state_consistency:
+lemma field_assignment_preserves_internal_consistency:
   assumes "get_total_full \<omega> = \<phi>"
       and "total_heap_consistent \<phi>"
       and "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal \<omega>')"
@@ -67,10 +67,18 @@ qed
 
 lemma fraction_consistent_external:
     fixes frac :: preal
-  assumes "consistent_external ctxt \<omega> (pred_id,vs) p"
+  assumes "consistent_external_wrt_ploc ctxt \<omega> (pred_id,vs) p"
       and "0 < frac \<and> frac < 1"
       and "nm = nested_mask_multiply (get_nm_total_full \<omega>) frac"
-    shows "consistent_external ctxt (update_nm_total_full \<omega> nm) (pred_id,vs) (p * frac)"
+    shows "consistent_external_wrt_ploc ctxt (update_nm_total_full \<omega> nm) (pred_id,vs) (p * frac)"
+  oops
+
+\<comment> \<open>Unfold statement preserves external state consistency.\<close>
+
+lemma unfold_preserves_external_consistency:
+  assumes "consistent_external ctxt \<omega>"
+      and "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
+    shows "consistent_external ctxt \<omega>'"
   oops
 
 end
