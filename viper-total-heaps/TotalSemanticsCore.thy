@@ -443,9 +443,10 @@ inductive consistent_external_n :: "'a total_context \<Rightarrow> 'a full_total
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
      sat ctxt \<omega> (syntactic_mult (Rep_preal p) pred_body);
+     \<phi> = get_total_full \<omega>;
      \<And>pred_id vs q nm' \<omega>''. get_mp_total_full \<omega> (pred_id,vs) = q \<Longrightarrow> q > 0 \<Longrightarrow>
        Some nm' = get_nm_loc_total_full \<omega> (pred_id,vs) \<Longrightarrow>
-       \<omega>'' = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>'\<lparr> get_nm_total := nm' \<rparr> \<rparr> \<Longrightarrow>
+       \<omega>'' = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := nm' \<rparr> \<rparr> \<Longrightarrow>
        consistent_external_n ctxt \<omega>'' (pred_id,vs) q n
    \<rbrakk> \<Longrightarrow>
    consistent_external_n ctxt \<omega> ploc p (Suc n)"
@@ -453,6 +454,47 @@ inductive consistent_external_n :: "'a total_context \<Rightarrow> 'a full_total
 definition consistent_external :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool"
   where "consistent_external ctxt \<omega> ploc p \<equiv> \<forall>n. consistent_external_n ctxt \<omega> ploc p n"
 
+abbreviation nested_mask_embedded_in_full_total_state_rel :: "('a full_total_state \<times> 'a full_total_state) set"
+  where "nested_mask_embedded_in_full_total_state_rel \<equiv> {
+    (\<omega>\<^sub>1, \<omega>\<^sub>2) | \<omega>\<^sub>1 \<omega>\<^sub>2. (get_nm_total_full \<omega>\<^sub>1, get_nm_total_full \<omega>\<^sub>2) \<in> nested_mask_rel }"
+
+lemma wf_nested_mask_embedded_in_full_total_state_rel: "wf nested_mask_embedded_in_full_total_state_rel"
+  unfolding wf_def
+  apply (rule allI | rule impI)+ sorry
+
+function consistent_external' :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool"
+  where
+  "consistent_external' ctxt \<omega> ploc p = (\<exists> pred_id pred_decl pred_body \<phi>.
+     ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl \<and>
+     ViperLang.predicate_decl.body pred_decl = Some pred_body \<and>
+     sat ctxt \<omega> (syntactic_mult (Rep_preal p) pred_body) \<and>
+     \<phi> = get_total_full \<omega> \<and>
+     (\<forall>pred_id vs q nm' \<omega>''. get_mp_total_full \<omega> (pred_id,vs) = q \<longrightarrow> q > 0 \<longrightarrow>
+       Some nm' = get_nm_loc_total_full \<omega> (pred_id,vs) \<longrightarrow>
+       \<omega>'' = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := nm' \<rparr> \<rparr> \<longrightarrow>
+       consistent_external' ctxt \<omega>'' (pred_id,vs) q))"
+  by (pat_completeness) auto
+termination
+  apply (relation "{} <*lex*> nested_mask_embedded_in_full_total_state_rel <*lex*> {}")
+  using wf_nested_mask_embedded_in_full_total_state_rel
+   apply blast
+proof -
+  fix ctxt :: "'a total_context"
+  fix ploc p dummy1 dummy2 dummy3 \<phi> pred_id' vs' q nm'
+  fix \<omega> \<omega>' :: "'a full_total_state"
+  assume "get_mp_total_full \<omega> (pred_id',vs') = q"
+         "PosReal.pnone < q" and
+         nm': "Some nm' = get_nm_loc_total_full \<omega> (pred_id',vs')" and
+         \<omega>': "\<omega>' = \<lparr> get_store_total = nth_option vs', get_trace_total = \<lambda>x. None, get_total_full = \<phi>\<lparr> get_nm_total := nm' \<rparr> \<rparr>"
+  obtain mh mp fnm where "get_nm_total_full \<omega> = NM mh mp fnm" using nested_mask.exhaust by blast
+  moreover hence "Some nm' = fnm (pred_id',vs')" using nm' by force
+  ultimately have "(nm', get_nm_total_full \<omega>) \<in> nested_mask_rel" by force
+  moreover have "get_nm_total_full \<omega>' = nm'" using \<omega>' by auto
+  ultimately have "(\<omega>', \<omega>) \<in> nested_mask_embedded_in_full_total_state_rel" by blast
+  thus "((ctxt, \<omega>', (pred_id',vs'), q), ctxt, \<omega>, ploc, p) \<in>
+          {} <*lex*> nested_mask_embedded_in_full_total_state_rel <*lex*> {}"
+    by (meson in_lex_prod)
+qed
 
 subsection \<open>Inhale\<close>
 
@@ -471,7 +513,7 @@ definition inhale_perm_single_pred :: "'a total_context \<Rightarrow> 'a full_to
   where "inhale_perm_single_pred ctxt \<omega> lp p_opt =
     { \<omega>'| \<omega>' \<omega>_inh q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
-            consistent_external ctxt \<omega>_inh lp q \<and> \<comment> \<open>Needs to decide the signature of \<^term>\<open>sat\<close>\<close>
+            consistent_external ctxt \<omega>_inh lp q \<and>
             \<comment> \<open>TODO\<close>
             \<omega>' = add_to_nm_loc_total_full (update_mp_loc_total_full \<omega> lp (get_mp_total_full \<omega> lp + q)) lp (get_nm_total_full \<omega>_inh)
     }"

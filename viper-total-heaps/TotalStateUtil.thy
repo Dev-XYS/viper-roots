@@ -188,6 +188,9 @@ fun update_mp_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_
 fun get_nm_total_full :: "'a full_total_state \<Rightarrow> 'a nested_mask"
   where "get_nm_total_full \<omega> = get_nm_total (get_total_full \<omega>)"
 
+fun update_nm_total_full :: "'a full_total_state \<Rightarrow> 'a nested_mask \<Rightarrow> 'a full_total_state"
+  where "update_nm_total_full \<omega> nm = \<omega>\<lparr> get_total_full := (get_total_full \<omega>)\<lparr> get_nm_total := nm \<rparr> \<rparr>"
+
 fun get_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
   where "get_nm_loc_total_full \<omega> lp = get_nm_loc_total (get_total_full \<omega>) lp"
 
