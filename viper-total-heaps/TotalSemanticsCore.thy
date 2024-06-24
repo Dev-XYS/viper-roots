@@ -381,7 +381,6 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
    sat ctxt \<omega> (Atomic (Acc e_r f Wildcard))"
 
 \<comment>\<open>sat acc(P(es), p)\<close>
-\<comment> \<open>TODO: remove the corresponding fraction of the nested mask when exhaling a predicate\<close>
 | SatAccPred:
   "\<lbrakk> mp = get_mp_total_full \<omega>;
      red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
@@ -404,11 +403,11 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
 
 \<comment>\<open>sat A && B\<close>
 | SatStar:
-  "\<lbrakk> proportional_split \<omega> \<omega>\<^sub>1 \<omega>\<^sub>2;
+  "\<lbrakk> proportional_split \<omega> \<omega>\<^sub>1 \<omega>\<^sub>2; \<comment> \<open>We don't use the nested mask. The split does not have to be proportional.\<close>
      sat ctxt \<omega>\<^sub>1 A;
      sat ctxt \<omega>\<^sub>2 B
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> (A && B)" \<comment> \<open>TODO: split the state\<close>
+   sat ctxt \<omega> (A && B)"
 
 \<comment>\<open>sat A \<longrightarrow> B\<close>
 | SatImpTrue:
@@ -459,7 +458,8 @@ inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a ful
     The generated @{thm consistent_external_wrt_ploc.simps} is equivalent to the function definition below.
     And the inductive definition gives us more?
     Question: How does the inductive definition prove termination? Or does it even prove it?
-    "\<not> P \<Longrightarrow> P" is not accepted as a valid inductive definition. \<close>
+    "\<not> P \<Longrightarrow> P" is not accepted as a valid inductive definition.
+    "\<not> P n \<Longrightarrow> P (Suc n) is also not accepted as a valid inductive definition. \<close>
 
 
 \<comment> \<open>An alternative definition with function\<close>
@@ -524,7 +524,7 @@ definition inhale_perm_single_pred :: "'a total_context \<Rightarrow> 'a full_to
     { \<omega>'| \<omega>' \<omega>_inh q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
             consistent_external_wrt_ploc ctxt \<omega>_inh lp q \<and>
-            \<comment> \<open>TODO\<close>
+            get_hh_total_full \<omega>_inh = get_hh_total_full \<omega> \<and>
             \<omega>' = add_to_nm_loc_total_full (update_mp_loc_total_full \<omega> lp (get_mp_total_full \<omega> lp + q)) lp (get_nm_total_full \<omega>_inh)
     }"
 
@@ -606,8 +606,8 @@ inductive unfold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Righta
   UnfoldRel:
   "\<lbrakk> shift_up pred_id vs p nm nm';
      get_nm_total \<phi> = nm;
-     get_nm_total \<phi>' = nm'
-     \<comment> \<open>TODO\<close>
+     get_nm_total \<phi>' = nm';
+     get_hh_total \<phi>' = get_hh_total \<phi>
    \<rbrakk> \<Longrightarrow>
    unfold_rel ctxt pred_id vs p \<phi> \<phi>'"
 

@@ -73,6 +73,8 @@ lemma fraction_consistent_external:
     shows "consistent_external_wrt_ploc ctxt (update_nm_total_full \<omega> nm) (pred_id,vs) (p * frac)"
   oops
 
+  thm "consistent_external_wrt_ploc_consistent_external.induct"
+
 \<comment> \<open>Unfold statement preserves external state consistency.\<close>
 
 lemma unfold_preserves_external_consistency:
