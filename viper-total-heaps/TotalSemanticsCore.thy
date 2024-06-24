@@ -352,107 +352,111 @@ fun proportional_split :: "'a full_total_state \<Rightarrow> 'a full_total_state
       get_nm_loc_total_full \<omega>\<^sub>2 pl = nested_mask_multiply_option (get_nm_loc_total_full \<omega> pl)
         (get_mp_total_full \<omega>\<^sub>2 pl / get_mp_total_full \<omega> pl)))"
 
-inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> bool"
+fun mh_split :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask \<Rightarrow> bool" where
+  "mh_split mh mh\<^sub>1 mh\<^sub>2 = (mh = (mh\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mh\<^sub>2))"
+
+fun mp_split :: "'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
+  "mp_split mp mp\<^sub>1 mp\<^sub>2 = (mp = (mp\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mp\<^sub>2))"
+
+inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> field_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> assertion \<Rightarrow> bool"
   for ctxt :: "'a total_context" where
 
 \<comment>\<open>sat acc(e.f, p)
   The mask must have exactly p amount of permission.\<close>
   SatAcc:
-  "\<lbrakk> mh = get_mh_total_full \<omega>;
-     ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
+  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
      ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      a = the_address r;
      p \<ge> 0;
-     if r = Null then p = 0 else mh = singleton_mh (a,f) (Abs_preal p);
-     get_mp_total_full \<omega> = zero_mp
+     if r = Null then p = 0 else mh = singleton_mh (a,f) (Abs_preal p)
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> (Atomic (Acc e_r f (PureExp e_p)))"
+   sat ctxt \<omega> mh zero_mp (Atomic (Acc e_r f (PureExp e_p)))"
 
 \<comment>\<open>A wildcard permission accepts any positive amount of permission.\<close>
 | SatAccWildcard:
-  "\<lbrakk> mh = get_mh_total_full \<omega>;
-     ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
+  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
      a = the_address r;
      \<comment>\<open>\<^term>\<open>q\<close> satisfies the right-hand side if \<^prop>\<open>mh (a,f) \<noteq> 0\<close> (thm prat_exists_stricly_smaller_nonzero).
      If \<^prop>\<open>mh (a,f) \<noteq> 0\<close> does not hold, then the exhale fails and the value of q is irrelevant. \<close>
      r \<noteq> Null;
      is_singleton_mh (a,f) mh
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> (Atomic (Acc e_r f Wildcard))"
+   sat ctxt \<omega> mh zero_mp (Atomic (Acc e_r f Wildcard))"
 
 \<comment>\<open>sat acc(P(es), p)\<close>
 | SatAccPred:
-  "\<lbrakk> mp = get_mp_total_full \<omega>;
-     red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
+  "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
      ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      p \<ge> 0;
-     mh = singleton_mp (pred_id,v_args) (Abs_preal p)
+     mp = singleton_mp (pred_id,v_args) (Abs_preal p)
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
+   sat ctxt \<omega> zero_mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
 
 | SatAccPredWildcard:
-  "\<lbrakk> mp = get_mp_total_full \<omega>;
-     red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
+  "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
      is_singleton_mp (pred_id,v_args) mp
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> (Atomic (AccPredicate pred_id e_args Wildcard))"
+   sat ctxt \<omega> zero_mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
 
 | SatPure:
   "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True) \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> (Atomic (Pure e))"
+   sat ctxt \<omega> zero_mh zero_mp (Atomic (Pure e))"
 
 \<comment>\<open>sat A && B\<close>
 | SatStar:
-  "\<lbrakk> proportional_split \<omega> \<omega>\<^sub>1 \<omega>\<^sub>2; \<comment> \<open>We don't use the nested mask. The split does not have to be proportional.\<close>
-     sat ctxt \<omega>\<^sub>1 A;
-     sat ctxt \<omega>\<^sub>2 B
+  "\<lbrakk> mh_split mh mh\<^sub>1 mh\<^sub>2;
+     mp_split mp mp\<^sub>1 mp\<^sub>2;
+     sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 A;
+     sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 B
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> (A && B)"
+   sat ctxt \<omega> mh mp (A && B)"
 
 \<comment>\<open>sat A \<longrightarrow> B\<close>
 | SatImpTrue:
   "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
-     sat ctxt \<omega> A
+     sat ctxt \<omega> mh mp A
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> (Imp e A)"
+   sat ctxt \<omega> mh mp (Imp e A)"
 | SatImpFalse:
   "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False) \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> (Imp e A)"
+   sat ctxt \<omega> zero_mh zero_mp (Imp e A)"
 
 \<comment>\<open>sat e ? A : B\<close>
 | SatCondTrue:
   "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
-     sat ctxt \<omega> A
+     sat ctxt \<omega> mh mp A
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> (CondAssert e A B)"
+   sat ctxt \<omega> mh mp (CondAssert e A B)"
 | SatCondFalse:
   "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
-     sat ctxt \<omega> B
+     sat ctxt \<omega> mh mp B
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> (CondAssert e A B)"
+   sat ctxt \<omega> mh mp (CondAssert e A B)"
 
 
 subsection \<open>External Consistency\<close>
 
-inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool" and
-          consistent_external :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> bool"
-  for ctxt :: "'a total_context" where
+inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool" and
+          consistent_external :: "'a total_context \<Rightarrow> 'a total_state \<Rightarrow> bool"
+          for ctxt :: "'a total_context" where
   SatStep:
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
-     sat ctxt \<omega> (syntactic_mult (Rep_preal p) pred_body);
-     \<phi> = get_total_full \<omega>;
-     consistent_external ctxt \<omega>
+     sat ctxt
+         \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi> \<rparr>
+         (get_mh_total \<phi>) (get_mp_total \<phi>)
+         (syntactic_mult (Rep_preal p) pred_body);
+     consistent_external ctxt \<phi>
    \<rbrakk> \<Longrightarrow>
-   consistent_external_wrt_ploc ctxt \<omega> ploc p"
+   consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p"
 | SatAll:
-  "\<lbrakk> \<And>pred_id vs q. get_mp_total_full \<omega> (pred_id,vs) = q \<Longrightarrow> (q = 0) = (get_nm_loc_total_full \<omega> (pred_id,vs) = None);
-     \<And>pred_id vs q nm' \<omega>''. get_mp_total_full \<omega> (pred_id,vs) = q \<Longrightarrow>
-       Some nm' = get_nm_loc_total_full \<omega> (pred_id,vs) \<Longrightarrow>
+  "\<lbrakk> \<And>pred_id vs q. get_mp_total \<phi> (pred_id,vs) = q \<Longrightarrow> (q = 0) = (get_nm_loc_total \<phi> (pred_id,vs) = None);
+     \<And>pred_id vs q nm' \<omega>''. get_mp_total \<phi> (pred_id,vs) = q \<Longrightarrow>
+       Some nm' = get_nm_loc_total \<phi> (pred_id,vs) \<Longrightarrow>
        \<omega>'' = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := nm' \<rparr> \<rparr> \<Longrightarrow>
-       consistent_external_wrt_ploc ctxt \<omega>'' (pred_id,vs) q
+       consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm' \<rparr>) (pred_id,vs) q
    \<rbrakk> \<Longrightarrow>
-   consistent_external ctxt \<omega>"
+   consistent_external ctxt \<phi>"
 
 \<comment> \<open>Using inductive might be better than using a function.
     The generated @{thm consistent_external_wrt_ploc.simps} is equivalent to the function definition below.
@@ -464,15 +468,17 @@ inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a ful
 
 \<comment> \<open>An alternative definition with function\<close>
 
-abbreviation nested_mask_embedded_in_full_total_state_rel :: "('a full_total_state \<times> 'a full_total_state) set"
-  where "nested_mask_embedded_in_full_total_state_rel \<equiv> {
+abbreviation nested_mask_embedded_in_full_total_state_rel' :: "('a full_total_state \<times> 'a full_total_state) set"
+  where "nested_mask_embedded_in_full_total_state_rel' \<equiv> {
     (\<omega>\<^sub>1, \<omega>\<^sub>2) | \<omega>\<^sub>1 \<omega>\<^sub>2. (get_nm_total_full \<omega>\<^sub>1, get_nm_total_full \<omega>\<^sub>2) \<in> nested_mask_rel }"
 
-lemma wf_nested_mask_embedded_in_full_total_state_rel: "wf nested_mask_embedded_in_full_total_state_rel"
-  unfolding wf_def
-  apply (rule allI | rule impI)+ sorry
+abbreviation nested_mask_embedded_in_full_total_state_rel :: "('a full_total_state \<times> 'a full_total_state) set"
+  where "nested_mask_embedded_in_full_total_state_rel \<equiv> inv_image nested_mask_rel get_nm_total_full"
 
-function consistent_external_wrt_ploc' :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool"
+lemma wf_nested_mask_embedded_in_full_total_state_rel: "wf nested_mask_embedded_in_full_total_state_rel"
+  using wf_nested_mask_rel by blast
+
+(* function consistent_external_wrt_ploc' :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool"
   where
   "consistent_external_wrt_ploc' ctxt \<omega> ploc p = (\<exists> pred_id pred_decl pred_body \<phi>.
      ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl \<and>
@@ -504,7 +510,7 @@ proof -
   thus "((ctxt, \<omega>', (pred_id',vs'), q), ctxt, \<omega>, ploc, p) \<in>
           {} <*lex*> nested_mask_embedded_in_full_total_state_rel <*lex*> {}"
     by (meson in_lex_prod)
-qed
+qed *)
 
 subsection \<open>Inhale\<close>
 
@@ -521,11 +527,11 @@ definition inhale_perm_single :: "'a full_total_state \<Rightarrow> heap_loc \<R
 
 definition inhale_perm_single_pred :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal option \<Rightarrow> 'a full_total_state set"
   where "inhale_perm_single_pred ctxt \<omega> lp p_opt =
-    { \<omega>'| \<omega>' \<omega>_inh q.
+    { \<omega>'| \<omega>' \<phi>_inh q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
-            consistent_external_wrt_ploc ctxt \<omega>_inh lp q \<and>
-            get_hh_total_full \<omega>_inh = get_hh_total_full \<omega> \<and>
-            \<omega>' = add_to_nm_loc_total_full (update_mp_loc_total_full \<omega> lp (get_mp_total_full \<omega> lp + q)) lp (get_nm_total_full \<omega>_inh)
+            consistent_external_wrt_ploc ctxt \<phi>_inh lp q \<and>
+            get_hh_total \<phi>_inh = get_hh_total_full \<omega> \<and>
+            \<omega>' = add_to_nm_loc_total_full (update_mp_loc_total_full \<omega> lp (get_mp_total_full \<omega> lp + q)) lp (get_nm_total \<phi>_inh)
     }"
 
 inductive red_inhale :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool" where
