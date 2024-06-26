@@ -141,7 +141,7 @@ lemma sat_\<phi>_does_not_matter:
   sorry
 
 
-\<comment> \<open>A fraction of a consistent total state is external consistent.\<close>
+\<comment> \<open>Helper lemmas on \<^const>\<open>nested_mask_multiply\<close>\<close>
 
 lemma get_mh_multiply [simp]:
   fixes frac :: preal
@@ -152,6 +152,61 @@ lemma get_mp_multiply [simp]:
   fixes frac :: preal
   shows "get_mp_nm (nested_mask_multiply (get_nm_total \<phi>) frac) = predicate_mask_multiply (get_mp_total \<phi>) frac"
   by (metis get_fnm_nm.cases get_mp_nm.simps get_mp_total.simps nested_mask_multiply.simps)
+
+lemma get_nm_loc_total_multiply [simp]:
+  fixes frac :: preal
+  shows "get_nm_loc_total (\<phi>\<lparr>get_nm_total := nested_mask_multiply (get_nm_total \<phi>) frac\<rparr>) loc =
+         get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) loc"
+  by (metis TotalStateUtil.get_nm_loc_total.simps get_fnm_nm.simps get_fnm_total.simps get_nm_loc_nm.simps nested_mask_multiply.elims total_state.simps(2) total_state.simps(5) total_state.surjective)
+
+lemma nm_multiply_none:
+    fixes frac :: preal
+  assumes "frac > 0"
+    shows "(get_nm_loc_nm nm loc = None) = (get_nm_loc_nm (nested_mask_multiply nm frac) loc = None)"
+  by (metis None_eq_map_option_iff get_nm_loc_nm.elims get_nm_loc_nm.simps nested_mask_multiply.simps o_apply)
+
+lemma nm_multiply_mp_value:
+  fixes frac
+  shows "get_mp_nm (nested_mask_multiply nm frac) loc = frac * get_mp_nm nm loc"
+  by (metis get_mp_multiply get_mp_total.elims o_def predicate_mask_multiply.elims total_state.select_convs(2))
+
+lemma nm_multiply_back:
+    fixes frac :: preal
+  assumes "frac > 0"
+      and "get_mp_nm (nested_mask_multiply nm frac) loc = q"
+    shows "get_mp_nm nm loc = q / frac"
+  by (metis Rep_preal_inverse assms(1) assms(2) divide_preal.rep_eq dual_order.refl linorder_not_less nm_multiply_mp_value nonzero_mult_div_cancel_left times_preal.rep_eq zero_preal.rep_eq)
+
+lemma nm_multiply_twice:
+  fixes f1 f2 :: preal
+  shows "nested_mask_multiply (nested_mask_multiply nm f1) f2 = nested_mask_multiply nm (f1 * f2)"
+  sorry
+
+lemma nm_multiply_1:
+  shows "nested_mask_multiply nm 1 = nm"
+  sorry
+
+lemma nm_multiply_back_nm:
+    fixes frac :: preal
+  assumes "frac > 0"
+      and "nm' = nested_mask_multiply nm frac"
+    shows "nm = nested_mask_multiply nm' (1 / frac)"
+proof -
+  from assms(2) have "nested_mask_multiply nm' (1 / frac)
+                      = nested_mask_multiply (nested_mask_multiply nm frac) (1 / frac)"
+    by auto
+  show "nm = nested_mask_multiply nm' (1 / frac)" using nm_multiply_twice nm_multiply_1
+    by (metis PosReal.field_divide_inverse PosReal.field_inverse assms(1) assms(2) mult.commute order_less_irrefl)
+qed
+
+
+\<comment> \<open>Other helper lemmas\<close>
+
+lemma total_state_update_nm_read:
+  shows "get_nm_total (\<phi>\<lparr> get_nm_total := nm \<rparr>) = nm"
+  by simp
+
+\<comment> \<open>A fraction of a consistent total state is external consistent.\<close>
 
 thm consistent_external_wrt_ploc_consistent_external.inducts
 
@@ -176,7 +231,36 @@ proof (induction rule: consistent_external_wrt_ploc_consistent_external.inducts)
     using IH sat_\<phi>_does_not_matter assms by fastforce
 next
   case IH: (SatAll \<phi>)
-  show ?case sorry
+  show ?case
+  proof (standard, simp del: get_nm_loc_total.simps)
+    have "\<And>loc. ((get_mp_nm (get_nm_total \<phi>) loc) = 0) = (get_nm_loc_nm (get_nm_total \<phi>) loc = None)"
+      by (metis IH.hyps TotalStateUtil.get_nm_loc_total.elims eq_fst_iff get_fnm_nm.elims get_fnm_total.simps get_mp_total.simps get_nm_loc_nm.simps)
+    hence "\<And>loc. ((get_mp_nm (get_nm_total \<phi>) loc) = 0) = (get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) loc = None)"
+      using nm_multiply_none assms by blast
+    thus "\<And>pred_id vs. (frac * (get_mp_nm (get_nm_total \<phi>) (pred_id,vs)) = PosReal.pnone) = (get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) (pred_id,vs) = None)"
+      by (smt (verit) Rep_preal_inverse assms less_preal.rep_eq mult_eq_0_iff times_preal.rep_eq zero_preal.rep_eq)
+  next
+    fix pred_id vs q nm'
+    assume perm: "get_mp_total (\<phi>\<lparr>get_nm_total := nested_mask_multiply (get_nm_total \<phi>) frac\<rparr>) (pred_id,vs) = q"
+       and nm': "Some nm' = get_nm_loc_total (\<phi>\<lparr>get_nm_total := nested_mask_multiply (get_nm_total \<phi>) frac\<rparr>) (pred_id,vs)"
+    hence "get_mp_total \<phi> (pred_id,vs) = q / frac" using nm_multiply_back
+      by (metis assms get_mp_total.simps total_state.simps(2) total_state.surjective total_state.update_convs(2))
+    moreover from nm' have "Some nm' = get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) (pred_id,vs)"
+      using get_nm_loc_total_multiply by auto
+    hence "Some (nested_mask_multiply nm' (1 / frac)) = get_nm_loc_total \<phi> (pred_id,vs)" using nm_multiply_back_nm sorry
+    moreover note IH(3)
+    ultimately have "consistent_external_wrt_ploc ctxt
+                       (\<phi>\<lparr> get_nm_total := nested_mask_multiply (get_nm_total (\<phi>\<lparr> get_nm_total := (nested_mask_multiply nm' (1 / frac)) \<rparr>)) frac \<rparr>)
+                       (pred_id,vs) q"
+      using perm by force
+    moreover have "\<phi>\<lparr> get_nm_total := nested_mask_multiply (get_nm_total (\<phi>\<lparr> get_nm_total := (nested_mask_multiply nm' (1 / frac)) \<rparr>)) frac \<rparr>
+                   = \<phi>\<lparr> get_nm_total := nm' \<rparr>"
+      by (metis assms mult.commute nm_multiply_back_nm nm_multiply_twice total_state_update_nm_read)
+    ultimately show "consistent_external_wrt_ploc ctxt
+                       (\<phi>\<lparr> get_nm_total := nested_mask_multiply (get_nm_total \<phi>) frac, get_nm_total := nm' \<rparr>)
+                       (pred_id,vs) q"
+      by fastforce
+  qed
 qed
 
 lemma fraction_consistent_external:
