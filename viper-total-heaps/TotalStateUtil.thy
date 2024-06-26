@@ -55,8 +55,14 @@ lemma nested_mask_merge_combine_options[simp]:
 
 \<comment> \<open>Auxiliary definitions for multiplying the mask\<close>
 
+fun field_mask_multiply :: "field_mask \<Rightarrow> preal \<Rightarrow> field_mask" where
+  "field_mask_multiply mh p = ((*) p) \<circ> mh"
+
+fun predicate_mask_multiply :: "'a predicate_mask \<Rightarrow> preal \<Rightarrow> 'a predicate_mask" where
+  "predicate_mask_multiply mp p = ((*) p) \<circ> mp"
+
 function (sequential) nested_mask_multiply :: "'a nested_mask \<Rightarrow> preal \<Rightarrow> 'a nested_mask" where
-  "nested_mask_multiply (NM mh mp fnm) p = NM (((*) p) \<circ> mh) (((*) p) \<circ> mp) ((map_option (\<lambda>nm. nested_mask_multiply nm p)) \<circ> fnm)"
+  "nested_mask_multiply (NM mh mp fnm) p = NM (field_mask_multiply mh p) (predicate_mask_multiply mp p) ((map_option (\<lambda>nm. nested_mask_multiply nm p)) \<circ> fnm)"
   by (pat_completeness) auto
 termination
   apply (relation "nested_mask_rel <*lex*> {}")
