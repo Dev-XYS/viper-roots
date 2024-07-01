@@ -261,4 +261,13 @@ lemma eval_unop_typing_agree:
   using assms
   by (cases ty1; simp; safe elim!:unop_type_elim; cases op; auto intro:unop_type.intros)
 
+
+\<comment> \<open>Some other lemmas\<close>
+
+lemma eval_binop_perm_mult_constant:
+  assumes "eval_binop (VPerm p) Mult x = BinopNormal (VPerm r)"
+  shows "eval_binop (VPerm (q * p)) Mult x = BinopNormal (VPerm (q * r))"
+  apply (cases x)
+  using assms by force+
+
 end

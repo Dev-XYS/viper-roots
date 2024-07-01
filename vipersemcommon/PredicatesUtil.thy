@@ -28,5 +28,6 @@ fun syntactic_mult :: "real \<Rightarrow> assertion \<Rightarrow> assertion"
   | "syntactic_mult p (ImpureAnd A B) = ImpureAnd (syntactic_mult p A) (syntactic_mult p B)"
   | "syntactic_mult p (ImpureOr A B) = ImpureOr (syntactic_mult p A) (syntactic_mult p B)"
   | "syntactic_mult p (A --* B) = (syntactic_mult p A) --* (syntactic_mult p B)"
+  | "syntactic_mult p (CondAssert e A B) = CondAssert e (syntactic_mult p A) (syntactic_mult p B)"
 
 end

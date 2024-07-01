@@ -225,6 +225,8 @@ inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_st
 | RedExpListNil:
   "red_pure_exps_total ctxt \<omega>_def Nil \<omega> (Some Nil)"
 
+inductive_cases RedBinop_case: "ctxt, \<omega>_def \<turnstile> \<langle>Binop e1 bop e2; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+
 
 subsection \<open>Exhale\<close>
 
@@ -446,7 +448,8 @@ inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a tot
          \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi> \<rparr>
          (get_mh_total \<phi>) (get_mp_total \<phi>)
          (syntactic_mult (Rep_preal p) pred_body);
-     consistent_external ctxt \<phi>
+     consistent_external ctxt \<phi>;
+     p > 0
    \<rbrakk> \<Longrightarrow>
    consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p"
 | SatAll:

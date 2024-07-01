@@ -67,81 +67,36 @@ proof -
 qed
 
 
-\<comment> \<open>Combinability of fractional resources.\<close>
+\<comment> \<open>Helper lemmas on singleton masks\<close>
 
-lemma fraction_combinability:
-  assumes "sat ctxt \<phi> mh\<^sub>1 mp\<^sub>1 (syntactic_mult (Rep_preal p) A)"
-      and "sat ctxt \<phi> mh\<^sub>2 mp\<^sub>2 (syntactic_mult (Rep_preal q) A)"
-      and "mh_split mh mh\<^sub>1 mh\<^sub>2"
-      and "mp_split mp mp\<^sub>1 mp\<^sub>2"
-  shows "sat ctxt \<phi> mh mp (syntactic_mult (Rep_preal (p + q)) A)"
-  oops
+lemma singleton_mh_multiply:
+  shows "singleton_mh loc (q * p) = ((*) q) \<circ> singleton_mh loc p"
+  apply standard
+  apply simp
+  by (metis Rep_preal_inverse mult_eq_0_iff times_preal.rep_eq zero_preal.rep_eq)
 
-
-\<comment> \<open>A fraction of the mask satisfies the syntactic multiplication of the assertion.\<close>
-
-inductive_cases SatImp_case: "sat ctxt \<omega> mh mp (Imp e A)"
-
-lemma fractionability:
-    fixes p q :: preal
-    shows "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal p) A) \<Longrightarrow> sat ctxt \<omega> (field_mask_multiply mh q) (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) A)"
-  sorry
-(* proof (induct A)
-  case (Atomic x)
-  then show ?case sorry
-next
-  case IH: (Imp e A)
-  then consider (True) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
-               (False) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
-    by (smt (verit) assert.sel(2) assert.simps(11) assert.simps(27) assert.simps(33) sat.simps syntactic_mult.simps(4))
-    (* Needs a better way *)
-  then show ?case
-  proof (cases)
-    case True
-    then show ?thesis sorry
-  next
-    case False
-    then show ?thesis using IH
-    proof -
-      from IH False have "mh = zero_mh" and "mp = zero_mp"
-        sorry
-    qed
-  qed
-next
-  case (CondAssert x1a A1 A2)
-  then show ?case sorry
-next
-  case (ImpureAnd A1 A2)
-  then show ?case sorry
-next
-  case (ImpureOr A1 A2)
-  then show ?case sorry
-next
-  case (Star A1 A2)
-  then show ?case sorry
-next
-  case (Wand A1 A2)
-  then show ?case sorry
-next
-  case (ForAll x1a A)
-  then show ?case sorry
-next
-  case (Exists x1a A)
-  then show ?case sorry
-qed *)
+lemma singleton_mp_multiply:
+  shows "singleton_mp loc (q * p) = ((*) q) \<circ> singleton_mp loc p"
+  apply standard
+  apply simp
+  by (metis Rep_preal_inverse mult_eq_0_iff times_preal.rep_eq zero_preal.rep_eq)
 
 
-\<comment> \<open>The total state \<phi> we give to \<^const>\<open>sat\<close> does not matter.\<close>
+\<comment> \<open>Helper lemmas on masks and \<^const>\<open>nested_mask_multiply\<close>\<close>
 
-lemma sat_\<phi>_does_not_matter:
+lemma zero_mh_multiply:
   fixes frac :: preal
-  assumes "frac > 0"
-      and "sat ctxt \<omega> mh mp A"
-    shows "sat ctxt (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac)) mh mp A"
-  sorry
+  shows "field_mask_multiply zero_mh frac = zero_mh"
+  apply standard
+  apply simp
+  by (metis Rep_preal_inverse mult_zero_right times_preal.rep_eq zero_preal.rep_eq)
 
-
-\<comment> \<open>Helper lemmas on \<^const>\<open>nested_mask_multiply\<close>\<close>
+lemma zero_mp_multiply:
+  fixes frac :: preal
+  shows "predicate_mask_multiply zero_mp frac = zero_mp"
+  apply standard
+  apply simp
+  by (metis Rep_preal_inverse mult_zero_right times_preal.rep_eq zero_preal.rep_eq)
 
 lemma get_mh_multiply [simp]:
   fixes frac :: preal
@@ -199,12 +154,348 @@ proof -
     by (metis PosReal.field_divide_inverse PosReal.field_inverse assms(1) assms(2) mult.commute order_less_irrefl)
 qed
 
+lemma mh_split_multiply:
+  fixes frac :: preal
+  assumes "mh_split mh mh\<^sub>1 mh\<^sub>2"
+  shows "mh_split (field_mask_multiply mh frac) (field_mask_multiply mh\<^sub>1 frac) (field_mask_multiply mh\<^sub>2 frac)"
+  apply simp
+  apply standard
+  by (metis PosReal.pmult_distr assms comp_apply fun_comb_def mh_split.elims(2))
+
+lemma mp_split_multiply:
+  fixes frac :: preal
+  assumes "mp_split mp mp\<^sub>1 mp\<^sub>2"
+  shows "mp_split (predicate_mask_multiply mp frac) (predicate_mask_multiply mp\<^sub>1 frac) (predicate_mask_multiply mp\<^sub>2 frac)"
+  apply simp
+  apply standard
+  by (metis (no_types, opaque_lifting) PosReal.pmult_distr assms comp_eq_dest_lhs fun_comb_def mp_split.simps)
+
 
 \<comment> \<open>Other helper lemmas\<close>
 
 lemma total_state_update_nm_read:
   shows "get_nm_total (\<phi>\<lparr> get_nm_total := nm \<rparr>) = nm"
   by simp
+
+
+\<comment> \<open>Expression evaluation is deterministic.\<close>
+
+lemma eval_is_deterministic:
+  assumes "ctxt, (Some \<omega>\<^sub>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t v\<^sub>1"
+      and "ctxt, (Some \<omega>\<^sub>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t v\<^sub>2"
+    shows "v\<^sub>1 = v\<^sub>2"
+  sorry
+
+
+\<comment> \<open>Combinability of fractional resources.\<close>
+
+lemma fraction_combinability:
+  assumes "sat ctxt \<phi> mh\<^sub>1 mp\<^sub>1 (syntactic_mult (Rep_preal p) A)"
+      and "sat ctxt \<phi> mh\<^sub>2 mp\<^sub>2 (syntactic_mult (Rep_preal q) A)"
+      and "mh_split mh mh\<^sub>1 mh\<^sub>2"
+      and "mp_split mp mp\<^sub>1 mp\<^sub>2"
+  shows "sat ctxt \<phi> mh mp (syntactic_mult (Rep_preal (p + q)) A)"
+  oops
+
+
+\<comment> \<open>A fraction of the mask satisfies the syntactic multiplication of the assertion.\<close>
+
+inductive_cases SatAtomic_case: "sat ctxt \<omega> mh mp (Atomic x)"
+inductive_cases SatAcc_case: "sat ctxt \<omega> mh mp (Atomic (Acc e_r f (PureExp e_p)))"
+inductive_cases SatAccWildcard_case: "sat ctxt \<omega> mh mp (Atomic (Acc e_r f Wildcard))"
+inductive_cases SatAccPred_case: "sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
+inductive_cases SatAccPredWildcard_case: "sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
+inductive_cases SatImp_case: "sat ctxt \<omega> mh mp (Imp e A)"
+inductive_cases SatCond_case: "sat ctxt \<omega> mh mp (CondAssert e A B)"
+inductive_cases SatImpureAnd_case: "sat ctxt \<omega> mh mp (ImpureAnd A B)"
+inductive_cases SatImpureOr_case: "sat ctxt \<omega> mh mp (ImpureOr A B)"
+inductive_cases SatWand_case: "sat ctxt \<omega> mh mp (A --* B)"
+inductive_cases SatForAll_case: "sat ctxt \<omega> mh mp (ForAll ty A)"
+inductive_cases SatExists_case: "sat ctxt \<omega> mh mp (Exists ty A)"
+
+lemma sat_Acc_mp_zero:
+  assumes "sat ctxt \<omega> mh mp (Atomic (Acc e_r f perm))"
+  shows "mp = zero_mp"
+  using SatAtomic_case assms by blast
+
+lemma sat_AccPred_mh_zero:
+  assumes "sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args perm))"
+  shows "mh = zero_mh"
+  using SatAtomic_case assms by blast
+
+lemma sat_Imp_True_or_False:
+  assumes "sat ctxt \<omega> mh mp (Imp e A)"
+  shows "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True) \<or> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+  using SatImp_case assms by blast
+
+lemma sat_Cond_True_or_False:
+  assumes "sat ctxt \<omega> mh mp (CondAssert e A B)"
+  shows "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True) \<or> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+  using SatCond_case assms by blast
+
+lemma sat_Imp_False_only_zero:
+  assumes "sat ctxt \<omega> mh mp (Imp e A)"
+      and "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    shows "mh = zero_mh" and "mp = zero_mp"
+   apply (rule SatImp_case)
+     apply auto
+  using assms(1) apply blast
+  using assms(2) eval_is_deterministic apply blast
+  apply (rule SatImp_case)
+    apply auto
+  using assms(1) apply blast
+  using assms(2) eval_is_deterministic apply blast
+  done
+
+lemma fractionability_SatAcc:
+  fixes p q :: preal
+  assumes "q > 0"
+      and "sat ctxt \<omega> mh zero_mp (syntactic_mult (Rep_preal p) (Atomic (Acc e_r f (PureExp e_p))))"
+    shows "sat ctxt \<omega> (field_mask_multiply mh q) zero_mp (syntactic_mult (Rep_preal (q * p)) (Atomic (Acc e_r f (PureExp e_p))))"
+proof -
+  from assms(2) have "sat ctxt \<omega> mh zero_mp (Atomic (Acc e_r f (PureExp (Binop (ELit (LPerm (Rep_preal p))) Mult e_p))))"
+    by simp
+  then obtain v_r v_pp a where
+    v_r_eval: "ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)" and
+    v_pp_eval: "ctxt, (Some \<omega>) \<turnstile> \<langle>Binop (ELit (LPerm (Rep_preal p))) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_pp)" and
+    addr: "a = the_address v_r" and
+    v_p_pos: "v_pp \<ge> 0" and
+    mh_sing: "if v_r = Null then v_pp = 0 else mh = singleton_mh (a,f) (Abs_preal v_pp)"
+    using SatAcc_case[of ctxt \<omega> mh zero_mp e_r f "Binop (ELit (LPerm (Rep_preal p))) Mult e_p" thesis] by blast
+  show "sat ctxt \<omega> (field_mask_multiply mh q) zero_mp (syntactic_mult (Rep_preal (q * p)) (Atomic (Acc e_r f (PureExp e_p))))"
+    apply simp
+    apply (rule SatAcc)
+    using v_r_eval apply blast
+       prefer 2 using addr apply blast
+  proof -
+    from v_pp_eval obtain v_p where v_p_eval: "ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v_p"
+      using RedBinop_case
+      by (metis eval_binop_lazy.simps(23) option.distinct(1))
+    show "ctxt, Some \<omega> \<turnstile> \<langle>Binop (ELit (LPerm (Rep_preal (PosReal.pmult q p)))) Mult e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal q * v_pp))"
+      apply standard
+         apply auto
+        apply standard
+      using v_p_eval apply blast
+    proof -
+      from v_pp_eval v_p_eval have "eval_binop (val_of_lit (LPerm (Rep_preal p))) Mult v_p = BinopNormal (VPerm v_pp)"
+        by (metis (no_types, lifting) RedLit_case TotalSemanticsCoreHelper.RedBinop_case eval_binop_lazy.simps(23) eval_is_deterministic extended_val.inject not_None_eq)
+      thus "eval_binop (val_of_lit (LPerm (Rep_preal (PosReal.pmult q p)))) Mult v_p = BinopNormal (VPerm (Rep_preal q * v_pp))"
+        using eval_binop_perm_mult_constant times_preal.rep_eq by auto
+    qed
+  next
+    show "0 \<le> Rep_preal q * v_pp"
+      by (simp add: prat_non_negative v_p_pos)
+  next
+    from mh_sing show "if v_r = Null then Rep_preal q * v_pp = 0 else (*) q \<circ> mh = singleton_mh (a, f) (Abs_preal (Rep_preal q * v_pp))"
+      apply (cases "v_r = Null")
+       apply auto[1]
+      using singleton_mh_multiply
+      by (metis Rep_preal_inverse eq_onp_same_args prat_non_negative times_preal.abs_eq v_p_pos)
+  qed
+qed
+
+lemma fractionability_SatAcc_Wildcard:
+  fixes p q :: preal
+  assumes "p > 0" and "q > 0"
+      and "sat ctxt \<omega> mh zero_mp (syntactic_mult (Rep_preal p) (Atomic (Acc e_r f Wildcard)))"
+    shows "sat ctxt \<omega> (field_mask_multiply mh q) zero_mp (syntactic_mult (Rep_preal (q * p)) (Atomic (Acc e_r f Wildcard)))"
+  apply simp
+  apply standard
+   apply auto
+    defer 1
+  using assms less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq apply fastforce
+   apply (simp add: order_less_le prat_non_negative)
+  by (smt (z3) SatAccWildcard SatAccWildcard_case assms(3) is_singleton_mh.simps less_preal.rep_eq order_less_le pperm_pnone_pgt real_mult_permexpr.simps(1) singleton_mh_multiply syntactic_mult.simps(2) times_preal.rep_eq zero_less_mult_iff zero_preal.rep_eq)
+
+lemma fractionability_SatAccPred:
+  fixes p q :: preal
+  assumes "p > 0" and "q > 0"
+      and "sat ctxt \<omega> zero_mh mp (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args (PureExp e_p))))"
+    shows "sat ctxt \<omega> zero_mh (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) (Atomic (AccPredicate pred_id e_args (PureExp e_p))))"
+proof -
+  from assms have "sat ctxt \<omega> zero_mh mp (Atomic (AccPredicate pred_id e_args (PureExp (Binop (ELit (LPerm (Rep_preal p))) Mult e_p))))"
+    by simp
+  then obtain v_args v_pp where
+    v_args_eval: "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args)" and
+    v_pp_eval: "ctxt, (Some \<omega>) \<turnstile> \<langle>Binop (ELit (LPerm (Rep_preal p))) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_pp)" and
+    v_p_pos: "v_pp \<ge> 0" and
+    mp_sing: "mp = singleton_mp (pred_id,v_args) (Abs_preal v_pp)"
+    using SatAccPred_case by meson
+  show "sat ctxt \<omega> zero_mh (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) (Atomic (AccPredicate pred_id e_args(PureExp e_p))))"
+    apply simp
+    apply (rule SatAccPred)
+    using v_args_eval apply blast
+  proof -
+    from v_pp_eval obtain v_p where v_p_eval: "ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v_p"
+      using RedBinop_case
+      by (metis eval_binop_lazy.simps(23) option.distinct(1))
+    show "ctxt, Some \<omega> \<turnstile> \<langle>Binop (ELit (LPerm (Rep_preal (PosReal.pmult q p)))) Mult e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal q * v_pp))"
+      apply standard
+         apply auto
+        apply standard
+      using v_p_eval apply blast
+    proof -
+      from v_pp_eval v_p_eval have "eval_binop (val_of_lit (LPerm (Rep_preal p))) Mult v_p = BinopNormal (VPerm v_pp)"
+        by (metis (no_types, lifting) RedLit_case TotalSemanticsCoreHelper.RedBinop_case eval_binop_lazy.simps(23) eval_is_deterministic extended_val.inject not_None_eq)
+      thus "eval_binop (val_of_lit (LPerm (Rep_preal (PosReal.pmult q p)))) Mult v_p = BinopNormal (VPerm (Rep_preal q * v_pp))"
+        using eval_binop_perm_mult_constant times_preal.rep_eq by auto
+    qed
+  next
+    show "0 \<le> Rep_preal q * v_pp"
+      by (simp add: prat_non_negative v_p_pos)
+  next
+    from mp_sing show "(*) q \<circ> mp = singleton_mp (pred_id,v_args) (Abs_preal (Rep_preal q * v_pp))"
+      using singleton_mp_multiply
+      by (metis Rep_preal_inverse eq_onp_same_args prat_non_negative times_preal.abs_eq v_p_pos)
+  qed
+qed
+
+lemma fractionability_SatAccPred_Wildcard:
+  fixes p q :: preal
+  assumes "p > 0" and "q > 0"
+      and "sat ctxt \<omega> zero_mh mp (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args Wildcard)))"
+    shows "sat ctxt \<omega> zero_mh (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) (Atomic (AccPredicate pred_id e_args Wildcard)))"
+  apply simp
+  apply standard
+   apply auto
+    defer 1
+  using assms less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq apply fastforce
+   apply (simp add: order_less_le prat_non_negative)
+proof -
+  from assms have "sat ctxt \<omega> zero_mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
+    by (metis Rep_preal_inject order_less_le prat_non_negative real_mult_permexpr.simps(1) syntactic_mult.simps(3) zero_preal.rep_eq)
+  then obtain v_args where
+    "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args)" and
+    "is_singleton_mp (pred_id,v_args) mp"
+    by (metis SatAccPredWildcard_case is_singleton_mp.elims(3))
+  then show "sat ctxt \<omega> zero_mh ((*) q \<circ> mp) (Atomic (AccPredicate pred_id e_args Wildcard))"
+    by (metis Rep_preal_inject SatAccPredWildcard SatAccPredWildcard_case assms(2) is_singleton_mp.elims(3) mult_eq_0_iff pperm_pnone_pgt singleton_mp_multiply times_preal.rep_eq zero_preal.rep_eq)
+qed
+
+lemma fractionability:
+    fixes p q :: preal
+  assumes "p > 0" and "q > 0"
+    shows "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal p) A) \<Longrightarrow> sat ctxt \<omega> (field_mask_multiply mh q) (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) A)"
+proof (induct A arbitrary: mh mp)
+  case IH: (Atomic x)
+  show ?case
+  proof (cases x)
+    case (Pure x1)
+    then show ?thesis
+      by (smt (verit, best) IH SatAtomic_case atomic_assert.simps(5) atomic_assert.simps(7) syntactic_mult.simps(1) zero_mh_multiply zero_mp_multiply)
+  next
+    case (Acc e_r f perm)
+    then have "mp = zero_mp"
+      using IH sat_Acc_mp_zero by fastforce
+    show ?thesis
+    proof (cases perm)
+      case (PureExp x1)
+      then show ?thesis
+      using IH fractionability_SatAcc[of q ctxt \<omega> mh p e_r f] assms
+      by (metis Acc \<open>mp = zero_mp\<close> zero_mp_multiply)
+    next
+      case Wildcard
+      then show ?thesis
+        using fractionability_SatAcc_Wildcard
+        by (metis Acc IH \<open>mp = zero_mp\<close> assms zero_mp_multiply)
+    qed
+  next
+    case (AccPredicate pred_id e_args perm)
+    then have "mh = zero_mh"
+      using IH sat_AccPred_mh_zero by fastforce
+    show ?thesis
+    proof (cases perm)
+      case (PureExp x1)
+      then show ?thesis
+        by (metis AccPredicate IH \<open>mh = zero_mh\<close> assms fractionability_SatAccPred zero_mh_multiply)
+    next
+      case Wildcard
+      then show ?thesis
+        using fractionability_SatAccPred_Wildcard
+        by (metis AccPredicate IH \<open>mh = zero_mh\<close> assms zero_mh_multiply)
+    qed
+  qed
+next
+  case IH: (Imp e A)
+  then consider (True) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+               (False) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    using sat_Imp_True_or_False by fastforce
+  then show ?case
+  proof (cases)
+    case True
+    then show ?thesis
+      by (metis IH.hyps IH.prems SatImpFalse SatImpTrue SatImp_case syntactic_mult.simps(4) zero_mh_multiply zero_mp_multiply)
+  next
+    case False
+    then show ?thesis using IH
+    proof -
+      from IH False have "mh = zero_mh" and "mp = zero_mp"
+        by (simp add: sat_Imp_False_only_zero)+
+      thus "sat ctxt \<omega> (field_mask_multiply mh q) (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) (Imp e A))"
+        by (metis False SatImpFalse syntactic_mult.simps(4) zero_mh_multiply zero_mp_multiply)
+    qed
+  qed
+next
+  case IH: (CondAssert e A B)
+  then consider (True) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+               (False) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    using sat_Cond_True_or_False by fastforce
+  then show ?case
+  proof (cases)
+    case True
+    then show ?thesis
+      by (metis (full_types) IH.hyps(1) IH.prems SatCondTrue SatCond_case eval_is_deterministic extended_val.inject syntactic_mult.simps(11) val.inject(2))
+  next
+    case False
+    then show ?thesis
+      by (metis (full_types) IH.hyps(2) IH.prems SatCondFalse SatCond_case eval_is_deterministic extended_val.inject syntactic_mult.simps(11) val.inject(2))
+  qed
+next
+  case (ImpureAnd A1 A2)
+  then show ?case
+    using SatImpureAnd_case by fastforce
+next
+  case (ImpureOr A1 A2)
+  then show ?case
+    using SatImpureOr_case by fastforce
+next
+  case IH: (Star A B)
+  then obtain mh\<^sub>1 mh\<^sub>2 mp\<^sub>1 mp\<^sub>2 where
+    mh_split: "mh_split mh mh\<^sub>1 mh\<^sub>2" and
+    mp_split: "mp_split mp mp\<^sub>1 mp\<^sub>2" and
+    sat_A: "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult (Rep_preal p) A)" and
+    sat_B: "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult (Rep_preal p) B)"
+    unfolding syntactic_mult.simps using SatStar
+    by (smt (verit) assert.distinct(35) assert.distinct(9) assert.inject(6) assert.simps(33) sat.simps)
+  show ?case
+    apply (simp only: syntactic_mult.simps)
+    apply (rule SatStar)
+       apply (rule mh_split_multiply, rule mh_split)
+      apply (rule mp_split_multiply, rule mp_split)
+    using sat_A sat_B IH by presburger+
+next
+  case (Wand A1 A2)
+  then show ?case
+    using SatWand_case by fastforce
+next
+  case (ForAll x1a A)
+  then show ?case
+    using SatForAll_case by fastforce
+next
+  case (Exists x1a A)
+  then show ?case
+    using SatExists_case by fastforce
+qed
+
+
+\<comment> \<open>The total state \<phi> we give to \<^const>\<open>sat\<close> does not matter.\<close>
+
+lemma sat_\<phi>_does_not_matter:
+  fixes frac :: preal
+  assumes "frac > 0"
+      and "sat ctxt \<omega> mh mp A"
+    shows "sat ctxt (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac)) mh mp A"
+  sorry
 
 \<comment> \<open>A fraction of a consistent total state is external consistent.\<close>
 
@@ -224,10 +515,12 @@ proof (induction rule: consistent_external_wrt_ploc_consistent_external.inducts)
   case IH: (SatStep pred_id pred_decl pred_body vs \<phi> p)
   show ?case
     apply (rule SatStep)
-       defer 3
+        defer 3
     using IH apply blast+
+    using IH.hyps(2) assms less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq apply auto[1]
     apply (simp del: field_mask_multiply.simps predicate_mask_multiply.simps)
     apply (rule fractionability)
+      apply (simp add: IH.hyps(2) assms)+
     using IH sat_\<phi>_does_not_matter assms by fastforce
 next
   case IH: (SatAll \<phi>)
