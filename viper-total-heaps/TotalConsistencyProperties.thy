@@ -114,6 +114,12 @@ lemma get_nm_loc_total_multiply [simp]:
          get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) loc"
   by (metis TotalStateUtil.get_nm_loc_total.simps get_fnm_nm.simps get_fnm_total.simps get_nm_loc_nm.simps nested_mask_multiply.elims total_state.simps(2) total_state.simps(5) total_state.surjective)
 
+lemma get_nm_loc_nm_multiply:
+  fixes frac :: preal
+  shows "get_nm_loc_nm (nested_mask_multiply nm frac) loc =
+         map_option (\<lambda>m. nested_mask_multiply m frac) (get_nm_loc_nm nm loc)"
+  by (metis comp_apply get_fnm_nm.cases get_nm_loc_nm.simps nested_mask_multiply.simps)
+
 lemma nm_multiply_none:
     fixes frac :: preal
   assumes "frac > 0"
@@ -538,9 +544,17 @@ next
        and nm': "Some nm' = get_nm_loc_total (\<phi>\<lparr>get_nm_total := nested_mask_multiply (get_nm_total \<phi>) frac\<rparr>) (pred_id,vs)"
     hence "get_mp_total \<phi> (pred_id,vs) = q / frac" using nm_multiply_back
       by (metis assms get_mp_total.simps total_state.simps(2) total_state.surjective total_state.update_convs(2))
-    moreover from nm' have "Some nm' = get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) (pred_id,vs)"
+    moreover from nm' have nm'_frac: "Some nm' = get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) (pred_id,vs)"
       using get_nm_loc_total_multiply by auto
-    hence "Some (nested_mask_multiply nm' (1 / frac)) = get_nm_loc_total \<phi> (pred_id,vs)" using nm_multiply_back_nm sorry
+    have "Some (nested_mask_multiply nm' (1 / frac)) = get_nm_loc_total \<phi> (pred_id,vs)"
+    proof simp
+      from nm'_frac obtain nm where "Some nm = get_nm_loc_total \<phi> (pred_id,vs)"
+        by (metis TotalStateUtil.get_nm_loc_total.simps assms get_fnm_nm.elims get_fnm_total.simps get_nm_loc_nm.simps nm_multiply_none not_None_eq)
+      moreover hence "get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) (pred_id,vs) = Some (nested_mask_multiply nm frac)"
+        by (metis TotalStateUtil.get_nm_loc_total.elims get_fnm_nm.cases get_fnm_nm.simps get_fnm_total.simps get_nm_loc_nm.simps get_nm_loc_nm_multiply option.simps(9))
+      ultimately show "Some (nested_mask_multiply nm' (1 / frac)) = get_fnm_nm (get_nm_total \<phi>) (pred_id, vs)"
+        using assms nm'_frac nm_multiply_back_nm by force
+    qed
     moreover note IH(3)
     ultimately have "consistent_external_wrt_ploc ctxt
                        (\<phi>\<lparr> get_nm_total := nested_mask_multiply (get_nm_total (\<phi>\<lparr> get_nm_total := (nested_mask_multiply nm' (1 / frac)) \<rparr>)) frac \<rparr>)
