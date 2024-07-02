@@ -5,7 +5,7 @@ imports ViperCommon.ValueAndBasicState ViperCommon.DeBruijn ViperCommon.ViperUti
 begin
 
 fun get_address_opt :: "'a val \<Rightarrow> address option"
-  where 
+  where
     "get_address_opt (VRef (Address a)) = Some a"
   | "get_address_opt _ = None"
 
@@ -20,8 +20,22 @@ lemma prat_non_negative: "\<And>q. Rep_preal q \<ge> 0"
 lemma psub_smaller:
   assumes "(p :: preal) \<ge> q"
   shows "p \<ge> (p - q)"
-  using assms
-  by (simp add: less_eq_preal.rep_eq minus_preal.rep_eq prat_non_negative)
+  unfolding minus_preal_def
+proof -
+  from assms have DiffNonNegative: "Rep_preal p - Rep_preal q \<ge> 0"
+    by (transfer) simp
+
+  have "Rep_preal p \<ge> Rep_preal p - Rep_preal q"
+    by (transfer) simp
+
+
+  hence "(Rep_preal p) \<ge> Rep_preal (Abs_preal (Rep_preal p - Rep_preal q))"
+    using Abs_preal_inverse DiffNonNegative
+    by fastforce
+
+  thus "map_fun id (map_fun id Abs_preal) (\<lambda>a b. if b \<le> a then Rep_preal a - Rep_preal b else 0) p q \<le> p"
+    using assms less_eq_preal.rep_eq minus_preal.abs_eq by auto
+qed
 
 subsection \<open>Recursive predicates on assertions\<close>
 
@@ -50,7 +64,7 @@ fun pure_exp_pred_rec :: "(pure_exp \<Rightarrow> bool) \<Rightarrow> pure_exp \
 fun
   atomic_assert_pred :: "(pure_exp atomic_assert \<Rightarrow> bool) \<Rightarrow> (pure_exp \<Rightarrow> bool) \<Rightarrow> (pure_exp atomic_assert) \<Rightarrow> bool" and
   atomic_assert_pred_rec :: "(pure_exp \<Rightarrow> bool) \<Rightarrow> (pure_exp atomic_assert) \<Rightarrow> bool"
-  where 
+  where
   "atomic_assert_pred p_atm p_e A_atm \<longleftrightarrow> p_atm A_atm \<and> atomic_assert_pred_rec p_e A_atm"
 | "atomic_assert_pred_rec p_e (Pure e) \<longleftrightarrow> pure_exp_pred p_e e"
 | "atomic_assert_pred_rec p_e (Acc e f Wildcard) \<longleftrightarrow> pure_exp_pred p_e e"
@@ -60,7 +74,7 @@ fun
 
 fun assert_pred :: "(assertion \<Rightarrow> bool) \<Rightarrow> (pure_exp atomic_assert \<Rightarrow> bool) \<Rightarrow> (pure_exp \<Rightarrow> bool) \<Rightarrow> assertion \<Rightarrow> bool" and
     assert_pred_rec :: "(assertion \<Rightarrow> bool) \<Rightarrow> (pure_exp atomic_assert \<Rightarrow> bool) \<Rightarrow> (pure_exp \<Rightarrow> bool) \<Rightarrow> assertion \<Rightarrow>  bool"
-  where 
+  where
   "assert_pred p_assert p_atm p_e A \<longleftrightarrow> p_assert A \<and> assert_pred_rec p_assert p_atm p_e A"
 | "assert_pred_rec p_assert p_atm p_e (Atomic A_atm) \<longleftrightarrow> atomic_assert_pred p_atm p_e A_atm"
 | "assert_pred_rec p_assert p_atm p_e (Imp e A) \<longleftrightarrow> pure_exp_pred p_e e \<and> assert_pred p_assert p_atm p_e A"
@@ -74,7 +88,7 @@ fun assert_pred :: "(assertion \<Rightarrow> bool) \<Rightarrow> (pure_exp atomi
 
 fun stmt_pred :: "(stmt \<Rightarrow> bool) \<Rightarrow> (assertion \<Rightarrow> bool) \<Rightarrow> (pure_exp \<Rightarrow> bool) \<Rightarrow> stmt \<Rightarrow> bool" and
     stmt_pred_rec :: "(stmt \<Rightarrow> bool) \<Rightarrow> (assertion \<Rightarrow> bool) \<Rightarrow> (pure_exp \<Rightarrow> bool) \<Rightarrow> stmt \<Rightarrow> bool"
-    where   
+    where
   "stmt_pred p_stmt p_assert p_e s \<longleftrightarrow> p_stmt s \<and> stmt_pred_rec p_stmt p_assert p_e s"
 | "stmt_pred_rec p_stmt p_assert p_e (Inhale A) \<longleftrightarrow> p_assert A"
 | "stmt_pred_rec p_stmt p_assert p_e (Exhale A) \<longleftrightarrow> p_assert A"
@@ -100,7 +114,7 @@ subsubsection \<open>Common instantiations\<close>
 text \<open>No permission introspection\<close>
 
 fun no_perm_pure_exp_no_rec :: "pure_exp \<Rightarrow> bool"
-  where 
+  where
     "no_perm_pure_exp_no_rec (Perm e f) = False"
   | "no_perm_pure_exp_no_rec (PermPred e f) = False"
   | "no_perm_pure_exp_no_rec _ = True"
@@ -114,7 +128,7 @@ abbreviation no_perm_assertion
 text \<open>No old expressions\<close>
 
 fun no_old_pure_exp_no_rec :: "pure_exp \<Rightarrow> bool"
-  where 
+  where
     "no_old_pure_exp_no_rec (Old _ _) = False"
   | "no_old_pure_exp_no_rec _ = True"
 
@@ -130,7 +144,7 @@ abbreviation no_old_stmt
 text \<open>parts not supported by proof generation\<close>
 
 fun no_unfolding_pure_exp_no_rec :: "pure_exp \<Rightarrow> bool"
-  where 
+  where
     "no_unfolding_pure_exp_no_rec (Unfolding p es e) = False"
   | "no_unfolding_pure_exp_no_rec _ = True"
 
@@ -141,7 +155,7 @@ abbreviation no_unfolding_assertion
   where "no_unfolding_assertion \<equiv> assert_pred (\<lambda>_. True) (\<lambda>_. True) no_unfolding_pure_exp_no_rec"
 
 fun not_supported_exp_no_rec :: "pure_exp \<Rightarrow> bool"
-  where 
+  where
     "not_supported_exp_no_rec (Unfolding p es e) = False"
   | "not_supported_exp_no_rec Result = False"
   | "not_supported_exp_no_rec _ = True"
@@ -192,19 +206,19 @@ fun free_var_pure_exp :: "pure_exp \<Rightarrow> var set"
 | "free_var_pure_exp (PermPred pname es) = \<Union> (set (map free_var_pure_exp es))"
 | "free_var_pure_exp (FunApp f es) = \<Union> (set (map free_var_pure_exp es))"
 | "free_var_pure_exp (Unfolding pname es e) = \<Union> (set (map free_var_pure_exp es)) \<union> free_var_pure_exp e"
-| "free_var_pure_exp (pure_exp.Let e e_body) = free_var_pure_exp e \<union> (shift_down_set (free_var_pure_exp e_body))" 
+| "free_var_pure_exp (pure_exp.Let e e_body) = free_var_pure_exp e \<union> (shift_down_set (free_var_pure_exp e_body))"
 | "free_var_pure_exp (PExists ty e) = shift_down_set (free_var_pure_exp e)"
 | "free_var_pure_exp (PForall ty e) = shift_down_set (free_var_pure_exp e)"
 
 fun
-  free_var_atomic_assert :: "pure_exp atomic_assert \<Rightarrow> var set" where  
+  free_var_atomic_assert :: "pure_exp atomic_assert \<Rightarrow> var set" where
   "free_var_atomic_assert (Pure e) = free_var_pure_exp e"
 | "free_var_atomic_assert (Acc e f Wildcard) = free_var_pure_exp e"
 | "free_var_atomic_assert (Acc e1 f (PureExp e2)) = free_var_pure_exp e1 \<union> free_var_pure_exp e2"
 | "free_var_atomic_assert (AccPredicate pname es Wildcard) = \<Union> (set (map free_var_pure_exp es))"
 | "free_var_atomic_assert (AccPredicate pname es (PureExp e2)) = \<Union> (set (map free_var_pure_exp es)) \<union> free_var_pure_exp e2"
 
-fun free_var_assertion :: "assertion \<Rightarrow> var set"  where  
+fun free_var_assertion :: "assertion \<Rightarrow> var set"  where
   "free_var_assertion (Atomic atm) = free_var_atomic_assert atm"
 | "free_var_assertion (Imp e A) = free_var_pure_exp e \<union> free_var_assertion A"
 | "free_var_assertion (CondAssert e A B) = free_var_pure_exp e \<union> free_var_assertion A \<union> free_var_assertion B"
