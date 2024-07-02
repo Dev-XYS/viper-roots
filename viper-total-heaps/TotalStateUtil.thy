@@ -159,6 +159,10 @@ fun get_nm_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightar
 fun add_to_nm_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a total_state"
   where "add_to_nm_loc_total \<omega> lp nm = nm_loc_total_update \<omega> lp (nested_mask_merge_option (get_nm_loc_total \<omega> lp) (Some nm))"
 
+fun mult_nm_total :: "'a total_state \<Rightarrow> preal \<Rightarrow> 'a total_state"
+  where "mult_nm_total \<phi> p = \<phi>\<lparr> get_nm_total := (nested_mask_multiply (get_nm_total \<phi>) p) \<rparr>"
+
+
 subsection \<open>heap and mask in full total state\<close>
 
 subsubsection \<open>Definitions\<close>
@@ -203,6 +207,9 @@ fun get_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc
 fun add_to_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a full_total_state"
   where "add_to_nm_loc_total_full \<omega> lp nm =
         \<omega>\<lparr> get_total_full := add_to_nm_loc_total (get_total_full \<omega>) lp nm \<rparr>"
+
+fun mult_nm_total_full :: "'a full_total_state \<Rightarrow> preal \<Rightarrow> 'a full_total_state"
+  where "mult_nm_total_full \<omega> p = update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) p)"
 
 subsubsection \<open>Lemmas\<close>
 

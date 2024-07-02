@@ -378,7 +378,21 @@ proof -
     by (metis Rep_preal_inject SatAccPredWildcard SatAccPredWildcard_case assms(2) is_singleton_mp.elims(3) mult_eq_0_iff pperm_pnone_pgt singleton_mp_multiply times_preal.rep_eq zero_preal.rep_eq)
 qed
 
+lemma fractionability':
+    fixes p :: preal
+  assumes "p > 0"
+      and "sat ctxt \<omega> mh mp A"
+    shows "sat ctxt (mult_nm_total_full \<omega> p) (field_mask_multiply mh p) (predicate_mask_multiply mp p) (syntactic_mult (Rep_preal p) A)"
+  sorry
+
 lemma fractionability:
+    fixes p q :: preal
+  assumes "p > 0" and "q > 0"
+      and "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal p) A)"
+    shows "sat ctxt (mult_nm_total_full \<omega> q) (field_mask_multiply mh q) (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) A)"
+  sorry
+
+(* lemma fractionability_original:
     fixes p q :: preal
   assumes "p > 0" and "q > 0"
     shows "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal p) A) \<Longrightarrow> sat ctxt \<omega> (field_mask_multiply mh q) (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) A)"
@@ -491,7 +505,7 @@ next
   case (Exists x1a A)
   then show ?case
     using SatExists_case by fastforce
-qed
+qed *)
 
 
 \<comment> \<open>The total state \<phi> we give to \<^const>\<open>sat\<close> does not matter.\<close>
@@ -597,7 +611,7 @@ next
     using red_pure_exp_total_red_pure_exps_total.RedExpListNil by blast
 qed
 
-lemma sat_\<phi>_does_not_matter:
+(* lemma sat_\<phi>_does_not_matter:
   fixes frac :: preal
   assumes "frac > 0"
     shows "sat ctxt \<omega> mh mp A \<Longrightarrow> sat ctxt (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac)) mh mp A"
@@ -673,21 +687,30 @@ next
   case (Exists x1a A)
   then show ?case
     using SatExists_case by blast
-qed
+qed *)
 
 
 \<comment> \<open>A fraction of a consistent total state is external consistent.\<close>
 
+lemma predicate_\<omega>_multiply:
+  fixes frac :: preal
+  shows "\<lparr> get_store_total = nth_option vs,
+           get_trace_total = \<lambda>x. None,
+           get_total_full = \<phi>\<lparr> get_nm_total := nested_mask_multiply (get_nm_total \<phi>) frac \<rparr> \<rparr> =
+         mult_nm_total_full
+         \<lparr> get_store_total = nth_option vs,
+           get_trace_total = \<lambda>x. None,
+           get_total_full = \<phi> \<rparr>
+         frac"
+  by force
+
 lemma fraction_consistent_external':
   fixes frac :: preal
   assumes "0 < frac \<and> frac < 1"
-    shows "(consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p \<Longrightarrow>
-            consistent_external_wrt_ploc ctxt
-              (\<phi>\<lparr> get_nm_total := nested_mask_multiply (get_nm_total \<phi>) frac \<rparr>)
-              (pred_id,vs) (frac * p))"
-      and "(consistent_external ctxt \<phi> \<Longrightarrow>
-            consistent_external ctxt
-              (\<phi>\<lparr> get_nm_total := nested_mask_multiply (get_nm_total \<phi>) frac \<rparr>))"
+    shows "consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p \<Longrightarrow>
+           consistent_external_wrt_ploc ctxt (mult_nm_total \<phi> frac) (pred_id,vs) (frac * p)"
+      and "consistent_external ctxt \<phi> \<Longrightarrow>
+           consistent_external ctxt (mult_nm_total \<phi> frac)"
 proof (induction rule: consistent_external_wrt_ploc_consistent_external.inducts)
   case IH: (SatStep pred_id pred_decl pred_body vs \<phi> p)
   show ?case
@@ -696,9 +719,11 @@ proof (induction rule: consistent_external_wrt_ploc_consistent_external.inducts)
     using IH apply blast+
     using IH.hyps(2) assms less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq apply auto[1]
     apply (simp del: field_mask_multiply.simps predicate_mask_multiply.simps)
+    apply (simp only: predicate_\<omega>_multiply)
     apply (rule fractionability)
-      apply (simp add: IH.hyps(2) assms)+
-    using IH sat_\<phi>_does_not_matter assms by fastforce
+    using IH.hyps(2) apply blast
+    apply (simp add: assms)
+    using IH.IH(2) by fastforce
 next
   case IH: (SatAll \<phi>)
   show ?case
@@ -711,10 +736,10 @@ next
       by (smt (verit) Rep_preal_inverse assms less_preal.rep_eq mult_eq_0_iff times_preal.rep_eq zero_preal.rep_eq)
   next
     fix pred_id vs q nm'
-    assume perm: "get_mp_total (\<phi>\<lparr>get_nm_total := nested_mask_multiply (get_nm_total \<phi>) frac\<rparr>) (pred_id,vs) = q"
-       and nm': "Some nm' = get_nm_loc_total (\<phi>\<lparr>get_nm_total := nested_mask_multiply (get_nm_total \<phi>) frac\<rparr>) (pred_id,vs)"
+    assume perm: "get_mp_total (mult_nm_total \<phi> frac) (pred_id, vs) = q"
+       and nm': "Some nm' = TotalStateUtil.get_nm_loc_total (mult_nm_total \<phi> frac) (pred_id, vs)"
     hence "get_mp_total \<phi> (pred_id,vs) = q / frac" using nm_multiply_back
-      by (metis assms get_mp_total.simps total_state.simps(2) total_state.surjective total_state.update_convs(2))
+      by (metis assms get_mp_total.simps mult_nm_total.elims total_state.simps(2) total_state.surjective total_state.update_convs(2))
     moreover from nm' have nm'_frac: "Some nm' = get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) (pred_id,vs)"
       using get_nm_loc_total_multiply by auto
     have "Some (nested_mask_multiply nm' (1 / frac)) = get_nm_loc_total \<phi> (pred_id,vs)"
@@ -735,7 +760,7 @@ next
                    = \<phi>\<lparr> get_nm_total := nm' \<rparr>"
       by (metis assms mult.commute nm_multiply_back_nm nm_multiply_twice total_state_update_nm_read)
     ultimately show "consistent_external_wrt_ploc ctxt
-                       (\<phi>\<lparr> get_nm_total := nested_mask_multiply (get_nm_total \<phi>) frac, get_nm_total := nm' \<rparr>)
+                       (mult_nm_total \<phi> frac\<lparr>get_nm_total := nm'\<rparr>)
                        (pred_id,vs) q"
       by fastforce
   qed
