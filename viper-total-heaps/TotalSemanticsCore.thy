@@ -226,6 +226,7 @@ inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_st
   "red_pure_exps_total ctxt \<omega>_def Nil \<omega> (Some Nil)"
 
 inductive_cases RedBinop_case: "ctxt, \<omega>_def \<turnstile> \<langle>Binop e1 bop e2; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+inductive_cases RedOld_case: "ctxt, \<omega>_def \<turnstile> \<langle>RedOld \<omega> l \<phi> \<omega>_def' \<omega>_def e v; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
 
 
 subsection \<open>Exhale\<close>

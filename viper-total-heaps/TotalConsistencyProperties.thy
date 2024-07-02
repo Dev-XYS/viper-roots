@@ -496,16 +496,187 @@ qed
 
 \<comment> \<open>The total state \<phi> we give to \<^const>\<open>sat\<close> does not matter.\<close>
 
+lemma update_nm_total_full_trace_unchanged:
+  shows "get_trace_total \<omega> = get_trace_total (update_nm_total_full \<omega> nm)"
+  by force
+
+lemma update_nm_total_full_store_unchanged:
+  shows "get_store_total \<omega> = get_store_total (update_nm_total_full \<omega> nm)"
+  by force
+
+lemma eval_frac_mask_does_not_matter:
+  fixes frac :: preal
+  assumes "frac > 0"
+  shows "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow>
+         ctxt, (Some (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac))) \<turnstile> \<langle>e; (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac))\<rangle> [\<Down>]\<^sub>t Val v" and
+        "red_pure_exps_total ctxt (Some \<omega>) es \<omega> vs \<Longrightarrow>
+         red_pure_exps_total ctxt (Some (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac))) es (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac)) vs"
+proof (induct rule: red_pure_exp_total_red_pure_exps_total.inducts)
+  case (RedLit \<omega>_def l uu)
+  then show ?case
+    using red_pure_exp_total_red_pure_exps_total.RedLit by blast
+next
+  case (RedVar \<omega> n v \<omega>_def)
+  then show ?case
+    by (simp add: red_pure_exp_total_red_pure_exps_total.RedVar)
+next
+  case (RedResult \<omega> v \<omega>_def)
+  then show ?case
+    by (simp add: red_pure_exp_total_red_pure_exps_total.RedResult)
+next
+  case (RedBinopLazy \<omega>_def e1 \<omega> v1 bop v e2)
+  then show ?case
+    using red_pure_exp_total_red_pure_exps_total.RedBinopLazy by blast
+next
+  case (RedBinop \<omega>_def e1 \<omega> v1 e2 v2 bop v)
+  then show ?case
+    using red_pure_exp_total_red_pure_exps_total.RedBinop by blast
+next
+  case (RedBinopRightFailure \<omega>_def e1 \<omega> v1 e2 bop)
+  then show ?case
+    using red_pure_exp_total_red_pure_exps_total.RedBinopRightFailure by blast
+next
+  case (RedBinopOpFailure \<omega>_def e1 \<omega> v1 e2 v2 bop)
+  then show ?case
+    using red_pure_exp_total_red_pure_exps_total.RedBinopOpFailure by blast
+next
+  case (RedUnop \<omega>_def e \<omega> v unop v')
+  then show ?case
+    using red_pure_exp_total_red_pure_exps_total.RedUnop by blast
+next
+  case (RedCondExpTrue \<omega>_def e1 \<omega> e2 r e3)
+  then show ?case
+    using red_pure_exp_total_red_pure_exps_total.RedCondExpTrue by blast
+next
+  case (RedCondExpFalse \<omega>_def e1 \<omega> e3 r e2)
+  then show ?case
+    using red_pure_exp_total_red_pure_exps_total.RedCondExpFalse by blast
+next
+  case (RedOld \<omega> l \<phi> \<omega>_def' \<omega>_def e v)
+  then show ?case sorry
+next
+  case (RedOldFailure \<omega> l \<omega>_def e)
+  then show ?case sorry
+next
+  case (RedField \<omega>_def e \<omega> a f v)
+  then show ?case sorry
+next
+  case (RedFieldNullFailure \<omega>_def e \<omega> f)
+  then show ?case
+    using red_pure_exp_total_red_pure_exps_total.RedFieldNullFailure by blast
+next
+  case (RedPermNull \<omega>_def e \<omega> f)
+  then show ?case
+    using red_pure_exp_total_red_pure_exps_total.RedPermNull by blast
+next
+  case (RedPerm \<omega>_def e \<omega> a f v)
+  then show ?case sorry
+  \<comment> \<open>Permission introspection does not satisfy this property.
+      However, it is not allowed inside predicates.\<close>
+next
+  case (RedUnfolding ubody \<omega> v p es)
+  then show ?case sorry
+next
+  case (RedUnfoldingDefNoPred \<omega>_def es \<omega> vs pred_id pred_decl p ubody)
+  then show ?case sorry
+next
+  case (RedUnfoldingDef \<omega>_def es \<omega> vs p nm' \<omega>'_def ubody v)
+  then show ?case sorry
+next
+  case (RedSubFailure e' \<omega>_def \<omega>)
+  then show ?case sorry
+next
+  case (RedExpListCons \<omega>_def e \<omega> v es res res')
+  then show ?case sorry
+next
+  case (RedExpListFailure \<omega>_def e \<omega> es)
+  then show ?case sorry
+next
+  case (RedExpListNil \<omega>_def \<omega>)
+  then show ?case
+    using red_pure_exp_total_red_pure_exps_total.RedExpListNil by blast
+qed
+
 lemma sat_\<phi>_does_not_matter:
   fixes frac :: preal
   assumes "frac > 0"
-      and "sat ctxt \<omega> mh mp A"
-    shows "sat ctxt (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac)) mh mp A"
-  sorry
+    shows "sat ctxt \<omega> mh mp A \<Longrightarrow> sat ctxt (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac)) mh mp A"
+proof (induct A arbitrary: \<omega> mh mp)
+  case (Atomic x)
+  show ?case
+  proof (cases x)
+    case (Pure x1)
+    then show ?thesis
+      by (smt (verit) Atomic SatAtomic_case assms atomic_assert.distinct(1) atomic_assert.simps(7) eval_frac_mask_does_not_matter(1) sat.simps)
+  next
+    case (Acc x21 x22 x23)
+    then show ?thesis
+      by (smt (verit) Atomic SatAtomic_case assms atomic_assert.distinct(5) eval_frac_mask_does_not_matter(1) is_singleton_mh.elims(3) sat.simps)
+  next
+    case (AccPredicate x31 x32 x33)
+    then show ?thesis
+      by (smt (verit) Atomic assert.simps(11) assert.simps(13) assert.simps(19) assms eval_frac_mask_does_not_matter(1) eval_frac_mask_does_not_matter(2) sat.simps)
+  qed
+next
+  case (Imp e A)
+  then consider (True) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+               (False) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    using sat_Imp_True_or_False by fastforce
+  then show ?case
+  proof (cases)
+    case True
+    hence "ctxt, Some (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac)) \<turnstile> \<langle>e;(update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac))\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+      using eval_frac_mask_does_not_matter assms by blast
+    thus ?thesis
+      by (metis Imp.hyps Imp.prems SatImpTrue SatImp_case True eval_is_deterministic extended_val.inject val.inject(2))
+  next
+    case False
+    then show ?thesis
+      by (metis Imp.prems SatImpFalse assms eval_frac_mask_does_not_matter(1) sat_Imp_False_only_zero(1) sat_Imp_False_only_zero(2))
+  qed
+next
+  case (CondAssert e A B)
+  then consider (True) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+               (False) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    using sat_Cond_True_or_False by fastforce
+  then show ?case
+  proof (cases)
+    case True
+    then show ?thesis
+      by (metis CondAssert.hyps(1) CondAssert.hyps(2) CondAssert.prems SatCondFalse SatCondTrue SatCond_case assms eval_frac_mask_does_not_matter(1))
+  next
+    case False
+    then show ?thesis
+      by (metis CondAssert.hyps(1) CondAssert.hyps(2) CondAssert.prems SatCondFalse SatCondTrue SatCond_case assms eval_frac_mask_does_not_matter(1))
+  qed
+next
+  case (ImpureAnd A1 A2)
+  then show ?case
+    using SatImpureAnd_case by blast
+next
+  case (ImpureOr A1 A2)
+  then show ?case
+    using SatImpureOr_case by blast
+next
+  case (Star A1 A2)
+  then show ?case
+    by (smt (verit) assert.inject(6) assert.simps(19) assert.simps(33) assert.simps(45) sat.simps)
+next
+  case (Wand A1 A2)
+  then show ?case
+    using SatWand_case by blast
+next
+  case (ForAll x1a A)
+  then show ?case
+    using SatForAll_case by blast
+next
+  case (Exists x1a A)
+  then show ?case
+    using SatExists_case by blast
+qed
+
 
 \<comment> \<open>A fraction of a consistent total state is external consistent.\<close>
-
-thm consistent_external_wrt_ploc_consistent_external.inducts
 
 lemma fraction_consistent_external':
   fixes frac :: preal
