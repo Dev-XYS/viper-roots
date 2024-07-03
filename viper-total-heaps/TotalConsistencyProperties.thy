@@ -378,29 +378,78 @@ proof -
     by (metis Rep_preal_inject SatAccPredWildcard SatAccPredWildcard_case assms(2) is_singleton_mp.elims(3) mult_eq_0_iff pperm_pnone_pgt singleton_mp_multiply times_preal.rep_eq zero_preal.rep_eq)
 qed
 
-lemma fractionability':
+lemma fractionability:
     fixes p :: preal
   assumes "p > 0"
       and "sat ctxt \<omega> mh mp A"
     shows "sat ctxt (mult_nm_total_full \<omega> p) (field_mask_multiply mh p) (predicate_mask_multiply mp p) (syntactic_mult (Rep_preal p) A)"
   sorry
 
-lemma fractionability:
+lemma fractionabilityI:
+  fixes p :: preal
+  assumes "p > 0"
+      and "sat ctxt \<omega> mh mp A"
+      and "\<omega>' = mult_nm_total_full \<omega> p"
+      and "mh' = field_mask_multiply mh p"
+      and "mp' = predicate_mask_multiply mp p"
+    shows "sat ctxt \<omega>' mh' mp' (syntactic_mult (Rep_preal p) A)"
+  using assms fractionability by blast
+
+lemma fractionability_inv:
+    fixes p :: preal
+  assumes "p > 0"
+      and "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal p) A)"
+    shows "sat ctxt (mult_nm_total_full \<omega> (1/p)) (field_mask_multiply mh (1/p)) (predicate_mask_multiply mp (1/p)) A"
+  sorry
+
+(* lemma fractionability_1:
+  assumes "sat ctxt \<omega> mh mp (syntactic_mult 1 A)"
+    shows "sat ctxt \<omega> mh mp A"
+  sorry *)
+
+lemma fractionability_pq:
     fixes p q :: preal
   assumes "p > 0" and "q > 0"
       and "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal p) A)"
     shows "sat ctxt (mult_nm_total_full \<omega> q) (field_mask_multiply mh q) (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) A)"
-  sorry
+proof -
+  define \<omega>\<^sub>0 where \<omega>\<^sub>0: "\<omega>\<^sub>0 = mult_nm_total_full \<omega> (1/p)"
+  define mh\<^sub>0 where mh\<^sub>0: "mh\<^sub>0 = field_mask_multiply mh (1/p)"
+  define mp\<^sub>0 where mp\<^sub>0: "mp\<^sub>0 = predicate_mask_multiply mp (1/p)"
+  show ?thesis
+    apply (rule fractionabilityI)
+    using assms(1) assms(2) less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq apply force
+  proof -
+    show "sat ctxt \<omega>\<^sub>0 mh\<^sub>0 mp\<^sub>0 A"
+      using \<omega>\<^sub>0 assms(1) assms(3) fractionability_inv mh\<^sub>0 mp\<^sub>0 by blast
+  next
+    show "mult_nm_total_full \<omega> q = mult_nm_total_full \<omega>\<^sub>0 (q*p)"
+      apply (simp add: \<omega>\<^sub>0)
+      by (metis assms(1) mult.commute nm_multiply_back_nm nm_multiply_twice)
+  next
+    show "field_mask_multiply mh q = field_mask_multiply mh\<^sub>0 (q*p)"
+      apply (simp add: mh\<^sub>0)
+      apply standard
+      by (metis (no_types, lifting) PosReal.field_divide_inverse PosReal.field_inverse assms(1) comp_apply lambda_one linorder_neq_iff mult.assoc mult.left_commute)
+  next
+    show "predicate_mask_multiply mp q = predicate_mask_multiply mp\<^sub>0 (q*p)"
+      apply (simp add: mp\<^sub>0)
+      apply standard
+      by (metis (no_types, lifting) PosReal.field_divide_inverse PosReal.field_inverse assms(1) comp_apply lambda_one linorder_neq_iff mult.assoc mult.left_commute)
+  qed
+qed
 
 (* lemma fractionability_original:
     fixes p q :: preal
   assumes "p > 0" and "q > 0"
-    shows "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal p) A) \<Longrightarrow> sat ctxt \<omega> (field_mask_multiply mh q) (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) A)"
+      and "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal p) A)"
+    shows "sat ctxt \<omega> (field_mask_multiply mh q) (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) A)"
+  using assms(3)
 proof (induct A arbitrary: mh mp)
   case IH: (Atomic x)
   show ?case
   proof (cases x)
-    case (Pure x1)
+    case (Pure e)
     then show ?thesis
       by (smt (verit, best) IH SatAtomic_case atomic_assert.simps(5) atomic_assert.simps(7) syntactic_mult.simps(1) zero_mh_multiply zero_mp_multiply)
   next
@@ -521,10 +570,12 @@ lemma update_nm_total_full_store_unchanged:
 lemma eval_frac_mask_does_not_matter:
   fixes frac :: preal
   assumes "frac > 0"
+      and "supported_pred_expr e"
   shows "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow>
-         ctxt, (Some (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac))) \<turnstile> \<langle>e; (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac))\<rangle> [\<Down>]\<^sub>t Val v" and
-        "red_pure_exps_total ctxt (Some \<omega>) es \<omega> vs \<Longrightarrow>
+         ctxt, (Some (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac))) \<turnstile> \<langle>e; (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac))\<rangle> [\<Down>]\<^sub>t Val v"
+    and "red_pure_exps_total ctxt (Some \<omega>) es \<omega> vs \<Longrightarrow>
          red_pure_exps_total ctxt (Some (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac))) es (update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) frac)) vs"
+  using assms(2)
 proof (induct rule: red_pure_exp_total_red_pure_exps_total.inducts)
   case (RedLit \<omega>_def l uu)
   then show ?case
@@ -540,53 +591,49 @@ next
 next
   case (RedBinopLazy \<omega>_def e1 \<omega> v1 bop v e2)
   then show ?case
-    using red_pure_exp_total_red_pure_exps_total.RedBinopLazy by blast
+    by (simp add: red_pure_exp_total_red_pure_exps_total.RedBinopLazy)
 next
   case (RedBinop \<omega>_def e1 \<omega> v1 e2 v2 bop v)
   then show ?case
-    using red_pure_exp_total_red_pure_exps_total.RedBinop by blast
+    by (simp add: red_pure_exp_total_red_pure_exps_total.RedBinop)
 next
   case (RedBinopRightFailure \<omega>_def e1 \<omega> v1 e2 bop)
   then show ?case
-    using red_pure_exp_total_red_pure_exps_total.RedBinopRightFailure by blast
+    by (simp add: red_pure_exp_total_red_pure_exps_total.RedBinopRightFailure)
 next
   case (RedBinopOpFailure \<omega>_def e1 \<omega> v1 e2 v2 bop)
   then show ?case
-    using red_pure_exp_total_red_pure_exps_total.RedBinopOpFailure by blast
+    by (simp add: red_pure_exp_total_red_pure_exps_total.RedBinopOpFailure)
 next
   case (RedUnop \<omega>_def e \<omega> v unop v')
   then show ?case
-    using red_pure_exp_total_red_pure_exps_total.RedUnop by blast
+    by (simp add: red_pure_exp_total_red_pure_exps_total.RedUnop)
 next
   case (RedCondExpTrue \<omega>_def e1 \<omega> e2 r e3)
   then show ?case
-    using red_pure_exp_total_red_pure_exps_total.RedCondExpTrue by blast
+    by (simp add: red_pure_exp_total_red_pure_exps_total.RedCondExpTrue)
 next
   case (RedCondExpFalse \<omega>_def e1 \<omega> e3 r e2)
   then show ?case
-    using red_pure_exp_total_red_pure_exps_total.RedCondExpFalse by blast
+    by (simp add: red_pure_exp_total_red_pure_exps_total.RedCondExpFalse)
 next
   case (RedOld \<omega> l \<phi> \<omega>_def' \<omega>_def e v)
-  then show ?case sorry
+  then show ?case by simp
 next
   case (RedOldFailure \<omega> l \<omega>_def e)
-  then show ?case sorry
+  then show ?case by simp
 next
   case (RedField \<omega>_def e \<omega> a f v)
   then show ?case sorry
 next
   case (RedFieldNullFailure \<omega>_def e \<omega> f)
-  then show ?case
-    using red_pure_exp_total_red_pure_exps_total.RedFieldNullFailure by blast
+  then show ?case sorry
 next
   case (RedPermNull \<omega>_def e \<omega> f)
-  then show ?case
-    using red_pure_exp_total_red_pure_exps_total.RedPermNull by blast
+  then show ?case sorry
 next
   case (RedPerm \<omega>_def e \<omega> a f v)
-  then show ?case sorry
-  \<comment> \<open>Permission introspection does not satisfy this property.
-      However, it is not allowed inside predicates.\<close>
+  then show ?case by simp
 next
   case (RedUnfolding ubody \<omega> v p es)
   then show ?case sorry
@@ -720,7 +767,7 @@ proof (induction rule: consistent_external_wrt_ploc_consistent_external.inducts)
     using IH.hyps(2) assms less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq apply auto[1]
     apply (simp del: field_mask_multiply.simps predicate_mask_multiply.simps)
     apply (simp only: predicate_\<omega>_multiply)
-    apply (rule fractionability)
+    apply (rule fractionability_pq)
     using IH.hyps(2) apply blast
     apply (simp add: assms)
     using IH.IH(2) by fastforce

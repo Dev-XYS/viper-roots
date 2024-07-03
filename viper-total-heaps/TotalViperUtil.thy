@@ -190,6 +190,14 @@ lemma supported_assertion_no_unfolding:
    apply (metis atomic_assert_pred_rec.simps(1) atomic_assert_pred_rec.simps(3) pure_exp_pred.elims(2) supported_atomic_assert.elims(2) supported_pure_exp_no_unfolding)
   using supported_pure_exp_no_unfolding by auto
 
+text \<open>supported predicate body\<close>
+
+abbreviation supported_pred_expr
+  where "supported_pred_expr e \<equiv> no_perm_pure_exp e \<and> no_old_pure_exp e"
+
+abbreviation supported_pred_body
+  where "supported_pred_body A \<equiv> no_perm_assertion A \<and> no_old_assertion A"
+
 subsection \<open>Free variables\<close>
 
 fun free_var_pure_exp :: "pure_exp \<Rightarrow> var set"
