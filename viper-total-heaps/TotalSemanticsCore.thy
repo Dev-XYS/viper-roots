@@ -371,9 +371,10 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
      ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      a = the_address r;
      p \<ge> 0;
-     if r = Null then p = 0 else mh = singleton_mh (a,f) (Abs_preal p)
+     if r = Null then p = 0 else mh = singleton_mh (a,f) (Abs_preal p);
+     mp = zero_mp
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> mh zero_mp (Atomic (Acc e_r f (PureExp e_p)))"
+   sat ctxt \<omega> mh mp (Atomic (Acc e_r f (PureExp e_p)))"
 
 \<comment>\<open>A wildcard permission accepts any positive amount of permission.\<close>
 | SatAccWildcard:
@@ -382,28 +383,34 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
      \<comment>\<open>\<^term>\<open>q\<close> satisfies the right-hand side if \<^prop>\<open>mh (a,f) \<noteq> 0\<close> (thm prat_exists_stricly_smaller_nonzero).
      If \<^prop>\<open>mh (a,f) \<noteq> 0\<close> does not hold, then the exhale fails and the value of q is irrelevant. \<close>
      r \<noteq> Null;
-     is_singleton_mh (a,f) mh
+     is_singleton_mh (a,f) mh;
+     mp = zero_mp
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> mh zero_mp (Atomic (Acc e_r f Wildcard))"
+   sat ctxt \<omega> mh mp (Atomic (Acc e_r f Wildcard))"
 
 \<comment>\<open>sat acc(P(es), p)\<close>
 | SatAccPred:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
      ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      p \<ge> 0;
+     mh = zero_mh;
      mp = singleton_mp (pred_id,v_args) (Abs_preal p)
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> zero_mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
+   sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
 
 | SatAccPredWildcard:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
+     mh = zero_mh;
      is_singleton_mp (pred_id,v_args) mp
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> zero_mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
+   sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
 
 | SatPure:
-  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True) \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> zero_mh zero_mp (Atomic (Pure e))"
+  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
+     mh = zero_mh;
+     mp = zero_mp
+   \<rbrakk> \<Longrightarrow>
+   sat ctxt \<omega> mh mp (Atomic (Pure e))"
 
 \<comment>\<open>sat A && B\<close>
 | SatStar:
