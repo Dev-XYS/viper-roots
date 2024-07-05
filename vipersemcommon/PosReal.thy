@@ -4,7 +4,7 @@ text \<open>In this file, we define the type of positive realionals, which we us
 extended heaps (see FractionalHeap.thy).\<close>
 
 theory PosReal
-  imports Main HOL.Real PosPerm
+  imports Main HOL.Real PosPerm HOL.Topological_Spaces HOL.Limits
 begin
 
 typedef preal = "{ r :: real |r. r \<ge> 0}" by fastforce
@@ -462,6 +462,20 @@ instance proof
   show "\<And>a x b y. a = padd x b \<Longrightarrow> a = padd y b \<Longrightarrow> x = y" 
     by (transfer) simp
 qed
+
+end
+
+instantiation preal :: topological_space
+begin
+
+instance sorry
+
+end
+
+instantiation preal :: topological_comm_monoid_add
+begin
+
+instance sorry
 
 end
 

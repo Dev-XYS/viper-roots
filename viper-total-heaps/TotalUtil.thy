@@ -19,6 +19,10 @@ primrec option_fold :: "('a \<Rightarrow> 'b) \<Rightarrow> 'b \<Rightarrow> 'a 
     "option_fold f e (Some x) = f x"
   | "option_fold f e None = e"
 
+lemma option_fold_cong [fundef_cong]:
+  "x = y \<Longrightarrow> a = b \<Longrightarrow> (\<And>a. a \<in> set_option x \<Longrightarrow> f a = g a) \<Longrightarrow> option_fold f a x = option_fold g b y"
+  by (metis elem_set not_Some_eq option_fold.simps(1) option_fold.simps(2))
+
 fun nth_option :: "'a list => nat => 'a option"
   where "nth_option xs n = (if n < length xs then Some (nth xs n) else None)"
 
