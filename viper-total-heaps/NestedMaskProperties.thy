@@ -18,7 +18,6 @@ termination
    apply blast
   by (metis (mono_tags, lifting) get_nm_loc_nm.elims in_lex_prod mem_Collect_eq)
 
-thm nested_mask_merge.induct
 
 lemma nm_loc_sum_add:
   assumes "nm_loc_sum loc nm\<^sub>1 p"

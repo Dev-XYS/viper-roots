@@ -198,7 +198,7 @@ inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_st
 | RedUnfoldingDefNoPred:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>_def) es \<omega> (Some vs);
      ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     get_mp_total_full \<omega>_def (pred_id,vs) < 1 \<rbrakk> \<Longrightarrow> \<comment>\<open>insufficient permission\<close>
+     get_mp_total_full \<omega>_def (pred_id,vs) = 0 \<rbrakk> \<Longrightarrow> \<comment>\<open>insufficient permission\<close>
    ctxt, (Some \<omega>_def) \<turnstile> \<langle>Unfolding p es ubody ; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
 | RedUnfoldingDef:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>_def) es \<omega> (Some vs);
@@ -428,8 +428,11 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Imp e A)"
 | SatImpFalse:
-  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False) \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> zero_mh zero_mp (Imp e A)"
+  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
+     mh = zero_mh;
+     mp = zero_mp
+   \<rbrakk> \<Longrightarrow>
+   sat ctxt \<omega> mh mp (Imp e A)"
 
 \<comment>\<open>sat e ? A : B\<close>
 | SatCondTrue:
