@@ -28,9 +28,15 @@ lemma wf_nested_mask_rel: "wf nested_mask_rel"
   apply (rule nested_mask.induct)
   by blast
 
+fun field_mask_merge :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask" where
+  "field_mask_merge mh\<^sub>1 mh\<^sub>2 = (mh\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mh\<^sub>2)"
+
+fun predicate_mask_merge :: "'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a predicate_mask" where
+  "predicate_mask_merge mp\<^sub>1 mp\<^sub>2 = (mp\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mp\<^sub>2)"
+
 function (sequential) nested_mask_merge :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
   "nested_mask_merge (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) =
-                (NM (mh\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mh\<^sub>2) (mp\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mp\<^sub>2)
+                (NM (field_mask_merge mh\<^sub>1 mh\<^sub>2) (predicate_mask_merge mp\<^sub>1 mp\<^sub>2)
                 (\<lambda>p. (case (fnm\<^sub>1 p) of None \<Rightarrow> (fnm\<^sub>2 p) | Some nm\<^sub>1 \<Rightarrow> (case (fnm\<^sub>2 p) of None \<Rightarrow> Some nm\<^sub>1 | Some nm\<^sub>2 \<Rightarrow> Some (nested_mask_merge nm\<^sub>1 nm\<^sub>2))))) "
   by (pat_completeness) auto
 termination

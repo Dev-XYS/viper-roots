@@ -479,4 +479,18 @@ instance sorry
 
 end
 
+instantiation preal :: topological_semigroup_mult
+begin
+
+instance sorry
+
+end
+
+instantiation preal :: semiring_0
+begin
+
+instance sorry
+
+end
+
 end

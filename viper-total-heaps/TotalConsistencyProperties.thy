@@ -329,8 +329,7 @@ next
     apply (rule red_pure_exp_total_red_pure_exps_total.RedUnfoldingDef)
     using IH es_sup apply simp
       defer 1
-    using IH apply simp
-    using IH apply simp
+    using IH apply (simp, simp)
     sorry
 next
   case IH: (RedSubFailure e' \<omega>_def \<omega>)
