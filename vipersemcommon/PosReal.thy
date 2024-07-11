@@ -160,18 +160,19 @@ end
 
 
 
-abbreviation pwrite :: preal where "pwrite \<equiv> 1"
+abbreviation (input) pwrite :: preal where "pwrite \<equiv> 1"
 abbreviation half :: preal where "half \<equiv> 1 / (Abs_preal 2)"
-abbreviation pnone :: preal where "pnone \<equiv> 0"
+abbreviation (input) pnone :: preal where "pnone \<equiv> 0"
 
 abbreviation pmin :: "preal \<Rightarrow> preal \<Rightarrow> preal" where "pmin \<equiv> inf"
 abbreviation pmax :: "preal \<Rightarrow> preal \<Rightarrow> preal" where "pmax \<equiv> sup"
 
-abbreviation padd :: "preal \<Rightarrow> preal \<Rightarrow> preal" where "padd \<equiv> (+)"
-abbreviation pmult :: "preal \<Rightarrow> preal \<Rightarrow> preal" where "pmult \<equiv> (*)"
+abbreviation (input) padd :: "preal \<Rightarrow> preal \<Rightarrow> preal" where "padd \<equiv> (+)"
+abbreviation (input) pmult :: "preal \<Rightarrow> preal \<Rightarrow> preal" where "pmult \<equiv> (*)"
 abbreviation pinv :: "preal \<Rightarrow> preal" where "pinv \<equiv> inverse"
-abbreviation pdiv :: "preal \<Rightarrow> preal \<Rightarrow> preal" where "pdiv \<equiv> (/)"
+abbreviation (input) pdiv :: "preal \<Rightarrow> preal \<Rightarrow> preal" where "pdiv \<equiv> (/)"
 
+(* TODO: make the following abbreviations? *)
 lift_definition pgte :: "preal \<Rightarrow> preal \<Rightarrow> bool" is "(\<ge>)" done
 lift_definition pgt :: "preal \<Rightarrow> preal \<Rightarrow> bool" is "(>)" done
 lift_definition ppos :: "preal \<Rightarrow> bool" is "\<lambda>p. p > 0" done
@@ -187,6 +188,54 @@ instance proof
 qed
 
 end
+
+lemma pgt_gt :
+  "pgt = (>)"
+  apply (rule ext, rule ext)
+  by (simp add: PosReal.pgt.rep_eq less_preal.rep_eq)
+
+lemma pgte_gte :
+  "pgte = (\<ge>)"
+  apply (rule ext, rule ext)
+  by (simp add: PosReal.pgte.rep_eq less_eq_preal.rep_eq)
+
+lemma preal_not_0_gt_0 :
+  "(p::preal) \<noteq> 0 \<longleftrightarrow> 0 < p"
+  apply (transfer) by fastforce
+
+lemma gr_0_is_ppos:
+  "(x :: preal) > 0 \<longleftrightarrow> ppos x"
+  apply transfer
+  by simp
+
+lemmas norm_preal =
+  gr_0_is_ppos[symmetric]
+  pgt_gt
+  pgte_gte
+  preal_not_0_gt_0
+
+lemmas preal_to_real =
+  less_eq_preal.rep_eq
+  less_preal.rep_eq
+  inf_preal.rep_eq
+  sup_preal.rep_eq
+  minus_preal.rep_eq
+  plus_preal.rep_eq
+  zero_preal.rep_eq
+  one_preal.rep_eq
+  divide_preal.rep_eq
+  Rep_preal_inject[symmetric]
+  Rep_preal_inverse
+  Abs_preal_inverse
+
+lemma preal_sub_ppos :
+  assumes "ppos (p1 - p2)"
+  shows "ppos p1"
+  using assms
+  apply (simp add:norm_preal preal_to_real)
+  apply (transfer)
+  apply (clarsimp)
+  by argo
 
 lemma preal_pgt_pnone: "pgt p1 pnone \<Longrightarrow> p1 \<noteq> pnone"
   by (transfer) simp
@@ -217,6 +266,13 @@ proof transfer
   ultimately show "\<exists>r\<in>{r |r. 0 \<le> r}. p = q + r"
     by blast
 qed
+
+lemma pminus_strictly_smaller:
+  assumes "(p :: preal) > q" 
+      and "q > 0"
+    shows "p > (p - q)"
+  using assms
+  by (simp add: preal_to_real)
 
 lemma positive_real_preal:
   assumes "p > 0"

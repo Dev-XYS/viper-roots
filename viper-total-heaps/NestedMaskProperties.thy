@@ -397,7 +397,8 @@ proof -
   proof -
     have "pf' has_sumA (p - mh loc - q + r)"
       by (metis \<open>pf ploc = q\<close> has_sumA_nonneg_change_one_preal pf'_def pf_split)
-    moreover have "p - mh loc - q + r = p - q + r - mh loc" sorry
+    moreover have "p - mh loc - q + r = p - q + r - mh loc"
+      by (smt (verit, ccfv_SIG) Rep_preal_inject \<open>mh loc \<le> p - q + r\<close> \<open>pf ploc = q\<close> all_pos dual_order.trans has_sumA_nonneg_ge_one_preal minus_preal.rep_eq pf_split plus_preal.rep_eq psub_smaller)
     ultimately show "pf' has_sumA (p - q + r - mh loc)"
       by simp
   qed
