@@ -33,16 +33,19 @@ subsection \<open>Shift Operations\<close>
 
 inductive shift_up :: "predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool" where
   ShiftAny:
-  "\<lbrakk> mh = get_mh_nm nm;
-     mp = get_mp_nm nm;
-     Some pnm = get_nm_loc_nm nm (pred_id,vs);
+  "\<lbrakk> nm = NM mh mp fnm;
+     Some pnm = fnm (pred_id,vs);
      p = mp (pred_id,vs);
      q \<le> p;
      q \<noteq> 0;
      mp' = mp( (pred_id,vs) := p - q );
      fnm' = fnm( (pred_id,vs) := if q = p then None else Some (nested_mask_multiply pnm ((p - q) / p)) );
-     nm' = NM mh np' fnm' \<rbrakk> \<Longrightarrow>
-     shift_up pred_id vs q nm (nested_mask_merge nm' (nested_mask_multiply pnm (q / p)))"
+     nm'_sub = NM mh mp' fnm';
+     nm' = nested_mask_merge nm'_sub (nested_mask_multiply pnm (q / p)) \<rbrakk> \<Longrightarrow>
+     shift_up pred_id vs q nm nm'"
+
+inductive_cases shift_up_case: "shift_up pred_id vs q nm nm'"
+inductive_simps shift_up_simp: "shift_up pred_id vs q nm nm'"
 
 \<comment> \<open>End \<^const>\<open>shift_up\<close>\<close>
 

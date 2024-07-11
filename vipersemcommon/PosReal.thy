@@ -486,6 +486,12 @@ proof -
   then show ?thesis by auto
 qed
 
+lemma greater_minus_plus:
+  fixes a b :: preal
+  assumes "a \<ge> b"
+  shows "a - b + b = a"
+  using assms minus_preal.rep_eq plus_preal.rep_eq preal_to_real(10) by auto
+
 instantiation preal :: pos_perm
 begin
 

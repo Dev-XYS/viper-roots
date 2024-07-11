@@ -321,7 +321,7 @@ lemma has_sumA_nonneg_change_one_preal:
 
 \<comment> \<open>Nested mask summation - replacing one sub-mask\<close>
 
-lemma nm_loc_sum_change_sum_None:
+(* lemma nm_loc_sum_change_sum_None:
   assumes "nm_loc_sum loc (NM mh mp fnm) p"
       and "option_fold (\<lambda>nm. nm_loc_sum loc nm q) (q = 0) (fnm ploc)"
     shows "nm_loc_sum loc (NM mh mp (fnm( ploc := None ))) (p - q)"
@@ -362,14 +362,14 @@ next
   show ?thesis
     apply simp using pf'_split
     using pf_split pf'_def by auto
-qed
+qed *)
 
 
 lemma nm_loc_sum_change_sum:
   assumes "nm_loc_sum loc (NM mh mp fnm) p"
       and "option_fold (\<lambda>nm. nm_loc_sum loc nm q) (q = 0) (fnm ploc)"
       and "option_fold (\<lambda>nm. nm_loc_sum loc nm r) (r = 0) nm'"
-    shows "nm_loc_sum loc (NM mh mp (fnm( ploc := nm' ))) (p - q + r)"
+    shows "nm_loc_sum loc (NM mh mp' (fnm( ploc := nm' ))) (p - q + r)"
 proof -
   from assms(1) obtain pf where pf_split:
     "mh loc \<le> p \<and>
