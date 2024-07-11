@@ -468,6 +468,8 @@ end
 instantiation preal :: topological_space
 begin
 
+lift_definition open_preal :: "preal set \<Rightarrow> bool" is "open \<circ> image Rep_preal" done
+
 instance sorry
 
 end
@@ -492,5 +494,33 @@ begin
 instance sorry
 
 end
+
+instantiation preal :: t2_space
+begin
+
+instance sorry
+
+end
+
+(* instantiation preal :: topological_ab_group_add
+begin
+
+instance sorry
+
+end
+
+instantiation preal :: ordered_comm_monoid_add
+begin
+
+instance sorry
+
+end
+
+instantiation preal :: linorder_topology
+begin
+
+instance sorry
+
+end *)
 
 end

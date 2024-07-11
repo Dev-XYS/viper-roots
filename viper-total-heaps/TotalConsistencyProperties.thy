@@ -71,15 +71,11 @@ qed
 
 lemma singleton_mh_multiply:
   shows "singleton_mh loc (q * p) = ((*) q) \<circ> singleton_mh loc p"
-  apply standard
-  apply simp
-  by (metis Rep_preal_inverse mult_eq_0_iff times_preal.rep_eq zero_preal.rep_eq)
+  by (standard, simp)
 
 lemma singleton_mp_multiply:
   shows "singleton_mp loc (q * p) = ((*) q) \<circ> singleton_mp loc p"
-  apply standard
-  apply simp
-  by (metis Rep_preal_inverse mult_eq_0_iff times_preal.rep_eq zero_preal.rep_eq)
+  by (standard, simp)
 
 
 \<comment> \<open>Helper lemmas on masks and \<^const>\<open>nested_mask_multiply\<close>\<close>
@@ -87,16 +83,12 @@ lemma singleton_mp_multiply:
 lemma zero_mh_multiply:
   fixes frac :: preal
   shows "field_mask_multiply zero_mh frac = zero_mh"
-  apply standard
-  apply simp
-  by (metis Rep_preal_inverse mult_zero_right times_preal.rep_eq zero_preal.rep_eq)
+  by (standard, simp)
 
 lemma zero_mp_multiply:
   fixes frac :: preal
   shows "predicate_mask_multiply zero_mp frac = zero_mp"
-  apply standard
-  apply simp
-  by (metis Rep_preal_inverse mult_zero_right times_preal.rep_eq zero_preal.rep_eq)
+  by (standard, simp)
 
 lemma get_mh_multiply [simp]:
   fixes frac :: preal
