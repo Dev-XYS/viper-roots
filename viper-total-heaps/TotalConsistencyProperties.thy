@@ -125,6 +125,60 @@ lemma mp_split_multiply:
   apply standard
   by (metis (no_types, opaque_lifting) PosReal.pmult_distr assms comp_eq_dest_lhs fun_comb_def mp_split.simps)
 
+lemma mh_split_zero:
+  assumes "mh_split mh zero_mh zero_mh"
+  shows "mh = zero_mh"
+  apply standard
+  apply simp
+  by (metis add.right_neutral assms fun_comb_def mh_split.elims(2) zero_mh.simps)
+
+lemma mp_split_zero:
+  assumes "mp_split mp zero_mp zero_mp"
+  shows "mp = zero_mp"
+  apply standard
+  apply simp
+  by (metis add.right_neutral assms fun_comb_def mp_split.simps zero_mp.simps)
+
+lemma mh_split_twice:
+  assumes "mh_split s a b"
+      and "mh_split a a1 a2"
+      and "mh_split b b1 b2"
+      and "mh_split s1 a1 b1"
+      and "mh_split s2 a2 b2"
+    shows "mh_split s s1 s2"
+  apply simp
+  apply standard
+  apply (simp add: fun_comb_def)
+proof -
+  fix x
+  have "s1 x = a1 x + b1 x"
+    by (metis assms(4) fun_comb_def mh_split.elims(1))
+  moreover have "s2 x = a2 x + b2 x"
+    by (metis assms(5) fun_comb_def mh_split.elims(1))
+  ultimately show "s x = s1 x + s2 x"
+    by (metis (no_types, lifting) ab_semigroup_add_class.add_ac(1) assms(1-3) fun_comb_def group_cancel.add2 mh_split.elims(2))
+qed
+
+lemma mp_split_twice:
+  assumes "mp_split s a b"
+      and "mp_split a a1 a2"
+      and "mp_split b b1 b2"
+      and "mp_split s1 a1 b1"
+      and "mp_split s2 a2 b2"
+    shows "mp_split s s1 s2"
+  apply simp
+  apply standard
+  apply (simp add: fun_comb_def)
+proof -
+  fix x
+  have "s1 x = a1 x + b1 x"
+    by (metis assms(4) fun_comb_def mp_split.elims(1))
+  moreover have "s2 x = a2 x + b2 x"
+    by (metis assms(5) fun_comb_def mp_split.elims(1))
+  ultimately show "s x = s1 x + s2 x"
+    by (metis (no_types, lifting) ab_semigroup_add_class.add_ac(1) assms(1-3) fun_comb_def group_cancel.add2 mp_split.elims(2))
+qed
+
 
 \<comment> \<open>Other helper lemmas\<close>
 
@@ -361,31 +415,7 @@ next
 qed *)
 
 
-\<comment> \<open>Combinability of fractional resources.\<close>
-
-lemma fraction_combinability:
-  assumes "sat ctxt \<phi> mh\<^sub>1 mp\<^sub>1 (syntactic_mult (Rep_preal p) A)"
-      and "sat ctxt \<phi> mh\<^sub>2 mp\<^sub>2 (syntactic_mult (Rep_preal q) A)"
-      and "mh_split mh mh\<^sub>1 mh\<^sub>2"
-      and "mp_split mp mp\<^sub>1 mp\<^sub>2"
-  shows "sat ctxt \<phi> mh mp (syntactic_mult (Rep_preal (p + q)) A)"
-  oops
-
-
-\<comment> \<open>A fraction of the mask satisfies the syntactic multiplication of the assertion.\<close>
-
-inductive_cases SatAtomic_case: "sat ctxt \<omega> mh mp (Atomic x)"
-inductive_cases SatAcc_case: "sat ctxt \<omega> mh mp (Atomic (Acc e_r f (PureExp e_p)))"
-inductive_cases SatAccWildcard_case: "sat ctxt \<omega> mh mp (Atomic (Acc e_r f Wildcard))"
-inductive_cases SatAccPred_case: "sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
-inductive_cases SatAccPredWildcard_case: "sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
-inductive_cases SatImp_case: "sat ctxt \<omega> mh mp (Imp e A)"
-inductive_cases SatCond_case: "sat ctxt \<omega> mh mp (CondAssert e A B)"
-inductive_cases SatImpureAnd_case: "sat ctxt \<omega> mh mp (ImpureAnd A B)"
-inductive_cases SatImpureOr_case: "sat ctxt \<omega> mh mp (ImpureOr A B)"
-inductive_cases SatWand_case: "sat ctxt \<omega> mh mp (A --* B)"
-inductive_cases SatForAll_case: "sat ctxt \<omega> mh mp (ForAll ty A)"
-inductive_cases SatExists_case: "sat ctxt \<omega> mh mp (Exists ty A)"
+\<comment> \<open>Helper lemmas on \<^const>\<open>sat\<close>\<close>
 
 lemma sat_Acc_mp_zero:
   assumes "sat ctxt \<omega> mh mp (Atomic (Acc e_r f perm))"
@@ -420,6 +450,130 @@ lemma sat_Imp_False_only_zero:
   using assms(1) apply blast
   using assms(2) eval_is_deterministic apply blast
   done
+
+
+\<comment> \<open>Combinability of fractional resources.\<close>
+
+lemma fraction_combinability:
+  assumes "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult (Rep_preal p) A)"
+      and "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult (Rep_preal q) A)"
+      and "mh_split mh mh\<^sub>1 mh\<^sub>2"
+      and "mp_split mp mp\<^sub>1 mp\<^sub>2"
+      and "supported_pred_body A"
+    shows "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal (p + q)) A)"
+  using assms
+proof (induct A arbitrary: mh\<^sub>1 mh\<^sub>2 mp\<^sub>1 mp\<^sub>2 mh mp)
+  case (Atomic x)
+  then show ?case sorry
+next
+  case IH: (Imp e A)
+  have e_sup: "supported_pred_expr e" and A_sup: "supported_pred_body A"
+    using IH.prems(5) by force+
+  from IH consider (True) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+               (False) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    using sat_Imp_True_or_False
+    by (metis syntactic_mult.simps(4))
+  then show ?case
+  proof (cases)
+    case True
+    show ?thesis
+      apply simp
+      by (metis A_sup IH.hyps IH.prems(1) IH.prems(2) IH.prems(3) IH.prems(4) SatImpTrue SatImp_case True eval_is_deterministic extended_val.inject syntactic_mult.simps(4) val.inject(2))
+  next
+    case False
+    hence "mh\<^sub>1 = zero_mh" and "mh\<^sub>2 = zero_mh" and "mp\<^sub>1 = zero_mp" and "mp\<^sub>2 = zero_mp"
+         apply (metis IH.prems(1) sat_Imp_False_only_zero(1) syntactic_mult.simps(4))
+      apply (metis False IH.prems(2) sat_Imp_False_only_zero(1) syntactic_mult.simps(4))
+      apply (metis False IH.prems(1) sat_Imp_False_only_zero(2) syntactic_mult.simps(4))
+      by (metis False IH.prems(2) sat_Imp_False_only_zero(2) syntactic_mult.simps(4))
+    hence "mh = zero_mh" and "mp = zero_mp"
+      using IH.prems(3) mh_split_zero apply blast
+      using IH.prems(4) \<open>mp\<^sub>1 = zero_mp\<close> \<open>mp\<^sub>2 = zero_mp\<close> mp_split_zero by blast
+    show ?thesis
+      apply simp
+      apply (rule SatImpFalse)
+        apply (simp add: False)
+      using IH \<open>mh = zero_mh\<close> \<open>mp = zero_mp\<close> by force+
+  qed
+next
+  case IH: (CondAssert e A B)
+  have e_sup: "supported_pred_expr e" and A_sup: "supported_pred_body A" and B_sup: "supported_pred_body B"
+    using IH.prems(5) by force+
+  from IH consider (True) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+               (False) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    using sat_Cond_True_or_False
+    by (metis syntactic_mult.simps(11))
+  then show ?case
+  proof (cases)
+    case True
+    then show ?thesis
+      by (smt (verit) A_sup IH.hyps(1) IH.prems(1) IH.prems(2) IH.prems(3) IH.prems(4) SatCond_case eval_is_deterministic extended_val.inject sat.simps syntactic_mult.simps(11) val.inject(2))
+  next
+    case False
+    then show ?thesis
+      by (smt (verit) B_sup IH.hyps(2) IH.prems(1) IH.prems(2) IH.prems(3) IH.prems(4) SatCond_case eval_is_deterministic extended_val.inject sat.simps syntactic_mult.simps(11) val.inject(2))
+  qed
+next
+  case (ImpureAnd A1 A2)
+  then show ?case
+    by (metis SatImpureAnd_case syntactic_mult.simps(8))
+next
+  case (ImpureOr A1 A2)
+  then show ?case
+    by (metis SatImpureOr_case syntactic_mult.simps(9))
+next
+  case IH: (Star A B)
+  hence A_sup: "supported_pred_body A" and B_sup: "supported_pred_body B"
+    by force+
+  from IH have "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult (Rep_preal p) A && syntactic_mult (Rep_preal p) B)"
+    by simp
+  then obtain mh\<^sub>1A mh\<^sub>1B mp\<^sub>1A mp\<^sub>1B where
+    mh_split_p: "mh_split mh\<^sub>1 mh\<^sub>1A mh\<^sub>1B" and
+    mp_split_p: "mp_split mp\<^sub>1 mp\<^sub>1A mp\<^sub>1B" and
+    sat_A_p: "sat ctxt \<omega> mh\<^sub>1A mp\<^sub>1A (syntactic_mult (Rep_preal p) A)" and
+    sat_B_p: "sat ctxt \<omega> mh\<^sub>1B mp\<^sub>1B (syntactic_mult (Rep_preal p) B)"
+    using SatStar_case[of ctxt \<omega> mh\<^sub>1 mp\<^sub>1]
+    by (metis (no_types, lifting) mh_split.simps mp_split.simps)
+  from IH have "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult (Rep_preal q) A && syntactic_mult (Rep_preal q) B)"
+    by simp
+  then obtain mh\<^sub>2A mh\<^sub>2B mp\<^sub>2A mp\<^sub>2B where
+    mh_split_q: "mh_split mh\<^sub>2 mh\<^sub>2A mh\<^sub>2B" and
+    mp_split_q: "mp_split mp\<^sub>2 mp\<^sub>2A mp\<^sub>2B" and
+    sat_A_q: "sat ctxt \<omega> mh\<^sub>2A mp\<^sub>2A (syntactic_mult (Rep_preal q) A)" and
+    sat_B_q: "sat ctxt \<omega> mh\<^sub>2B mp\<^sub>2B (syntactic_mult (Rep_preal q) B)"
+    using SatStar_case[of ctxt \<omega> mh\<^sub>2 mp\<^sub>2]
+    by (metis (no_types, lifting) mh_split.simps mp_split.simps)
+  obtain mhA mhB where mh_split_A: "mh_split mhA mh\<^sub>1A mh\<^sub>2A" and mh_split_B: "mh_split mhB mh\<^sub>1B mh\<^sub>2B"
+    by auto+
+  obtain mpA mpB where mp_split_A: "mp_split mpA mp\<^sub>1A mp\<^sub>2A" and mp_split_B: "mp_split mpB mp\<^sub>1B mp\<^sub>2B"
+    by auto+
+  show ?case
+  proof (simp, rule SatStar)
+    show "mh_split mh mhA mhB"
+      using IH.prems(3) mh_split_A mh_split_B mh_split_p mh_split_q mh_split_twice by blast
+    show "mp_split mp mpA mpB"
+      using IH.prems(4) mp_split_A mp_split_B mp_split_p mp_split_q mp_split_twice by blast
+    show "sat ctxt \<omega> mhA mpA (syntactic_mult (Rep_preal (p + q)) A)"
+      using IH(1) A_sup mh_split_A mp_split_A sat_A_p sat_A_q by blast
+    show "sat ctxt \<omega> mhB mpB (syntactic_mult (Rep_preal (p + q)) B)"
+      using IH(2) B_sup mh_split_B mp_split_B sat_B_p sat_B_q by blast
+  qed
+next
+  case (Wand A1 A2)
+  then show ?case
+    by (metis SatWand_case syntactic_mult.simps(10))
+next
+  case (ForAll x1a A)
+  then show ?case
+    by (metis SatForAll_case syntactic_mult.simps(6))
+next
+  case (Exists x1a A)
+  then show ?case
+    by (metis SatExists_case syntactic_mult.simps(7))
+qed
+
+
+\<comment> \<open>Fractionability of fractional resources.\<close>
 
 lemma fractionability_SatAcc:
     fixes p :: preal

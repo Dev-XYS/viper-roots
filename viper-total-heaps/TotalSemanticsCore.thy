@@ -450,6 +450,21 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
    sat ctxt \<omega> mh mp (CondAssert e A B)"
 
 
+inductive_cases SatAtomic_case: "sat ctxt \<omega> mh mp (Atomic x)"
+inductive_cases SatAcc_case: "sat ctxt \<omega> mh mp (Atomic (Acc e_r f (PureExp e_p)))"
+inductive_cases SatAccWildcard_case: "sat ctxt \<omega> mh mp (Atomic (Acc e_r f Wildcard))"
+inductive_cases SatAccPred_case: "sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
+inductive_cases SatAccPredWildcard_case: "sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
+inductive_cases SatImp_case: "sat ctxt \<omega> mh mp (Imp e A)"
+inductive_cases SatCond_case: "sat ctxt \<omega> mh mp (CondAssert e A B)"
+inductive_cases SatImpureAnd_case: "sat ctxt \<omega> mh mp (ImpureAnd A B)"
+inductive_cases SatImpureOr_case: "sat ctxt \<omega> mh mp (ImpureOr A B)"
+inductive_cases SatWand_case: "sat ctxt \<omega> mh mp (A --* B)"
+inductive_cases SatForAll_case: "sat ctxt \<omega> mh mp (ForAll ty A)"
+inductive_cases SatExists_case: "sat ctxt \<omega> mh mp (Exists ty A)"
+inductive_cases SatStar_case: "sat ctxt \<omega> mh mp (A && B)"
+
+
 subsection \<open>External Consistency\<close>
 
 inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool" and
