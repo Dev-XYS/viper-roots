@@ -454,17 +454,165 @@ lemma sat_Imp_False_only_zero:
 
 \<comment> \<open>Combinability of fractional resources.\<close>
 
+lemma combinability_SatAcc:
+    fixes p q :: preal
+  assumes "p > 0" and "q > 0"
+      and "supported_pred_expr e_r"
+      and "supported_pred_expr e_p"
+      and "sat ctxt \<omega> mh\<^sub>1 zero_mp (syntactic_mult (Rep_preal p) (Atomic (Acc e_r f (PureExp e_p))))"
+      and "sat ctxt \<omega> mh\<^sub>2 zero_mp (syntactic_mult (Rep_preal q) (Atomic (Acc e_r f (PureExp e_p))))"
+    shows "sat ctxt \<omega> (field_mask_merge mh\<^sub>1 mh\<^sub>2) zero_mp (syntactic_mult (Rep_preal (p + q)) (Atomic (Acc e_r f (PureExp e_p))))"
+proof -
+  obtain v_r where v_r: "ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)"
+    by (metis SatAcc_case assms(5) real_mult_permexpr.simps(2) syntactic_mult.simps(2))
+  define a where "a = the_address v_r"
+  from assms(5) have "sat ctxt \<omega> mh\<^sub>1 zero_mp (Atomic (Acc e_r f (PureExp (Binop (ELit (LPerm (Rep_preal p))) Mult e_p))))"
+    by simp
+  then obtain v_p_p where
+    v_p_p: "ctxt, (Some \<omega>) \<turnstile> \<langle>Binop (ELit (LPerm (Rep_preal p))) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_p)" and
+    v_p_p_nn:"v_p_p \<ge> 0" and
+    mh1: "if v_r = Null then v_p_p = 0 else mh\<^sub>1 = singleton_mh (a,f) (Abs_preal v_p_p)"
+    using SatAcc_case[of ctxt \<omega> mh\<^sub>1 zero_mp e_r f]
+    by (metis v_r a_def eval_is_deterministic extended_val.inject val.inject(4))
+  from assms(6) have "sat ctxt \<omega> mh\<^sub>2 zero_mp (Atomic (Acc e_r f (PureExp (Binop (ELit (LPerm (Rep_preal q))) Mult e_p))))"
+    by simp
+  then obtain v_p_q where
+    v_p_q: "ctxt, (Some \<omega>) \<turnstile> \<langle>Binop (ELit (LPerm (Rep_preal q))) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_q)" and
+    v_p_q_nn: "v_p_q \<ge> 0" and
+    mh2: "if v_r = Null then v_p_q = 0 else mh\<^sub>2 = singleton_mh (a,f) (Abs_preal v_p_q)"
+    using SatAcc_case[of ctxt \<omega> mh\<^sub>2 zero_mp e_r f]
+    by (metis v_r a_def eval_is_deterministic extended_val.inject val.inject(4))
+  then obtain v_p where
+    v_p: "ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v_p"
+    by (metis TotalSemanticsCoreHelper.RedBinop_case eval_binop_lazy.simps(23) option.distinct(1))
+  have "ctxt, (Some \<omega>) \<turnstile> \<langle>Binop (ELit (LPerm (Rep_preal (p + q)))) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (v_p_p + v_p_q))"
+  proof
+    show "ctxt, Some \<omega> \<turnstile> \<langle>ELit (LPerm (Rep_preal (p + q)));\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal (p + q)))"
+      by (metis RedLit val_of_lit.simps(3))
+  next
+    show "ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v_p"
+      using v_p by auto
+  next
+    show "eval_binop_lazy (VPerm (Rep_preal (p + q))) Mult = None"
+      by auto
+  next
+    show "eval_binop (VPerm (Rep_preal (p + q))) Mult v_p = BinopNormal (VPerm (v_p_p + v_p_q))"
+    proof (cases v_p)
+      case (VInt x1)
+      then show ?thesis sorry
+    next
+      case (VBool x2)
+      then show ?thesis using v_p_q
+        by (metis RedLit TotalSemanticsCoreHelper.RedBinop_case binop_result.distinct(3) eval_binop.simps(12) eval_binop_lazy.simps(23) eval_is_deterministic extended_val.inject option.distinct(1) v_p val_of_lit.simps(3))
+    next
+      case (VPerm x3)
+      then show ?thesis sorry
+    next
+      case (VRef x4)
+      then show ?thesis sorry
+    next
+      case (VAbs x5)
+      then show ?thesis sorry
+    qed
+  qed
+  moreover have "v_p_p + v_p_q \<ge> 0"
+    using v_p_p_nn v_p_q_nn by auto
+  moreover have "if v_r = Null then v_p_p + v_p_q = 0 else field_mask_merge mh\<^sub>1 mh\<^sub>2 = singleton_mh (a,f) (Abs_preal v_p_p + Abs_preal v_p_q)"
+    apply (cases "v_r = Null"; simp)
+    using mh1 mh2 apply auto[1]
+    apply standard
+    by (simp add: fun_comb_def mh1 mh2)
+  moreover have "Abs_preal v_p_p + Abs_preal v_p_q = Abs_preal (v_p_p + v_p_q)"
+    by (simp add: eq_onp_same_args plus_preal.abs_eq v_p_p_nn v_p_q_nn)
+  moreover note this
+  show ?thesis
+    apply simp
+    apply standard
+    using v_r apply blast
+    using calculation apply blast+
+    using calculation a_def apply force
+    by auto
+qed
+
+
+lemma combinability_SatAcc_Wildcard:
+  assumes "supported_pred_expr e_r"
+      and "sat ctxt \<omega> mh\<^sub>1 zero_mp (Atomic (Acc e_r f Wildcard))"
+      and "sat ctxt \<omega> mh\<^sub>2 zero_mp (Atomic (Acc e_r f Wildcard))"
+    shows "sat ctxt \<omega> (field_mask_merge mh\<^sub>1 mh\<^sub>2) zero_mp (Atomic (Acc e_r f Wildcard))"
+  sorry
+
+lemma combinability_SatAccPred:
+    fixes p q :: preal
+  assumes "p > 0" and "q > 0"
+      and "list_all supported_pred_expr e_args"
+      and "supported_pred_expr e_p"
+      and "sat ctxt \<omega> zero_mh mp\<^sub>1 (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args (PureExp e_p))))"
+      and "sat ctxt \<omega> zero_mh mp\<^sub>2 (syntactic_mult (Rep_preal q) (Atomic (AccPredicate pred_id e_args (PureExp e_p))))"
+    shows "sat ctxt \<omega> zero_mh (predicate_mask_merge mp\<^sub>1 mp\<^sub>2) (syntactic_mult (Rep_preal (p + q)) (Atomic (AccPredicate pred_id e_args (PureExp e_p))))"
+  sorry
+
+lemma combinability_SatAccPred_Wildcard:
+  assumes "list_all supported_pred_expr e_args"
+      and "sat ctxt \<omega> zero_mh mp\<^sub>1 (Atomic (AccPredicate pred_id e_args Wildcard))"
+      and "sat ctxt \<omega> zero_mh mp\<^sub>2 (Atomic (AccPredicate pred_id e_args Wildcard))"
+    shows "sat ctxt \<omega> zero_mh (predicate_mask_merge mp\<^sub>1 mp\<^sub>2) (Atomic (AccPredicate pred_id e_args Wildcard))"
+  sorry
+
 lemma fraction_combinability:
   assumes "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult (Rep_preal p) A)"
       and "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult (Rep_preal q) A)"
       and "mh_split mh mh\<^sub>1 mh\<^sub>2"
       and "mp_split mp mp\<^sub>1 mp\<^sub>2"
       and "supported_pred_body A"
+      and "p > 0" and "q > 0"
     shows "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal (p + q)) A)"
-  using assms
+  using assms(1-5)
 proof (induct A arbitrary: mh\<^sub>1 mh\<^sub>2 mp\<^sub>1 mp\<^sub>2 mh mp)
-  case (Atomic x)
-  then show ?case sorry
+  case IH: (Atomic x)
+  show ?case
+  proof (cases x)
+    case (Pure e)
+    then show ?thesis
+      by (smt (verit) IH.prems(1) IH.prems(2) IH.prems(3) IH.prems(4) SatAtomic_case atomic_assert.distinct(1) atomic_assert.distinct(3) mh_split_zero mp_split_zero syntactic_mult.simps(1))
+  next
+    case (Acc e_r f perm)
+    show ?thesis
+    proof (cases perm)
+      case (PureExp e_p)
+      moreover hence "supported_pred_expr e_r" and "supported_pred_expr e_p"
+        using Acc IH.prems(5) by force+
+      ultimately show ?thesis
+        using combinability_SatAcc[of p q e_r e_p ctxt \<omega> mh\<^sub>1 f mh\<^sub>2] IH assms(6,7)
+        by (metis Acc field_mask_merge.simps mh_split.elims(2) mp_split_zero sat_Acc_mp_zero syntactic_mult.simps(2))
+    next
+      case Wildcard
+      moreover hence "supported_pred_expr e_r"
+        using Acc IH.prems(5) by force
+      ultimately show ?thesis
+        using combinability_SatAcc_Wildcard[of e_r ctxt \<omega> mh\<^sub>1 f mh\<^sub>2] IH
+        by (smt (verit) Acc Rep_preal_inject assms(6) assms(7) field_mask_merge.simps less_preal.rep_eq mh_split.elims(2) mp_split_zero padd_pos prat_non_negative real_mult_permexpr.simps(1) sat_Acc_mp_zero syntactic_mult.simps(2) zero_preal.rep_eq)
+    qed
+  next
+    case (AccPredicate pred_id e_args perm)
+    show ?thesis
+    proof (cases perm)
+      case (PureExp e_p)
+      moreover hence "list_all supported_pred_expr e_args" and "supported_pred_expr e_p"
+         apply (metis (no_types, lifting) AccPredicate Ball_set IH.prems(5) assert_pred.elims(2) assert_pred_rec.simps(1) atomic_assert_pred.elims(2) atomic_assert_pred_rec.simps(5))
+        using AccPredicate IH.prems(5) calculation by auto
+      ultimately show ?thesis
+        using combinability_SatAccPred[of p q e_args e_p ctxt \<omega> mp\<^sub>1 pred_id mp\<^sub>2] IH assms(6,7)
+        by (metis (no_types, lifting) AccPredicate mh_split_zero mp_split.elims(2) predicate_mask_merge.simps sat_AccPred_mh_zero syntactic_mult.simps(3))
+    next
+      case Wildcard
+      moreover hence "list_all supported_pred_expr e_args"
+        by (metis (no_types, lifting) AccPredicate IH.prems(5) assert_pred.elims(2) assert_pred_rec.simps(1) atomic_assert_pred.elims(2) atomic_assert_pred_rec.simps(4) list_all_length)
+      ultimately show ?thesis
+        using combinability_SatAccPred_Wildcard[of e_args ctxt \<omega> mp\<^sub>1 pred_id mp\<^sub>2] IH
+        by (smt (verit, best) AccPredicate PosReal.ppos.rep_eq assms(6) assms(7) gr_0_is_ppos mh_split_zero mp_split.elims(2) padd_pos preal_not_0_gt_0 predicate_mask_merge.simps real_mult_permexpr.simps(1) sat_AccPred_mh_zero syntactic_mult.simps(3))
+    qed
+  qed
 next
   case IH: (Imp e A)
   have e_sup: "supported_pred_expr e" and A_sup: "supported_pred_body A"
