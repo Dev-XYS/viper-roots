@@ -489,6 +489,9 @@ inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a tot
    \<rbrakk> \<Longrightarrow>
    consistent_external ctxt \<phi>"
 
+inductive_cases SatStep_case: "consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p"
+inductive_cases SatAll_case: "consistent_external ctxt \<phi>"
+
 \<comment> \<open>Using inductive might be better than using a function.
     The generated @{thm consistent_external_wrt_ploc.simps} is equivalent to the function definition below.
     And the inductive definition gives us more?

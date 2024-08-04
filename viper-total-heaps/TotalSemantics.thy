@@ -405,13 +405,20 @@ always has at least one failure transition. This is in-sync with the Carbon impl
                else \<omega>)
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Label lbl) \<omega> (RNormal \<omega>')"
+
 | RedUnfold:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
      ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p);
-     W' = {\<omega>'. \<exists>\<phi>'. \<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr> \<and> unfold_rel ctxt pred_id v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>'};
-     th_result_rel (v_p > 0 \<and> v_p \<le> Rep_preal (get_mp_total_full \<omega> (pred_id, v_args))) True W' res
+     unfold_rel ctxt pred_id v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>';
+     \<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr>
    \<rbrakk> \<Longrightarrow>
-   red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> res"
+   red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
+| RedUnfoldFailure:
+  "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
+     ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p);
+     v_p \<le> 0 \<or> v_p > Rep_preal (get_mp_total_full \<omega> (pred_id,v_args))
+   \<rbrakk> \<Longrightarrow>
+   red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> RFailure"
 
 \<comment>\<open>\<^term>\<open>unfold_rel\<close> constrains permission \<^term>\<open>p\<close> to be strictly positive\<close>
 | RedUnfoldWildcard:
