@@ -67,7 +67,9 @@ lemma get_valid_locs_multiply:
   assumes "frac > 0"
   shows "get_valid_locs \<omega> = get_valid_locs (mult_nm_total_full \<omega> frac)"
   apply (simp add: get_valid_locs_def)
-  by (smt (verit, ccfv_SIG) Collect_cong PosReal.pgt.rep_eq assms less_preal.rep_eq mult_eq_0_iff preal_pnone_pgt times_preal.rep_eq zero_preal.rep_eq)
+  apply (rule Set.Collect_cong)
+  apply standard
+  using PosReal.pgt.rep_eq assms preal_pnone_pgt times_preal.rep_eq zero_preal.rep_eq by force+
 
 lemma nm_multiply_none:
     fixes frac :: preal
@@ -496,7 +498,7 @@ proof -
     show "eval_binop_lazy (VPerm (Rep_preal (p + q))) Mult = None"
       by auto
   next
-    show "eval_binop (VPerm (Rep_preal (p + q))) Mult v_p = BinopNormal (VPerm (v_p_p + v_p_q))"
+    show "eval_binop (Option.is_none (Some \<omega>)) (VPerm (Rep_preal (p + q))) Mult v_p = BinopNormal (VPerm (v_p_p + v_p_q))"
     proof (cases v_p)
       case (VInt x1)
       then show ?thesis sorry
@@ -761,7 +763,7 @@ proof -
       from v_p_eval show "ctxt, Some (mult_nm_total_full \<omega> p) \<turnstile> \<langle>e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
         using eval_frac_mask_does_not_matter(1) assms(1) assms(3) option.simps(9) by metis
     next
-      show "eval_binop (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
+      show "eval_binop (Option.is_none (Some (mult_nm_total_full \<omega> p))) (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
         by force
     qed
   next
@@ -845,7 +847,7 @@ proof -
       from v_p_eval show "ctxt, Some (mult_nm_total_full \<omega> p) \<turnstile> \<langle>e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
         using eval_frac_mask_does_not_matter(1) assms(1) assms(3) by fastforce
     next
-      show "eval_binop (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
+      show "eval_binop (Option.is_none (Some (mult_nm_total_full \<omega> p))) (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
         by force
     qed
   next
