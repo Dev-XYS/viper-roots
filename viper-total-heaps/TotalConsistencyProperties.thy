@@ -198,8 +198,8 @@ lemma supported_sub_expr_supported:
 \<comment> \<open>Expression evaluation is deterministic.\<close>
 
 lemma eval_is_deterministic:
-  assumes "ctxt, (Some \<omega>\<^sub>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t v\<^sub>1"
-      and "ctxt, (Some \<omega>\<^sub>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t v\<^sub>2"
+  assumes "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t v\<^sub>1"
+      and "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t v\<^sub>2"
     shows "v\<^sub>1 = v\<^sub>2"
   sorry
 
@@ -431,17 +431,17 @@ lemma sat_AccPred_mh_zero:
 
 lemma sat_Imp_True_or_False:
   assumes "sat ctxt \<omega> mh mp (Imp e A)"
-  shows "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True) \<or> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+  shows "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True) \<or> ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
   using SatImp_case assms by blast
 
 lemma sat_Cond_True_or_False:
   assumes "sat ctxt \<omega> mh mp (CondAssert e A B)"
-  shows "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True) \<or> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+  shows "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True) \<or> ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
   using SatCond_case assms by blast
 
 lemma sat_Imp_False_only_zero:
   assumes "sat ctxt \<omega> mh mp (Imp e A)"
-      and "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+      and "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
     shows "mh = zero_mh" and "mp = zero_mp"
    apply (rule SatImp_case)
      apply auto
@@ -456,7 +456,7 @@ lemma sat_Imp_False_only_zero:
 
 \<comment> \<open>Combinability of fractional resources.\<close>
 
-lemma combinability_SatAcc:
+(* lemma combinability_SatAcc:
     fixes p q :: preal
   assumes "p > 0" and "q > 0"
       and "supported_pred_expr e_r"
@@ -465,13 +465,13 @@ lemma combinability_SatAcc:
       and "sat ctxt \<omega> mh\<^sub>2 zero_mp (syntactic_mult (Rep_preal q) (Atomic (Acc e_r f (PureExp e_p))))"
     shows "sat ctxt \<omega> (field_mask_merge mh\<^sub>1 mh\<^sub>2) zero_mp (syntactic_mult (Rep_preal (p + q)) (Atomic (Acc e_r f (PureExp e_p))))"
 proof -
-  obtain v_r where v_r: "ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)"
+  obtain v_r where v_r: "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)"
     by (metis SatAcc_case assms(5) real_mult_permexpr.simps(2) syntactic_mult.simps(2))
   define a where "a = the_address v_r"
   from assms(5) have "sat ctxt \<omega> mh\<^sub>1 zero_mp (Atomic (Acc e_r f (PureExp (Binop (ELit (LPerm (Rep_preal p))) Mult e_p))))"
     by simp
   then obtain v_p_p where
-    v_p_p: "ctxt, (Some \<omega>) \<turnstile> \<langle>Binop (ELit (LPerm (Rep_preal p))) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_p)" and
+    v_p_p: "ctxt, None \<turnstile> \<langle>Binop (ELit (LPerm (Rep_preal p))) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_p)" and
     v_p_p_nn:"v_p_p \<ge> 0" and
     mh1: "if v_r = Null then v_p_p = 0 else mh\<^sub>1 = singleton_mh (a,f) (Abs_preal v_p_p)"
     using SatAcc_case[of ctxt \<omega> mh\<^sub>1 zero_mp e_r f]
@@ -479,20 +479,20 @@ proof -
   from assms(6) have "sat ctxt \<omega> mh\<^sub>2 zero_mp (Atomic (Acc e_r f (PureExp (Binop (ELit (LPerm (Rep_preal q))) Mult e_p))))"
     by simp
   then obtain v_p_q where
-    v_p_q: "ctxt, (Some \<omega>) \<turnstile> \<langle>Binop (ELit (LPerm (Rep_preal q))) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_q)" and
+    v_p_q: "ctxt, None \<turnstile> \<langle>Binop (ELit (LPerm (Rep_preal q))) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_q)" and
     v_p_q_nn: "v_p_q \<ge> 0" and
     mh2: "if v_r = Null then v_p_q = 0 else mh\<^sub>2 = singleton_mh (a,f) (Abs_preal v_p_q)"
     using SatAcc_case[of ctxt \<omega> mh\<^sub>2 zero_mp e_r f]
     by (metis v_r a_def eval_is_deterministic extended_val.inject val.inject(4))
   then obtain v_p where
-    v_p: "ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v_p"
+    v_p: "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v_p"
     by (metis TotalSemanticsCoreHelper.RedBinop_case eval_binop_lazy.simps(23) option.distinct(1))
-  have "ctxt, (Some \<omega>) \<turnstile> \<langle>Binop (ELit (LPerm (Rep_preal (p + q)))) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (v_p_p + v_p_q))"
+  have "ctxt, None \<turnstile> \<langle>Binop (ELit (LPerm (Rep_preal (p + q)))) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (v_p_p + v_p_q))"
   proof
-    show "ctxt, Some \<omega> \<turnstile> \<langle>ELit (LPerm (Rep_preal (p + q)));\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal (p + q)))"
+    show "ctxt, None \<turnstile> \<langle>ELit (LPerm (Rep_preal (p + q)));\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal (p + q)))"
       by (metis RedLit val_of_lit.simps(3))
   next
-    show "ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v_p"
+    show "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v_p"
       using v_p by auto
   next
     show "eval_binop_lazy (VPerm (Rep_preal (p + q))) Mult = None"
@@ -720,7 +720,7 @@ next
   case (Exists x1a A)
   then show ?case
     by (metis SatExists_case syntactic_mult.simps(7))
-qed
+qed *)
 
 
 \<comment> \<open>Fractionability of fractional resources.\<close>
@@ -734,8 +734,8 @@ lemma fractionability_SatAcc:
     shows "sat ctxt (mult_nm_total_full \<omega> p) (field_mask_multiply mh p) zero_mp (syntactic_mult (Rep_preal p) (Atomic (Acc e_r f (PureExp e_p))))"
 proof -
   from assms(4) obtain v_r v_p a where
-    v_r_eval: "ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)" and
-    v_p_eval: "ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
+    v_r_eval: "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)" and
+    v_p_eval: "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
     a_eval: "a = the_address v_r" and
     v_p_pos: "v_p \<ge> 0" and
     mh_sing: "if v_r = Null then v_p = 0 else mh = singleton_mh (a,f) (Abs_preal v_p)"
@@ -748,22 +748,22 @@ proof -
         prefer 5
     subgoal by auto
   proof -
-    from v_r_eval show "ctxt, Some (mult_nm_total_full \<omega> p) \<turnstile> \<langle>e_r; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)"
+    from v_r_eval show "ctxt, None \<turnstile> \<langle>e_r; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)"
       using eval_frac_mask_does_not_matter(1)
-      by (metis assms(1) assms(2) option.simps(9))
+      by (metis assms(1) assms(2) option.map_disc_iff)
   next
-    show "ctxt, Some (mult_nm_total_full \<omega> p) \<turnstile> \<langle>Binop (real_to_expr (Rep_preal p)) Mult e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p * v_p))"
+    show "ctxt, None \<turnstile> \<langle>Binop (real_to_expr (Rep_preal p)) Mult e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p * v_p))"
       apply (rule RedBinop)
          prefer 3
       subgoal by auto
     proof -
-      show "ctxt, Some (mult_nm_total_full \<omega> p) \<turnstile> \<langle>real_to_expr (Rep_preal p); mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p))"
+      show "ctxt, None \<turnstile> \<langle>real_to_expr (Rep_preal p); mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p))"
         by (metis RedLit real_to_expr.elims val_of_lit.simps(3))
     next
-      from v_p_eval show "ctxt, Some (mult_nm_total_full \<omega> p) \<turnstile> \<langle>e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
-        using eval_frac_mask_does_not_matter(1) assms(1) assms(3) option.simps(9) by metis
+      from v_p_eval show "ctxt, None \<turnstile> \<langle>e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
+        using eval_frac_mask_does_not_matter(1) assms(1) assms(3) option.simps(9) by fastforce
     next
-      show "eval_binop (Option.is_none (Some (mult_nm_total_full \<omega> p))) (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
+      show "eval_binop (Option.is_none None) (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
         by force
     qed
   next
@@ -784,7 +784,7 @@ lemma fractionability_SatAcc_Wildcard:
     shows "sat ctxt (mult_nm_total_full \<omega> p) (field_mask_multiply mh p) zero_mp (syntactic_mult (Rep_preal p) (Atomic (Acc e_r f Wildcard)))"
 proof -
   from assms(3) obtain v_r a where
-    v_r_eval: "ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)" and
+    v_r_eval: "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)" and
     a_eval: "a = the_address v_r" and
     v_r_non_null: "v_r \<noteq> Null" and
     mh_sing: "is_singleton_mh (a,f) mh"
@@ -800,8 +800,8 @@ proof -
        prefer 4
     subgoal by auto
   proof -
-    show "ctxt, Some (mult_nm_total_full \<omega> p) \<turnstile> \<langle>e_r;mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)"
-      using assms(1) assms(2) eval_frac_mask_does_not_matter(1) v_r_eval option.simps(9) by metis
+    show "ctxt, None \<turnstile> \<langle>e_r;mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)"
+      using assms(1) assms(2) eval_frac_mask_does_not_matter(1) v_r_eval option.simps(9) by fastforce
   next
     show "v_r \<noteq> Null" using v_r_non_null by auto
   next
@@ -821,8 +821,8 @@ lemma fractionability_SatAccPred:
     shows "sat ctxt (mult_nm_total_full \<omega> p) zero_mh (predicate_mask_multiply mp p) (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args (PureExp e_p))))"
 proof -
   from assms(4) obtain v_args v_p where
-    v_args_eval: "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args)" and
-    v_p_eval: "ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
+    v_args_eval: "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)" and
+    v_p_eval: "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
     v_p_pos: "v_p \<ge> 0" and
     mp_sing: "mp = singleton_mp (pred_id,v_args) (Abs_preal v_p)"
     using SatAccPred_case by meson
@@ -833,21 +833,21 @@ proof -
         prefer 4
     subgoal by auto
   proof -
-    from v_args_eval show "red_pure_exps_total ctxt (Some (mult_nm_total_full \<omega> p)) e_args (mult_nm_total_full \<omega> p) (Some v_args)"
+    from v_args_eval show "red_pure_exps_total ctxt None e_args (mult_nm_total_full \<omega> p) (Some v_args)"
       using eval_frac_mask_does_not_matter(2) assms(1,2) by fastforce
   next
-    show "ctxt, Some (mult_nm_total_full \<omega> p) \<turnstile> \<langle>Binop (real_to_expr (Rep_preal p)) Mult e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p * v_p))"
+    show "ctxt, None \<turnstile> \<langle>Binop (real_to_expr (Rep_preal p)) Mult e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p * v_p))"
       apply (rule RedBinop)
          prefer 3
       subgoal by auto
     proof -
-      show "ctxt, Some (mult_nm_total_full \<omega> p) \<turnstile> \<langle>real_to_expr (Rep_preal p); mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p))"
+      show "ctxt, None \<turnstile> \<langle>real_to_expr (Rep_preal p); mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p))"
         by (metis RedLit real_to_expr.elims val_of_lit.simps(3))
     next
-      from v_p_eval show "ctxt, Some (mult_nm_total_full \<omega> p) \<turnstile> \<langle>e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
+      from v_p_eval show "ctxt, None \<turnstile> \<langle>e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
         using eval_frac_mask_does_not_matter(1) assms(1) assms(3) by fastforce
     next
-      show "eval_binop (Option.is_none (Some (mult_nm_total_full \<omega> p))) (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
+      show "eval_binop (Option.is_none None) (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
         by force
     qed
   next
@@ -869,7 +869,7 @@ lemma fractionability_SatAccPred_Wildcard:
     shows "sat ctxt (mult_nm_total_full \<omega> p) zero_mh (predicate_mask_multiply mp p) (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args Wildcard)))"
 proof -
   from assms(3) obtain v_args where
-    v_args_eval: "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args)" and
+    v_args_eval: "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)" and
     mp_sing: "is_singleton_mp (pred_id,v_args) mp"
     using SatAccPredWildcard_case
     by (metis is_singleton_mp.elims(3))
@@ -882,7 +882,7 @@ proof -
       prefer 2
     subgoal by auto
   proof -
-    from v_args_eval show "red_pure_exps_total ctxt (Some (mult_nm_total_full \<omega> p)) e_args (mult_nm_total_full \<omega> p) (Some v_args)"
+    from v_args_eval show "red_pure_exps_total ctxt None e_args (mult_nm_total_full \<omega> p) (Some v_args)"
       using assms(1) assms(2) eval_frac_mask_does_not_matter(2) by fastforce
   next
     show "is_singleton_mp (pred_id, v_args) (PosReal.pmult p \<circ> mp)"
@@ -904,7 +904,7 @@ proof (induct A arbitrary: mh mp)
   show ?case
   proof (cases x)
     case (Pure e)
-    hence e_eval: "ctxt, Some \<omega> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" and
+    hence e_eval: "ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" and
           mh_zero: "mh = zero_mh" and
           mp_zero: "mp = zero_mp"
       using IH.prems(2) SatAtomic_case by blast+
@@ -912,8 +912,8 @@ proof (induct A arbitrary: mh mp)
       apply (simp del: mult_nm_total_full.simps field_mask_multiply.simps add: Pure)
       apply (rule SatPure)
     proof -
-      from e_eval show "ctxt, Some (mult_nm_total_full \<omega> p) \<turnstile> \<langle>e;mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
-        by (metis IH.prems(1) Pure assert_pred.elims(2) assert_pred_rec.simps(1) assms(1) atomic_assert_pred.elims(2) atomic_assert_pred_rec.simps(1) eval_frac_mask_does_not_matter(1) option.simps(9))
+      from e_eval show "ctxt, None \<turnstile> \<langle>e;mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+        by (metis IH.prems(1) Pure assert_pred.elims(2) assert_pred_rec.simps(1) assms(1) atomic_assert_pred.elims(2) atomic_assert_pred_rec.simps(1) eval_frac_mask_does_not_matter(1) option.map_disc_iff)
     next
       from mh_zero show "field_mask_multiply mh p = zero_mh"
         using zero_mh_multiply by auto
@@ -958,8 +958,8 @@ next
   case IH: (Imp e A)
   have e_sup: "supported_pred_expr e" and A_sup: "supported_pred_body A"
     using IH.prems(1) by force+
-  from IH consider (True) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
-               (False) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+  from IH consider (True) "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+               (False) "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
     using sat_Imp_True_or_False by fastforce
   then show ?case
   proof (cases)
@@ -968,7 +968,7 @@ next
       apply (simp only: syntactic_mult.simps)
       apply (rule SatImpTrue)
       using IH e_sup A_sup True eval_frac_mask_does_not_matter(1)
-      apply (metis assms(1) option.simps(9))
+       apply (metis assms(1) option.map_disc_iff)
       by (metis A_sup IH.hyps IH.prems(2) SatImp_case True eval_is_deterministic extended_val.inject val.inject(2))
   next
     case False
@@ -976,7 +976,7 @@ next
       apply (simp only: syntactic_mult.simps)
       apply (rule SatImpFalse)
       using IH e_sup A_sup False eval_frac_mask_does_not_matter(1)
-        apply (metis assms(1) option.simps(9))
+        apply (metis assms(1) option.map_disc_iff)
       using False IH.prems(2) sat_Imp_False_only_zero zero_mh_multiply zero_mp_multiply
       by blast+
   qed
@@ -984,8 +984,8 @@ next
   case IH: (CondAssert e A B)
   have e_sup: "supported_pred_expr e" and A_sup: "supported_pred_body A" and B_sup: "supported_pred_body B"
     using IH.prems(1) by force+
-  from IH consider (True) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
-               (False) "ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+  from IH consider (True) "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+               (False) "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
     using sat_Cond_True_or_False by fastforce
   then show ?case
   proof (cases)
@@ -994,7 +994,7 @@ next
       apply (simp only: syntactic_mult.simps)
       apply (rule SatCondTrue)
       using IH e_sup A_sup True eval_frac_mask_does_not_matter(1)
-       apply (metis assms(1) option.simps(9))
+       apply (metis assms(1) option.map_disc_iff)
       by (metis A_sup IH.hyps(1) IH.prems(2) SatCond_case True eval_is_deterministic extended_val.inject val.inject(2))
   next
     case False
@@ -1002,7 +1002,7 @@ next
       apply (simp only: syntactic_mult.simps)
       apply (rule SatCondFalse)
       using IH e_sup B_sup False eval_frac_mask_does_not_matter(1)
-       apply (metis assms(1) option.simps(9))
+       apply (metis assms(1) option.map_disc_iff)
       by (metis B_sup False IH.hyps(2) IH.prems(2) SatCond_case eval_is_deterministic extended_val.inject val.inject(2))
   qed
 next

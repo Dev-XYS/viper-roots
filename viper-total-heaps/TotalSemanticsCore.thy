@@ -370,8 +370,8 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
 \<comment>\<open>sat acc(e.f, p)
   The mask must have exactly p amount of permission.\<close>
   SatAcc:
-  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
-     ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
+  "\<lbrakk> ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
+     ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      a = the_address r;
      p \<ge> 0;
      if r = Null then p = 0 else mh = singleton_mh (a,f) (Abs_preal p);
@@ -381,7 +381,7 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
 
 \<comment>\<open>A wildcard permission accepts any positive amount of permission.\<close>
 | SatAccWildcard:
-  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
+  "\<lbrakk> ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
      a = the_address r;
      \<comment>\<open>\<^term>\<open>q\<close> satisfies the right-hand side if \<^prop>\<open>mh (a,f) \<noteq> 0\<close> (thm prat_exists_stricly_smaller_nonzero).
      If \<^prop>\<open>mh (a,f) \<noteq> 0\<close> does not hold, then the exhale fails and the value of q is irrelevant. \<close>
@@ -393,8 +393,8 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
 
 \<comment>\<open>sat acc(P(es), p)\<close>
 | SatAccPred:
-  "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
-     ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
+  "\<lbrakk> red_pure_exps_total ctxt None e_args \<omega> (Some v_args);
+     ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      p \<ge> 0;
      mh = zero_mh;
      mp = singleton_mp (pred_id,v_args) (Abs_preal p)
@@ -402,14 +402,14 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
    sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
 
 | SatAccPredWildcard:
-  "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
+  "\<lbrakk> red_pure_exps_total ctxt None e_args \<omega> (Some v_args);
      mh = zero_mh;
      is_singleton_mp (pred_id,v_args) mp
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
 
 | SatPure:
-  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
+  "\<lbrakk> ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
      mh = zero_mh;
      mp = zero_mp
    \<rbrakk> \<Longrightarrow>
@@ -426,12 +426,12 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
 
 \<comment>\<open>sat A \<longrightarrow> B\<close>
 | SatImpTrue:
-  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
+  "\<lbrakk> ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
      sat ctxt \<omega> mh mp A
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Imp e A)"
 | SatImpFalse:
-  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
+  "\<lbrakk> ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
      mh = zero_mh;
      mp = zero_mp
    \<rbrakk> \<Longrightarrow>
@@ -439,12 +439,12 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
 
 \<comment>\<open>sat e ? A : B\<close>
 | SatCondTrue:
-  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
+  "\<lbrakk> ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
      sat ctxt \<omega> mh mp A
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (CondAssert e A B)"
 | SatCondFalse:
-  "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
+  "\<lbrakk> ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
      sat ctxt \<omega> mh mp B
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (CondAssert e A B)"
