@@ -457,6 +457,7 @@ lemma sat_Imp_False_only_zero:
 
 \<comment> \<open>Combinability of fractional resources.\<close>
 
+
 (* lemma combinability_SatAcc:
     fixes p q :: preal
   assumes "p > 0" and "q > 0"
@@ -1205,7 +1206,8 @@ proof -
     "ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
     "unfold_rel ctxt pred_id vs (Abs_preal v_p) (get_total_full \<omega>) \<phi>'" and
     "\<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr>"
-    by (metis RedUnfold_case assms(3) assms(4) full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3))
+    using assms
+    by (auto elim: RedUnfold_case)
   then obtain nm nm' where
     "shift_up pred_id vs (Abs_preal v_p) nm nm'" and
     nm: "get_nm_total \<phi> = nm" and
@@ -1222,7 +1224,7 @@ proof -
     fnm': "fnm' = fnm( (pred_id,vs) := if Abs_preal v_p = p then None else Some (nested_mask_multiply pnm ((p - Abs_preal v_p) / p)) )" and
     nm'_sub: "nm'_sub = NM mh mp' fnm'" and
     nm': "nm' = nested_mask_merge nm'_sub (nested_mask_multiply pnm (Abs_preal v_p / p))"
-    by (smt shift_up_simp)
+    by (auto elim: shift_up_case)
 
   have "Abs_preal v_p \<noteq> p \<Longrightarrow> consistent_external ctxt (\<phi>\<lparr> get_nm_total := nested_mask_multiply pnm ((p - Abs_preal v_p) / p) \<rparr>)"
   proof -
