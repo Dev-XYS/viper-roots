@@ -50,27 +50,6 @@ inductive_simps shift_up_simp: "shift_up pred_id vs q nm nm'"
 \<comment> \<open>End \<^const>\<open>shift_up\<close>\<close>
 
 
-subsection \<open>Internal Consistency\<close>
-
-inductive total_heap_consistent_unfold_n :: "'a nested_mask \<Rightarrow> nat \<Rightarrow> bool"
-  where
-  Zero:
-  "\<lbrakk> valid_heap_mask (get_mh_nm nm)
-   \<rbrakk> \<Longrightarrow>
-   total_heap_consistent_unfold_n nm 0"
-| UnfoldStep:
-  "\<lbrakk> \<And> pred_id vs q nm'. q \<le> get_mp_nm nm (pred_id,vs) \<Longrightarrow> q > 0 \<Longrightarrow>
-         shift_up pred_id vs q nm nm' \<Longrightarrow>
-         total_heap_consistent_unfold_n nm' n
-   \<rbrakk> \<Longrightarrow>
-   total_heap_consistent_unfold_n nm (Suc n)"
-
-inductive_cases UnfoldStep_cases: "total_heap_consistent_unfold_n nm (Suc n)"
-
-definition total_heap_consistent :: "'a total_state \<Rightarrow> bool" where
-  "total_heap_consistent \<phi> \<equiv> \<forall> n. total_heap_consistent_unfold_n (get_nm_total \<phi>) n"
-
-
 subsection \<open>Pure Expression Evaluation\<close>
 
 fun sub_pure_exp_total :: "pure_exp \<Rightarrow> pure_exp list" where
@@ -205,7 +184,8 @@ inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_st
    ctxt, (Some \<omega>_def) \<turnstile> \<langle>Unfolding p es ubody ; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
 | RedUnfoldingDef:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>_def) es \<omega> (Some vs);
-     shift_up p vs 1 (get_nm_total_full \<omega>_def) nm';
+     perm = get_mp_total_full \<omega>_def (pred_id,vs);
+     shift_up p vs (perm / Abs_preal 2) (get_nm_total_full \<omega>_def) nm';
      \<omega>'_def = \<omega>_def \<lparr> get_total_full := get_total_full \<omega>_def \<lparr> get_nm_total := nm' \<rparr> \<rparr>;
      ctxt, (Some \<omega>'_def) \<turnstile> \<langle>ubody; \<omega>\<rangle> [\<Down>]\<^sub>t v \<rbrakk> \<Longrightarrow>
    ctxt, (Some \<omega>_def) \<turnstile> \<langle>Unfolding p es ubody ; \<omega>\<rangle> [\<Down>]\<^sub>t v"

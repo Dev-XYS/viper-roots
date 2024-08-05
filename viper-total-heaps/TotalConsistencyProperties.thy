@@ -1,5 +1,5 @@
 theory TotalConsistencyProperties
-  imports TotalSemanticsCore TotalSemantics
+  imports TotalSemanticsCore TotalSemantics TotalInternalConsistency
 begin
 
 
@@ -305,16 +305,17 @@ next
   then show ?case
     by (metis (mono_tags, lifting) RedUnfoldingDefNoPred Rep_preal_inject get_mp_total_full_multiply mult_eq_0_iff option.simps(9) sub_pure_exp_total.simps(9) supported_sub_expr_supported times_preal.rep_eq zero_preal.rep_eq)
 next
-  case IH: (RedUnfoldingDef \<omega>_def es \<omega> vs p nm' \<omega>'_def ubody v)
+  case IH: (RedUnfoldingDef \<omega>_def es \<omega> vs perm p nm' \<omega>'_def ubody v)
   hence es_sup: "list_all supported_pred_expr es"
     by (metis sub_pure_exp_total.simps(9) supported_sub_expr_supported)
   show ?case
     apply (simp del: mult_nm_total_full.simps)
     apply (rule red_pure_exp_total_red_pure_exps_total.RedUnfoldingDef)
     using IH es_sup apply simp
-      defer 1
+       defer 1
+    defer 1
     using IH apply (simp, simp)
-    sorry
+    sorry \<comment> \<open>depends on the semantics of unfolding\<close>
 next
   case IH: (RedSubFailure e' \<omega>_def \<omega>)
   show ?case
@@ -1190,7 +1191,7 @@ lemma sum_consistent_external:
   sorry
 
 
-\<comment> \<open>Unfold statement preserves external state consistency.\<close>
+\<comment> \<open>Unfold statement preserves external consistency.\<close>
 
 lemma unfold_preserves_external_consistency:
   assumes "consistent_external ctxt \<phi>"
@@ -1321,6 +1322,126 @@ proof -
   show ?thesis
     using nm'_sub_consistent
     by (metis (full_types) shift_consistent \<phi>'_nm hh_unchanged nm' old.unit.exhaust sum_consistent_external total_state.surjective total_state.update_convs(2))
+qed
+
+
+\<comment> \<open>Field assignment preserves external state consistency.\<close>
+
+\<comment> \<open>Begin: self-framing\<close>
+
+definition assertion_framing_state :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> bool"
+  where
+    "assertion_framing_state ctxt A \<omega> \<equiv>
+      \<forall> res. red_inhale ctxt A \<omega> res \<longrightarrow> res \<noteq> RFailure"
+
+definition assertion_self_framing_store :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 'a store \<Rightarrow> bool"
+  where
+    "assertion_self_framing_store ctxt A \<sigma> \<equiv>
+      \<forall> \<omega>. assertion_framing_state ctxt A (update_store_total \<omega> \<sigma>)"
+
+definition pred_self_framing :: "'a total_context \<Rightarrow> predicate_decl => bool"
+  where
+    "pred_self_framing ctxt pred_decl = True"
+
+lemma assertion_framing_star:
+  assumes "assertion_framing_state ctxt (A1 && A2) \<omega>"
+  shows "assertion_framing_state ctxt A1 \<omega> \<and>
+        (\<forall> \<omega>'. red_inhale ctxt A1 \<omega> (RNormal \<omega>') \<longrightarrow> assertion_framing_state ctxt A2 \<omega>')" (is "?Goal1 \<and> ?Goal2")
+proof
+  show "assertion_framing_state ctxt A1 \<omega>"
+    unfolding assertion_framing_state_def
+  proof (rule allI | rule impI)+
+    fix res
+    assume "red_inhale ctxt A1 \<omega> res"
+
+    thus "res \<noteq> RFailure"
+      using assms InhStarFailureMagic assertion_framing_state_def
+      by blast
+  qed
+next
+  show ?Goal2
+  proof (rule allI | rule impI)+
+    fix \<omega>'
+    assume InhA1: "red_inhale ctxt A1 \<omega> (RNormal \<omega>')"
+    show "assertion_framing_state ctxt A2 \<omega>'"
+      unfolding assertion_framing_state_def
+      using InhA1 InhStarNormal assertion_framing_state_def assms by blast
+  qed
+qed
+
+lemma assertion_framing_imp:
+  assumes "assertion_framing_state ctxt (Imp e A) \<omega>"
+     and "ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True))"
+   shows "assertion_framing_state ctxt A \<omega>"
+  using assms
+  unfolding assertion_framing_state_def
+  by (auto intro: InhImpTrue)
+
+lemma assertion_framing_cond_assert_true:
+  assumes "assertion_framing_state ctxt (CondAssert e A B) \<omega>"
+      and "ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True))"
+    shows "assertion_framing_state ctxt A \<omega>"
+  using assms
+  unfolding assertion_framing_state_def
+  by (auto intro: InhCondAssertTrue)
+
+lemma assertion_framing_cond_assert_false:
+  assumes "assertion_framing_state ctxt (CondAssert e A B) \<omega>"
+      and "ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool False))"
+    shows "assertion_framing_state ctxt B \<omega>"
+  using assms
+  unfolding assertion_framing_state_def
+  by (auto intro: InhCondAssertFalse)
+
+\<comment> \<open>End: self-framing\<close>
+
+lemma field_assignment_no_perm_PEC:
+  assumes "consistent_external ctxt \<phi>"
+      and "nm_loc_sum loc (get_nm_total \<phi>) 0"
+      and "\<And>pred_id pred_decl.
+              ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl \<Longrightarrow>
+              pred_self_framing ctxt pred_decl"
+    shows "consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p \<Longrightarrow>
+           consistent_external_wrt_ploc ctxt (update_hh_loc_total \<phi> loc v) (pred_id,vs) p"
+      and "consistent_external ctxt \<phi> \<Longrightarrow>
+           consistent_external ctxt (update_hh_loc_total \<phi> loc v)"
+proof (induct rule: consistent_external_wrt_ploc_consistent_external.inducts)
+  case (SatStep pred_id pred_decl pred_body vs \<phi> p)
+  then show ?case sorry
+next
+  case (SatAll \<phi>)
+  then show ?case sorry
+qed
+
+
+lemma field_assignment_preserves_external_consistency':
+  assumes "consistent_external ctxt \<phi>"
+      and "consistent_internal (get_nm_total \<phi>)"
+      and "get_mh_total \<phi> loc = 1"
+      and "\<And>pred_id pred_decl.
+              ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl \<Longrightarrow>
+              pred_self_framing ctxt pred_decl"
+    shows "consistent_external ctxt (update_hh_loc_total \<phi> loc v)"
+proof -
+  have zero_perm: "\<And>ploc nm. get_nm_loc_total \<phi> ploc = Some nm \<Longrightarrow> nm_loc_sum loc nm 0" sorry
+  show ?thesis
+    apply standard
+    using assms(1) SatAll_case[of ctxt \<phi>]
+     apply fastforce
+  proof -
+    fix pred_id vs q nm'
+    assume "get_mp_total (update_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
+       and nm': "Some nm' = get_nm_loc_total (update_hh_loc_total \<phi> loc v) (pred_id, vs)"
+    hence "get_mp_total \<phi> (pred_id, vs) = q"
+      and "Some nm' = get_nm_loc_total \<phi> (pred_id, vs)"
+      by simp+
+    moreover hence "consistent_external_wrt_ploc ctxt (\<phi>\<lparr>get_nm_total := nm'\<rparr>) (pred_id, vs) q"
+      by (metis assms(1) consistent_external.cases)
+    moreover have "update_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr> = update_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v"
+      by simp
+    ultimately show "consistent_external_wrt_ploc ctxt (update_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pred_id, vs) q"
+      by (metis assms(4) consistent_external_wrt_ploc.cases field_assignment_no_perm_PEC(1) total_state_update_nm_read zero_perm)
+  qed
 qed
 
 

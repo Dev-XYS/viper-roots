@@ -5,6 +5,27 @@ begin
 
 subsection \<open>Old Internal Consistency\<close>
 
+\<comment> \<open>Old internal consistency definition\<close>
+
+inductive total_heap_consistent_unfold_n :: "'a nested_mask \<Rightarrow> nat \<Rightarrow> bool"
+  where
+  Zero:
+  "\<lbrakk> valid_heap_mask (get_mh_nm nm)
+   \<rbrakk> \<Longrightarrow>
+   total_heap_consistent_unfold_n nm 0"
+| UnfoldStep:
+  "\<lbrakk> \<And> pred_id vs q nm'. q \<le> get_mp_nm nm (pred_id,vs) \<Longrightarrow> q > 0 \<Longrightarrow>
+         shift_up pred_id vs q nm nm' \<Longrightarrow>
+         total_heap_consistent_unfold_n nm' n
+   \<rbrakk> \<Longrightarrow>
+   total_heap_consistent_unfold_n nm (Suc n)"
+
+inductive_cases UnfoldStep_cases: "total_heap_consistent_unfold_n nm (Suc n)"
+
+definition total_heap_consistent :: "'a total_state \<Rightarrow> bool" where
+  "total_heap_consistent \<phi> \<equiv> \<forall> n. total_heap_consistent_unfold_n (get_nm_total \<phi>) n"
+
+
 \<comment> \<open>Local variable assignment preserves internal state consistency.\<close>
 
 lemma var_assignment_preserves_internal_consistency:
@@ -32,21 +53,12 @@ proof -
   obtain vs p where
     vs: "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some vs)" and
     p: "ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)" and
-    result: "th_result_rel (p > 0 \<and> p \<le> Rep_preal (get_mp_total_full \<omega> (pred_id, vs))) True {\<omega>'. \<exists>\<phi>'. \<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr> \<and> unfold_rel ctxt pred_id vs (Abs_preal p) (get_total_full \<omega>) \<phi>'} (RNormal \<omega>')"
-    using assms(3) RedUnfold_case by force
-  define W' where W': "W' = {\<omega>'. \<exists>\<phi>'. \<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr> \<and> unfold_rel ctxt pred_id vs (Abs_preal p) (get_total_full \<omega>) \<phi>'}"
-  with result have "th_result_rel (p > 0 \<and> p \<le> Rep_preal (get_mp_total_full \<omega> (pred_id, vs))) True W' (RNormal \<omega>')" by blast
-  with W' have "\<omega>' \<in> W'" using th_result_rel_normal by blast
+    result: "unfold_rel ctxt pred_id vs (Abs_preal p) (get_total_full \<omega>) \<phi>'" and
+    \<omega>': "\<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr>"
+    using assms(3) RedUnfold_case
+    by (metis assms(4) full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3))
   show "total_heap_consistent \<phi>'"
-  proof (simp add: total_heap_consistent_def, standard)
-    fix n
-    from assms(2) have "total_heap_consistent_unfold_n (get_nm_total \<phi>) (Suc n)"
-      by (simp add: total_heap_consistent_def)
-    moreover have "unfold_rel ctxt pred_id vs (Abs_preal p) (get_total_full \<omega>) \<phi>'"
-      using W' \<open>\<omega>' \<in> W'\<close> assms(4) by force
-    ultimately show "total_heap_consistent_unfold_n (get_nm_total \<phi>') n"
-      by (smt (z3) Abs_preal_inverse UnfoldStep_cases assms(1) get_mp_total.simps get_mp_total_full.simps less_eq_preal.rep_eq less_preal.rep_eq mem_Collect_eq result th_result_rel_normal unfold_rel.cases zero_preal.rep_eq)
-  qed
+    sorry
 qed
 
 
@@ -71,8 +83,8 @@ qed
 
 subsection \<open>New Internal Consistency\<close>
 
-definition internal_consistent' :: "'a nested_mask \<Rightarrow> bool" where
-  "internal_consistent' nm \<equiv> \<forall>loc. \<exists>s. s \<le> 1 \<and> nm_loc_sum loc nm s"
+definition consistent_internal :: "'a nested_mask \<Rightarrow> bool" where
+  "consistent_internal nm \<equiv> \<forall>loc. \<exists>s. s \<le> 1 \<and> nm_loc_sum loc nm s"
 
 
 lemma shift_up_preserves_loc_sum:
@@ -146,10 +158,9 @@ qed
 
 lemma shift_up_preserves_internal_consistency:
   assumes "shift_up pred_id vs q nm nm'"
-      and "internal_consistent' nm"
-    shows "internal_consistent' nm'"
-  (* apply (simp add: internal_consistent'_def, standard, standard) *)
-  sorry
+      and "consistent_internal nm"
+    shows "consistent_internal nm'"
+  by (meson assms(1) assms(2) consistent_internal_def shift_up_preserves_loc_sum)
 
 
 end
