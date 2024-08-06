@@ -1331,71 +1331,33 @@ qed
 
 \<comment> \<open>Begin: self-framing\<close>
 
-definition assertion_framing_state :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> bool"
+definition well_typed_store :: "vtyp list \<Rightarrow> ('a \<Rightarrow> abs_type) \<Rightarrow> 'a store \<Rightarrow> bool"
   where
-    "assertion_framing_state ctxt A \<omega> \<equiv>
-      \<forall> res. red_inhale ctxt A \<omega> res \<longrightarrow> res \<noteq> RFailure"
-
-definition assertion_self_framing_store :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 'a store \<Rightarrow> bool"
-  where
-    "assertion_self_framing_store ctxt A \<sigma> \<equiv>
-      \<forall> \<omega>. assertion_framing_state ctxt A (update_store_total \<omega> \<sigma>)"
+    "well_typed_store tys \<Delta> st \<equiv> \<forall>i. i < length tys \<longrightarrow> (\<exists>v. st i = Some v \<and> get_type \<Delta> v = tys ! i)"
 
 definition pred_self_framing :: "'a total_context \<Rightarrow> predicate_decl => bool"
   where
-    "pred_self_framing ctxt pred_decl = True"
+    "pred_self_framing ctxt pred_decl \<equiv>
+       \<forall>pred_body \<omega> \<omega>' mh mp frac. predicate_decl.body pred_decl = Some pred_body \<longrightarrow>
+          get_store_total \<omega> = get_store_total \<omega>' \<longrightarrow>
+          \<comment> \<open>well_typed_store (predicate_decl.args pred_decl) (absval_interp_total ctxt) (get_store_total \<omega>) \<longrightarrow>\<close>
+          \<comment> \<open>Maybe well-typed is redundant? \<^const>\<open>sat\<close> implies well-typed.\<close>
+          (\<forall>l. mh l > 0 \<longrightarrow> get_hh_total_full \<omega> l = get_hh_total_full \<omega>' l) \<longrightarrow>
+          sat ctxt \<omega> mh mp (syntactic_mult frac pred_body) \<longrightarrow> sat ctxt \<omega>' mh mp (syntactic_mult frac pred_body)"
 
-lemma assertion_framing_star:
-  assumes "assertion_framing_state ctxt (A1 && A2) \<omega>"
-  shows "assertion_framing_state ctxt A1 \<omega> \<and>
-        (\<forall> \<omega>'. red_inhale ctxt A1 \<omega> (RNormal \<omega>') \<longrightarrow> assertion_framing_state ctxt A2 \<omega>')" (is "?Goal1 \<and> ?Goal2")
-proof
-  show "assertion_framing_state ctxt A1 \<omega>"
-    unfolding assertion_framing_state_def
-  proof (rule allI | rule impI)+
-    fix res
-    assume "red_inhale ctxt A1 \<omega> res"
 
-    thus "res \<noteq> RFailure"
-      using assms InhStarFailureMagic assertion_framing_state_def
-      by blast
-  qed
-next
-  show ?Goal2
-  proof (rule allI | rule impI)+
-    fix \<omega>'
-    assume InhA1: "red_inhale ctxt A1 \<omega> (RNormal \<omega>')"
-    show "assertion_framing_state ctxt A2 \<omega>'"
-      unfolding assertion_framing_state_def
-      using InhA1 InhStarNormal assertion_framing_state_def assms by blast
-  qed
-qed
-
-lemma assertion_framing_imp:
-  assumes "assertion_framing_state ctxt (Imp e A) \<omega>"
-     and "ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True))"
-   shows "assertion_framing_state ctxt A \<omega>"
-  using assms
-  unfolding assertion_framing_state_def
-  by (auto intro: InhImpTrue)
-
-lemma assertion_framing_cond_assert_true:
-  assumes "assertion_framing_state ctxt (CondAssert e A B) \<omega>"
-      and "ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True))"
-    shows "assertion_framing_state ctxt A \<omega>"
-  using assms
-  unfolding assertion_framing_state_def
-  by (auto intro: InhCondAssertTrue)
-
-lemma assertion_framing_cond_assert_false:
-  assumes "assertion_framing_state ctxt (CondAssert e A B) \<omega>"
-      and "ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool False))"
-    shows "assertion_framing_state ctxt B \<omega>"
-  using assms
-  unfolding assertion_framing_state_def
-  by (auto intro: InhCondAssertFalse)
+lemma pred_self_framing_subst:
+  assumes "pred_self_framing ctxt pred_decl"
+      and "predicate_decl.body pred_decl = Some pred_body"
+      and "get_store_total \<omega> = get_store_total \<omega>'"
+      and "\<forall>l. mh l > 0 \<longrightarrow> get_hh_total_full \<omega> l = get_hh_total_full \<omega>' l"
+      and "sat ctxt \<omega> mh mp (syntactic_mult p pred_body)"
+    shows "sat ctxt \<omega>' mh mp (syntactic_mult p pred_body)"
+  using assms(1) assms(2) assms(3) assms(4) assms(5) pred_self_framing_def
+  by blast
 
 \<comment> \<open>End: self-framing\<close>
+
 
 lemma field_assignment_no_perm_PEC:
   assumes "consistent_external ctxt \<phi>"
@@ -1408,11 +1370,58 @@ lemma field_assignment_no_perm_PEC:
       and "consistent_external ctxt \<phi> \<Longrightarrow>
            consistent_external ctxt (update_hh_loc_total \<phi> loc v)"
 proof (induct rule: consistent_external_wrt_ploc_consistent_external.inducts)
-  case (SatStep pred_id pred_decl pred_body vs \<phi> p)
-  then show ?case sorry
+  case IH: (SatStep pred_id pred_decl pred_body vs \<phi> p)
+  show ?case
+    apply standard
+        defer 3
+        apply (simp only: IH)+
+  proof -
+    have store_equal:
+      "get_store_total (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = \<phi>\<rparr>) =
+       get_store_total (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = update_hh_loc_total \<phi> loc v\<rparr>)"
+      by simp
+    have "get_mh_total \<phi> loc = 0"
+      using assms(2) sorry
+    hence hh_unchanged:
+      "\<forall>l. get_mh_total (update_hh_loc_total \<phi> loc v) l > 0 \<longrightarrow>
+           get_hh_total_full (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = \<phi>\<rparr>) l =
+           get_hh_total_full (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = update_hh_loc_total \<phi> loc v\<rparr>) l"
+      by simp
+    show "sat ctxt
+            \<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = update_hh_loc_total \<phi> loc v\<rparr>
+            (get_mh_total (update_hh_loc_total \<phi> loc v))
+            (get_mp_total (update_hh_loc_total \<phi> loc v))
+            (syntactic_mult (Rep_preal p) pred_body)"
+      using IH pred_self_framing_subst[OF _ IH(2) store_equal hh_unchanged]
+      apply simp
+      using assms(3) by blast
+  qed
 next
-  case (SatAll \<phi>)
-  then show ?case sorry
+  case IH: (SatAll \<phi>)
+  show ?case
+  proof
+    fix pred_id vs q
+    assume "get_mp_total (update_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
+    hence "get_mp_total \<phi> (pred_id, vs) = q"
+      by simp
+    from IH(1)[OF this]
+    show "(q = 0) = (get_nm_loc_total (update_hh_loc_total \<phi> loc v) (pred_id, vs) = None)"
+      by simp
+  next
+    fix pred_id vs q nm'
+    assume "get_mp_total (update_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
+       and "Some nm' = get_nm_loc_total (update_hh_loc_total \<phi> loc v) (pred_id, vs)"
+    hence "get_mp_total \<phi> (pred_id, vs) = q"
+      and "Some nm' = get_nm_loc_total \<phi> (pred_id, vs)"
+      by simp+
+    with IH have "consistent_external_wrt_ploc ctxt (update_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v) (pred_id, vs) q"
+      by blast
+    moreover have "update_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v =
+                   update_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>"
+      by simp
+    ultimately show "consistent_external_wrt_ploc ctxt (update_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pred_id, vs) q"
+      by argo
+  qed
 qed
 
 
