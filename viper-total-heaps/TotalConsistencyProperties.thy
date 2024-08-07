@@ -194,6 +194,22 @@ lemma supported_sub_expr_supported:
   using assms
   by (induct e; simp add: list_all_length)
 
+lemma update_mp_loc_total_preserves_hh:
+  shows "get_hh_total (update_mp_loc_total \<phi> ploc mp) = get_hh_total \<phi>"
+  sorry
+
+lemma add_to_nm_loc_total_preserves_hh:
+  shows "get_hh_total (add_to_nm_loc_total \<phi> ploc nm) = get_hh_total \<phi>"
+  sorry
+
+lemma nm_subtract_mh:
+  shows "get_mh_nm (nested_mask_subtract nm\<^sub>1 nm\<^sub>2) = field_mask_sub (get_mh_nm nm\<^sub>1) (get_mh_nm nm\<^sub>2)"
+  by (metis get_fnm_nm.cases get_mh_nm.simps nested_mask_subtract.simps)
+
+lemma nm_subtract_mp:
+  shows "get_mp_nm (nested_mask_subtract nm\<^sub>1 nm\<^sub>2) = predicate_mask_sub (get_mp_nm nm\<^sub>1) (get_mp_nm nm\<^sub>2)"
+  by (metis get_fnm_nm.cases get_mp_nm.simps nested_mask_subtract.simps)
+
 
 \<comment> \<open>Expression evaluation is deterministic.\<close>
 
@@ -733,7 +749,7 @@ lemma fractionability_SatAcc:
       and "supported_pred_expr e_r"
       and "supported_pred_expr e_p"
       and "sat ctxt \<omega> mh zero_mp (Atomic (Acc e_r f (PureExp e_p)))"
-    shows "sat ctxt (mult_nm_total_full \<omega> p) (field_mask_multiply mh p) zero_mp (syntactic_mult (Rep_preal p) (Atomic (Acc e_r f (PureExp e_p))))"
+    shows "sat ctxt \<omega> (field_mask_multiply mh p) zero_mp (syntactic_mult (Rep_preal p) (Atomic (Acc e_r f (PureExp e_p))))"
 proof -
   from assms(4) obtain v_r v_p a where
     v_r_eval: "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)" and
@@ -750,20 +766,20 @@ proof -
         prefer 5
     subgoal by auto
   proof -
-    from v_r_eval show "ctxt, None \<turnstile> \<langle>e_r; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)"
+    from v_r_eval show "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)"
       using eval_frac_mask_does_not_matter(1)
-      by (metis assms(1) assms(2) option.map_disc_iff)
+      by blast
   next
-    show "ctxt, None \<turnstile> \<langle>Binop (real_to_expr (Rep_preal p)) Mult e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p * v_p))"
+    show "ctxt, None \<turnstile> \<langle>Binop (real_to_expr (Rep_preal p)) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p * v_p))"
       apply (rule RedBinop)
          prefer 3
       subgoal by auto
     proof -
-      show "ctxt, None \<turnstile> \<langle>real_to_expr (Rep_preal p); mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p))"
+      show "ctxt, None \<turnstile> \<langle>real_to_expr (Rep_preal p); \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p))"
         by (metis RedLit real_to_expr.elims val_of_lit.simps(3))
     next
-      from v_p_eval show "ctxt, None \<turnstile> \<langle>e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
-        using eval_frac_mask_does_not_matter(1) assms(1) assms(3) option.simps(9) by fastforce
+      from v_p_eval show "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
+        by blast
     next
       show "eval_binop (Option.is_none None) (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
         by force
@@ -783,7 +799,7 @@ lemma fractionability_SatAcc_Wildcard:
   assumes "p > 0"
       and "supported_pred_expr e_r"
       and "sat ctxt \<omega> mh zero_mp (Atomic (Acc e_r f Wildcard))"
-    shows "sat ctxt (mult_nm_total_full \<omega> p) (field_mask_multiply mh p) zero_mp (syntactic_mult (Rep_preal p) (Atomic (Acc e_r f Wildcard)))"
+    shows "sat ctxt \<omega> (field_mask_multiply mh p) zero_mp (syntactic_mult (Rep_preal p) (Atomic (Acc e_r f Wildcard)))"
 proof -
   from assms(3) obtain v_r a where
     v_r_eval: "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)" and
@@ -802,8 +818,8 @@ proof -
        prefer 4
     subgoal by auto
   proof -
-    show "ctxt, None \<turnstile> \<langle>e_r;mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)"
-      using assms(1) assms(2) eval_frac_mask_does_not_matter(1) v_r_eval option.simps(9) by fastforce
+    show "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)"
+      using v_r_eval by blast
   next
     show "v_r \<noteq> Null" using v_r_non_null by auto
   next
@@ -820,7 +836,7 @@ lemma fractionability_SatAccPred:
       and "list_all supported_pred_expr e_args"
       and "supported_pred_expr e_p"
       and "sat ctxt \<omega> zero_mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
-    shows "sat ctxt (mult_nm_total_full \<omega> p) zero_mh (predicate_mask_multiply mp p) (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args (PureExp e_p))))"
+    shows "sat ctxt \<omega> zero_mh (predicate_mask_multiply mp p) (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args (PureExp e_p))))"
 proof -
   from assms(4) obtain v_args v_p where
     v_args_eval: "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)" and
@@ -835,19 +851,19 @@ proof -
         prefer 4
     subgoal by auto
   proof -
-    from v_args_eval show "red_pure_exps_total ctxt None e_args (mult_nm_total_full \<omega> p) (Some v_args)"
-      using eval_frac_mask_does_not_matter(2) assms(1,2) by fastforce
+    from v_args_eval show "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)"
+      using assms(1,2) by fastforce
   next
-    show "ctxt, None \<turnstile> \<langle>Binop (real_to_expr (Rep_preal p)) Mult e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p * v_p))"
+    show "ctxt, None \<turnstile> \<langle>Binop (real_to_expr (Rep_preal p)) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p * v_p))"
       apply (rule RedBinop)
          prefer 3
       subgoal by auto
     proof -
-      show "ctxt, None \<turnstile> \<langle>real_to_expr (Rep_preal p); mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p))"
+      show "ctxt, None \<turnstile> \<langle>real_to_expr (Rep_preal p); \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (Rep_preal p))"
         by (metis RedLit real_to_expr.elims val_of_lit.simps(3))
     next
-      from v_p_eval show "ctxt, None \<turnstile> \<langle>e_p; mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
-        using eval_frac_mask_does_not_matter(1) assms(1) assms(3) by fastforce
+      from v_p_eval show "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
+        using assms(1) assms(3) by fastforce
     next
       show "eval_binop (Option.is_none None) (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
         by force
@@ -868,7 +884,7 @@ lemma fractionability_SatAccPred_Wildcard:
   assumes "p > 0"
       and "list_all supported_pred_expr e_args"
       and "sat ctxt \<omega> zero_mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
-    shows "sat ctxt (mult_nm_total_full \<omega> p) zero_mh (predicate_mask_multiply mp p) (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args Wildcard)))"
+    shows "sat ctxt \<omega> zero_mh (predicate_mask_multiply mp p) (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args Wildcard)))"
 proof -
   from assms(3) obtain v_args where
     v_args_eval: "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)" and
@@ -884,8 +900,8 @@ proof -
       prefer 2
     subgoal by auto
   proof -
-    from v_args_eval show "red_pure_exps_total ctxt None e_args (mult_nm_total_full \<omega> p) (Some v_args)"
-      using assms(1) assms(2) eval_frac_mask_does_not_matter(2) by fastforce
+    from v_args_eval show "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)"
+      using assms(1) assms(2) by fastforce
   next
     show "is_singleton_mp (pred_id, v_args) (PosReal.pmult p \<circ> mp)"
       apply simp
@@ -899,7 +915,7 @@ lemma fractionability:
   assumes "p > 0"
       and "supported_pred_body A"
       and "sat ctxt \<omega> mh mp A"
-    shows "sat ctxt (mult_nm_total_full \<omega> p) (field_mask_multiply mh p) (predicate_mask_multiply mp p) (syntactic_mult (Rep_preal p) A)"
+    shows "sat ctxt \<omega> (field_mask_multiply mh p) (predicate_mask_multiply mp p) (syntactic_mult (Rep_preal p) A)"
   using assms(2) assms(3)
 proof (induct A arbitrary: mh mp)
   case IH: (Atomic x)
@@ -914,8 +930,8 @@ proof (induct A arbitrary: mh mp)
       apply (simp del: mult_nm_total_full.simps field_mask_multiply.simps add: Pure)
       apply (rule SatPure)
     proof -
-      from e_eval show "ctxt, None \<turnstile> \<langle>e;mult_nm_total_full \<omega> p\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
-        by (metis IH.prems(1) Pure assert_pred.elims(2) assert_pred_rec.simps(1) assms(1) atomic_assert_pred.elims(2) atomic_assert_pred_rec.simps(1) eval_frac_mask_does_not_matter(1) option.map_disc_iff)
+      from e_eval show "ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+        by blast
     next
       from mh_zero show "field_mask_multiply mh p = zero_mh"
         using zero_mh_multiply by auto
@@ -931,7 +947,7 @@ proof (induct A arbitrary: mh mp)
     proof (cases perm)
       case (PureExp e_p)
       then show ?thesis using fractionability_SatAcc
-        by (metis Acc IH.prems(1) IH.prems(2) PureExp \<open>mp = zero_mp\<close> assert_pred.elims(2) assert_pred_rec.simps(1) assms(1) atomic_assert_pred.elims(2) atomic_assert_pred_rec.simps(3) zero_mp_multiply)
+        by (metis Acc IH.prems(1) IH.prems(2) \<open>mp = zero_mp\<close> assert_pred.elims(2) assert_pred_rec.simps(1) assms(1) atomic_assert_pred.elims(2) atomic_assert_pred_rec.simps(3) zero_mp_multiply)
     next
       case Wildcard
       then show ?thesis using fractionability_SatAcc_Wildcard
@@ -940,7 +956,7 @@ proof (induct A arbitrary: mh mp)
   next
     case (AccPredicate pred_id e_args perm)
     then have "mh = zero_mh"
-      using IH sat_AccPred_mh_zero by fastforce
+      using IH sat_AccPred_mh_zero by blast
     have "list_all no_perm_pure_exp e_args" and "list_all no_old_pure_exp e_args"
       using AccPredicate IH.prems(1) IH.prems(2) SatAtomic_case assert_pred.elims(2) by fastforce+
     hence "list_all supported_pred_expr e_args"
@@ -969,16 +985,16 @@ next
     show ?thesis
       apply (simp only: syntactic_mult.simps)
       apply (rule SatImpTrue)
-      using IH e_sup A_sup True eval_frac_mask_does_not_matter(1)
-       apply (metis assms(1) option.map_disc_iff)
+      using IH e_sup A_sup True
+       apply metis
       by (metis A_sup IH.hyps IH.prems(2) SatImp_case True eval_is_deterministic extended_val.inject val.inject(2))
   next
     case False
     show ?thesis
       apply (simp only: syntactic_mult.simps)
       apply (rule SatImpFalse)
-      using IH e_sup A_sup False eval_frac_mask_does_not_matter(1)
-        apply (metis assms(1) option.map_disc_iff)
+      using IH e_sup A_sup False
+        apply metis
       using False IH.prems(2) sat_Imp_False_only_zero zero_mh_multiply zero_mp_multiply
       by blast+
   qed
@@ -995,16 +1011,16 @@ next
     show ?thesis
       apply (simp only: syntactic_mult.simps)
       apply (rule SatCondTrue)
-      using IH e_sup A_sup True eval_frac_mask_does_not_matter(1)
-       apply (metis assms(1) option.map_disc_iff)
+      using IH e_sup A_sup True
+       apply metis
       by (metis A_sup IH.hyps(1) IH.prems(2) SatCond_case True eval_is_deterministic extended_val.inject val.inject(2))
   next
     case False
     show ?thesis
       apply (simp only: syntactic_mult.simps)
       apply (rule SatCondFalse)
-      using IH e_sup B_sup False eval_frac_mask_does_not_matter(1)
-       apply (metis assms(1) option.map_disc_iff)
+      using IH e_sup B_sup False
+       apply metis
       by (metis B_sup False IH.hyps(2) IH.prems(2) SatCond_case eval_is_deterministic extended_val.inject val.inject(2))
   qed
 next
@@ -1022,8 +1038,7 @@ next
     mp_split: "mp_split mp mp\<^sub>1 mp\<^sub>2" and
     sat_A: "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 A" and
     sat_B: "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 B"
-    unfolding syntactic_mult.simps using SatStar
-    by (smt (verit) assert.inject(6) assert.simps(19) assert.simps(33) assert.simps(45) sat.simps)
+    by (auto elim: SatStar_case)
   show ?case
     apply (simp only: syntactic_mult.simps)
     apply (rule SatStar)
@@ -1051,17 +1066,16 @@ lemma fractionabilityI:
   assumes "p > 0"
       and "supported_pred_body A"
       and "sat ctxt \<omega> mh mp A"
-      and "\<omega>' = mult_nm_total_full \<omega> p"
       and "mh' = field_mask_multiply mh p"
       and "mp' = predicate_mask_multiply mp p"
-    shows "sat ctxt \<omega>' mh' mp' (syntactic_mult (Rep_preal p) A)"
+    shows "sat ctxt \<omega> mh' mp' (syntactic_mult (Rep_preal p) A)"
   using assms fractionability by blast
 
 lemma fractionability_inv:
     fixes p :: preal
   assumes "p > 0"
       and "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal p) A)"
-    shows "sat ctxt (mult_nm_total_full \<omega> (1/p)) (field_mask_multiply mh (1/p)) (predicate_mask_multiply mp (1/p)) A"
+    shows "sat ctxt \<omega> (field_mask_multiply mh (1/p)) (predicate_mask_multiply mp (1/p)) A"
   sorry
 
 (* lemma fractionability_1:
@@ -1074,22 +1088,18 @@ lemma fractionability_pq:
   assumes "p > 0" and "q > 0"
       and "supported_pred_body A"
       and "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal p) A)"
-    shows "sat ctxt (mult_nm_total_full \<omega> q) (field_mask_multiply mh q) (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) A)"
+    shows "sat ctxt \<omega> (field_mask_multiply mh q) (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) A)"
 proof -
-  define \<omega>\<^sub>0 where \<omega>\<^sub>0: "\<omega>\<^sub>0 = mult_nm_total_full \<omega> (1/p)"
   define mh\<^sub>0 where mh\<^sub>0: "mh\<^sub>0 = field_mask_multiply mh (1/p)"
   define mp\<^sub>0 where mp\<^sub>0: "mp\<^sub>0 = predicate_mask_multiply mp (1/p)"
   show ?thesis
     apply (rule fractionabilityI)
     using assms(1) assms(2) less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq apply force
-        apply (simp only: assms(3))
+       apply (simp only: assms(3))
   proof -
-    show "sat ctxt \<omega>\<^sub>0 mh\<^sub>0 mp\<^sub>0 A"
-      using \<omega>\<^sub>0 assms(1) assms(4) fractionability_inv mh\<^sub>0 mp\<^sub>0 by blast
-  next
-    show "mult_nm_total_full \<omega> q = mult_nm_total_full \<omega>\<^sub>0 (q*p)"
-      apply (simp add: \<omega>\<^sub>0)
-      by (metis assms(1) mult.commute nm_multiply_back_nm nm_multiply_twice)
+    show "sat ctxt \<omega> mh\<^sub>0 mp\<^sub>0 A"
+      using assms(1) assms(4) fractionability_inv mh\<^sub>0 mp\<^sub>0
+      by blast
   next
     show "field_mask_multiply mh q = field_mask_multiply mh\<^sub>0 (q*p)"
       apply (simp add: mh\<^sub>0)
@@ -1106,17 +1116,9 @@ qed
 
 \<comment> \<open>A fraction of a consistent total state is external consistent.\<close>
 
-lemma predicate_\<omega>_multiply:
-  fixes frac :: preal
-  shows "\<lparr> get_store_total = nth_option vs,
-           get_trace_total = \<lambda>x. None,
-           get_total_full = \<phi>\<lparr> get_nm_total := nested_mask_multiply (get_nm_total \<phi>) frac \<rparr> \<rparr> =
-         mult_nm_total_full
-         \<lparr> get_store_total = nth_option vs,
-           get_trace_total = \<lambda>x. None,
-           get_total_full = \<phi> \<rparr>
-         frac"
-  by force
+lemma empty_nm_multiply:
+  shows "empty_nm = nested_mask_multiply empty_nm p"
+  sorry
 
 lemma fraction_consistent_external:
   fixes frac :: preal
@@ -1133,7 +1135,6 @@ proof (induction rule: consistent_external_wrt_ploc_consistent_external.inducts)
     using IH apply blast+
     using IH.hyps(2) assms less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq apply auto[1]
     apply (simp del: field_mask_multiply.simps predicate_mask_multiply.simps)
-    apply (simp only: predicate_\<omega>_multiply)
     apply (rule fractionability_pq)
     using IH.hyps(2) apply blast
       apply (simp add: assms)
@@ -1388,13 +1389,14 @@ proof (induct rule: consistent_external_wrt_ploc_consistent_external.inducts)
            get_hh_total_full (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = update_hh_loc_total \<phi> loc v\<rparr>) l"
       by simp
     show "sat ctxt
-            \<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = update_hh_loc_total \<phi> loc v\<rparr>
+            \<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = update_hh_loc_total \<phi> loc v\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>
             (get_mh_total (update_hh_loc_total \<phi> loc v))
             (get_mp_total (update_hh_loc_total \<phi> loc v))
             (syntactic_mult (Rep_preal p) pred_body)"
       using IH pred_self_framing_subst[OF _ IH(2) store_equal hh_unchanged]
       apply simp
-      using assms(3) by blast
+      using assms(3)
+      by (smt (verit, best) full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.elims pred_self_framing_subst total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
   qed
 next
   case IH: (SatAll \<phi>)
@@ -1452,6 +1454,174 @@ proof -
       by simp
     ultimately show "consistent_external_wrt_ploc ctxt (update_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pred_id, vs) q"
       by (metis assms(4) consistent_external_wrt_ploc.cases field_assignment_no_perm_PEC(1) total_state_update_nm_read zero_perm)
+  qed
+qed
+
+\<comment> \<open>Unfold statement preserves external consistency.\<close>
+
+lemma exhale_preserves_external_consistency:
+  assumes "consistent_external ctxt (get_total_full \<omega>)"
+      and "red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>')"
+    shows "consistent_external ctxt (get_total_full \<omega>')"
+  sorry
+
+lemma exhale_diff_external_consistent:
+  assumes "consistent_external ctxt (get_total_full \<omega>)"
+      and "red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>')"
+    shows "consistent_external ctxt (\<lparr> get_hh_total = get_hh_total_full \<omega>', get_nm_total = nested_mask_subtract (get_nm_total_full \<omega>) (get_nm_total_full \<omega>') \<rparr>)"
+  sorry
+
+lemma exhale_diff_sat:
+  assumes "consistent_external ctxt (get_total_full \<omega>)"
+      and "red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>')"
+      and "supported_pred_body A"
+    shows "sat ctxt (\<lparr> get_store_total = get_store_total \<omega>,
+                       get_trace_total = Map.empty,
+                       get_total_full = get_total_full \<omega>\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>)
+               (field_mask_sub (get_mh_total_full \<omega>) (get_mh_total_full \<omega>'))
+               (predicate_mask_sub (get_mp_total_full \<omega>) (get_mp_total_full \<omega>'))
+               A"
+  sorry
+
+lemma exhale_preserves_hh:
+  assumes "red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>')"
+  shows "get_hh_total_full \<omega> = get_hh_total_full \<omega>'"
+  sorry
+
+lemma nested_mask_merge_one_sub:
+  assumes "nm\<^sub>2 = NM (\<lambda>_. 0)
+                    (\<lambda>x. if x = ploc then p else 0)
+                    (\<lambda>x. if x = ploc then Some nm_sub else None)"
+  shows "nested_mask_merge nm\<^sub>1 nm\<^sub>2 = add_to_nm_loc_nm (add_to_mp_loc_nm nm\<^sub>1 ploc p) ploc nm_sub"
+  sorry
+
+lemma supported_mult_supported:
+  assumes "supported_pred_body A"
+  shows "supported_pred_body (syntactic_mult p A)"
+  sorry
+
+lemma fold_preserves_external_consistency:
+  assumes "consistent_external ctxt \<phi>"
+      and "\<phi> = get_total_full \<omega>"
+      and "red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
+      and "\<phi>' = get_total_full \<omega>'"
+      and "\<And>pred_id pred_decl pred_body.
+              ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl \<Longrightarrow>
+              ViperLang.predicate_decl.body pred_decl = Some pred_body \<Longrightarrow>
+              supported_pred_body pred_body"
+    shows "consistent_external ctxt \<phi>'"
+proof -
+  obtain v_args v_p where
+    "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args)" and
+    "ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
+    "fold_rel ctxt pred_id v_args (Abs_preal v_p) \<omega> (RNormal \<omega>')"
+    using assms(3)
+    by (auto elim: RedFold_case)
+  then obtain pred_decl pred_body \<omega>0 \<omega>1 nm_exh where
+    pred_decl: "ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl" and
+    pred_body: "ViperLang.predicate_decl.body pred_decl = Some pred_body" and
+    "Abs_preal v_p \<noteq> 0" and
+    \<omega>0: "\<omega>0 = \<lparr> get_store_total = nth_option v_args, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>" and
+    exhale: "red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body) \<omega>0 (RNormal \<omega>1)" and
+    nm_exh: "nm_exh = nested_mask_subtract (get_nm_total_full \<omega>0) (get_nm_total_full \<omega>1)" and
+    \<omega>': "\<omega>' = \<lparr> get_store_total = get_store_total \<omega>,
+                get_trace_total = get_trace_total \<omega>,
+                get_total_full = add_to_nm_loc_total
+                  (add_to_mp_loc_total (get_total_full \<omega>1) (pred_id,v_args) (Abs_preal v_p))
+                  (pred_id,v_args) nm_exh
+          \<rparr>"
+    by (auto elim: FoldRelNormal_case)
+
+  have exhaled_consistent: "consistent_external ctxt (get_total_full \<omega>1)"
+    \<comment> \<open>Derived "False" from these facts alone: Unity_def, old.unit.exhaust ???\<close>
+    by (metis \<omega>0 exhale assms(1) assms(2) exhale_preserves_external_consistency full_total_state.select_convs(3))
+  define \<phi>_exh where
+    "\<phi>_exh = \<lparr> get_hh_total = get_hh_total \<phi>,
+               get_nm_total = NM (\<lambda>_. 0)
+                                 (\<lambda>x. if x = (pred_id,v_args) then (Abs_preal v_p) else 0)
+                                 (\<lambda>x. if x = (pred_id,v_args) then Some nm_exh else None) \<rparr>"
+  have diff_consistent: "consistent_external ctxt \<phi>_exh"
+    apply standard
+     apply (simp add: \<open>Abs_preal v_p \<noteq> pos_perm_class.pnone\<close> \<phi>_exh_def)
+  proof -
+    fix pid vs q nm'
+    assume perm: "get_mp_total \<phi>_exh (pid,vs) = q"
+       and nm': "Some nm' = TotalStateUtil.get_nm_loc_total \<phi>_exh (pid,vs)"
+    show "consistent_external_wrt_ploc ctxt (\<phi>_exh\<lparr>get_nm_total := nm'\<rparr>) (pid,vs) q"
+    proof (cases "(pid,vs) = (pred_id,v_args)")
+      case True
+      show ?thesis
+      proof (simp add: True, standard, (simp add: pred_decl pred_body)+)
+        have \<omega>0_consistent: "consistent_external ctxt (get_total_full \<omega>0)"
+          using \<omega>0 assms(1) assms(2) by force
+        moreover have sup_mult: "supported_pred_body (syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)"
+          using assms(5) pred_body pred_decl supported_mult_supported by blast
+        moreover have nm'_eq_exh: "nm' = nm_exh"
+          using True \<phi>_exh_def nm' by auto
+        moreover have "get_mh_nm nm' = field_mask_sub (get_mh_total_full \<omega>0) (get_mh_total_full \<omega>1)"
+          by (simp add: nm'_eq_exh nm_exh nm_subtract_mh)
+        moreover have "get_mp_nm nm' = predicate_mask_sub (get_mp_total_full \<omega>0) (get_mp_total_full \<omega>1)"
+          by (simp add: nm'_eq_exh nm_exh nm_subtract_mp)
+        ultimately show
+          "sat ctxt
+               \<lparr> get_store_total = nth_option v_args,
+                 get_trace_total = \<lambda>x. None,
+                 get_total_full = \<phi>_exh\<lparr>get_nm_total := empty_nm \<rparr> \<rparr>
+               (get_mh_nm nm') (get_mp_nm nm') (syntactic_mult (Rep_preal q) pred_body)"
+          using exhale_diff_sat[of ctxt \<omega>0 "(syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)" \<omega>1,
+                                OF \<omega>0_consistent exhale sup_mult]
+          by (smt (verit, del_insts) True \<omega>0 \<phi>_exh_def assms(2) full_total_state.select_convs(1) full_total_state.select_convs(3) get_mp_nm.simps get_mp_total.simps old.unit.exhaust perm total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
+      next
+        show "consistent_external ctxt (\<phi>_exh\<lparr>get_nm_total := nm'\<rparr>)"
+          by (smt (verit, del_insts) TotalStateUtil.get_nm_loc_total.simps True \<omega>0 \<phi>_exh_def assms(1) assms(2) exhale exhale_diff_external_consistent exhale_preserves_hh full_total_state.select_convs(3) get_fnm_nm.simps get_fnm_total.simps get_hh_total_full.elims nm' nm_exh option.inject total_state.select_convs(2) total_state.update_convs(2))
+      next
+        show "q > 0"
+          using True \<open>Abs_preal v_p \<noteq> pos_perm_class.pnone\<close> \<phi>_exh_def perm pperm_pnone_pgt by auto
+      qed
+    next
+      case False
+      then show ?thesis
+        using \<phi>_exh_def get_fnm_nm.simps get_fnm_total.simps nm' by auto
+    qed
+  qed
+
+  have hh_eq: "get_hh_total_full \<omega>0 = get_hh_total_full \<omega>1"
+    using exhale exhale_preserves_hh by blast
+  have nm_merge: "get_nm_total \<phi>' = nested_mask_merge (get_nm_total_full \<omega>1) (get_nm_total \<phi>_exh)"
+  proof -
+    from \<phi>_exh_def have
+      "get_nm_total \<phi>_exh = NM (\<lambda>_. 0)
+                               (\<lambda>x. if x = (pred_id,v_args) then (Abs_preal v_p) else 0)
+                               (\<lambda>x. if x = (pred_id,v_args) then Some nm_exh else None)"
+      by simp
+    moreover have "get_nm_total \<phi>' = add_to_nm_loc_nm (add_to_mp_loc_nm (get_nm_total_full \<omega>1) (pred_id,v_args) (Abs_preal v_p)) (pred_id,v_args) nm_exh"
+      by (simp add: assms(4) \<omega>')
+    ultimately show ?thesis
+      by (simp add: nested_mask_merge_one_sub)
+  qed
+
+  show "consistent_external ctxt \<phi>'"
+  proof -
+    have "get_hh_total_full \<omega>1 = get_hh_total \<phi>"
+      using \<omega>0 assms(2) hh_eq by fastforce
+    hence cons1: "consistent_external ctxt \<lparr> get_hh_total = get_hh_total \<phi>, get_nm_total = get_nm_total_full \<omega>1 \<rparr>"
+      by (metis (full_types) TotalStateUtil.get_nm_total_full.simps exhaled_consistent get_hh_total_full.elims old.unit.exhaust total_state.surjective)
+    have "get_hh_total \<phi>_exh = get_hh_total \<phi>"
+      by (simp add: \<phi>_exh_def)
+    hence cons2: "consistent_external ctxt \<lparr> get_hh_total = get_hh_total \<phi>, get_nm_total = get_nm_total \<phi>_exh \<rparr>"
+      using \<phi>_exh_def diff_consistent by force
+    have "get_hh_total \<phi>' = get_hh_total \<phi>"
+    proof -
+      have \<open>get_hh_total (add_to_nm_loc_total
+                  (update_mp_loc_total (get_total_full \<omega>1) (pred_id,v_args) (get_mp_total_full \<omega>1 (pred_id,v_args) + Abs_preal v_p))
+                  (pred_id,v_args) nm_exh) = get_hh_total \<phi>'\<close>
+        by (simp add: \<omega>' assms(4))
+      thus ?thesis
+        by (metis \<open>get_hh_total_full \<omega>1 = get_hh_total \<phi>\<close> add_to_nm_loc_total_preserves_hh get_hh_total_full.simps update_mp_loc_total_preserves_hh)
+    qed
+    thus ?thesis
+      using sum_consistent_external[of ctxt "get_hh_total \<phi>" "get_nm_total_full \<omega>1" "get_nm_total \<phi>_exh", OF cons1 cons2]
+      by (metis (full_types) nm_merge old.unit.exhaust total_state.surjective)
   qed
 qed
 

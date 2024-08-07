@@ -108,6 +108,12 @@ termination
   using Option.is_none_def by fastforce
 
 
+subsection \<open>Auxiliary definitions for \<^typ>\<open>'a nested_mask\<close>\<close>
+
+fun add_to_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
+  where "add_to_nm_loc_nm (NM mh mp fnm) loc nm = NM mh mp (fnm( loc := nested_mask_merge_option (fnm loc) (Some nm) ))"
+
+
 subsection \<open>update_store_total\<close>
 
 fun update_var_total :: "'a full_total_state \<Rightarrow> var \<Rightarrow> 'a val \<Rightarrow> 'a full_total_state"
@@ -115,6 +121,7 @@ fun update_var_total :: "'a full_total_state \<Rightarrow> var \<Rightarrow> 'a 
 
 fun update_store_total :: "'a full_total_state \<Rightarrow> 'a store \<Rightarrow> 'a full_total_state"
   where "update_store_total \<omega> \<sigma> = \<omega>\<lparr>get_store_total := \<sigma>\<rparr>"
+
 
 subsection \<open>update_trace_total\<close>
 
@@ -133,6 +140,7 @@ lemma update_trace_total_heap_same: "get_hh_total_full (update_trace_total \<ome
 lemma update_trace_total_mask_same: "get_mh_total_full (update_trace_total \<omega> \<pi>) = get_mh_total_full \<omega>"
   by simp
 
+
 subsection \<open>heap and mask in total state\<close>
 
 fun get_m_total :: "('a, 'b) total_state_scheme \<Rightarrow> field_mask \<times> 'a predicate_mask"
@@ -150,6 +158,9 @@ fun update_mh_loc_total :: "'a total_state \<Rightarrow> heap_loc \<Rightarrow> 
 fun update_mp_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a total_state"
   where "update_mp_loc_total \<omega> lp p = mp_total_update \<omega> ((get_mp_total \<omega>)(lp := p))"
 
+fun add_to_mp_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a total_state"
+  where "add_to_mp_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := add_to_mp_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
+
 fun update_mh_total :: "'a total_state \<Rightarrow> field_mask \<Rightarrow> 'a total_state"
   where "update_mh_total \<omega> mh = mh_total_update \<omega> mh"
 
@@ -163,7 +174,7 @@ fun get_nm_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightar
   where "get_nm_loc_total \<omega> lp = get_fnm_total \<omega> lp"
 
 fun add_to_nm_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a total_state"
-  where "add_to_nm_loc_total \<omega> lp nm = nm_loc_total_update \<omega> lp (nested_mask_merge_option (get_nm_loc_total \<omega> lp) (Some nm))"
+  where "add_to_nm_loc_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := add_to_nm_loc_nm (get_nm_total \<phi>) lp nm \<rparr>"
 
 fun mult_nm_total :: "'a total_state \<Rightarrow> preal \<Rightarrow> 'a total_state"
   where "mult_nm_total \<phi> p = \<phi>\<lparr> get_nm_total := (nested_mask_multiply (get_nm_total \<phi>) p) \<rparr>"

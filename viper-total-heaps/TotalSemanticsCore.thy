@@ -454,7 +454,7 @@ inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a tot
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
      sat ctxt
-         \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi> \<rparr>
+         \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>
          (get_mh_total \<phi>) (get_mp_total \<phi>)
          (syntactic_mult (Rep_preal p) pred_body);
      consistent_external ctxt \<phi>;
@@ -644,7 +644,7 @@ inductive fold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarr
      \<omega>' = \<lparr> get_store_total = get_store_total \<omega>,
             get_trace_total = get_trace_total \<omega>,
             get_total_full = add_to_nm_loc_total
-              (update_mp_loc_total (get_total_full \<omega>1) (pred_id,vs) (get_mp_total (get_total_full \<omega>1) (pred_id, vs) + q))
+              (add_to_mp_loc_total (get_total_full \<omega>1) (pred_id, vs) q)
               (pred_id,vs) nm_exh
               \<comment> \<open>The code is a bit messy here. What we describe is first increasing the permission mask by q, and then merging the nested mask with the exhaled nested mask.\<close>
           \<rparr>
@@ -660,5 +660,8 @@ inductive fold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarr
      red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal q) pred_body) \<omega>0 RFailure
    \<rbrakk> \<Longrightarrow>
    fold_rel ctxt pred_id vs q \<omega> RFailure"
+
+inductive_cases FoldRelNormal_case: "fold_rel ctxt pred_id vs q \<omega> (RNormal \<omega>')"
+inductive_cases FoldRelFailure_case: "fold_rel ctxt pred_id vs q \<omega> RFailure"
 
 end
