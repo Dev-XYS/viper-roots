@@ -10,7 +10,7 @@ abbreviation has_sumA (infixr "has'_sumA" 46) where
   "(f has_sumA S) \<equiv> (f has_sum S) (domain f)"
 
 function (sequential) nm_loc_sum :: "heap_loc \<Rightarrow> 'a nested_mask \<Rightarrow> preal \<Rightarrow> bool" where
-  "nm_loc_sum loc (NM mh mp fnm) p =
+  "nm_loc_sum loc (NM mh _ fnm) p =
      (mh loc \<le> p \<and>
       (\<exists>pf. pf has_sumA (p - mh loc) \<and>
             (\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf ploc)) (pf ploc = 0) (fnm ploc))))"
@@ -27,6 +27,10 @@ lemma nm_loc_sumI:
                  (\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf ploc)) (pf ploc = 0) (fnm ploc)))"
   shows "nm_loc_sum loc (NM mh mp fnm) p"
   using assms by auto
+
+
+fun nm_loc_sum_option :: "heap_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> preal \<Rightarrow> bool" where
+  "nm_loc_sum_option loc nm_opt p = option_fold (\<lambda>nm. nm_loc_sum loc nm p) (p = 0) nm_opt"
 
 
 \<comment> \<open>Nested mask summation - addition\<close>
@@ -380,7 +384,7 @@ proof -
 
   have "pf ploc = q"
     apply (cases "fnm ploc")
-    apply (metis assms(2) option_fold.simps(2) pf_split)
+    apply (metis (full_types) assms(2) option_fold.simps(2) pf_split)
     by (metis assms(2) nm_loc_sum_unique option_fold.simps(1) pf_split)
 
   \<comment> \<open>part 1\<close>
@@ -411,6 +415,68 @@ proof -
     using nm_loc_sumI
     by blast
 qed
+
+
+\<comment> \<open>The sum of one sub-mask is smaller than the entire sum.\<close>
+
+lemma nm_loc_sum_sub_le:
+  assumes "nm_loc_sum loc (NM mh mp fnm) p"
+      and "nm_loc_sum_option loc (fnm ploc) q"
+    shows "q \<le> p"
+proof (cases "fnm ploc")
+  case None
+  then show ?thesis
+    using all_pos assms(2) by auto
+next
+  case (Some nm)
+  with assms(2) show ?thesis
+    apply simp
+    by (smt (verit, best) Rep_preal_inverse assms(1) assms(2) fun_upd_triv greater_minus_plus minus_preal.rep_eq nm_loc_sum_change_sum nm_loc_sum_option.elims(2) nm_loc_sum_unique order_le_less)
+qed
+
+
+\<comment> \<open>Adding to a sub-mask\<close>
+
+lemma nm_loc_sum_add_to_sub':
+  assumes "nm_loc_sum loc (NM mh mp fnm) p"
+      and "nm_loc_sum_option loc nm' q"
+    shows "nm_loc_sum loc (NM mh mp' (fnm( ploc := nested_mask_merge_option (fnm ploc) nm' ))) (p + q)"
+proof -
+  obtain s_sub where "option_fold (\<lambda>nm. nm_loc_sum loc nm s_sub) (s_sub = 0) (fnm ploc)"
+    using assms(1) nm_loc_sum.simps by blast
+  moreover have "s_sub \<le> p"
+    by (metis assms(1) calculation nm_loc_sum_option.elims(1) nm_loc_sum_sub_le)
+  moreover have "option_fold (\<lambda>nm. nm_loc_sum loc nm (s_sub + q)) (s_sub + q = 0) (nested_mask_merge_option (fnm ploc) nm')"
+    apply (cases "fnm ploc"; cases nm'; simp)
+    using assms(2) calculation(1) apply force+
+    by (metis assms(2) calculation(1) nm_loc_sum_add nm_loc_sum_option.elims(2) option_fold.simps(1))
+  ultimately have "nm_loc_sum loc (NM mh mp' (fnm( ploc := nested_mask_merge_option (fnm ploc) nm' ))) (p - s_sub + (s_sub + q))"
+    using assms(1) nm_loc_sum_change_sum by blast
+  thus ?thesis
+    by (metis \<open>s_sub \<le> p\<close> greater_minus_plus group_cancel.add1)
+qed
+
+lemma nm_loc_sum_add_to_sub:
+  assumes "nm_loc_sum loc nm s"
+      and "nm_loc_sum loc nm' s'"
+    shows "nm_loc_sum loc (add_to_nm_loc_nm nm ploc nm') (s + s')"
+  using nm_loc_sum_add_to_sub'
+  by (metis add_to_nm_loc_nm.simps assms(1) assms(2) nm_loc_sum.elims(2) nm_loc_sum_option.elims(1) option_fold.simps(1))
+
+
+\<comment> \<open>Sum of the empty mask\<close>
+
+lemma empty_nm_0:
+  shows "nm_loc_sum loc empty_nm 0"
+  oops
+
+
+\<comment> \<open>Sum does not depend on predicate mask\<close>
+
+lemma nm_loc_sum_mp_irrelevant:
+  assumes "nm_loc_sum loc (NM mh mp fnm) s"
+  shows "nm_loc_sum loc (NM mh mp' fnm) s"
+  using assms by force
 
 
 end

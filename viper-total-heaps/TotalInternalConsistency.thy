@@ -156,11 +156,71 @@ proof -
 qed
 
 
+subsubsection \<open>Unfold preserves internal consistency\<close>
+
 lemma shift_up_preserves_internal_consistency:
   assumes "shift_up pred_id vs q nm nm'"
       and "consistent_internal nm"
     shows "consistent_internal nm'"
   by (meson assms(1) assms(2) consistent_internal_def shift_up_preserves_loc_sum)
+
+
+subsubsection \<open>Fold preserves internal consistency\<close>
+
+lemma fold_rel_preserves_loc_sum:
+  assumes "fold_rel ctxt pred_id vs p \<omega> (RNormal \<omega>')"
+      and "nm_loc_sum loc (get_nm_total_full \<omega>) s"
+    shows "nm_loc_sum loc (get_nm_total_full \<omega>') s"
+proof -
+  obtain pred_decl pred_body \<omega>0 \<omega>1 nm_exh where
+    "ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl" and
+    "ViperLang.predicate_decl.body pred_decl = Some pred_body" and
+    "p \<noteq> 0" and
+    \<omega>0: "\<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>" and
+    "red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal p) pred_body) \<omega>0 (RNormal \<omega>1)" and
+    "nm_exh = nested_mask_subtract (get_nm_total_full \<omega>0) (get_nm_total_full \<omega>1)" and
+    \<omega>': "\<omega>' = \<lparr> get_store_total = get_store_total \<omega>,
+                get_trace_total = get_trace_total \<omega>,
+                get_total_full = add_to_nm_loc_total
+                  (add_to_mp_loc_total (get_total_full \<omega>1) (pred_id,vs) p)
+                  (pred_id,vs) nm_exh
+              \<rparr>"
+    using assms(1)
+    by (auto elim: FoldRelNormal_case)
+
+  define nm0 where "nm0 = get_nm_total_full \<omega>0"
+  define nm1 where "nm1 = get_nm_total_full \<omega>1"
+  define nm' where "nm' = get_nm_total_full \<omega>'"
+
+  have "nm0 = get_nm_total_full \<omega>"
+    by (simp add: \<omega>0 nm0_def)
+  hence "nm_loc_sum loc nm0 s"
+    using assms(2) by blast
+
+  have "nm0 = nested_mask_merge nm1 nm_exh" sorry
+  moreover obtain s1 s_exh where
+    "nm_loc_sum loc nm1 s1" and
+    "nm_loc_sum loc nm_exh s_exh"
+    sorry
+  ultimately have "s = s1 + s_exh"
+    by (metis \<open>nm0 = get_nm_total_full \<omega>\<close> assms(2) nm_loc_sum_add nm_loc_sum_unique)
+
+  have "nm_loc_sum loc (get_nm_total (add_to_mp_loc_total (get_total_full \<omega>1) (pred_id,vs) p)) s1"
+    apply simp
+    using \<open>nm_loc_sum loc nm1 s1\<close> nm1_def nm_loc_sum.elims(2) by fastforce
+  hence "nm_loc_sum loc (get_nm_total_full \<omega>') (s1 + s_exh)"
+    by (simp add: \<open>nm_loc_sum loc nm_exh s_exh\<close> nm_loc_sum_add_to_sub \<omega>')
+
+  thus ?thesis
+    using \<open>s = s1 + s_exh\<close> by blast
+qed
+
+
+lemma fold_rel_preserves_internal_consistency:
+  assumes "fold_rel ctxt pred_id vs p \<omega> (RNormal \<omega>')"
+      and "consistent_internal (get_nm_total_full \<omega>)"
+    shows "consistent_internal (get_nm_total_full \<omega>')"
+  by (metis assms(1) assms(2) consistent_internal_def fold_rel_preserves_loc_sum)
 
 
 end
