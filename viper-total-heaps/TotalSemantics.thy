@@ -82,7 +82,7 @@ fun exh_if_total :: "bool \<Rightarrow> 'a full_total_state \<Rightarrow> 'a stm
 *)
 
 lemma exh_if_total_normal:
-  assumes "exh_if_total b \<omega> = RNormal \<omega>"
+  assumes "exh_if_total b \<omega> = RNormal \<omega>'"
   shows b
   using assms
   by (auto elim: exh_if_total.elims)

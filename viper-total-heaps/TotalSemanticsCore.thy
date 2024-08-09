@@ -230,7 +230,7 @@ inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Ri
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega>
      (exh_if_total (p \<ge> 0 \<and> (if r = Null then p = 0 else mh (a,f) \<ge> Abs_preal p))
-                    (if r = Null then \<omega> else update_mh_loc_total_full \<omega> (a,f) ((mh (a,f)) - (Abs_preal p))))"
+                   (if r = Null then \<omega> else update_mh_loc_total_full \<omega> (a,f) ((mh (a,f)) - (Abs_preal p))))"
 
 \<comment>\<open>Exhaling wildcard removes some non-zero permission that is less than the current permission held.\<close>
 | ExhAccWildcard:
@@ -239,11 +239,11 @@ inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Ri
      a = the_address r;
      \<comment>\<open>\<^term>\<open>q\<close> satisfies the right-hand side if \<^prop>\<open>mh (a,f) \<noteq> 0\<close> (thm prat_exists_stricly_smaller_nonzero).
      If \<^prop>\<open>mh (a,f) \<noteq> 0\<close> does not hold, then the exhale fails and the value of q is irrelevant. \<close>
-     q = (SOME p. p \<noteq> 0 \<and> mh (a,f) > p)
+     mh (a,f) \<noteq> 0 \<and> r \<noteq> Null \<Longrightarrow> q > 0 \<and> mh (a,f) > q
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt \<omega>0 (Atomic (Acc e_r f Wildcard)) \<omega>
      (exh_if_total (mh (a,f) \<noteq> 0 \<and> r \<noteq> Null)
-                    (update_mh_loc_total_full \<omega> (a,f) q))"
+                   (update_mh_loc_total_full \<omega> (a,f) (mh (a,f) - q)))"
 
 \<comment>\<open>exhale acc(P(es), p)\<close>
 \<comment> \<open>TODO: remove the corresponding fraction of the nested mask when exhaling a predicate\<close>
@@ -260,11 +260,11 @@ inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Ri
      red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args);
      \<comment>\<open>q satisfies the right-hand side if \<^prop>\<open>mp (pred_id, v_args) \<noteq> 0\<close> (thm prat_exists_strictly_smaller_nonzero).
      If \<^prop>\<open>mp (pred_id, v_args) \<noteq> 0\<close> does not hold, then the exhale fails and the value of q is irrelevant.\<close>
-     q = (SOME p. p \<noteq> 0 \<and> mp (pred_id, v_args) > p)
+     mp (pred_id, v_args) \<noteq> 0 \<Longrightarrow> q > 0 \<and> mp (pred_id, v_args) > q
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt \<omega>0 (Atomic (AccPredicate pred_id e_args Wildcard)) \<omega>
      (exh_if_total (mp (pred_id, v_args) \<noteq> 0)
-                   (update_mp_loc_total_full \<omega> (pred_id, v_args) q))"
+                   (update_mp_loc_total_full \<omega> (pred_id, v_args) (mp (pred_id, v_args) - q)))"
 
 | ExhPure:
   "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<rbrakk> \<Longrightarrow>

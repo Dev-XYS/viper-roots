@@ -133,38 +133,39 @@ lemma vpr_store_well_typed_unshift:
 subsection \<open>Expression evaluation\<close>
 
 lemma red_exp_unop_sub_failure:
-  assumes "ctxt, StateCons, \<omega>def_opt \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
-  shows "ctxt, StateCons, \<omega>def_opt \<turnstile> \<langle>Unop uop e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  assumes "ctxt, \<omega>def_opt \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  shows "ctxt, \<omega>def_opt \<turnstile> \<langle>Unop uop e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
   apply (rule RedSubFailure)
   using assms
-  by (auto intro: red_exp_inhale_unfold_intros)
+  by (simp add: RedExpListFailure assms)+
 
 lemma red_exp_binop_sub_left_failure:
-  assumes "ctxt, StateCons, \<omega>def_opt \<turnstile> \<langle>e1; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
-  shows "ctxt, StateCons, \<omega>def_opt \<turnstile> \<langle>Binop e1 bop e2; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  assumes "ctxt, \<omega>def_opt \<turnstile> \<langle>e1; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  shows "ctxt, \<omega>def_opt \<turnstile> \<langle>Binop e1 bop e2; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
   apply (rule RedSubFailure)
   using assms
-  by (auto intro: red_exp_inhale_unfold_intros)
+  by (simp add: RedExpListFailure assms)+
 
 lemma red_exp_field_sub_failure:
-  assumes "ctxt, StateCons, \<omega>def_opt \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
-  shows "ctxt, StateCons, \<omega>def_opt \<turnstile> \<langle>FieldAcc e f; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  assumes "ctxt, \<omega>def_opt \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  shows "ctxt, \<omega>def_opt \<turnstile> \<langle>FieldAcc e f; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
   apply (rule RedSubFailure)
   using assms
-  by (auto intro: red_exp_inhale_unfold_intros)
+  by (simp add: RedExpListFailure assms)+
 
 lemma red_exp_condexp_sub_failure:
-  assumes "ctxt, StateCons, \<omega>def_opt \<turnstile> \<langle>cond; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
-  shows "ctxt, StateCons, \<omega>def_opt \<turnstile> \<langle>CondExp cond thn els; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  assumes "ctxt, \<omega>def_opt \<turnstile> \<langle>cond; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  shows "ctxt, \<omega>def_opt \<turnstile> \<langle>CondExp cond thn els; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
   apply (rule RedSubFailure)
   using assms
-  by (auto intro: red_exp_inhale_unfold_intros)
+  by (simp add: RedExpListFailure assms)+
 
 subsubsection \<open>Main lemmas\<close>
 
 \<comment>\<open>The generalization of the following lemma to function calls will require a condition on the function interpretation,
    which states how the well-definedness of functions is affected when adjusting the well-definedness state.\<close>
 
+(*
 lemma red_pure_exp_different_def_state:
   shows "ctxt, StateCons, \<omega>def_opt \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t res \<Longrightarrow>
            res = Val v \<Longrightarrow>
@@ -358,6 +359,7 @@ next
   then show ?case 
   by (auto intro: red_exp_inhale_unfold_intros)
 qed (rule HOL.TrueI)+
+*)
 
 \<comment>\<open>The generalization of the following lemma to function calls will require a restriction on the function interpretation,
    which states that the mask has no effect on function values.\<close>
@@ -484,25 +486,25 @@ subsection \<open>Inhale\<close>
 text \<open>Inhale only changes mask\<close>
 
 lemma inhale_perm_single_store_same:
-  assumes  "\<omega>' \<in> inhale_perm_single R \<omega> lh popt"
+  assumes  "\<omega>' \<in> inhale_perm_single \<omega> lh popt"
   shows "get_store_total \<omega>' = get_store_total \<omega>"
   using assms
   unfolding inhale_perm_single_def
   by auto
 
 lemma inhale_perm_single_trace_same:
-  assumes  "\<omega>' \<in> inhale_perm_single R \<omega> lh popt"
+  assumes  "\<omega>' \<in> inhale_perm_single \<omega> lh popt"
   shows "get_trace_total \<omega>' = get_trace_total \<omega>"
   using assms
   unfolding inhale_perm_single_def
   by auto
 
-(* lemma inhale_perm_single_heap_same:
-  assumes  "\<omega>' \<in> inhale_perm_single R \<omega> lh popt"
-  shows "get_h_total_full \<omega>' = get_h_total_full \<omega>"
+lemma inhale_perm_single_heap_same:
+  assumes  "\<omega>' \<in> inhale_perm_single \<omega> lh popt"
+  shows "get_hh_total_full \<omega>' = get_hh_total_full \<omega>"
   using assms
   unfolding inhale_perm_single_def
-  by fastforce *)
+  by fastforce
 
 lemma inhale_perm_single_pred_store_same:
   assumes  "\<omega>' \<in> inhale_perm_single_pred R \<omega> lh popt"
@@ -1435,16 +1437,16 @@ proof (rule allI | rule impI)+
   thus "assertion_framing_state ctxt StateCons A ?\<omega>'"
     using assertion_framing_state_mono Leq assms
     by blast
-qed            
+qed *)
 
 subsection \<open>Exhale\<close>
 
 lemma exhale_only_changes_total_state_aux:
   assumes
-         "red_exhale ctxt R \<omega>def A \<omega> res" and "res = RNormal \<omega>'"
+         "red_exhale ctxt \<omega>def A \<omega> res" and "res = RNormal \<omega>'"
   shows  "get_store_total \<omega>' = get_store_total \<omega> \<and>
           get_trace_total \<omega>' = get_trace_total \<omega> \<and>
-          get_h_total_full \<omega>' = get_h_total_full \<omega>"
+          get_hh_total_full \<omega>' = get_hh_total_full \<omega>"
   using assms
 proof (induction arbitrary: \<omega>')
   case (ExhAcc mh \<omega> e_r r e_p p a f)
@@ -1498,7 +1500,7 @@ proof cases
     by (metis (mono_tags, lifting) havoc_locs_state_same_store havoc_locs_state_same_trace \<open>\<omega>' \<in> _\<close>)
 qed
 
-lemma mask_update_greater_aux:
+(* lemma mask_update_greater_aux:
   assumes "pgte (m l) p"
   shows "m \<ge> m(l := m l - p)"
 proof (simp add: le_fun_def)
@@ -2626,17 +2628,17 @@ lemma th_result_rel_convert:
   assumes "th_result_rel a b W res"
       and "a = a'"
       and "b = b'"
-      and "res' = map_stmt_result_total f res"
+      and "res' = map_result_total f res"
       and "\<And> \<omega>. \<omega> \<in> W \<Longrightarrow> f \<omega> \<in> W'"
     shows "th_result_rel a' b' W' res'"
   using assms
-  by (metis map_stmt_result_total.simps(1) map_stmt_result_total.simps(2) map_stmt_result_total.simps(3) th_result_rel.simps)
+  by (metis map_result_total.simps(1) map_result_total.simps(2) map_result_total.simps(3) th_result_rel.simps)
 
 lemma inhale_perm_single_similar:
-  assumes "\<omega> \<in> inhale_perm_single R \<omega>0 (a, f) (Some (Abs_preal p))"
+  assumes "\<omega> \<in> inhale_perm_single \<omega>0 (a, f) (Some (Abs_preal p))"
       and "get_total_full \<omega> = get_total_full \<omega>'"
       and "get_store_total \<omega>' = get_store_total \<omega>1 \<and> get_trace_total \<omega>' = get_trace_total \<omega>1"
-    shows "\<omega>' \<in> inhale_perm_single R \<omega>1 (a, f) (Some (Abs_preal p))"
+    shows "\<omega>' \<in> inhale_perm_single \<omega>1 (a, f) (Some (Abs_preal p))"
   using assms
   unfolding inhale_perm_single_def
   oops
@@ -3039,21 +3041,21 @@ qed *)
 lemma exh_if_total_map_stmt_result_total:
   assumes "b \<longleftrightarrow> b'"
       and "\<omega> = f \<omega>'"
-    shows "exh_if_total b \<omega> = map_stmt_result_total f (exh_if_total b' \<omega>')" 
+    shows "exh_if_total b \<omega> = map_result_total f (exh_if_total b' \<omega>')" 
   using assms
   apply (cases "exh_if_total b \<omega>")
   apply (erule exh_if_total.elims, simp, simp)+
   done
 
 lemma red_exhale_accI:
-  assumes "ctxt, R, (Some \<omega>0) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
-      and "ctxt, R, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+  assumes "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+      and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
       and "a = the_address r"      
       and "\<omega>' = (if r = Null then \<omega> else update_mh_loc_total_full \<omega> (a,f) ((get_mh_total_full \<omega> (a,f)) - (Abs_preal p)))" (is "\<omega>' = ?\<omega>def")      
-      and "res = exh_if_total (p \<ge> 0 \<and> (if r = Null then p = 0 else pgte (get_mh_total_full \<omega> (a,f)) (Abs_preal p))) \<omega>'" 
-    shows "red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> res"
+      and "res = exh_if_total (p \<ge> 0 \<and> (if r = Null then p = 0 else get_mh_total_full \<omega> (a,f) \<ge> Abs_preal p)) \<omega>'" 
+    shows "red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> res"
   unfolding \<open>res = _\<close> \<open>\<omega>' = _\<close>
-  apply (rule TotalSemantics.ExhAcc)
+  apply (rule ExhAcc)
   using assms by auto
 
 (* lemma exhale_same_on_free_var:

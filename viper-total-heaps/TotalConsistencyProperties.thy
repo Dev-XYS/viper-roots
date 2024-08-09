@@ -1,5 +1,5 @@
 theory TotalConsistencyProperties
-  imports TotalSemanticsCore TotalSemantics TotalInternalConsistency
+  imports TotalSemanticsCore TotalSemantics TotalInternalConsistency TotalSemanticsProperties
 begin
 
 
@@ -1471,18 +1471,6 @@ lemma exhale_diff_external_consistent:
     shows "consistent_external ctxt (\<lparr> get_hh_total = get_hh_total_full \<omega>', get_nm_total = nested_mask_subtract (get_nm_total_full \<omega>) (get_nm_total_full \<omega>') \<rparr>)"
   sorry
 
-lemma exhale_diff_sat:
-  assumes "consistent_external ctxt (get_total_full \<omega>)"
-      and "red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>')"
-      and "supported_pred_body A"
-    shows "sat ctxt (\<lparr> get_store_total = get_store_total \<omega>,
-                       get_trace_total = Map.empty,
-                       get_total_full = get_total_full \<omega>\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>)
-               (field_mask_sub (get_mh_total_full \<omega>) (get_mh_total_full \<omega>'))
-               (predicate_mask_sub (get_mp_total_full \<omega>) (get_mp_total_full \<omega>'))
-               A"
-  sorry
-
 lemma exhale_preserves_hh:
   assumes "red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>')"
   shows "get_hh_total_full \<omega> = get_hh_total_full \<omega>'"
@@ -1568,8 +1556,8 @@ proof -
                  get_trace_total = \<lambda>x. None,
                  get_total_full = \<phi>_exh\<lparr>get_nm_total := empty_nm \<rparr> \<rparr>
                (get_mh_nm nm') (get_mp_nm nm') (syntactic_mult (Rep_preal q) pred_body)"
-          using exhale_diff_sat[of ctxt \<omega>0 "(syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)" \<omega>1,
-                                OF \<omega>0_consistent exhale sup_mult]
+          using exhale_diff_sat[of ctxt \<omega>0 \<omega>0 "(syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)" _ \<omega>1,
+                                OF \<omega>0_consistent exhale _ sup_mult]
           by (smt (verit, del_insts) True \<omega>0 \<phi>_exh_def assms(2) full_total_state.select_convs(1) full_total_state.select_convs(3) get_mp_nm.simps get_mp_total.simps old.unit.exhaust perm total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
       next
         show "consistent_external ctxt (\<phi>_exh\<lparr>get_nm_total := nm'\<rparr>)"

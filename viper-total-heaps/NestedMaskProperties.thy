@@ -460,9 +460,12 @@ lemma nm_loc_sum_add_to_sub:
   assumes "nm_loc_sum loc nm s"
       and "nm_loc_sum loc nm' s'"
     shows "nm_loc_sum loc (add_to_nm_loc_nm nm ploc nm') (s + s')"
-  using nm_loc_sum_add_to_sub'
-  by (metis add_to_nm_loc_nm.simps assms(1) assms(2) nm_loc_sum.elims(2) nm_loc_sum_option.elims(1) option_fold.simps(1))
+  using assms nm_loc_sum_add_to_sub'[where nm'="Some nm'"]
+  by (cases nm) (auto simp del: nm_loc_sum.simps)
 
+  (* using nm_loc_sum_add_to_sub'
+  by (metis add_to_nm_loc_nm.simps assms(1) assms(2) nm_loc_sum.elims(2) nm_loc_sum_option.elims(1) option_fold.simps(1))
+ *)
 
 \<comment> \<open>Sum of the empty mask\<close>
 
