@@ -81,6 +81,27 @@ fun nested_mask_multiply_option :: "'a nested_mask option \<Rightarrow> preal \<
 | "nested_mask_multiply_option (Some nm) p = (if p = 0 then None else Some (nested_mask_multiply nm p))"
 
 
+\<comment> \<open>Constant states\<close>
+
+fun zero_mh :: "field_mask" where
+  "zero_mh _ = 0"
+
+fun zero_mp :: "'a predicate_mask" where
+  "zero_mp _ = 0"
+
+fun singleton_mh :: "heap_loc \<Rightarrow> preal \<Rightarrow> field_mask" where
+  "singleton_mh loc p l = (if l = loc then p else 0)"
+
+fun singleton_mp :: "'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a predicate_mask" where
+  "singleton_mp ploc p pl = (if pl = ploc then p else 0)"
+
+fun is_singleton_mh :: "heap_loc \<Rightarrow> field_mask \<Rightarrow> bool" where
+  "is_singleton_mh loc mh = (\<exists>p > 0. mh = singleton_mh loc p)"
+
+fun is_singleton_mp :: "'a predicate_loc \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
+  "is_singleton_mp ploc mp = (\<exists>p > 0. mp = singleton_mp ploc p)"
+
+
 \<comment> \<open>Mask subtraction\<close>
 
 fun field_mask_sub :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask" where
@@ -173,6 +194,12 @@ fun update_hh_total :: "'a total_state \<Rightarrow> 'a total_heap \<Rightarrow>
 fun get_nm_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
   where "get_nm_loc_total \<omega> lp = get_fnm_total \<omega> lp"
 
+fun update_nm_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a total_state"
+  where "update_nm_loc_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := upd_nm_loc_nm (get_nm_total \<phi>) lp nm \<rparr>"
+
+fun update_nm_loc_opt_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> 'a total_state"
+  where "update_nm_loc_opt_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := upd_nm_loc_opt_nm (get_nm_total \<phi>) lp nm \<rparr>"
+
 fun add_to_nm_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a total_state"
   where "add_to_nm_loc_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := add_to_nm_loc_nm (get_nm_total \<phi>) lp nm \<rparr>"
 
@@ -221,12 +248,98 @@ fun update_nm_total_full :: "'a full_total_state \<Rightarrow> 'a nested_mask \<
 fun get_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
   where "get_nm_loc_total_full \<omega> lp = get_nm_loc_total (get_total_full \<omega>) lp"
 
+fun update_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a full_total_state"
+  where "update_nm_loc_total_full \<omega> lp nm = \<omega>\<lparr> get_total_full := update_nm_loc_total (get_total_full \<omega>) lp nm \<rparr>"
+
+fun update_nm_loc_opt_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> 'a full_total_state"
+  where "update_nm_loc_opt_total_full \<omega> lp nm = \<omega>\<lparr> get_total_full := update_nm_loc_opt_total (get_total_full \<omega>) lp nm \<rparr>"
+
 fun add_to_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a full_total_state"
   where "add_to_nm_loc_total_full \<omega> lp nm =
         \<omega>\<lparr> get_total_full := add_to_nm_loc_total (get_total_full \<omega>) lp nm \<rparr>"
 
 fun mult_nm_total_full :: "'a full_total_state \<Rightarrow> preal \<Rightarrow> 'a full_total_state"
   where "mult_nm_total_full \<omega> p = update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) p)"
+
+fun mult_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a full_total_state"
+  where "mult_nm_loc_total_full \<omega> lp p = update_nm_loc_opt_total_full \<omega> lp (nested_mask_multiply_option (get_nm_loc_total_full \<omega> lp) p)"
+
+
+subsubsection \<open>Lemmas on state update\<close>
+
+\<comment> \<open>nested masks\<close>
+
+lemma upd_mh_nm_mp_eq:
+  shows "get_mp_nm nm = get_mp_nm (upd_mh_nm nm mh)"
+  by (cases nm, fastforce)
+
+lemma upd_mh_nm_mh_rel:
+  shows "get_mh_nm (upd_mh_nm nm mh) = mh"
+  by (cases nm, fastforce)
+
+lemma upd_mp_nm_mh_eq:
+  shows "get_mh_nm nm = get_mh_nm (upd_mp_nm nm mp)"
+  by (cases nm, fastforce)
+
+lemma upd_mp_nm_mp_rel:
+  shows "get_mp_nm (upd_mp_nm nm mp) = mp"
+  by (cases nm, fastforce)
+
+lemma upd_nm_loc_opt_nm_mh_eq:
+  shows "get_mh_nm nm = get_mh_nm (upd_nm_loc_opt_nm nm lp nm')"
+  by (cases nm, fastforce)
+
+lemma upd_nm_loc_opt_nm_mp_eq:
+  shows "get_mp_nm nm = get_mp_nm (upd_nm_loc_opt_nm nm lp nm')"
+  by (cases nm, fastforce)
+
+\<comment> \<open>full total states\<close>
+
+lemma update_mh_loc_total_full_mh_rel:
+  shows "get_mh_total_full (update_mh_loc_total_full \<omega> l p) = (get_mh_total_full \<omega>)( l := p )"
+  using upd_mh_nm_mh_rel by auto
+
+lemma update_mh_loc_total_full_mp_eq:
+  shows "get_mp_total_full \<omega> = get_mp_total_full (update_mh_loc_total_full \<omega> l p)"
+  by (simp add: upd_mh_nm_mp_eq)
+
+lemma update_mp_loc_total_full_mh_eq:
+  shows "get_mh_total_full \<omega> = get_mh_total_full (update_mp_loc_total_full \<omega> lp p)"
+  by (simp add: upd_mp_nm_mh_eq)
+
+lemma update_mp_loc_total_full_mp_rel:
+  shows "get_mp_total_full (update_mp_loc_total_full \<omega> lp p) = (get_mp_total_full \<omega>)( lp := p )"
+  using upd_mp_nm_mp_rel by auto
+
+lemma mult_nm_loc_total_full_mh_eq:
+  shows "get_mh_total_full \<omega> = get_mh_total_full (mult_nm_loc_total_full \<omega> lp p)"
+  by (simp add: upd_nm_loc_opt_nm_mh_eq)
+
+lemma mult_nm_loc_total_full_mp_eq:
+  shows "get_mp_total_full \<omega> = get_mp_total_full (mult_nm_loc_total_full \<omega> lp p)"
+  by (simp add: upd_nm_loc_opt_nm_mp_eq)
+
+
+subsubsection \<open>Lemmas on mask subtraction\<close>
+
+lemma mh_upd_loc_diff:
+  assumes "p \<le> mh l"
+  shows "field_mask_sub mh (mh( l := p )) = singleton_mh l (mh l - p)"
+proof
+  fix x
+  show "field_mask_sub mh (mh( l := p )) x = singleton_mh l (mh l - p) x"
+    by (cases "x = l"; simp add: minus_preal.abs_eq zero_preal.abs_eq)
+qed
+
+lemma mp_upd_loc_diff:
+  assumes "p \<le> mp lp"
+  shows "predicate_mask_sub mp (mp( lp := p )) = singleton_mp lp (mp lp - p)"
+proof
+  fix x
+  show "predicate_mask_sub mp (mp( lp := p )) x = singleton_mp lp (mp lp - p) x"
+    by (cases "x = lp"; simp add: minus_preal.abs_eq zero_preal.abs_eq)
+qed
+
 
 subsubsection \<open>Lemmas\<close>
 

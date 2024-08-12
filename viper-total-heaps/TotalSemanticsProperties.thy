@@ -42,41 +42,62 @@ lemma eval_multi_exhale_sat_helper:
          (Some vs)"
   sorry
 
-lemma dec_mh_mh_diff:
-  shows "field_mask_sub (get_mh_total_full \<omega>)
-                        (get_mh_total_full (update_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
-         singleton_mh loc p"
-  sorry
-
-lemma dec_mh_mp_diff:
-  shows "predicate_mask_sub (get_mp_total_full \<omega>)
-                            (get_mp_total_full (update_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
-         zero_mp"
-  sorry
-
-lemma dec_mp_mh_diff:
-  shows "field_mask_sub (get_mh_total_full \<omega>)
-                        (get_mh_total_full (update_mp_loc_total_full \<omega> ploc (get_mp_total_full \<omega> ploc - p))) =
-         zero_mh"
-  sorry
-
-lemma dec_mp_mp_diff:
-  shows "predicate_mask_sub (get_mp_total_full \<omega>)
-                            (get_mp_total_full (update_mp_loc_total_full \<omega> ploc (get_mp_total_full \<omega> ploc - p))) =
-         singleton_mp ploc p"
-  sorry
-
 lemma same_mh_diff:
   shows "field_mask_sub (get_mh_total_full \<omega>)
                         (get_mh_total_full \<omega>) =
          zero_mh"
-  sorry
+  apply standard
+  apply simp
+  using minus_preal.abs_eq zero_preal_def
+  by force
 
 lemma same_mp_diff:
   shows "predicate_mask_sub (get_mp_total_full \<omega>)
                             (get_mp_total_full \<omega>) =
          zero_mp"
-  sorry
+  apply standard
+  apply simp
+  using minus_preal.abs_eq zero_preal_def
+  by force
+
+lemma dec_mh_mh_diff:
+  assumes "p < get_mh_total_full \<omega> loc"
+  shows "field_mask_sub (get_mh_total_full \<omega>)
+                        (get_mh_total_full (update_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
+         singleton_mh loc p"
+proof -
+  have "get_mh_total_full \<omega> loc - (get_mh_total_full \<omega> loc - p) = p"
+    using assms minus_preal_gte by auto
+  thus ?thesis
+    by (metis assms mh_upd_loc_diff order_less_imp_le psub_smaller update_mh_loc_total_full_mh_rel)
+qed
+
+lemma dec_mh_mp_diff:
+  shows "predicate_mask_sub (get_mp_total_full \<omega>)
+                            (get_mp_total_full (update_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
+         zero_mp"
+  by (metis same_mp_diff update_mh_loc_total_full_mp_eq)
+
+lemma exhale_mh_diff:
+  shows "field_mask_sub (get_mh_total_full \<omega>)
+                        (get_mh_total_full (exhale_pred \<omega> ploc p)) =
+         zero_mh"
+  by (metis exhale_pred_def mult_nm_loc_total_full_mh_eq same_mh_diff update_mp_loc_total_full_mh_eq)
+
+lemma exhale_mp_diff:
+  assumes "p \<le> get_mp_total_full \<omega> ploc"
+  shows "predicate_mask_sub (get_mp_total_full \<omega>)
+                            (get_mp_total_full (exhale_pred \<omega> ploc p)) =
+         singleton_mp ploc p"
+proof -
+  have 1: "get_mp_total_full (exhale_pred \<omega> ploc p) = get_mp_total_full (update_mp_loc_total_full \<omega> ploc (get_mp_total_full \<omega> ploc - p))"
+    by (metis exhale_pred_def mult_nm_loc_total_full_mp_eq)
+  have 2: "get_mp_total_full \<omega> ploc - (get_mp_total_full \<omega> ploc - p) = p"
+    using assms minus_preal_gte by auto
+  show ?thesis
+    apply (simp only: 1)
+    by (metis 2 assms mp_upd_loc_diff psub_smaller update_mp_loc_total_full_mp_rel)
+qed
 
 \<comment> \<open>already proved elsewhere, but need adjustment\<close>
 lemma exhale_smaller:
@@ -135,7 +156,7 @@ proof (induction arbitrary: \<omega>')
          apply fastforce+
     using 1
       apply blast
-     apply (metis "1" IH.hyps(1) IH.hyps(4) \<omega>' dec_mh_mh_diff)
+     apply (metis "1" IH.hyps(1) IH.hyps(4) \<omega>' mh_upd_loc_diff minus_preal_gte psub_smaller update_mh_loc_total_full_mh_rel)
     by (metis IH.hyps(1) \<omega>' dec_mh_mp_diff same_mp_diff)
 next
   case IH: (ExhAccWildcard mh \<omega> e_r r a f q)
@@ -154,7 +175,7 @@ next
 next
   case IH: (ExhAccPred mp \<omega> e_args v_args e_p p pred_id)
   have 1: "0 \<le> p \<and> Abs_preal p \<le> mp (pred_id, v_args)"
-   and \<omega>': "\<omega>' = update_mp_loc_total_full \<omega> (pred_id, v_args) (mp (pred_id, v_args) - Abs_preal p)"
+   and \<omega>': "\<omega>' = exhale_pred \<omega> (pred_id, v_args) (Abs_preal p)"
     using IH.prems(1) exh_if_total_normal exh_if_total_normal_2
     by blast+
   show ?case
@@ -164,23 +185,24 @@ next
     using IH(5) eval_exhale_sat_helper[OF IH(3)]
        apply simp
       apply (simp add: 1)
-    using IH.hyps(1) \<omega>' dec_mp_mh_diff
+    using IH.hyps(1) \<omega>' exhale_mh_diff
      apply blast
-    using IH.hyps(1) \<omega>' dec_mp_mp_diff
+    using IH.hyps(1) \<omega>' exhale_mp_diff 1
     by blast
 next
   case IH: (ExhAccPredWildcard mp \<omega> e_args v_args pred_id q)
   have 1: "mp (pred_id, v_args) \<noteq> 0"
-   and \<omega>': "\<omega>' = update_mp_loc_total_full \<omega> (pred_id, v_args) (mp (pred_id, v_args) - q)"
-    using IH.prems(1) exh_if_total_normal exh_if_total_normal_2
+   and 2: "q > 0 \<and> mp (pred_id, v_args) > q"
+   and \<omega>': "\<omega>' = exhale_pred \<omega> (pred_id, v_args) q"
+    using IH.prems(1) IH.hyps(3) exh_if_total_normal exh_if_total_normal_2
     by blast+
   show ?case
     apply standard
     using eval_multi_exhale_sat_helper[OF IH(2)]
       apply blast
-    using IH.hyps(1) \<omega>' dec_mp_mh_diff
+    using IH.hyps(1) \<omega>' exhale_mh_diff
      apply blast
-    using 1 IH.hyps(1) IH.hyps(3) \<omega>' dec_mp_mp_diff is_singleton_mp.simps
+    using 1 2 IH.hyps(1) IH.hyps(3) \<omega>' exhale_mp_diff is_singleton_mp.simps order_less_imp_le
     by blast
 next
   case IH: (ExhPure e \<omega> b)

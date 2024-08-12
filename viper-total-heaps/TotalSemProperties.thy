@@ -1456,10 +1456,14 @@ next
   then show ?case by (auto elim: exh_if_total.elims)
 next
   case (ExhAccPred mp \<omega> e_args v_args e_p p pred_id r)
-  then show ?case by (auto elim: exh_if_total.elims)
+  then show ?case
+    apply (simp only: exhale_pred_def Let_def)
+    by (auto elim: exh_if_total.elims)
 next
   case (ExhAccPredWildcard mp \<omega> e_args v_args q pred_id)
-  then show ?case by (auto elim: exh_if_total.elims)
+  then show ?case
+    apply (simp only: exhale_pred_def Let_def)
+    by (auto elim: exh_if_total.elims)
 next
   case (ExhPure e \<omega> b)
   then show ?case 

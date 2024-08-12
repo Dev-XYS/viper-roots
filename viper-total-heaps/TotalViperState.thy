@@ -57,7 +57,14 @@ fun upd_mp_nm :: "'a nested_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> '
   where "upd_mp_nm (NM mh _ fnm) mp = NM mh mp fnm"
 
 fun add_to_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
-  where "add_to_mp_loc_nm (NM mh mp fnm) ploc p = NM mh (mp( ploc := mp ploc + p )) fnm"
+  where "add_to_mp_loc_nm (NM mh mp fnm) lp p = NM mh (mp( lp := mp lp + p )) fnm"
+
+fun upd_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
+  where "upd_nm_loc_nm (NM mh mp fnm) lp nm = NM mh mp (fnm( lp := Some nm ))"
+
+fun upd_nm_loc_opt_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> 'a nested_mask"
+  where "upd_nm_loc_opt_nm (NM mh mp fnm) lp nm = NM mh mp (fnm( lp := nm ))"
+
 
 definition empty_nm :: "'a nested_mask"
   where "empty_nm = NM (\<lambda>_. 0) (\<lambda>_. 0) Map.empty"
@@ -88,8 +95,6 @@ fun fnm_total_update :: "('a, 'b) total_state_scheme \<Rightarrow> ('a predicate
 fun get_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
   where "get_nm_loc_total \<phi> lp = get_fnm_total \<phi> lp"
 
-fun nm_loc_total_update :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> ('a, 'b) total_state_scheme"
-  where "nm_loc_total_update \<phi> lp nm = fnm_total_update \<phi> ((get_fnm_total \<phi>)(lp := nm))"
 
 type_synonym 'a total_trace = "label \<rightharpoonup> 'a total_state"
 

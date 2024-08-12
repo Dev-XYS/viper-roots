@@ -214,9 +214,13 @@ inductive_cases RedOld_case: "ctxt, \<omega>_def \<turnstile> \<langle>RedOld \<
 
 subsection \<open>Exhale\<close>
 
-fun exh_if_total :: "bool \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total"  where
+fun exh_if_total :: "bool \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total" where
   "exh_if_total False _ = RFailure"
 | "exh_if_total True \<omega> = RNormal \<omega>"
+
+definition exhale_pred :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a full_total_state" where
+  "exhale_pred \<omega> ploc p = (let perm = get_mp_total_full \<omega> ploc in
+     mult_nm_loc_total_full (update_mp_loc_total_full \<omega> ploc (perm - p)) ploc ((perm - p) / perm))"
 
 inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool"
   for ctxt :: "'a total_context" and \<omega>0 :: "'a full_total_state" where
@@ -254,7 +258,7 @@ inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Ri
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt \<omega>0 (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega>
      (exh_if_total (p \<ge> 0 \<and> mp (pred_id, v_args) \<ge> Abs_preal p)
-                   (update_mp_loc_total_full \<omega> (pred_id, v_args) (mp (pred_id, v_args) - (Abs_preal p))))"
+                   (exhale_pred \<omega> (pred_id, v_args) (Abs_preal p)))"
 | ExhAccPredWildcard:
   "\<lbrakk> mp = get_mp_total_full \<omega>;
      red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args);
@@ -264,7 +268,7 @@ inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Ri
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt \<omega>0 (Atomic (AccPredicate pred_id e_args Wildcard)) \<omega>
      (exh_if_total (mp (pred_id, v_args) \<noteq> 0)
-                   (update_mp_loc_total_full \<omega> (pred_id, v_args) (mp (pred_id, v_args) - q)))"
+                   (exhale_pred \<omega> (pred_id, v_args) q))"
 
 | ExhPure:
   "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<rbrakk> \<Longrightarrow>
@@ -311,24 +315,6 @@ inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Ri
 
 
 subsection \<open>Satisfiability\<close>
-
-fun zero_mh :: "field_mask" where
-  "zero_mh _ = 0"
-
-fun zero_mp :: "'a predicate_mask" where
-  "zero_mp _ = 0"
-
-fun singleton_mh :: "heap_loc \<Rightarrow> preal \<Rightarrow> field_mask" where
-  "singleton_mh loc p l = (if l = loc then p else 0)"
-
-fun singleton_mp :: "'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a predicate_mask" where
-  "singleton_mp ploc p pl = (if pl = ploc then p else 0)"
-
-fun is_singleton_mh :: "heap_loc \<Rightarrow> field_mask \<Rightarrow> bool" where
-  "is_singleton_mh loc mh = (\<exists>p > 0. mh = singleton_mh loc p)"
-
-fun is_singleton_mp :: "'a predicate_loc \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
-  "is_singleton_mp ploc mp = (\<exists>p > 0. mp = singleton_mp ploc p)"
 
 fun proportional_split :: "'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> bool" where
   "proportional_split \<omega> \<omega>\<^sub>1 \<omega>\<^sub>2 = ((\<forall>l. get_mh_total_full \<omega>\<^sub>1 l + get_mh_total_full \<omega>\<^sub>2 l = get_mh_total_full \<omega> l) \<and>
