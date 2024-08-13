@@ -482,4 +482,15 @@ lemma nm_loc_sum_mp_irrelevant:
   using assms by force
 
 
+\<comment> \<open>Nested mask subtraction\<close>
+
+lemma nested_mask_sub_add:
+  assumes "nm_diff = nested_mask_subtract nm1 nm2"
+      and "\<And>x. get_mh_nm nm1 x \<ge> get_mh_nm nm2 x"
+      and "\<And>x. get_mp_nm nm1 x \<ge> get_mp_nm nm2 x"
+      and "\<And>x. \<exists>frac. get_nm_loc_nm nm2 x = nested_mask_multiply_option (get_nm_loc_nm nm1 x) frac"
+    shows "nested_mask_merge nm2 nm_diff = nm1"
+  sorry
+
+
 end

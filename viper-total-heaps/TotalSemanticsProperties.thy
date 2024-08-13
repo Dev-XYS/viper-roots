@@ -21,6 +21,16 @@ lemma eval_with_no_trace:
   sorry
 
 
+\<comment> \<open>Properties on \<^const>\<open>red_exhale\<close>\<close>
+
+lemma exhale_fraction:
+  assumes "red_exhale ctxt \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
+  shows "get_nm_loc_total_full \<omega>' ploc =
+         nested_mask_multiply_option (get_nm_loc_total_full \<omega> ploc)
+                                     (get_mp_total_full \<omega>' ploc / get_mp_total_full \<omega> ploc)"
+  sorry
+
+
 \<comment> \<open>Helper lemmas\<close>
 
 lemma eval_exhale_sat_helper:

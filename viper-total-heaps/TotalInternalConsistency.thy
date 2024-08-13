@@ -1,5 +1,5 @@
 theory TotalInternalConsistency
-  imports TotalSemanticsCore TotalSemantics NestedMaskProperties
+  imports TotalSemanticsCore TotalSemantics TotalSemanticsProperties NestedMaskProperties
 begin
 
 
@@ -177,8 +177,8 @@ proof -
     "ViperLang.predicate_decl.body pred_decl = Some pred_body" and
     "p \<noteq> 0" and
     \<omega>0: "\<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>" and
-    "red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal p) pred_body) \<omega>0 (RNormal \<omega>1)" and
-    "nm_exh = nested_mask_subtract (get_nm_total_full \<omega>0) (get_nm_total_full \<omega>1)" and
+    exh: "red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal p) pred_body) \<omega>0 (RNormal \<omega>1)" and
+    nm_sub: "nm_exh = nested_mask_subtract (get_nm_total_full \<omega>0) (get_nm_total_full \<omega>1)" and
     \<omega>': "\<omega>' = \<lparr> get_store_total = get_store_total \<omega>,
                 get_trace_total = get_trace_total \<omega>,
                 get_total_full = add_to_nm_loc_total
@@ -197,7 +197,10 @@ proof -
   hence "nm_loc_sum loc nm0 s"
     using assms(2) by blast
 
-  have "nm0 = nested_mask_merge nm1 nm_exh" sorry
+  have "nm0 = nested_mask_merge nm1 nm_exh"
+    using exhale_fraction[OF exh] nested_mask_sub_add[OF nm_sub] exhale_smaller[OF exh]
+    apply simp
+    by (metis TotalStateUtil.get_nm_total_full.simps get_fnm_nm.elims get_nm_loc_nm.simps nm0_def nm1_def)
   moreover obtain s1 s_exh where
     "nm_loc_sum loc nm1 s1" and
     "nm_loc_sum loc nm_exh s_exh"

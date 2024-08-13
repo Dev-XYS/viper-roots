@@ -270,14 +270,4 @@ definition assertion_framing_state :: "'a total_context \<Rightarrow> ('a full_t
       \<forall> res. red_inhale ctxt A \<omega> res \<longrightarrow> res \<noteq> RFailure"
 
 
-subsection \<open>Properties on \<^const>\<open>red_exhale\<close>\<close>
-
-lemma exhale_fraction:
-  assumes "red_exhale ctxt \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
-  shows "get_nm_loc_total_full \<omega>' ploc =
-         nested_mask_multiply_option (get_nm_loc_total_full \<omega> ploc)
-                                     (get_mp_total_full \<omega>' ploc / get_mp_total_full \<omega> ploc)"
-  sorry
-
-
 end
