@@ -367,6 +367,9 @@ fun get_mh_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> field_ma
 fun get_mp_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> 'a predicate_mask"
   where "get_mp_total_full \<omega> = get_mp_total (get_total_full \<omega>)"
 
+fun get_fnm_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask)"
+  where "get_fnm_total_full \<omega> = get_fnm_total (get_total_full \<omega>)"
+
 subsection \<open>Empty states\<close>
 
 definition is_empty_total :: "('a,'b) total_state_scheme \<Rightarrow> bool"

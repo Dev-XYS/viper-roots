@@ -145,32 +145,47 @@ fun mult_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_lo
   where "mult_nm_loc_total_full \<omega> lp p = update_nm_loc_opt_total_full \<omega> lp (nested_mask_multiply_option (get_nm_loc_total_full \<omega> lp) p)"
 
 
-subsubsection \<open>Lemmas on state update\<close>
+subsection \<open>Nested Mask Equality\<close>
+
+lemma nested_mask_equality:
+  assumes "get_mh_nm nm1 = get_mh_nm nm2"
+      and "get_mp_nm nm1 = get_mp_nm nm2"
+      and "get_fnm_nm nm1 = get_fnm_nm nm2"
+    shows "nm1 = nm2"
+  apply (cases nm1, cases nm2)
+  using assms by auto
+
+
+subsection \<open>Lemmas on State Update\<close>
 
 \<comment> \<open>nested masks\<close>
 
-lemma upd_mh_nm_mp_eq:
-  shows "get_mp_nm nm = get_mp_nm (upd_mh_nm nm mh)"
+lemma upd_mh_nm_mp_eq [simp]:
+  shows "get_mp_nm (upd_mh_nm nm mh) = get_mp_nm nm"
   by (cases nm, fastforce)
 
-lemma upd_mh_nm_mh_rel:
+lemma upd_mh_nm_mh_rel [simp]:
   shows "get_mh_nm (upd_mh_nm nm mh) = mh"
   by (cases nm, fastforce)
 
-lemma upd_mp_nm_mh_eq:
-  shows "get_mh_nm nm = get_mh_nm (upd_mp_nm nm mp)"
+lemma upd_mh_nm_fnm_rel [simp]:
+  shows "get_fnm_nm (upd_mh_nm nm mh) = get_fnm_nm nm"
   by (cases nm, fastforce)
 
-lemma upd_mp_nm_mp_rel:
+lemma upd_mp_nm_mh_eq [simp]:
+  shows "get_mh_nm (upd_mp_nm nm mp) = get_mh_nm nm"
+  by (cases nm, fastforce)
+
+lemma upd_mp_nm_mp_rel [simp]:
   shows "get_mp_nm (upd_mp_nm nm mp) = mp"
   by (cases nm, fastforce)
 
-lemma upd_nm_loc_opt_nm_mh_eq:
-  shows "get_mh_nm nm = get_mh_nm (upd_nm_loc_opt_nm nm lp nm')"
+lemma upd_nm_loc_opt_nm_mh_eq [simp]:
+  shows "get_mh_nm (upd_nm_loc_opt_nm nm lp nm') = get_mh_nm nm"
   by (cases nm, fastforce)
 
-lemma upd_nm_loc_opt_nm_mp_eq:
-  shows "get_mp_nm nm = get_mp_nm (upd_nm_loc_opt_nm nm lp nm')"
+lemma upd_nm_loc_opt_nm_mp_eq [simp]:
+  shows "get_mp_nm (upd_nm_loc_opt_nm nm lp nm') = get_mp_nm nm"
   by (cases nm, fastforce)
 
 \<comment> \<open>full total states\<close>
@@ -181,11 +196,11 @@ lemma update_mh_loc_total_full_mh_rel:
 
 lemma update_mh_loc_total_full_mp_eq:
   shows "get_mp_total_full \<omega> = get_mp_total_full (update_mh_loc_total_full \<omega> l p)"
-  by (simp add: upd_mh_nm_mp_eq)
+  by simp
 
 lemma update_mp_loc_total_full_mh_eq:
   shows "get_mh_total_full \<omega> = get_mh_total_full (update_mp_loc_total_full \<omega> lp p)"
-  by (simp add: upd_mp_nm_mh_eq)
+  by simp
 
 lemma update_mp_loc_total_full_mp_rel:
   shows "get_mp_total_full (update_mp_loc_total_full \<omega> lp p) = (get_mp_total_full \<omega>)( lp := p )"
@@ -193,11 +208,11 @@ lemma update_mp_loc_total_full_mp_rel:
 
 lemma mult_nm_loc_total_full_mh_eq:
   shows "get_mh_total_full \<omega> = get_mh_total_full (mult_nm_loc_total_full \<omega> lp p)"
-  by (simp add: upd_nm_loc_opt_nm_mh_eq)
+  by simp
 
 lemma mult_nm_loc_total_full_mp_eq:
   shows "get_mp_total_full \<omega> = get_mp_total_full (mult_nm_loc_total_full \<omega> lp p)"
-  by (simp add: upd_nm_loc_opt_nm_mp_eq)
+  by simp
 
 
 subsubsection \<open>Lemmas on mask subtraction\<close>
