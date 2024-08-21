@@ -8,27 +8,25 @@ begin
 
 subsection \<open>Inhale\<close>
 
-(* The general question is, if we put consistent checks inside inhale or inside statement reduction. *)
-
 definition inhale_perm_single :: "'a full_total_state \<Rightarrow> heap_loc \<Rightarrow> preal option \<Rightarrow> 'a full_total_state set"
   where "inhale_perm_single \<omega> lh p_opt =
     { \<omega>'| \<omega>' q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
             get_mh_total_full \<omega> lh + q \<le> 1 \<and>  \<comment> \<open>There can be at most 1 field permission\<close>
-               \<comment> \<open>Do we really need the check here? Or it is covered in consistency?\<close>
             \<omega>' = update_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + q)
     }"
 
-definition inhale_perm_single_pred :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal option \<Rightarrow> 'a full_total_state set"
-  where "inhale_perm_single_pred ctxt \<omega> lp p_opt =
+definition inhale_perm_single_pred :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal option \<Rightarrow> 'a full_total_state set"
+  where "inhale_perm_single_pred ctxt R \<omega> lp p_opt =
     { \<omega>'| \<omega>' \<phi>_inh q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
             consistent_external_wrt_ploc ctxt \<phi>_inh lp q \<and>
             get_hh_total \<phi>_inh = get_hh_total_full \<omega> \<and>
-            \<omega>' = add_to_nm_loc_total_full (update_mp_loc_total_full \<omega> lp (get_mp_total_full \<omega> lp + q)) lp (get_nm_total \<phi>_inh)
+            \<omega>' = add_to_nm_loc_total_full (update_mp_loc_total_full \<omega> lp (get_mp_total_full \<omega> lp + q)) lp (get_nm_total \<phi>_inh) \<and>
+            R \<omega>'
     }"
 
-inductive red_inhale :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool" where
+inductive red_inhale :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool" where
 \<comment>\<open>Atomic inhale\<close>
   InhAcc:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
@@ -36,66 +34,70 @@ inductive red_inhale :: "'a total_context \<Rightarrow> assertion \<Rightarrow> 
      W' = (if r = Null then {\<omega>} else inhale_perm_single \<omega> (the_address r,f) (Some (Abs_preal p)));
      th_result_rel (p \<ge> 0) (W' \<noteq> {} \<and> (p > 0 \<longrightarrow> r \<noteq> Null)) W' res
    \<rbrakk> \<Longrightarrow>
-   red_inhale ctxt (Atomic (Acc e_r f (PureExp e_p))) \<omega> res"
-| InhAccPred:
-  "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
-     ctxt, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
-     W' = inhale_perm_single_pred ctxt \<omega> (pred_id, v_args) (Some (Abs_preal p));
-     th_result_rel (p \<ge> 0) (W' \<noteq> {}) W' res
-   \<rbrakk> \<Longrightarrow>
-   red_inhale ctxt (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega> res"
+   red_inhale ctxt R (Atomic (Acc e_r f (PureExp e_p))) \<omega> res"
+
 | InhAccWildcard:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
      W' = inhale_perm_single \<omega> (the_address r,f) None;
      th_result_rel True (W' \<noteq> {} \<and> r \<noteq> Null) W' res
    \<rbrakk> \<Longrightarrow>
-   red_inhale ctxt (Atomic (Acc e_r f Wildcard)) \<omega> res"
+   red_inhale ctxt R (Atomic (Acc e_r f Wildcard)) \<omega> res"
+
+| InhAccPred:
+  "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
+     ctxt, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
+     W' = inhale_perm_single_pred ctxt R \<omega> (pred_id, v_args) (Some (Abs_preal p));
+     th_result_rel (p \<ge> 0) (W' \<noteq> {}) W' res
+   \<rbrakk> \<Longrightarrow>
+   red_inhale ctxt R (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega> res"
+
 | InhAccPredWildcard:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
-     W' = inhale_perm_single_pred ctxt \<omega> (pred_id, v_args) None;
+     W' = inhale_perm_single_pred ctxt R \<omega> (pred_id, v_args) None;
      th_result_rel True (W' \<noteq> {}) W' res
    \<rbrakk> \<Longrightarrow>
-   red_inhale ctxt (Atomic (AccPredicate pred_id e_args Wildcard)) \<omega> res"
+   red_inhale ctxt R (Atomic (AccPredicate pred_id e_args Wildcard)) \<omega> res"
+
 | InhPure:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<rbrakk> \<Longrightarrow>
-   red_inhale ctxt (Atomic (Pure e)) \<omega> (if b then RNormal \<omega> else RMagic)"
+   red_inhale ctxt R (Atomic (Pure e)) \<omega> (if b then RNormal \<omega> else RMagic)"
 
 \<comment>\<open>Connectives inhale\<close>
 | InhStarNormal:
-  "\<lbrakk> red_inhale ctxt A \<omega> (RNormal \<omega>'');
-     red_inhale ctxt B \<omega>'' res
+  "\<lbrakk> red_inhale ctxt R A \<omega> (RNormal \<omega>'');
+     red_inhale ctxt R B \<omega>'' res
    \<rbrakk> \<Longrightarrow>
-   red_inhale ctxt (A && B) \<omega> res"
+   red_inhale ctxt R (A && B) \<omega> res"
 | InhStarFailureMagic:
-  "\<lbrakk> red_inhale ctxt A \<omega> resA;
+  "\<lbrakk> red_inhale ctxt R A \<omega> resA;
      resA = RFailure \<or> resA = RMagic
    \<rbrakk> \<Longrightarrow>
-   red_inhale ctxt (A && B) \<omega> resA"
+   red_inhale ctxt R (A && B) \<omega> resA"
 | InhImpTrue:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True));
-     red_inhale ctxt A \<omega> res
+     red_inhale ctxt R A \<omega> res
    \<rbrakk> \<Longrightarrow>
-   red_inhale ctxt (Imp e A) \<omega> res"
+   red_inhale ctxt R (Imp e A) \<omega> res"
 | InhImpFalse:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False) \<rbrakk> \<Longrightarrow>
-   red_inhale ctxt (Imp e A) \<omega> (RNormal \<omega>)"
+   red_inhale ctxt R (Imp e A) \<omega> (RNormal \<omega>)"
 | InhCondAssertTrue:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True));
-     red_inhale ctxt A \<omega> res
+     red_inhale ctxt R A \<omega> res
    \<rbrakk> \<Longrightarrow>
-   red_inhale ctxt (CondAssert e A B) \<omega> res"
+   red_inhale ctxt R (CondAssert e A B) \<omega> res"
 | InhCondAssertFalse:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
-     red_inhale ctxt B \<omega> res
+     red_inhale ctxt R B \<omega> res
    \<rbrakk> \<Longrightarrow>
-   red_inhale ctxt (CondAssert e A B) \<omega> res"
+   red_inhale ctxt R (CondAssert e A B) \<omega> res"
 
 \<comment>\<open>If a \<^emph>\<open>direct\<close> subexpression is not well-defined, then this results in failure.\<close>
 | InhSubExpFailure:
   "\<lbrakk> (direct_sub_expressions_assertion A) \<noteq> [];
      red_pure_exps_total ctxt (Some \<omega>) (direct_sub_expressions_assertion A) \<omega> None
    \<rbrakk> \<Longrightarrow>
-   red_inhale ctxt A \<omega> RFailure"
+   red_inhale ctxt R A \<omega> RFailure"
 
 
 subsection \<open>Exhale\<close>
@@ -198,9 +200,6 @@ inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Ri
      red_pure_exps_total ctxt (Some \<omega>0) (direct_sub_expressions_assertion A) \<omega> None
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt \<omega>0 A \<omega> RFailure"
-
-
-inductive_cases ExhStar_case: "red_exhale ctxt \<omega>0 (A && B) m_pm res"
 
 
 end

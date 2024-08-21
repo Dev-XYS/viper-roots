@@ -1,6 +1,7 @@
 theory TotalSemProperties
-imports TotalSemantics
+  imports TotalSemantics
 begin
+
 
 subsection \<open>Auxiliary lemmas\<close>
 
@@ -507,14 +508,14 @@ lemma inhale_perm_single_heap_same:
   by fastforce
 
 lemma inhale_perm_single_pred_store_same:
-  assumes  "\<omega>' \<in> inhale_perm_single_pred R \<omega> lh popt"
+  assumes  "\<omega>' \<in> inhale_perm_single_pred ctxt R \<omega> lh popt"
   shows "get_store_total \<omega>' = get_store_total \<omega>"
   using assms
   unfolding inhale_perm_single_pred_def
   by auto
 
 lemma inhale_perm_single_pred_trace_same:
-  assumes  "\<omega>' \<in> inhale_perm_single_pred R \<omega> lh popt"
+  assumes  "\<omega>' \<in> inhale_perm_single_pred ctxt R \<omega> lh popt"
   shows "get_trace_total \<omega>' = get_trace_total \<omega>"
   using assms
   unfolding inhale_perm_single_pred_def

@@ -145,7 +145,7 @@ inductive red_stmt_total :: "'a total_context \<Rightarrow> ('a full_total_state
 \<comment>\<open>Atomic statements\<close>
   RedSkip: "red_stmt_total ctxt R \<Lambda> Skip \<omega> (RNormal \<omega>)"
 | RedInhale:
-  "\<lbrakk> red_inhale ctxt A \<omega> res;
+  "\<lbrakk> red_inhale ctxt R A \<omega> res;
      res = RNormal \<omega>' \<Longrightarrow> R \<omega>'
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Inhale A) \<omega> res"
@@ -368,7 +368,7 @@ definition vpr_method_correct_total_aux ::
             vpr_store_well_typed (absval_interp_total ctxt) (nth_option (method_decl.args mdecl @ method_decl.rets mdecl)) (get_store_total \<omega>) \<longrightarrow>
             total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>) \<longrightarrow>
             is_empty_total_full \<omega> \<longrightarrow>
-            red_inhale ctxt (method_decl.pre mdecl) \<omega> rpre \<longrightarrow>
+            red_inhale ctxt R (method_decl.pre mdecl) \<omega> rpre \<longrightarrow>
             (
               rpre \<noteq> RFailure \<and>
               (\<forall>\<omega>pre. rpre = RNormal \<omega>pre \<longrightarrow>
@@ -379,7 +379,7 @@ definition vpr_method_correct_total_aux ::
 
 lemma vpr_method_correct_total_aux_normalD:
   assumes "vpr_method_correct_total_aux ctxt R mdecl CorrectWrtPre"
-      and "red_inhale ctxt (method_decl.pre mdecl) \<omega> (RNormal \<omega>pre)"
+      and "red_inhale ctxt R (method_decl.pre mdecl) \<omega> (RNormal \<omega>pre)"
       and "vpr_store_well_typed (absval_interp_total ctxt) (nth_option (method_decl.args mdecl @ method_decl.rets mdecl)) (get_store_total \<omega>)"
       and "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>)"
       and "is_empty_total_full \<omega>"
@@ -442,7 +442,7 @@ definition vpr_method_correct_total_expanded :: "'a total_context \<Rightarrow> 
             vpr_store_well_typed (absval_interp_total ctxt) (nth_option (method_decl.args mdecl @ method_decl.rets mdecl)) (get_store_total \<omega>) \<longrightarrow>
             total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>) \<longrightarrow>
             is_empty_total_full \<omega> \<longrightarrow>
-            red_inhale ctxt (method_decl.pre mdecl) \<omega> rpre \<longrightarrow>
+            red_inhale ctxt R (method_decl.pre mdecl) \<omega> rpre \<longrightarrow>
             (
               rpre \<noteq> RFailure \<and>
               (\<forall>\<omega>pre. rpre = RNormal \<omega>pre \<longrightarrow>

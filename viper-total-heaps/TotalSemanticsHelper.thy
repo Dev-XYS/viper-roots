@@ -211,25 +211,25 @@ subsubsection \<open>Inhale\<close>
 
 lemma inh_imp_failure:
   assumes "ctxt, Some \<omega> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
-  shows "red_inhale ctxt (Imp e A) \<omega> RFailure"
+  shows "red_inhale ctxt R (Imp e A) \<omega> RFailure"
   using assms InhSubExpFailure[where ?A="Imp e A"] RedExpListFailure
   by fastforce
 
 lemma inh_cond_assert_failure:
   assumes "ctxt, Some \<omega> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
-  shows "red_inhale ctxt (CondAssert e A B) \<omega> RFailure"
+  shows "red_inhale ctxt R (CondAssert e A B) \<omega> RFailure"
   using assms InhSubExpFailure[where ?A="CondAssert e A B"] RedExpListFailure
   by fastforce
 
 lemma inh_pure_normal:
   assumes "ctxt, Some \<omega> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
-  shows "red_inhale ctxt (Atomic (Pure e)) \<omega> (RNormal \<omega>)"
+  shows "red_inhale ctxt R (Atomic (Pure e)) \<omega> (RNormal \<omega>)"
   using assms InhPure
   by force
 
 lemma inh_pure_magic:
   assumes "ctxt, Some \<omega> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
-  shows "red_inhale ctxt (Atomic (Pure e)) \<omega> RMagic"
+  shows "red_inhale ctxt R (Atomic (Pure e)) \<omega> RMagic"
   using assms InhPure
   by force
 
@@ -248,9 +248,9 @@ lemmas red_inhale_intros =
   InhCondAssertFalse
   InhSubExpFailure
 
-inductive_cases InhStar_case: "red_inhale ctxt (A && B) \<omega> res"
-inductive_cases InhImp_case: "red_inhale ctxt (Imp e A) \<omega> res"
-inductive_cases InhPure_case: "red_inhale ctxt (Atomic (Pure e)) \<omega> res"
+inductive_cases InhStar_case: "red_inhale ctxt R (A && B) \<omega> res"
+inductive_cases InhImp_case: "red_inhale ctxt R (Imp e A) \<omega> res"
+inductive_cases InhPure_case: "red_inhale ctxt R (Atomic (Pure e)) \<omega> res"
 thm InhPure_case
 
 lemmas red_inhale_elims =
@@ -260,6 +260,8 @@ lemmas red_inhale_elims =
 
 
 subsubsection \<open>Exhale\<close>
+
+inductive_cases ExhStar_case: "red_exhale ctxt \<omega>0 (A && B) m_pm res"
 
 lemma ExhPure_case:
   assumes "red_exhale ctxt \<omega>0 (Atomic (Pure e)) \<omega> res"
@@ -282,7 +284,7 @@ subsection \<open>Ported from TotalExpressions.thy\<close>
 definition assertion_framing_state :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> bool"
   where
     "assertion_framing_state ctxt StateCons A \<omega> \<equiv>
-      \<forall> res. red_inhale ctxt A \<omega> res \<longrightarrow> res \<noteq> RFailure"
+      \<forall> res. red_inhale ctxt StateCons A \<omega> res \<longrightarrow> res \<noteq> RFailure"
 
 
 end
