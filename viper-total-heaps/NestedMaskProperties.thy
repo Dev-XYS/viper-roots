@@ -1,13 +1,12 @@
 theory NestedMaskProperties
-  imports TotalSemanticsCore HOL.Groups_Big "HOL-Analysis.Infinite_Sum"
+  imports HOL.Groups_Big "HOL-Analysis.Infinite_Sum"
+          TotalMaskUtil
 begin
 
 
-fun domain :: "('a \<Rightarrow> 'b) \<Rightarrow> 'a set" where
-  "domain f = {x . True}"
+abbreviation has_sumA :: "('a \<Rightarrow> 'b :: {comm_monoid_add, topological_space}) \<Rightarrow> 'b \<Rightarrow> bool" (infixr "has'_sumA" 46) where
+  "(f has_sumA S) \<equiv> has_sum f UNIV S"
 
-abbreviation has_sumA (infixr "has'_sumA" 46) where
-  "(f has_sumA S) \<equiv> (f has_sum S) (domain f)"
 
 function (sequential) nm_loc_sum :: "heap_loc \<Rightarrow> 'a nested_mask \<Rightarrow> preal \<Rightarrow> bool" where
   "nm_loc_sum loc (NM mh _ fnm) p =
@@ -53,9 +52,8 @@ proof (induct arbitrary: p q rule: nested_mask_merge.induct[of _ nm\<^sub>1 nm\<
       (\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf\<^sub>2 ploc)) (pf\<^sub>2 ploc = 0) (fnm\<^sub>2 ploc))"
       by (metis nm_loc_sum.simps)
     define pf where "pf = (pf\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ pf\<^sub>2)"
-    hence "domain pf = domain pf\<^sub>1" and "domain pf = domain pf\<^sub>2" by auto+
     hence has_sum: "pf has_sumA ((p - mh\<^sub>1 loc) + (q - mh\<^sub>2 loc))"
-      using has_sum_add[of pf\<^sub>1 "domain pf" "p - mh\<^sub>1 loc" pf\<^sub>2 "q - mh\<^sub>2 loc"] fun_comb_def
+      using has_sum_add[of pf\<^sub>1 "UNIV" "p - mh\<^sub>1 loc" pf\<^sub>2 "q - mh\<^sub>2 loc"] fun_comb_def
       by (metis (no_types, lifting) pf\<^sub>1 pf\<^sub>2 has_sum_cong pf_def)
     define fnm where "fnm = (fnm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ fnm\<^sub>2)"
     have all_sub: "\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf ploc)) (pf ploc = 0) (fnm ploc)"
@@ -140,13 +138,12 @@ proof (induct arbitrary: p rule: nested_mask_multiply.induct[of _ nm p])
       (\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf ploc)) (pf ploc = 0) (fnm ploc))"
     using nm_loc_sum.simps by blast
   define pf' where "pf' = ((*) frac) \<circ> pf"
-  moreover hence "domain pf' = domain pf" by simp
   moreover have "frac * p - mh' loc = frac * p - frac * mh loc"
     by (simp add: mh'_def)
   moreover hence "frac * p - mh' loc = frac * (p - mh loc)"
     by (smt (verit, ccfv_threshold) IH.prems PosReal.pmult_comm Rep_preal_inverse \<open>mh' loc \<le> PosReal.pmult p frac\<close> comp_apply field_mask_multiply.simps mh'_def minus_preal.rep_eq nm_loc_sum.simps right_diff_distrib times_preal.rep_eq)
   ultimately have "pf' has_sumA (frac * p - mh' loc)"
-    using has_sum_cmult_right[of pf "domain pf" "p - mh loc" frac] pf pf'_def
+    using has_sum_cmult_right[of pf "UNIV" "p - mh loc" frac] pf pf'_def
     by (metis (no_types, lifting) comp_apply has_sum_cong)
   moreover have "(\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf' ploc)) (pf' ploc = 0) (fnm' ploc))"
   proof
@@ -201,7 +198,7 @@ proof (induct nm arbitrary: p q)
     qed
   qed
   thus ?case
-    by (metis NM.prems(1) NM.prems(2) Rep_preal_inverse diff_diff_eq2 diff_left_imp_eq infsumI minus_preal.rep_eq nm_loc_sum.simps pf\<^sub>1 pf\<^sub>2)
+    by (metis NM.prems(1) NM.prems(2) infsumI nm_loc_sum.simps pf\<^sub>1 pf\<^sub>2 greater_minus_plus)
 qed
 
 
@@ -223,14 +220,13 @@ lemma has_sumA_nonneg_ge_one_real:
       and "\<And>x. f x \<ge> 0"
     shows "S \<ge> f a"
 proof -
-  have "f has_sumA (SUP F\<in>{F. finite F \<and> F \<subseteq> domain f}. (sum f F))"
-    by (metis (no_types, lifting) Collect_cong assms(1) assms(2) has_sum_imp_summable has_sum_nonneg_SUPREMUM_real)
-  moreover have "(SUP F\<in>{F. finite F \<and> F \<subseteq> domain f}. (sum f F)) \<ge> sum f {a}"
-    using assms(2)
-    by (smt (verit, del_insts) Collect_mono_iff calculation domain.elims empty_def finite.emptyI finite.insertI finite_sum_le_has_sum insert_Collect)
+  have "f has_sumA (SUP F\<in>{F. finite F \<and> F \<subseteq> UNIV}. (sum f F))"
+    by (metis (no_types, lifting) Collect_cong assms(1) assms(2) has_sum_nonneg_SUPREMUM_real summable_on_def)
+  moreover have "(SUP F\<in>{F. finite F \<and> F \<subseteq> UNIV}. (sum f F)) \<ge> sum f {a}"
+    by (smt (verit, best) top_greatest assms(2) Collect_mono_iff calculation empty_def finite.emptyI finite.insertI finite_sum_le_has_sum insert_Collect)
   moreover have "sum f {a} = f a" by auto
   ultimately show ?thesis
-    using assms(1) has_sum_unique by auto
+    by (metis assms(1) infsumI)
 qed
 
 
@@ -239,13 +235,13 @@ lemma has_sumA_nonneg_ge_one_ennreal:
   assumes "f has_sumA S"
     shows "S \<ge> f a"
 proof -
-  have "f has_sumA (SUP F\<in>{F. finite F \<and> F \<subseteq> domain f}. (sum f F))"
+  have "f has_sumA (SUP F\<in>{F. finite F \<and> F \<subseteq> UNIV}. (sum f F))"
     by (metis (full_types) nonneg_has_sum_complete zero_le)
-  moreover have "(SUP F\<in>{F. finite F \<and> F \<subseteq> domain f}. (sum f F)) \<ge> sum f {a}"
-    by (metis (no_types, lifting) SUP_upper domain.elims empty_subsetI insert_subset mem_Collect_eq sum.infinite zero_le)
+  moreover have "(SUP F\<in>{F. finite F \<and> F \<subseteq> UNIV}. (sum f F)) \<ge> sum f {a}"
+    by (metis (mono_tags, lifting) SUP_upper finite.emptyI finite_insert mem_Collect_eq subset_UNIV)
   moreover have "sum f {a} = f a" by auto
   ultimately show ?thesis
-    using assms has_sum_unique by auto
+    using assms infsumI by metis
 qed
 
 

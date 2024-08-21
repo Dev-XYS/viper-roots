@@ -1,12 +1,14 @@
-theory TotalSemanticsCoreHelper
-  imports TotalSemanticsCore
+theory TotalSemanticsHelper
+  imports TotalExpressions TotalInhaleExhale
 begin
+
 
 subsection \<open>Elimination and introduction rules\<close>
 
 (* lemmas red_exp_inhale_unfold_intros = red_pure_exp_total_red_pure_exps_total_red_inhale_unfold_rel.intros *)
 
 lemmas red_exp_intros = red_pure_exp_total_red_pure_exps_total.intros
+
 
 subsubsection \<open>Expression evaluation and well-definedness\<close>
 
@@ -204,6 +206,7 @@ next
     by (auto intro: red_exp_intros)
 qed
 
+
 subsubsection \<open>Inhale\<close>
 
 lemma inh_imp_failure:
@@ -254,6 +257,18 @@ lemmas red_inhale_elims =
   InhStar_case
   InhImp_case
   InhPure_case
+
+
+subsubsection \<open>Exhale\<close>
+
+lemma ExhPure_case:
+  assumes "red_exhale ctxt \<omega>0 (Atomic (Pure e)) \<omega> res"
+      and "\<And>b. ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<Longrightarrow> res = (exh_if_total b \<omega>) \<Longrightarrow> P"
+      and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<Longrightarrow> res = RFailure \<Longrightarrow> P"
+    shows "P"
+  using assms
+  by (cases) (auto elim: red_pure_exp_total_elims)
+
 
 subsubsection \<open>Unfold\<close>
 

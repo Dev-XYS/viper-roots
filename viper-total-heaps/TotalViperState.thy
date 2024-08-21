@@ -4,11 +4,12 @@ theory TotalViperState
 imports ViperCommon.ValueAndBasicState ViperCommon.PosReal
 begin
 
+
 text \<open> We use the following naming scheme:
 
 hh: heap for heap locations
-hp: heap for predicate locations
-h: hh and hp together (e.g., (hh,hp))
+hp: heap for predicate locations (deprecated)
+h: hh and hp together (e.g., (hh,hp)) (deprecated)
 
 mh: permission mask for heap locations
 mp: permission mask for predicate locations
@@ -18,6 +19,8 @@ lh: heap location
 lp: predicate location
 \<close>
 
+
+subsection \<open>Individual Masks and Heaps\<close>
 
 type_synonym 'a total_heap = "heap_loc \<Rightarrow> 'a val"
 type_synonym field_mask = "preal mask"
@@ -35,6 +38,8 @@ fun get_lhset_pheap :: "'a predicate_heap \<Rightarrow> 'a predicate_loc \<Right
 fun get_lpset_pheap :: "'a predicate_heap \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a predicate_loc set"
   where "get_lpset_pheap hp lp = snd (hp lp)"
 
+
+subsection \<open>Nested Mask\<close>
 
 datatype 'a nested_mask = NM field_mask "'a predicate_mask" "('a predicate_loc \<rightharpoonup> 'a nested_mask)"
 
@@ -56,19 +61,20 @@ fun upd_mh_nm :: "'a nested_mask \<Rightarrow> field_mask \<Rightarrow> 'a neste
 fun upd_mp_nm :: "'a nested_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a nested_mask"
   where "upd_mp_nm (NM mh _ fnm) mp = NM mh mp fnm"
 
-fun add_to_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
-  where "add_to_mp_loc_nm (NM mh mp fnm) lp p = NM mh (mp( lp := mp lp + p )) fnm"
-
 fun upd_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
   where "upd_nm_loc_nm (NM mh mp fnm) lp nm = NM mh mp (fnm( lp := Some nm ))"
 
 fun upd_nm_loc_opt_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> 'a nested_mask"
   where "upd_nm_loc_opt_nm (NM mh mp fnm) lp nm = NM mh mp (fnm( lp := nm ))"
 
+fun add_to_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
+  where "add_to_mp_loc_nm (NM mh mp fnm) lp p = NM mh (mp( lp := mp lp + p )) fnm"
 
 definition empty_nm :: "'a nested_mask"
   where "empty_nm = NM (\<lambda>_. 0) (\<lambda>_. 0) Map.empty"
 
+
+subsection \<open>Total State\<close>
 
 record 'a total_state =
    get_hh_total :: "'a total_heap"
@@ -96,8 +102,9 @@ fun get_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_
   where "get_nm_loc_total \<phi> lp = get_fnm_total \<phi> lp"
 
 
-type_synonym 'a total_trace = "label \<rightharpoonup> 'a total_state"
+subsection \<open>Full Total State\<close>
 
+type_synonym 'a total_trace = "label \<rightharpoonup> 'a total_state"
 type_synonym 'a store = "var \<rightharpoonup> 'a val" (* De Bruijn indices *)
 
 record 'a full_total_state = (*= "'a store \<times> 'a total_trace \<times> 'a total_state"*)

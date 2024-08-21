@@ -1,138 +1,18 @@
 section \<open>Helper lemmas, instantiations, definitions for the total state\<close>
 
 theory TotalStateUtil
-imports ViperCommon.SepAlgebra TotalViperUtil TotalViperState ViperCommon.DeBruijn
+  imports ViperCommon.SepAlgebra ViperCommon.DeBruijn
+          TotalViperUtil TotalViperState TotalMaskUtil
 begin
 
-subsection \<open>Utilities for \<^typ>\<open>'a nested_mask\<close>\<close>
 
-(* TODO: Move these utility definitions elsewhere. *)
-definition fun_comb :: "('a \<Rightarrow> 'b) \<Rightarrow> ('b \<Rightarrow> 'b \<Rightarrow> 'c) \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> ('a \<Rightarrow> 'c)" ("_ +\<lbrakk> _ \<rbrakk>+ _") where
-  "(f +\<lbrakk>c\<rbrakk>+ g) x = c (f x) (g x)"
+subsection \<open>Location Sets\<close>
 
-definition pfun_comb :: "('a \<rightharpoonup> 'b) \<Rightarrow> ('b \<Rightarrow> 'b \<Rightarrow> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b)" ("_ +\<lparr> _ \<rparr>+ _") where
-  "(f +\<lparr>c\<rparr>+ g) x = combine_options c (f x) (g x)"
+definition get_valid_locs :: "'a full_total_state \<Rightarrow> heap_loc set"
+  where "get_valid_locs \<omega> = {lh |lh. get_mh_total_full \<omega> lh > 0}"
 
-(* The following \<^keyword>\<open>fun\<close> definition does not work (or only work if we prove termination). *)
-(*
-fun nested_mask_merge :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
-  "nested_mask_merge (NM mh\<^sub>1 mp\<^sub>1 nm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 nm\<^sub>2) = (NM (mh\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mh\<^sub>2) (mp\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mp\<^sub>2) (nm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ nm\<^sub>2))"
-*)
-
-abbreviation nested_mask_rel :: "('a nested_mask \<times> 'a nested_mask) set"
-  where "nested_mask_rel \<equiv> {(nm, (NM mh mp fnm)) | nm mh mp fnm ploc. nm \<in> set_option (fnm ploc)}"
-
-lemma wf_nested_mask_rel: "wf nested_mask_rel"
-  unfolding wf_def
-  apply (rule allI | rule impI)+
-  apply (rule nested_mask.induct)
-  by blast
-
-fun field_mask_merge :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask" where
-  "field_mask_merge mh\<^sub>1 mh\<^sub>2 = (mh\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mh\<^sub>2)"
-
-fun predicate_mask_merge :: "'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a predicate_mask" where
-  "predicate_mask_merge mp\<^sub>1 mp\<^sub>2 = (mp\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mp\<^sub>2)"
-
-function (sequential) nested_mask_merge :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
-  "nested_mask_merge (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) =
-                (NM (field_mask_merge mh\<^sub>1 mh\<^sub>2) (predicate_mask_merge mp\<^sub>1 mp\<^sub>2)
-                (\<lambda>p. (case (fnm\<^sub>1 p) of None \<Rightarrow> (fnm\<^sub>2 p) | Some nm\<^sub>1 \<Rightarrow> (case (fnm\<^sub>2 p) of None \<Rightarrow> Some nm\<^sub>1 | Some nm\<^sub>2 \<Rightarrow> Some (nested_mask_merge nm\<^sub>1 nm\<^sub>2))))) "
-  by (pat_completeness) auto
-termination
-   \<comment>\<open>"nested_mask_rel <*lex*> {}" would be sufficient here, since the first argument becomes smaller always\<close>
-  apply (relation "nested_mask_rel <*lex*> nested_mask_rel")
-  using wf_nested_mask_rel
-   apply blast
-  by auto
-
-fun nested_mask_merge_option :: "'a nested_mask option \<Rightarrow> 'a nested_mask option \<Rightarrow> 'a nested_mask option" where
-  "nested_mask_merge_option nm\<^sub>1 nm\<^sub>2 = combine_options nested_mask_merge nm\<^sub>1 nm\<^sub>2"
-
-text \<open>Defining \<^const>\<open>nested_mask_merge\<close> directly using \<^term>\<open>(nm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ nm\<^sub>2)\<close> but not sure how to do the termination proof in that case.
-      So, we instead show the equivalence separately in a lemma and replace the rewrite rule in the simpset with the lemma.\<close>
-
-declare nested_mask_merge.simps [simp del]
-
-lemma nested_mask_merge_combine_options[simp]:
-  "nested_mask_merge (NM mh\<^sub>1 mp\<^sub>1 nm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 nm\<^sub>2) = (NM (mh\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mh\<^sub>2) (mp\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mp\<^sub>2) (nm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ nm\<^sub>2))"
-  unfolding pfun_comb_def combine_options_def
-  by (simp add: nested_mask_merge.simps)
-
-\<comment> \<open>Auxiliary definitions for multiplying the mask\<close>
-
-fun field_mask_multiply :: "field_mask \<Rightarrow> preal \<Rightarrow> field_mask" where
-  "field_mask_multiply mh p = ((*) p) \<circ> mh"
-
-fun predicate_mask_multiply :: "'a predicate_mask \<Rightarrow> preal \<Rightarrow> 'a predicate_mask" where
-  "predicate_mask_multiply mp p = ((*) p) \<circ> mp"
-
-function (sequential) nested_mask_multiply :: "'a nested_mask \<Rightarrow> preal \<Rightarrow> 'a nested_mask" where
-  "nested_mask_multiply (NM mh mp fnm) p = NM (field_mask_multiply mh p) (predicate_mask_multiply mp p) ((map_option (\<lambda>nm. nested_mask_multiply nm p)) \<circ> fnm)"
-  by (pat_completeness) auto
-termination
-  apply (relation "nested_mask_rel <*lex*> {}")
-  using wf_nested_mask_rel
-   apply blast
-  by fastforce
-
-fun nested_mask_multiply_option :: "'a nested_mask option \<Rightarrow> preal \<Rightarrow> 'a nested_mask option" where
-  "nested_mask_multiply_option None _ = None"
-| "nested_mask_multiply_option (Some nm) p = (if p = 0 then None else Some (nested_mask_multiply nm p))"
-
-
-\<comment> \<open>Constant states\<close>
-
-fun zero_mh :: "field_mask" where
-  "zero_mh _ = 0"
-
-fun zero_mp :: "'a predicate_mask" where
-  "zero_mp _ = 0"
-
-fun singleton_mh :: "heap_loc \<Rightarrow> preal \<Rightarrow> field_mask" where
-  "singleton_mh loc p l = (if l = loc then p else 0)"
-
-fun singleton_mp :: "'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a predicate_mask" where
-  "singleton_mp ploc p pl = (if pl = ploc then p else 0)"
-
-fun is_singleton_mh :: "heap_loc \<Rightarrow> field_mask \<Rightarrow> bool" where
-  "is_singleton_mh loc mh = (\<exists>p > 0. mh = singleton_mh loc p)"
-
-fun is_singleton_mp :: "'a predicate_loc \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
-  "is_singleton_mp ploc mp = (\<exists>p > 0. mp = singleton_mp ploc p)"
-
-
-\<comment> \<open>Mask subtraction\<close>
-
-fun field_mask_sub :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask" where
-  "field_mask_sub nm\<^sub>1 nm\<^sub>2 l = nm\<^sub>1 l - nm\<^sub>2 l"
-
-fun predicate_mask_sub :: "'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a predicate_mask" where
-  "predicate_mask_sub nm\<^sub>1 nm\<^sub>2 l = nm\<^sub>1 l - nm\<^sub>2 l"
-
-
-lemma combine_options_cong [fundef_cong]:
-  "(\<not> Option.is_none x \<Longrightarrow> \<not> Option.is_none y \<Longrightarrow> f (the x) (the y) = g (the x) (the y)) \<Longrightarrow> combine_options f x y = combine_options g x y"
-  by (simp add: Option.is_none_def combine_options_def option.case_eq_if)
-
-lemma pfun_comb_cong [fundef_cong]:
-  "(\<And> x y. x \<in> range f \<Longrightarrow> y \<in> range g \<Longrightarrow> combine_options c\<^sub>1 x y = combine_options c\<^sub>2 x y) \<Longrightarrow> (f +\<lparr>c\<^sub>1\<rparr>+ g) = (f +\<lparr>c\<^sub>2\<rparr>+ g)"
-  unfolding pfun_comb_def by auto
-
-function (sequential) nested_mask_subtract :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
-  "nested_mask_subtract (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) = NM (field_mask_sub mh\<^sub>1 mh\<^sub>2) (predicate_mask_sub mp\<^sub>1 mp\<^sub>2) (fnm\<^sub>1 +\<lparr>nested_mask_subtract\<rparr>+ fnm\<^sub>2)"
-  by (pat_completeness) auto
-termination
-  apply (relation "nested_mask_rel <*lex*> {}")
-  using wf_nested_mask_rel
-   apply blast
-  using Option.is_none_def by fastforce
-
-
-subsection \<open>Auxiliary definitions for \<^typ>\<open>'a nested_mask\<close>\<close>
-
-fun add_to_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
-  where "add_to_nm_loc_nm (NM mh mp fnm) loc nm = NM mh mp (fnm( loc := nested_mask_merge_option (fnm loc) (Some nm) ))"
+definition get_writeable_locs :: "'a full_total_state \<Rightarrow> heap_loc set"
+  where "get_writeable_locs \<omega> = {lh |lh. get_mh_total_full \<omega> lh = 1}"
 
 
 subsection \<open>update_store_total\<close>

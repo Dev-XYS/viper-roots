@@ -1,69 +1,12 @@
 section \<open>Total heap semantics of statements\<close>
 
 theory TotalSemantics
-imports ViperCommon.ViperLang TotalResult TotalSemanticsCore TotalSemanticsCoreHelper "HOL-Eisbach.Eisbach" "HOL-Eisbach.Eisbach_Tools"
+  imports ViperCommon.ViperLang TotalResult TotalFoldUnfold TotalSemanticsHelper
+          "HOL-Eisbach.Eisbach" "HOL-Eisbach.Eisbach_Tools"
 begin
 
+
 subsection \<open>General Auxiliary Definitions\<close>
-
-(*
-datatype 'a stmt_result_total = RMagic | RFailure | RNormal "'a full_total_state"
-
-fun map_stmt_result_total :: "('a full_total_state \<Rightarrow> 'b full_total_state) \<Rightarrow> 'a stmt_result_total \<Rightarrow> 'b stmt_result_total"
-  where
-    "map_stmt_result_total f (RNormal \<omega>) = (RNormal (f \<omega>))"
-  | "map_stmt_result_total f RMagic = RMagic"
-  | "map_stmt_result_total f RFailure = RFailure"
-
-inductive th_result_rel :: "bool \<Rightarrow> bool \<Rightarrow> ('a full_total_state) set \<Rightarrow> 'a stmt_result_total \<Rightarrow> bool"  where
-  THResultNormal: "\<lbrakk> \<omega> \<in> W \<rbrakk> \<Longrightarrow> th_result_rel True True W (RNormal \<omega>)"
-| THResultMagic: "th_result_rel True False W RMagic"
-| THResultFailure: "th_result_rel False b W RFailure"
-
-text \<open>\<^const>\<open>th_result_rel\<close> is an auxiliary relation that is useful to express a state in terms of
-conditions. \<^term>\<open>th_result_rel bSuccess bFeasible W res\<close> is used in the following way:
-
-  \<^item> \<^term>\<open>bSuccess\<close> expresses when \<^term>\<open>res\<close> is not a failing state
-  \<^item> If \<^term>\<open>bSuccess\<close> holds (i.e., \<^term>\<open>res\<close> not a failing state), then
-    \<^term>\<open>bFeasible\<close> expresses when res is a normal state.
-  \<^item> W expresses the set of possible normal states for \<^term>\<open>res\<close> if both \<^term>\<open>bSuccess\<close> and
-    \<^term>\<open>bFeasible\<close> hold.
-\<close>
-
-inductive_cases THResultNormal_case: "th_result_rel True True W (RNormal \<omega>)"
-thm THResultNormal_case
-
-lemma THResultNormal_alt: "\<lbrakk> \<omega> \<in> W; A; B\<rbrakk> \<Longrightarrow> th_result_rel A B W (RNormal \<omega>)"
-  by (cases A; cases B) (auto intro: THResultNormal)
-
-lemma th_result_rel_normal:
-  assumes "th_result_rel a b W (RNormal \<omega>)"
-  shows "a \<and> b \<and> \<omega> \<in> W"
-  using assms
-  by (cases) auto
-
-text \<open>\<^typ>\<open>'a stmt_result_total\<close> expresses the possible states for statements. \<close>
-
-
-lemma th_result_rel_failure:
-  assumes "th_result_rel False b W res"
-  shows "res = RFailure"
-  using assms
-  by (cases) auto
-
-lemma th_result_rel_failure_2:
-  assumes "th_result_rel a b W RFailure"
-  shows "\<not>a"
-  using assms
-  by (cases) auto
-
-lemma th_result_rel_magic:
-  assumes "th_result_rel True False W res"
-  shows "res = RMagic"
-  using assms
-  by (cases) auto
-*)
-
 
 definition vals_well_typed :: "('a \<Rightarrow> abs_type) \<Rightarrow> ('a val) list \<Rightarrow> vtyp list \<Rightarrow> bool"
   where "vals_well_typed A vs ts \<equiv> map (get_type A) vs = ts"
@@ -74,12 +17,6 @@ lemma vals_well_typed_same_lengthD:
   using assms
   unfolding vals_well_typed_def
   by auto
-
-(*
-fun exh_if_total :: "bool \<Rightarrow> 'a full_total_state \<Rightarrow> 'a stmt_result_total"  where
-  "exh_if_total False _ = RFailure"
-| "exh_if_total True \<omega> = RNormal \<omega>"
-*)
 
 lemma exh_if_total_normal:
   assumes "exh_if_total b \<omega> = RNormal \<omega>'"
@@ -99,112 +36,8 @@ lemma exh_if_total_failure:
   using assms
   by (auto elim: exh_if_total.elims)
 
-definition exhale_perm_single :: "preal mask \<Rightarrow> heap_loc \<Rightarrow> preal option \<Rightarrow> (preal mask) set"
-  where "exhale_perm_single m lh p_opt =
-      {m'| m' q.
-               (p_opt = None \<longrightarrow> pgt q pnone) \<and>
-               option_fold ((=) q) (q \<noteq> pnone \<and> pgt (m lh) q) p_opt \<and>
-               m' = m(lh := (m lh) - q)
-       }"
-
-(*
-inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a stmt_result_total \<Rightarrow> bool"
-  for ctxt :: "'a total_context" and R :: "'a full_total_state \<Rightarrow> bool" and \<omega>0 :: "'a full_total_state"
-  where
-
-\<comment>\<open>exhale acc(e.f, p)\<close>
-  ExhAcc:
-  "\<lbrakk>  mh = get_mh_total_full \<omega>;
-     ctxt, (Some \<omega>0) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
-     ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
-     a = the_address r \<rbrakk> \<Longrightarrow>
-     red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega>
-                          ( exh_if_total (p \<ge> 0 \<and> (if r = Null then p = 0 else pgte (mh (a,f)) (Abs_preal p)))
-                                         (if r = Null then \<omega> else update_mh_loc_total_full \<omega> (a,f) ((mh (a,f)) - (Abs_preal p)))
-                          )"
-
-\<comment>\<open>Exhaling wildcard removes some non-zero permission that is less than the current permission held.\<close>
-| ExhAccWildcard:
-  "\<lbrakk> mh = get_mh_total_full \<omega>;
-     ctxt, (Some \<omega>0) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
-     a = the_address r;
-     \<comment>\<open>\<^term>\<open>q\<close> satisfies the right-hand side if \<^prop>\<open>mh (a,f) \<noteq> pnone\<close> (thm prat_exists_stricly_smaller_nonzero).
-     If \<^prop>\<open>mh (a,f) \<noteq> pnone\<close> does not hold, then the exhale fails and the value of q is irrelevant. \<close>
-     q = (SOME p. p \<noteq> pnone \<and> pgt (mh (a,f)) p)
-   \<rbrakk> \<Longrightarrow>
-     red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f Wildcard)) \<omega>
-                         (exh_if_total (mh (a,f) \<noteq> pnone \<and> r \<noteq> Null)
-                                       (update_mh_loc_total_full \<omega> (a,f) q))"
-\<comment>\<open>exhale acc(P(es), p)\<close>
-| ExhAccPred:
-   "\<lbrakk> mp = get_mp_total_full \<omega>;
-     red_pure_exps_total ctxt R (Some \<omega>0) e_args \<omega> (Some v_args);
-     ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<rbrakk> \<Longrightarrow>
-     red_exhale ctxt R \<omega>0 (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega>
-            (exh_if_total (p \<ge> 0 \<and> pgte (mp(pred_id, v_args)) (Abs_preal p))
-                          (update_mp_loc_total_full \<omega> (pred_id, v_args) (mp (pred_id, v_args) - (Abs_preal p))))"
-| ExhAccPredWildcard:
-  "\<lbrakk> mp = get_mp_total_full \<omega>;
-     red_pure_exps_total ctxt R (Some \<omega>0) e_args \<omega> (Some v_args);
-    \<comment>\<open>q satisfies the right-hand side if \<^prop>\<open>mp (pred_id, v_args) \<noteq> pnone\<close> (thm prat_exists_stricly_smaller_nonzero).
-     If \<^prop>\<open>mp (pred_id, v_args) \<noteq> pnone\<close> does not hold, then the exhale fails and the value of q is irrelevant.\<close>
-     q = (SOME p. p \<noteq> pnone \<and> pgt (mp (pred_id, v_args)) p)
-   \<rbrakk> \<Longrightarrow>
-     red_exhale ctxt R \<omega>0 (Atomic (AccPredicate pred_id e_args Wildcard)) \<omega>
-                         (exh_if_total (mp (pred_id, v_args) \<noteq> pnone)
-                                       (update_mp_loc_total_full \<omega> (pred_id, v_args) q))"
-
-| ExhPure:
-  "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<rbrakk> \<Longrightarrow>
-     red_exhale ctxt R \<omega>0 (Atomic (Pure e)) \<omega> (exh_if_total b \<omega>)"
-
-\<comment>\<open>exhale A && B\<close>
-| ExhStarNormal:
- "\<lbrakk> red_exhale ctxt R \<omega>0 A \<omega> (RNormal \<omega>');
-    red_exhale ctxt R \<omega>0 B \<omega>' res\<rbrakk> \<Longrightarrow>
-    red_exhale ctxt R \<omega>0 (A && B) \<omega> res"
-| ExhStarFailure:
- "\<lbrakk> red_exhale ctxt R \<omega>0 A \<omega> RFailure \<rbrakk> \<Longrightarrow>
-    red_exhale ctxt R \<omega>0 (A && B) \<omega> RFailure"
-
-\<comment>\<open>exhale A \<longrightarrow> B\<close>
-| ExhImpTrue:
- "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
-    red_exhale ctxt R \<omega>0 A \<omega> res \<rbrakk> \<Longrightarrow>
-    red_exhale ctxt R \<omega>0 (Imp e A) \<omega> res"
-| ExhImpFalse:
- "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False) \<rbrakk> \<Longrightarrow>
-    red_exhale ctxt R \<omega>0 (Imp e A) \<omega> (RNormal \<omega>)"
-
-\<comment>\<open>exhale e ? A : B\<close>
-| ExhCondTrue:
- "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
-    red_exhale ctxt R \<omega>0 A \<omega> res \<rbrakk> \<Longrightarrow>
-    red_exhale ctxt R \<omega>0 (CondAssert e A B) \<omega> res"
-| ExhCondFalse:
- "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
-    red_exhale ctxt R \<omega>0 B \<omega> res \<rbrakk> \<Longrightarrow>
-    red_exhale ctxt R \<omega>0 (CondAssert e A B) \<omega> res"
-
-\<comment>\<open>If a \<^emph>\<open>direct\<close> subexpression is not well-defined, then this results in failure.\<close>
-| ExhSubExpFailure:
-  "\<lbrakk> direct_sub_expressions_assertion A \<noteq> [];
-     red_pure_exps_total ctxt R (Some \<omega>0) (direct_sub_expressions_assertion A) \<omega> None  \<rbrakk> \<Longrightarrow>
-     red_exhale ctxt R \<omega>0 A \<omega> RFailure"
-*)
-
 
 (* If we put inhale, exhale, etc. into another file, we should move the following lemmas somewhere else. *)
-
-inductive_cases ExhStar_case: "red_exhale ctxt \<omega>0 (A && B) m_pm res"
-
-lemma ExhPure_case:
-  assumes "red_exhale ctxt \<omega>0 (Atomic (Pure e)) \<omega> res"
-      and "\<And>b. ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<Longrightarrow> res = (exh_if_total b \<omega>) \<Longrightarrow> P"
-      and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<Longrightarrow> res = RFailure \<Longrightarrow> P"
-    shows "P"
-  using assms
-  by (cases) (auto elim: red_pure_exp_total_elims)
 
 definition havoc_locs_heap :: "'a total_heap \<Rightarrow> heap_loc set \<Rightarrow> 'a total_heap set"
   where "havoc_locs_heap hh locs = { hh' | hh'. (\<forall>lh. lh \<notin> locs \<longrightarrow> hh' lh = hh lh) }"
@@ -429,7 +262,7 @@ always has at least one failure transition. This is in-sync with the Carbon impl
    red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args Wildcard) \<omega> (RNormal \<omega>')"
 | RedUnfoldWildcardFailure:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
-     get_mp_total_full \<omega> (pred_id, v_args) = pnone
+     get_mp_total_full \<omega> (pred_id, v_args) = 0
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args Wildcard) \<omega> RFailure"
 \<comment>\<open>TODO: unfold acc(P(x),0)\<close>
@@ -660,29 +493,25 @@ lemma red_exhale_acc_normalI:
   assumes "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
       and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
       and "a = the_address r"
-      and "p \<ge> 0 \<and> (if r = Null then p = 0 else pgte (get_mh_total_full \<omega> (a,f)) (Abs_preal p))" (is "?Success")
+      and "p \<ge> 0 \<and> (if r = Null then p = 0 else get_mh_total_full \<omega> (a,f) \<ge> Abs_preal p)" (is "?Success")
       and "\<omega>' = (if r = Null then \<omega> else update_mh_loc_total_full \<omega> (a,f) ((get_mh_total_full \<omega> (a,f)) - (Abs_preal p)))" (is "\<omega>' = ?\<omega>def")
     shows "red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> (RNormal \<omega>')"
 proof -
   have Eq: "RNormal \<omega>' = exh_if_total ?Success ?\<omega>def"
     using assms
     by auto
-
   show ?thesis
     apply (subst Eq)
-    by (smt (verit, best) ExhAcc PosReal.pgte.rep_eq assms(1) assms(2) assms(3) less_eq_preal.rep_eq)
-    (*
     apply (rule ExhAcc)
     using assms
     by auto
-    *)
 qed
 
 lemma red_exhale_acc_failureI:
   assumes "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
       and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
       and "a = the_address r"
-      and "\<not>(p \<ge> 0 \<and> (if r = Null then p = 0 else pgte (get_mh_total_full \<omega> (a,f)) (Abs_preal p)))" (is "\<not>?Success")
+      and "\<not>(p \<ge> 0 \<and> (if r = Null then p = 0 else get_mh_total_full \<omega> (a,f) \<ge> Abs_preal p))" (is "\<not>?Success")
     shows "red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> RFailure"
 proof -
   have Eq: "RFailure = exh_if_total ?Success (if r = Null then \<omega> else update_mh_loc_total_full \<omega> (a,f) ((get_mh_total_full \<omega> (a,f)) - (Abs_preal p)))"
@@ -690,13 +519,11 @@ proof -
     by auto
   show ?thesis
     apply (subst Eq)
-    by (smt (verit, best) ExhAcc PosReal.pgte.rep_eq assms(1) assms(2) assms(3) less_eq_preal.rep_eq)
-    (*
     apply (rule ExhAcc)
     using assms
     by auto
-    *)
 qed
+
 
 subsection \<open>Well-formed state consistency\<close>
 
@@ -876,5 +703,6 @@ definition havoc_vars_state :: "'a full_total_state \<Rightarrow> var set \<Righ
       red_stmt_total ctxt R \<Lambda> (Exhale invariant) \<omega>AfterInh RFailure \<rbrakk> \<Longrightarrow> \<comment>\<open>failure option 5\<close>
       red_stmt_total ctxt R \<Lambda> (While cond invariant loop_body) \<omega> RFailure"
 *) *)
+
 
 end

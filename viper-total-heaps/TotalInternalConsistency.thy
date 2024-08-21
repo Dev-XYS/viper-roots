@@ -1,8 +1,9 @@
 theory TotalInternalConsistency
-  imports TotalSemanticsCore TotalSemantics TotalSemanticsProperties NestedMaskProperties
+  imports TotalSemantics TotalSemanticsProperties NestedMaskProperties
 begin
 
 
+(*
 subsection \<open>Old Internal Consistency\<close>
 
 \<comment> \<open>Old internal consistency definition\<close>
@@ -79,6 +80,7 @@ proof -
   thus ?thesis using assms(2)
     by (simp add: total_heap_consistent_def)
 qed
+*)
 
 
 subsection \<open>New Internal Consistency\<close>

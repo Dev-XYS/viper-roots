@@ -4,6 +4,7 @@ theory TotalUtil
 imports HOL.Real "HOL-Library.Multiset"
 begin
 
+
 fun map_result_2 :: "('a \<Rightarrow> ('a set) option) \<Rightarrow> ('a set) option \<Rightarrow> ('a set) option"
   where 
     "map_result_2 f None = None"
@@ -947,5 +948,22 @@ proof clarify
     using assms
     by (metis distinct_helper map_of_SomeD strictly_ordered_list_distinct)
 qed
+
+
+subsection \<open>Function Combinators\<close>
+
+definition fun_comb :: "('a \<Rightarrow> 'b) \<Rightarrow> ('b \<Rightarrow> 'b \<Rightarrow> 'c) \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> ('a \<Rightarrow> 'c)" ("_ +\<lbrakk> _ \<rbrakk>+ _") where
+  "(f +\<lbrakk>c\<rbrakk>+ g) x = c (f x) (g x)"
+
+definition pfun_comb :: "('a \<rightharpoonup> 'b) \<Rightarrow> ('b \<Rightarrow> 'b \<Rightarrow> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b)" ("_ +\<lparr> _ \<rparr>+ _") where
+  "(f +\<lparr>c\<rparr>+ g) x = combine_options c (f x) (g x)"
+
+lemma combine_options_cong [fundef_cong]:
+  "(\<not> Option.is_none x \<Longrightarrow> \<not> Option.is_none y \<Longrightarrow> f (the x) (the y) = g (the x) (the y)) \<Longrightarrow> combine_options f x y = combine_options g x y"
+  by (simp add: Option.is_none_def combine_options_def option.case_eq_if)
+
+lemma pfun_comb_cong [fundef_cong]:
+  "(\<And> x y. x \<in> range f \<Longrightarrow> y \<in> range g \<Longrightarrow> combine_options c\<^sub>1 x y = combine_options c\<^sub>2 x y) \<Longrightarrow> (f +\<lparr>c\<^sub>1\<rparr>+ g) = (f +\<lparr>c\<^sub>2\<rparr>+ g)"
+  unfolding pfun_comb_def by auto
 
 end

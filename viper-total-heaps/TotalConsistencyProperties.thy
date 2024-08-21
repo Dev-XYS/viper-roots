@@ -1,5 +1,5 @@
 theory TotalConsistencyProperties
-  imports TotalSemanticsCore TotalSemantics TotalInternalConsistency TotalSemanticsProperties
+  imports TotalSemantics TotalInternalConsistency TotalSemanticsProperties
 begin
 
 
@@ -69,7 +69,10 @@ lemma get_valid_locs_multiply:
   apply (simp add: get_valid_locs_def)
   apply (rule Set.Collect_cong)
   apply standard
-  using PosReal.pgt.rep_eq assms preal_pnone_pgt times_preal.rep_eq zero_preal.rep_eq by force+
+  using PosReal.pgt.rep_eq assms preal_pnone_pgt times_preal.rep_eq zero_preal.rep_eq less_preal.rep_eq
+   apply simp
+  using mult_not_zero preal_not_0_gt_0
+  by blast
 
 lemma nm_multiply_none:
     fixes frac :: preal
