@@ -1,6 +1,7 @@
 theory ExpRel
-imports ViperBoogieBasicRel
+  imports ViperBoogieBasicRel
 begin
+
 
 fun unop_rel :: "ViperLang.unop \<Rightarrow> Lang.unop"
   where 
@@ -52,7 +53,7 @@ lemma binop_lazy_rel_correct:
   by (cases v_bpl; (rename_tac lit, case_tac lit, auto))+
 
 lemma binop_nonlazy_rel_correct:
-  assumes "eval_binop v1_vpr bop_vpr v2_vpr = BinopNormal v_vpr" and
+  assumes "eval_binop False v1_vpr bop_vpr v2_vpr = BinopNormal v_vpr" and
           "binop_rel bop_vpr = bop_bpl" and
           "bop_vpr \<noteq> Mult"
   shows   "binop_eval_val bop_bpl (val_rel_vpr_bpl v1_vpr) (val_rel_vpr_bpl v2_vpr) = Some (val_rel_vpr_bpl v_vpr)"
@@ -108,8 +109,8 @@ lemma binop_nonlazy_rel_correct:
 subsection \<open>Semantic approach\<close>
 
 lemma exp_rel_vpr_bpl_intro:
-assumes "\<And> StateCons \<omega> \<omega>_def1 \<omega>_def2_opt ns v1. R \<omega>_def1 \<omega> ns \<Longrightarrow> 
-                    (ctxt_vpr, StateCons, \<omega>_def2_opt \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1) \<Longrightarrow> 
+assumes "\<And> StateCons \<omega> \<omega>_def1 \<omega>_def2_opt ns v1. R \<omega>_def1 \<omega> ns \<Longrightarrow>
+                    (ctxt_vpr, Some \<omega>_def2_opt \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1) \<Longrightarrow>
                     (\<exists>v2. (red_expr_bpl ctxt e_bpl ns v2) \<and> (val_rel_vpr_bpl v1 = v2))"                   
 shows "exp_rel_vpr_bpl R ctxt_vpr ctxt e_vpr e_bpl"
   using assms
@@ -117,8 +118,8 @@ shows "exp_rel_vpr_bpl R ctxt_vpr ctxt e_vpr e_bpl"
   by auto
 
 lemma exp_rel_vpr_bpl_intro_2:
-assumes "\<And> StateCons \<omega> \<omega>_def1 \<omega>_def2_opt ns v1. R \<omega>_def1 \<omega> ns \<Longrightarrow> 
-                    (ctxt_vpr, StateCons, \<omega>_def2_opt \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1) \<Longrightarrow> 
+assumes "\<And> \<omega> \<omega>_def1 \<omega>_def2_opt ns v1. R \<omega>_def1 \<omega> ns \<Longrightarrow>
+                    (ctxt_vpr, Some \<omega>_def2_opt \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1) \<Longrightarrow>
                      red_expr_bpl ctxt e_bpl ns (val_rel_vpr_bpl v1)"                   
 shows "exp_rel_vpr_bpl R ctxt_vpr ctxt e_vpr e_bpl"
   using assms
@@ -127,8 +128,8 @@ shows "exp_rel_vpr_bpl R ctxt_vpr ctxt e_vpr e_bpl"
 
 lemma exp_rel_vpr_bpl_elim:
   assumes "exp_rel_vpr_bpl R ctxt_vpr ctxt e_vpr e_bpl" and
-          "(\<And> StateCons \<omega> \<omega>_def1 \<omega>_def2_opt ns v1. R \<omega>_def1 \<omega> ns \<Longrightarrow> 
-                    (ctxt_vpr, StateCons, \<omega>_def2_opt \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1) \<Longrightarrow> 
+          "(\<And> \<omega> \<omega>_def1 \<omega>_def2_opt ns v1. R \<omega>_def1 \<omega> ns \<Longrightarrow>
+                    (ctxt_vpr, Some \<omega>_def2_opt \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1) \<Longrightarrow>
                     ( (red_expr_bpl ctxt e_bpl ns (val_rel_vpr_bpl v1)))) \<Longrightarrow> P"
   shows P
   using assms
@@ -138,15 +139,15 @@ lemma exp_rel_vpr_bpl_elim:
 lemma exp_rel_vpr_bplD:
   assumes "exp_rel_vpr_bpl R ctxt_vpr ctxt e_vpr e_bpl"
       and "R \<omega>_def1 \<omega> ns"
-      and "ctxt_vpr, StateCons, \<omega>_def2_opt \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
+      and "ctxt_vpr, Some \<omega>_def2_opt \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
     shows "red_expr_bpl ctxt e_bpl ns (val_rel_vpr_bpl v1)"
   using assms
   by (auto elim: exp_rel_vpr_bpl_elim)
 
 
 lemma exp_rel_equiv_vpr:
-  assumes "\<And>v1 StateCons \<omega> \<omega>_def_opt. (ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>e1_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1) \<Longrightarrow>
-                          (ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>e2_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1)" and
+  assumes "\<And>v1 StateCons \<omega> \<omega>_def_opt. (ctxt_vpr, Some \<omega>_def_opt \<turnstile> \<langle>e1_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1) \<Longrightarrow>
+                          (ctxt_vpr, Some \<omega>_def_opt \<turnstile> \<langle>e2_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1)" and
           "exp_rel_vpr_bpl R ctxt_vpr ctxt e2_vpr e_bpl"
         shows "exp_rel_vpr_bpl R ctxt_vpr ctxt e1_vpr e_bpl"
   using assms
@@ -173,7 +174,7 @@ lemma exp_rel_var:
 proof(rule exp_rel_vpr_bpl_intro)
   fix StateCons \<omega> \<omega>_def \<omega>_def_opt ns v1
   assume R:"R \<omega>_def \<omega> ns"
-  assume "ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>ViperLang.Var var_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
+  assume "ctxt_vpr, \<omega>_def_opt \<turnstile> \<langle>ViperLang.Var var_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
   hence VprLookup:"get_store_total \<omega> var_vpr = Some v1"
     by (auto elim: TotalExpressions.RedVar_case)
   show "\<exists>v2. red_expr_bpl ctxt (expr.Var var_bpl) ns v2 \<and> val_rel_vpr_bpl v1 = v2"
@@ -192,7 +193,7 @@ lemma exp_rel_lit:
 proof(rule exp_rel_vpr_bpl_intro)
   fix StateCons \<omega> \<omega>_def \<omega>_def_opt ns v1
   assume R:"R \<omega>_def_opt \<omega> ns"
-  assume "ctxt_vpr, StateCons, \<omega>_def \<turnstile> \<langle>ViperLang.ELit lit_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
+  assume "ctxt_vpr, \<omega>_def \<turnstile> \<langle>ViperLang.ELit lit_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
   hence "v1 = (val_of_lit lit_vpr)"
     using TotalExpressions.RedLit_case by blast
   show "\<exists>v2. red_expr_bpl ctxt e_bpl ns v2 \<and> val_rel_vpr_bpl v1 = v2"
@@ -223,8 +224,8 @@ proof(rule exp_rel_vpr_bpl_intro)
 
   fix StateCons \<omega> \<omega>_def \<omega>_def_opt ns v1
   assume R:"R \<omega>_def \<omega> ns"
-  assume RedVpr: "ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>FieldAcc e f;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
-  from this obtain a where "ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))" and HeapVal:"get_hh_total_full \<omega> (a,f) = v1" 
+  assume RedVpr: "ctxt_vpr, Some \<omega>_def_opt \<turnstile> \<langle>FieldAcc e f;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
+  from this obtain a where "ctxt_vpr, Some \<omega>_def_opt \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))" and HeapVal:"get_hh_total_full \<omega> (a,f) = v1" 
     using RedFieldNormal_case
     by blast
 
@@ -280,7 +281,7 @@ lemma exp_rel_condexp:
 proof (rule exp_rel_vpr_bpl_intro_2)
   fix StateCons \<omega> \<omega>_def1 \<omega>_def2_opt ns v
   assume R: "R \<omega>_def1 \<omega> ns"
-  assume "ctxt_vpr, StateCons, \<omega>_def2_opt \<turnstile> \<langle>pure_exp.CondExp e1 e2 e3;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+  assume "ctxt_vpr, Some \<omega>_def2_opt \<turnstile> \<langle>pure_exp.CondExp e1 e2 e3;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
 
   thus "red_expr_bpl ctxt (expr.CondExp e1_bpl e2_bpl e3_bpl) ns (val_rel_vpr_bpl v)"
   proof (cases)
@@ -316,12 +317,12 @@ lemma exp_rel_binop:
 proof (rule exp_rel_vpr_bpl_intro)
   fix StateCons \<omega> \<omega>_def \<omega>_def_opt ns v
   assume R: "R \<omega>_def \<omega> ns"
-  assume RedVpr: "ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>ViperLang.Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+  assume RedVpr: "ctxt_vpr, Some \<omega>_def_opt \<turnstile> \<langle>ViperLang.Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
   have "red_expr_bpl ctxt (e1_bpl \<guillemotleft>bopb\<guillemotright> e2_bpl) ns (val_rel_vpr_bpl v)"
-  proof (rule RedBinop_case[OF \<open>ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>Binop e1 bop e2; _\<rangle> [\<Down>]\<^sub>t _\<close>])
+  proof (rule RedBinop_case[OF \<open>ctxt_vpr, Some \<omega>_def_opt \<turnstile> \<langle>Binop e1 bop e2; _\<rangle> [\<Down>]\<^sub>t _\<close>])
     \<comment>\<open>lazy binop case\<close>
     fix v1
-    assume RedE1Vpr:"ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and eval_lazy:"eval_binop_lazy v1 bop = Some v"
+    assume RedE1Vpr:"ctxt_vpr, Some \<omega>_def_opt \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and eval_lazy:"eval_binop_lazy v1 bop = Some v"
     obtain b1 where "v1 = VBool b1"
       by (rule eval_binop_lazy.elims[OF eval_lazy]) auto
             
@@ -350,9 +351,9 @@ proof (rule exp_rel_vpr_bpl_intro)
   next
     \<comment>\<open>nonlazy binop case\<close>
     fix v1 v2
-    assume RedE1Vpr: "ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and 
-           RedE2Vpr: "ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and
-           BopEvalNormalVpr: "eval_binop v1 bop v2 = BinopNormal v"
+    assume RedE1Vpr: "ctxt_vpr, Some \<omega>_def_opt \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and 
+           RedE2Vpr: "ctxt_vpr, Some \<omega>_def_opt \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and
+           BopEvalNormalVpr: "eval_binop (Option.is_none (Some \<omega>_def_opt)) v1 bop v2 = BinopNormal v"
 
     have RedE1Bpl:"red_expr_bpl ctxt e1_bpl ns (val_rel_vpr_bpl v1)"
       apply (rule exp_rel_vpr_bpl_elim[OF E1Rel])
@@ -364,8 +365,12 @@ proof (rule exp_rel_vpr_bpl_intro)
       using R RedE2Vpr
       by auto
 
+    moreover have "eval_binop False v1 bop v2 = BinopNormal v"
+      using is_none_code BopEvalNormalVpr
+      by force
+
     ultimately show ?thesis
-      using  BopEvalNormalVpr \<open>binop_rel _ = _\<close> binop_nonlazy_rel_correct \<open>bop \<noteq> _\<close>  
+      using BopEvalNormalVpr \<open>binop_rel _ = _\<close> binop_nonlazy_rel_correct \<open>bop \<noteq> _\<close>
       by (blast intro: RedBinOp)
   qed
 
@@ -411,7 +416,7 @@ proof -
   proof (rule exp_rel_vpr_bpl_intro_2)
     fix StateCons \<omega> \<omega>_def1 \<omega>_def2_opt ns v1
     assume "R \<omega>_def1 \<omega> ns"
-       and "ctxt_vpr, StateCons, \<omega>_def2_opt \<turnstile> \<langle>ViperLang.Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
+       and "ctxt_vpr, Some \<omega>_def2_opt \<turnstile> \<langle>ViperLang.Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
     hence "red_expr_bpl ctxt (Lang.BinOp e1_bpl ?bopb e2_bpl) ns (val_rel_vpr_bpl v1)" (is "red_expr_bpl ctxt _ ns ?vb")
       using ExpRelNormal
       by (meson exp_rel_vpr_bpl_elim)
@@ -459,7 +464,7 @@ lemma exp_rel_binop_mult_no_conv:
 proof (rule exp_rel_vpr_bpl_intro_2)
   fix StateCons \<omega> \<omega>_def1 \<omega>_def2_opt ns v
   assume R: "R \<omega>_def1 \<omega> ns"
-  assume "ctxt_vpr, StateCons, \<omega>_def2_opt \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+  assume "ctxt_vpr, Some \<omega>_def2_opt \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
 
   thus "red_expr_bpl ctxt (e1_bpl \<guillemotleft>bopb\<guillemotright> e2_bpl) ns (val_rel_vpr_bpl v)"
   proof (cases)
@@ -575,7 +580,7 @@ lemma exp_rel_binop_mult_permdiv_conv:
 proof (rule exp_rel_vpr_bpl_intro_2)
   fix StateCons \<omega> \<omega>_def1 \<omega>_def2_opt ns v
   assume R: "R \<omega>_def1 \<omega> ns"
-  assume "ctxt_vpr, StateCons, \<omega>_def2_opt \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+  assume "ctxt_vpr, Some \<omega>_def2_opt \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
 
   thus "red_expr_bpl ctxt ((Lang.UnOp IntToReal e1_bpl) \<guillemotleft>bopb\<guillemotright> e2_bpl) ns (val_rel_vpr_bpl v)"
   proof (cases)
@@ -629,7 +634,7 @@ lemma exp_rel_binop_eq_iff:
 proof (rule exp_rel_vpr_bpl_intro_2)
   fix StateCons \<omega> \<omega>_def1 \<omega>_def2_opt ns v
   assume R: "R \<omega>_def1 \<omega> ns"
-  assume "ctxt_vpr, StateCons, \<omega>_def2_opt \<turnstile> \<langle>Binop e1 ViperLang.binop.Eq e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+  assume "ctxt_vpr, Some \<omega>_def2_opt \<turnstile> \<langle>Binop e1 ViperLang.binop.Eq e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
 
   thus "red_expr_bpl ctxt (e1_bpl \<guillemotleft>Lang.Iff\<guillemotright> e2_bpl) ns (val_rel_vpr_bpl v)"
   proof (cases)
@@ -669,7 +674,7 @@ subsection \<open>Proving expression reduction from expression relation\<close>
 
 lemma exp_rel_ref_access:
   assumes StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns"
-      and RedRcvVpr: "ctxt_vpr, StateCons, \<omega>def_opt \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+      and RedRcvVpr: "ctxt_vpr, Some \<omega>def_opt \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
       and ExpRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt) ctxt_vpr ctxt e e_r_bpl"       
     shows "red_expr_bpl ctxt e_r_bpl ns (AbsV (ARef r))"
   using assms
@@ -763,7 +768,7 @@ lemma exp_rel_perm_access_2:
   assumes 
        MaskReadWf: "mask_read_wf TyRep ctxt mask_read_bpl" and
        StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" and
-       RedRcvVpr: "ctxt_vpr, StateCons, \<omega>def_opt \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
+       RedRcvVpr: "ctxt_vpr, Some \<omega>def_opt \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
        FieldRelSingle: "field_rel_single Pr TyRep Tr f e_f_bpl \<tau>_bpl" and
              "mvar = mask_var Tr" and
              "f_ty_bpl = TConSingle (TNormalFieldId TyRep)" and
