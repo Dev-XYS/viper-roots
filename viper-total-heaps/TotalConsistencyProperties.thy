@@ -1,5 +1,5 @@
 theory TotalConsistencyProperties
-  imports TotalSemantics TotalInternalConsistency TotalSemanticsProperties
+  imports TotalSemantics TotalInternalConsistency TotalSemanticsProperties TotalFraming
 begin
 
 
@@ -1332,36 +1332,6 @@ qed
 
 
 \<comment> \<open>Field assignment preserves external state consistency.\<close>
-
-\<comment> \<open>Begin: self-framing\<close>
-
-definition well_typed_store :: "vtyp list \<Rightarrow> ('a \<Rightarrow> abs_type) \<Rightarrow> 'a store \<Rightarrow> bool"
-  where
-    "well_typed_store tys \<Delta> st \<equiv> \<forall>i. i < length tys \<longrightarrow> (\<exists>v. st i = Some v \<and> get_type \<Delta> v = tys ! i)"
-
-definition pred_self_framing :: "'a total_context \<Rightarrow> predicate_decl => bool"
-  where
-    "pred_self_framing ctxt pred_decl \<equiv>
-       \<forall>pred_body \<omega> \<omega>' mh mp frac. predicate_decl.body pred_decl = Some pred_body \<longrightarrow>
-          get_store_total \<omega> = get_store_total \<omega>' \<longrightarrow>
-          \<comment> \<open>well_typed_store (predicate_decl.args pred_decl) (absval_interp_total ctxt) (get_store_total \<omega>) \<longrightarrow>\<close>
-          \<comment> \<open>Maybe well-typed is redundant? \<^const>\<open>sat\<close> implies well-typed.\<close>
-          (\<forall>l. mh l > 0 \<longrightarrow> get_hh_total_full \<omega> l = get_hh_total_full \<omega>' l) \<longrightarrow>
-          sat ctxt \<omega> mh mp (syntactic_mult frac pred_body) \<longrightarrow> sat ctxt \<omega>' mh mp (syntactic_mult frac pred_body)"
-
-
-lemma pred_self_framing_subst:
-  assumes "pred_self_framing ctxt pred_decl"
-      and "predicate_decl.body pred_decl = Some pred_body"
-      and "get_store_total \<omega> = get_store_total \<omega>'"
-      and "\<forall>l. mh l > 0 \<longrightarrow> get_hh_total_full \<omega> l = get_hh_total_full \<omega>' l"
-      and "sat ctxt \<omega> mh mp (syntactic_mult p pred_body)"
-    shows "sat ctxt \<omega>' mh mp (syntactic_mult p pred_body)"
-  using assms(1) assms(2) assms(3) assms(4) assms(5) pred_self_framing_def
-  by blast
-
-\<comment> \<open>End: self-framing\<close>
-
 
 lemma field_assignment_no_perm_PEC:
   assumes "consistent_external ctxt \<phi>"

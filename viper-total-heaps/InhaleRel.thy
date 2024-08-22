@@ -1,6 +1,7 @@
 theory InhaleRel
-  imports ExpRel ExprWfRel ViperBoogieTranslationInterface Simulation ViperBoogieRelUtil
+  imports ExpRel ExprWfRel ViperBoogieTranslationInterface Simulation ViperBoogieRelUtil TotalFraming
 begin
+
 
 definition inhale_rel ::
      "('a full_total_state \<Rightarrow> 'a vbpl_absval nstate \<Rightarrow> bool)
@@ -73,19 +74,19 @@ definition is_inh_rel_invariant
           (\<forall> A1 A2 \<omega>. Q (A1 && A2) \<omega> \<longrightarrow> 
                   (Q A1 \<omega>) \<and>
                   (\<forall>\<omega>'. red_inhale ctxt StateCons A1 \<omega> (RNormal \<omega>') \<longrightarrow> Q A2 \<omega>')) \<and>
-          (\<forall> e A \<omega>. Q (assert.Imp e A) \<omega> \<longrightarrow> ctxt, StateCons, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<longrightarrow> Q A \<omega>) \<and>
-          (\<forall> e A B \<omega> b. Q (assert.CondAssert e A B) \<omega> \<longrightarrow> ctxt, StateCons, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool b)) \<longrightarrow>
+          (\<forall> e A \<omega>. Q (assert.Imp e A) \<omega> \<longrightarrow> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<longrightarrow> Q A \<omega>) \<and>
+          (\<forall> e A B \<omega> b. Q (assert.CondAssert e A B) \<omega> \<longrightarrow> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool b)) \<longrightarrow>
                         ((b \<longrightarrow> Q A \<omega>) \<and> (\<not>b \<longrightarrow> Q B \<omega>)))"
 
 lemma is_inh_rel_invariant_intro:
   assumes "\<And> A1 A2 \<omega>. Q (A1 && A2) \<omega> \<Longrightarrow> Q A1 \<omega>" and
           "\<And> A1 A2 \<omega> \<omega>'. Q (A1 && A2) \<omega> \<Longrightarrow> red_inhale ctxt StateCons A1 \<omega> (RNormal \<omega>') \<Longrightarrow> Q A2 \<omega>'" and
           "\<And> e A \<omega>. Q (assert.Imp e A) \<omega> \<Longrightarrow> 
-                    ctxt, StateCons, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<Longrightarrow> Q A \<omega>"
+                    ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<Longrightarrow> Q A \<omega>"
           "\<And> e A B \<omega>. Q (assert.CondAssert e A B) \<omega> \<Longrightarrow> 
-                    ctxt, StateCons, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<Longrightarrow> Q A \<omega>"
+                    ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<Longrightarrow> Q A \<omega>"
           "\<And> e A B \<omega>. Q (assert.CondAssert e A B) \<omega> \<Longrightarrow> 
-                    ctxt, StateCons, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool False)) \<Longrightarrow> Q B \<omega>"
+                    ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool False)) \<Longrightarrow> Q B \<omega>"
         shows "is_inh_rel_invariant ctxt StateCons Q"  
   unfolding is_inh_rel_invariant_def
   apply (intro conjI)
@@ -191,7 +192,7 @@ lemma inhale_rel_star_2:
   by (blast intro!: inhale_rel_star)
 
 lemma inhale_rel_imp:
-  assumes Invariant: "\<And>\<omega>. ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>cond; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<Longrightarrow> Q (assert.Imp cond A) \<omega> \<Longrightarrow> Q A \<omega>"
+  assumes Invariant: "\<And>\<omega>. ctxt_vpr, Some \<omega> \<turnstile> \<langle>cond; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<Longrightarrow> Q (assert.Imp cond A) \<omega> \<Longrightarrow> Q A \<omega>"
       and ExpWfRel:          
           "expr_wf_rel (\<lambda> \<omega>def \<omega> ns. \<omega>def = \<omega> \<and> R \<omega> ns \<and> Q (assert.Imp cond A) \<omega>) ctxt_vpr StateCons P ctxt cond 
             \<gamma>1
@@ -214,7 +215,7 @@ proof (rule rel_general_cond,
 next
   fix \<omega> \<omega>' ns
   assume "red_inhale ctxt_vpr StateCons (assert.Imp cond A) \<omega> (RNormal \<omega>')" and "R \<omega> ns \<and> Q (assert.Imp cond A) \<omega>"
-  thus "((\<exists>v. ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and> \<omega> = \<omega>) \<and>
+  thus "((\<exists>v. ctxt_vpr, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and> \<omega> = \<omega>) \<and>
        (red_expr_bpl ctxt cond_bpl ns (BoolV True) \<and> (R \<omega> ns \<and> Q A \<omega>) \<and> red_inhale ctxt_vpr StateCons A \<omega> (RNormal \<omega>') \<or>
         red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and> R \<omega> ns \<and> \<omega> = \<omega>')"
     apply (cases)
@@ -223,8 +224,8 @@ next
 next
   fix \<omega> ns
   assume "red_inhale ctxt_vpr StateCons (assert.Imp cond A) \<omega> RFailure" and "R \<omega> ns \<and> Q (assert.Imp cond A) \<omega>"
-  thus "ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<or>
-       ((\<exists>v. ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and> \<omega> = \<omega>) \<and>
+  thus "ctxt_vpr, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<or>
+       ((\<exists>v. ctxt_vpr, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and> \<omega> = \<omega>) \<and>
        (red_expr_bpl ctxt cond_bpl ns (BoolV True) \<and> (R \<omega> ns \<and> Q A \<omega>) \<and> red_inhale ctxt_vpr StateCons A \<omega> RFailure \<or>
         red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and> R \<omega> ns \<and> False)"
     apply (cases)
@@ -270,7 +271,7 @@ proof (rule rel_general_cond,
   assume "red_inhale ctxt_vpr StateCons (CondAssert cond A B) \<omega> (RNormal \<omega>')"
     and "R \<omega> ns \<and> Q (CondAssert cond A B) \<omega>"
 
-  thus "((\<exists>v. ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and> \<omega> = \<omega>) \<and>
+  thus "((\<exists>v. ctxt_vpr, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and> \<omega> = \<omega>) \<and>
          (red_expr_bpl ctxt cond_bpl ns (BoolV True) \<and> (R \<omega> ns \<and> Q A \<omega>) \<and> red_inhale ctxt_vpr StateCons A \<omega> (RNormal \<omega>') \<or>
          red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and> (R \<omega> ns \<and> Q B \<omega>) \<and> red_inhale ctxt_vpr StateCons B \<omega> (RNormal \<omega>'))"
     apply (cases)
@@ -281,8 +282,8 @@ next
   assume "red_inhale ctxt_vpr StateCons (CondAssert cond A B) \<omega> RFailure"
      and "R \<omega> ns \<and> Q (CondAssert cond A B) \<omega>"
 
-  thus "ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<or>
-       ((\<exists>v. ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and> \<omega> = \<omega>) \<and>
+  thus "ctxt_vpr, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<or>
+       ((\<exists>v. ctxt_vpr, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and> \<omega> = \<omega>) \<and>
        (red_expr_bpl ctxt cond_bpl ns (BoolV True) \<and> (R \<omega> ns \<and> Q A \<omega>) \<and> red_inhale ctxt_vpr StateCons A \<omega> RFailure \<or>
         red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and> (R \<omega> ns \<and> Q B \<omega>) \<and> red_inhale ctxt_vpr StateCons B \<omega> RFailure)"
     apply (cases)
@@ -293,13 +294,14 @@ next
     apply simp
     by (metis option.discI red_pure_exps_total_singleton)
 qed
-    
+
+
 subsection \<open>Field access predicate rule\<close>
 
 definition inhale_acc_normal_premise
   where "inhale_acc_normal_premise ctxt StateCons e_r f e_p p r \<omega> \<omega>' \<equiv>
-       ctxt, StateCons, Some \<omega> \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r) \<and>
-       ctxt, StateCons, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> 
+       ctxt, Some \<omega> \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r) \<and>
+       ctxt, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> 
        p \<ge> 0 \<and>
        (p > 0 \<longrightarrow> r \<noteq> Null) \<and>
        (let W' = (if r = Null then {\<omega>} else inhale_perm_single StateCons \<omega> (the_address r,f) (Some (Abs_preal p))) in
@@ -307,13 +309,13 @@ definition inhale_acc_normal_premise
 
 lemma inhale_field_acc_rel_assm_perm_eval:
   assumes "inhale_acc_normal_premise ctxt StateCons e_r f e_p p r \<omega> \<omega>'"
-  shows "ctxt, StateCons, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+  shows "ctxt, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
   using assms
   by (simp add: inhale_acc_normal_premise_def)
 
 lemma inhale_field_acc_rel_assm_ref_eval:
   assumes "inhale_acc_normal_premise ctxt StateCons e_r f e_p p r \<omega> \<omega>'"
-  shows "ctxt, StateCons, Some \<omega> \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+  shows "ctxt, Some \<omega> \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
   using assms
   by (simp add: inhale_acc_normal_premise_def)
 
@@ -334,8 +336,8 @@ lemma inhale_field_acc_rel:
   assumes WfSubexp: "exprs_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega> ns \<and> \<omega>def = \<omega> \<and> Q (Atomic (Acc e_rcv_vpr f (PureExp e_p))) \<omega>) 
                         ctxt_vpr StateCons P ctxt [e_rcv_vpr, e_p] \<gamma> \<gamma>2"
       and PosPermRel: "\<And>p. rel_general R (R' p)
-                  (\<lambda> \<omega> \<omega>'. \<omega> = \<omega>' \<and> (ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VPerm p)) \<and> p \<ge> 0))
-                  (\<lambda> \<omega>. (ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VPerm p)) \<and> p < 0))
+                  (\<lambda> \<omega> \<omega>'. \<omega> = \<omega>' \<and> (ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VPerm p)) \<and> p \<ge> 0))
+                  (\<lambda> \<omega>. (ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VPerm p)) \<and> p < 0))
                   P ctxt \<gamma>2 \<gamma>3"
       and UpdInhRel: "\<And>p r. rel_general (R' p) R \<comment>\<open>Here, the simulation needs to revert back to R\<close>
                   (inhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r)
@@ -351,8 +353,8 @@ proof (rule inhale_rel_intro_2)
   thus "rel_vpr_aux R P ctxt \<gamma> \<gamma>' ns res"
   proof (cases)
     case (InhAcc r p W')
-    hence "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>) [e_rcv_vpr, e_p] \<omega> (Some [VRef r, VPerm p])"
-      by (fastforce intro: red_exp_inhale_unfold_intros)
+    hence "red_pure_exps_total ctxt_vpr (Some \<omega>) [e_rcv_vpr, e_p] \<omega> (Some [VRef r, VPerm p])"
+      by (fastforce intro: red_pure_exp_intros)
     from this obtain ns2 where "R \<omega> ns2" and Red2: "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>2, Normal ns2)"
       using InhAcc exprs_wf_rel_normal_elim[OF WfSubexp] Rext0 \<open>Q _ \<omega>\<close>
       by blast
@@ -404,8 +406,8 @@ lemma pos_perm_rel_trivial_inh:
            "p2 \<ge> 0"
   shows "rel_general R
                      R
-       (\<lambda>\<omega> \<omega>'. \<omega> = \<omega>' \<and> ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> 0 \<le> p)
-       (\<lambda>\<omega>. ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p :: 'a ValueAndBasicState.val) \<and> p < 0) P ctxt
+       (\<lambda>\<omega> \<omega>'. \<omega> = \<omega>' \<and> ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> 0 \<le> p)
+       (\<lambda>\<omega>. ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p :: 'a ValueAndBasicState.val) \<and> p < 0) P ctxt
        \<gamma> \<gamma>"
   apply (rule rel_general_success_refl)
   using assms TotalExpressions.RedLit_case extended_val.inject 
@@ -416,8 +418,8 @@ lemma pos_perm_rel_nontrivial_inh:
 assumes "zero_perm = const_repr Tr CNoPerm"
 shows "rel_general (state_rel_def_same Pr StateCons TyRep Tr (AuxPred(temp_perm \<mapsto> pred_eq (RealV p))) ctxt)
                    (state_rel_def_same Pr StateCons TyRep Tr (AuxPred(temp_perm \<mapsto> pred_eq (RealV p))) ctxt)
-     (\<lambda>\<omega> \<omega>'. \<omega> = \<omega>' \<and> ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> 0 \<le> p)
-     (\<lambda>\<omega>. ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> p < 0) P ctxt
+     (\<lambda>\<omega> \<omega>'. \<omega> = \<omega>' \<and> ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> 0 \<le> p)
+     (\<lambda>\<omega>. ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> p < 0) P ctxt
      (BigBlock name (cmd.Assert (expr.Var temp_perm \<guillemotleft>Ge\<guillemotright> expr.Var zero_perm) # cs) s tr, cont)
      (BigBlock name cs s tr, cont)" (is "rel_general ?R ?R ?Success ?Fail P ctxt ?\<gamma> ?\<gamma>'")
   apply (rule rel_general_convert)  
@@ -513,7 +515,7 @@ next
     unfolding inhale_acc_normal_premise_def
     by metis
 
-  show " \<omega>' = ite_vc (r = Null) \<omega> (update_mh_loc_total_full \<omega> ?lh (padd (get_mh_total_full \<omega> (the_address r, f_vpr)) (Abs_preal p)))"
+  show " \<omega>' = ite_vc (r = Null) \<omega> (update_mh_loc_total_full \<omega> ?lh (get_mh_total_full \<omega> (the_address r, f_vpr) + Abs_preal p))"
    
   proof (cases "r = Null")
     case True
@@ -524,7 +526,7 @@ next
   next
     case False
     have "inhale_perm_single StateCons \<omega> ?lh (Some (Abs_preal p)) = 
-          {update_mh_loc_total_full \<omega> ?lh (padd (get_mh_total_full \<omega> ?lh) (Abs_preal p))}"
+          {update_mh_loc_total_full \<omega> ?lh (get_mh_total_full \<omega> ?lh + Abs_preal p)}"
       apply (rule inhale_perm_single_nonempty)
       using \<open>\<omega>' \<in> _\<close> False
       by fastforce
@@ -537,7 +539,7 @@ next
   assume "R \<omega> ns" 
 
   assume "inhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f_vpr e_p p r \<omega> \<omega>'"
-  hence "ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>e_rcv_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+  hence "ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_rcv_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
     unfolding inhale_acc_normal_premise_def
     by blast
 
@@ -549,15 +551,15 @@ next
   assume "R \<omega> ns" 
   note StateRelInst = StateRel[OF \<open>R \<omega> ns\<close>]
 
-  let ?p' = "(padd (get_mh_total_full \<omega> (the_address r, f_vpr)) (Abs_preal p))"
+  let ?p' = "get_mh_total_full \<omega> (the_address r, f_vpr) + Abs_preal p"
 
   assume InhPremise: "inhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f_vpr e_p p r \<omega> \<omega>'"
-  hence RedRcvVpr: "ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>e_rcv_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and "p \<ge> 0" and
+  hence RedRcvVpr: "ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_rcv_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and "p \<ge> 0" and
                    "p > 0 \<longrightarrow> r \<noteq> Null"
     unfolding inhale_acc_normal_premise_def 
     by blast+
 
-  from InhPremise have AtMostWritePerm: "r \<noteq> Null \<Longrightarrow> pgte pwrite ?p'" 
+  from InhPremise have AtMostWritePerm: "r \<noteq> Null \<Longrightarrow> 1 \<ge> ?p'" 
     unfolding inhale_acc_normal_premise_def inhale_perm_single_def
     by force
 
@@ -568,8 +570,8 @@ next
     by (metis (full_types) fun_upd_same)
 
   show "red_expr_bpl ctxt new_perm ns
-         (if (r = Null) then (RealV 0) else (RealV (Rep_preal (padd (get_mh_total_full \<omega> (the_address r, f_vpr)) (Abs_preal p))))) \<and>
-         (r \<noteq> Null \<longrightarrow> pgte pwrite ?p')"
+         (if (r = Null) then (RealV 0) else (RealV (Rep_preal (get_mh_total_full \<omega> (the_address r, f_vpr) + Abs_preal p)))) \<and>
+         (r \<noteq> Null \<longrightarrow> 1 \<ge> ?p')"
     apply (rule conjI)
     apply (subst \<open>new_perm = _\<close>)
     apply (rule RedBinOp)
@@ -616,7 +618,7 @@ proof (rule inhale_rel_intro)
   fix \<omega> ns \<omega>'
   assume "R \<omega> ns" and "Q (Atomic (Pure e_vpr)) \<omega>" and RedInh: "red_inhale ctxt_vpr StateCons (Atomic (Pure e_vpr)) \<omega> (RNormal \<omega>')"
 
-  from this have RedExp: "ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" and "\<omega>' = \<omega>"
+  from this have RedExp: "ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" and "\<omega>' = \<omega>"
     by (auto elim: InhPure_case split: if_split_asm)
 
   with \<open>R \<omega> ns\<close> \<open>Q _ _\<close> obtain ns' where RedBplWf1: "red_ast_bpl P ctxt (\<gamma>, Normal ns) (?\<gamma>2, Normal ns')" and "R \<omega> ns'"
@@ -640,10 +642,10 @@ next
   fix \<omega> ns
   assume "R \<omega> ns" and "Q (Atomic (Pure e_vpr)) \<omega>" and RedInh: "red_inhale ctxt_vpr StateCons (Atomic (Pure e_vpr)) \<omega> RFailure"
 
-  hence "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>) [e_vpr] \<omega> None"
+  hence "red_pure_exps_total ctxt_vpr (Some \<omega>) [e_vpr] \<omega> None"
     by (auto elim: InhPure_case red_pure_exp_total_elims split: if_split_asm)
 
-  hence "ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  hence "ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
     by (auto elim: red_pure_exp_total_elims)
 
   with \<open>R \<omega> ns\<close> \<open>Q _ _\<close> show " \<exists>c'. red_ast_bpl P ctxt (\<gamma>, Normal ns) c' \<and> snd c' = Failure"
@@ -665,7 +667,7 @@ proof (rule inhale_rel_refl)
   assume "red_inhale ctxt_vpr StateCons (Atomic (Pure (ELit (ViperLang.lit.LBool True)))) \<omega> res"
 
   from this obtain b where 
-    "ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>(ELit (ViperLang.lit.LBool True));\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b)" and
+    "ctxt_vpr, Some \<omega> \<turnstile> \<langle>(ELit (ViperLang.lit.LBool True));\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b)" and
     "res = (if b then RNormal \<omega> else RMagic)"
     apply (rule InhPure_case)
     by (auto elim: red_pure_exp_total_elims)

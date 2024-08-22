@@ -1,7 +1,7 @@
 section \<open>Total heap semantics of statements\<close>
 
 theory TotalSemantics
-  imports ViperCommon.ViperLang TotalResult TotalFoldUnfold TotalSemanticsHelper
+  imports ViperCommon.ViperLang TotalResult TotalFoldUnfold TotalSemanticsHelper TotalFraming
           "HOL-Eisbach.Eisbach" "HOL-Eisbach.Eisbach_Tools"
 begin
 

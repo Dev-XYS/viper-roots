@@ -75,12 +75,4 @@ subsubsection \<open>Unfold\<close>
 (* inductive_cases UnfoldRel_case: "unfold_rel ctxt pred_id vs q \<phi> \<phi>'" *)
 
 
-subsection \<open>Ported from TotalExpressions.thy\<close>
-
-definition assertion_framing_state :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> bool"
-  where
-    "assertion_framing_state ctxt StateCons A \<omega> \<equiv>
-      \<forall> res. red_inhale ctxt StateCons A \<omega> res \<longrightarrow> res \<noteq> RFailure"
-
-
 end

@@ -486,21 +486,21 @@ subsection \<open>Inhale\<close>
 text \<open>Inhale only changes mask\<close>
 
 lemma inhale_perm_single_store_same:
-  assumes  "\<omega>' \<in> inhale_perm_single \<omega> lh popt"
+  assumes  "\<omega>' \<in> inhale_perm_single R \<omega> lh popt"
   shows "get_store_total \<omega>' = get_store_total \<omega>"
   using assms
   unfolding inhale_perm_single_def
   by auto
 
 lemma inhale_perm_single_trace_same:
-  assumes  "\<omega>' \<in> inhale_perm_single \<omega> lh popt"
+  assumes  "\<omega>' \<in> inhale_perm_single R \<omega> lh popt"
   shows "get_trace_total \<omega>' = get_trace_total \<omega>"
   using assms
   unfolding inhale_perm_single_def
   by auto
 
 lemma inhale_perm_single_heap_same:
-  assumes  "\<omega>' \<in> inhale_perm_single \<omega> lh popt"
+  assumes  "\<omega>' \<in> inhale_perm_single R \<omega> lh popt"
   shows "get_hh_total_full \<omega>' = get_hh_total_full \<omega>"
   using assms
   unfolding inhale_perm_single_def
@@ -2642,10 +2642,10 @@ lemma th_result_rel_convert:
   by (metis map_result_total.simps(1) map_result_total.simps(2) map_result_total.simps(3) th_result_rel.simps)
 
 lemma inhale_perm_single_similar:
-  assumes "\<omega> \<in> inhale_perm_single \<omega>0 (a, f) (Some (Abs_preal p))"
+  assumes "\<omega> \<in> inhale_perm_single R \<omega>0 (a, f) (Some (Abs_preal p))"
       and "get_total_full \<omega> = get_total_full \<omega>'"
       and "get_store_total \<omega>' = get_store_total \<omega>1 \<and> get_trace_total \<omega>' = get_trace_total \<omega>1"
-    shows "\<omega>' \<in> inhale_perm_single \<omega>1 (a, f) (Some (Abs_preal p))"
+    shows "\<omega>' \<in> inhale_perm_single R \<omega>1 (a, f) (Some (Abs_preal p))"
   using assms
   unfolding inhale_perm_single_def
   oops

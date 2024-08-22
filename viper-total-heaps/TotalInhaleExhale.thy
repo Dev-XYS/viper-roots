@@ -8,12 +8,14 @@ begin
 
 subsection \<open>Inhale\<close>
 
-definition inhale_perm_single :: "'a full_total_state \<Rightarrow> heap_loc \<Rightarrow> preal option \<Rightarrow> 'a full_total_state set"
-  where "inhale_perm_single \<omega> lh p_opt =
+definition inhale_perm_single :: "('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> heap_loc \<Rightarrow> preal option \<Rightarrow> 'a full_total_state set"
+  where "inhale_perm_single R \<omega> lh p_opt =
     { \<omega>'| \<omega>' q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
             get_mh_total_full \<omega> lh + q \<le> 1 \<and>  \<comment> \<open>There can be at most 1 field permission\<close>
-            \<omega>' = update_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + q)
+            \<comment> \<open>Should be removed? Included in internal consistency.\<close>
+            \<omega>' = update_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + q) \<and>
+            R \<omega>'
     }"
 
 definition inhale_perm_single_pred :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal option \<Rightarrow> 'a full_total_state set"
@@ -26,19 +28,37 @@ definition inhale_perm_single_pred :: "'a total_context \<Rightarrow> ('a full_t
             R \<omega>'
     }"
 
+lemma inhale_perm_single_nonempty:
+  assumes "inhale_perm_single R \<omega> lh (Some p) \<noteq> {}"
+  shows "inhale_perm_single R \<omega> lh (Some p) = {update_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + p)}"
+  using assms
+  unfolding inhale_perm_single_def
+  by fastforce
+
+lemma inhale_perm_single_elem:
+  assumes "\<omega>' = update_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + q)" and
+          "R \<omega>'" and
+          "option_fold ((=) q) (q \<noteq> 0) p_opt" and
+          "1 \<ge> (get_mh_total_full \<omega> lh + q)"
+        shows "\<omega>' \<in> inhale_perm_single R \<omega> lh p_opt"
+  using assms
+  unfolding inhale_perm_single_def
+  by blast
+
+
 inductive red_inhale :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool" where
 \<comment>\<open>Atomic inhale\<close>
   InhAcc:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
      ctxt, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
-     W' = (if r = Null then {\<omega>} else inhale_perm_single \<omega> (the_address r,f) (Some (Abs_preal p)));
+     W' = (if r = Null then {\<omega>} else inhale_perm_single R \<omega> (the_address r,f) (Some (Abs_preal p)));
      th_result_rel (p \<ge> 0) (W' \<noteq> {} \<and> (p > 0 \<longrightarrow> r \<noteq> Null)) W' res
    \<rbrakk> \<Longrightarrow>
    red_inhale ctxt R (Atomic (Acc e_r f (PureExp e_p))) \<omega> res"
 
 | InhAccWildcard:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
-     W' = inhale_perm_single \<omega> (the_address r,f) None;
+     W' = inhale_perm_single R \<omega> (the_address r,f) None;
      th_result_rel True (W' \<noteq> {} \<and> r \<noteq> Null) W' res
    \<rbrakk> \<Longrightarrow>
    red_inhale ctxt R (Atomic (Acc e_r f Wildcard)) \<omega> res"
