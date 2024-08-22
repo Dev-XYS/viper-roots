@@ -1442,11 +1442,10 @@ qed *)
 subsection \<open>Exhale\<close>
 
 lemma exhale_only_changes_total_state_aux:
-  assumes
-         "red_exhale ctxt \<omega>def A \<omega> res" and "res = RNormal \<omega>'"
-  shows  "get_store_total \<omega>' = get_store_total \<omega> \<and>
-          get_trace_total \<omega>' = get_trace_total \<omega> \<and>
-          get_hh_total_full \<omega>' = get_hh_total_full \<omega>"
+  assumes "red_exhale ctxt R \<omega>def A \<omega> res" and "res = RNormal \<omega>'"
+    shows "get_store_total \<omega>' = get_store_total \<omega> \<and>
+           get_trace_total \<omega>' = get_trace_total \<omega> \<and>
+           get_hh_total_full \<omega>' = get_hh_total_full \<omega>"
   using assms
 proof (induction arbitrary: \<omega>')
   case (ExhAcc mh \<omega> e_r r e_p p a f)
@@ -3058,9 +3057,9 @@ lemma red_exhale_accI:
   assumes "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
       and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
       and "a = the_address r"      
-      and "\<omega>' = (if r = Null then \<omega> else update_mh_loc_total_full \<omega> (a,f) ((get_mh_total_full \<omega> (a,f)) - (Abs_preal p)))" (is "\<omega>' = ?\<omega>def")      
+      and "\<omega>' = (if r = Null then \<omega> else upd_mh_loc_total_full \<omega> (a,f) ((get_mh_total_full \<omega> (a,f)) - (Abs_preal p)))" (is "\<omega>' = ?\<omega>def")      
       and "res = exh_if_total (p \<ge> 0 \<and> (if r = Null then p = 0 else get_mh_total_full \<omega> (a,f) \<ge> Abs_preal p)) \<omega>'" 
-    shows "red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> res"
+    shows "red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> res"
   unfolding \<open>res = _\<close> \<open>\<omega>' = _\<close>
   apply (rule ExhAcc)
   using assms by auto

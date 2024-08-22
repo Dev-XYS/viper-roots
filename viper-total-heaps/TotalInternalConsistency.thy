@@ -174,12 +174,12 @@ lemma fold_rel_preserves_loc_sum:
       and "nm_loc_sum loc (get_nm_total_full \<omega>) s"
     shows "nm_loc_sum loc (get_nm_total_full \<omega>') s"
 proof -
-  obtain pred_decl pred_body \<omega>0 \<omega>1 nm_exh where
+  obtain pred_decl pred_body \<omega>0 R \<omega>1 nm_exh where
     "ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl" and
     "ViperLang.predicate_decl.body pred_decl = Some pred_body" and
     "p \<noteq> 0" and
     \<omega>0: "\<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>" and
-    exh: "red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal p) pred_body) \<omega>0 (RNormal \<omega>1)" and
+    exh: "red_exhale ctxt R \<omega>0 (syntactic_mult (Rep_preal p) pred_body) \<omega>0 (RNormal \<omega>1)" and
     nm_sub: "nm_exh = nested_mask_subtract (get_nm_total_full \<omega>0) (get_nm_total_full \<omega>1)" and
     \<omega>': "\<omega>' = \<lparr> get_store_total = get_store_total \<omega>,
                 get_trace_total = get_trace_total \<omega>,

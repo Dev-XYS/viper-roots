@@ -6,13 +6,224 @@ theory TotalStateUtil
 begin
 
 
-subsection \<open>Location Sets\<close>
+subsection \<open>Nested Mask Getters and Setters\<close>
 
-definition get_valid_locs :: "'a full_total_state \<Rightarrow> heap_loc set"
-  where "get_valid_locs \<omega> = {lh |lh. get_mh_total_full \<omega> lh > 0}"
+fun get_mh_nm :: "'a nested_mask \<Rightarrow> field_mask"
+  where "get_mh_nm (NM mh _ _) = mh"
 
-definition get_writeable_locs :: "'a full_total_state \<Rightarrow> heap_loc set"
-  where "get_writeable_locs \<omega> = {lh |lh. get_mh_total_full \<omega> lh = 1}"
+fun get_mp_nm :: "'a nested_mask \<Rightarrow> 'a predicate_mask"
+  where "get_mp_nm (NM _ mp _) = mp"
+
+fun get_fnm_nm :: "'a nested_mask \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask)"
+  where "get_fnm_nm (NM _ _ fnm) = fnm"
+
+fun get_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
+  where "get_nm_loc_nm (NM _ _ fnm) loc = fnm loc"
+
+fun upd_mh_nm :: "'a nested_mask \<Rightarrow> field_mask \<Rightarrow> 'a nested_mask"
+  where "upd_mh_nm (NM _ mp fnm) mh = NM mh mp fnm"
+
+fun upd_mp_nm :: "'a nested_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a nested_mask"
+  where "upd_mp_nm (NM mh _ fnm) mp = NM mh mp fnm"
+
+fun upd_fnm_nm :: "'a nested_mask \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask) \<Rightarrow> 'a nested_mask"
+  where "upd_fnm_nm (NM mh mp _) fnm = NM mh mp fnm"
+
+fun upd_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
+  where "upd_nm_loc_nm (NM mh mp fnm) lp nm = NM mh mp (fnm( lp := Some nm ))"
+
+fun upd_nm_loc_opt_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> 'a nested_mask"
+  where "upd_nm_loc_opt_nm (NM mh mp fnm) lp nm = NM mh mp (fnm( lp := nm ))"
+
+fun add_to_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
+  where "add_to_mp_loc_nm (NM mh mp fnm) lp p = NM mh (mp( lp := mp lp + p )) fnm"
+
+
+subsection \<open>Total State Getters and Setters\<close>
+
+fun get_mh_total :: "('a, 'b) total_state_scheme \<Rightarrow> field_mask"
+  where "get_mh_total \<phi> = get_mh_nm (get_nm_total \<phi>)"
+
+fun get_mp_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_mask"
+  where "get_mp_total \<phi> = get_mp_nm (get_nm_total \<phi>)"
+
+fun get_m_total :: "('a, 'b) total_state_scheme \<Rightarrow> field_mask \<times> 'a predicate_mask"
+  where "get_m_total \<omega> = (get_mh_total \<omega>, get_mp_total \<omega>)"
+
+fun get_fnm_total :: "('a, 'b) total_state_scheme \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask)"
+  where "get_fnm_total \<phi> = get_fnm_nm (get_nm_total \<phi>)"
+
+fun get_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
+  where "get_nm_loc_total \<phi> lp = get_fnm_total \<phi> lp"
+
+fun upd_hh_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a total_heap \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "upd_hh_total \<omega> hh = \<omega>\<lparr> get_hh_total := hh \<rparr>"
+
+fun upd_hh_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> heap_loc \<Rightarrow> 'a val \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "upd_hh_loc_total \<omega> l v = \<omega>\<lparr> get_hh_total := (get_hh_total \<omega>)(l := v) \<rparr>"
+
+fun upd_mh_total :: "('a, 'b) total_state_scheme \<Rightarrow> field_mask \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "upd_mh_total \<phi> mh = \<phi>\<lparr> get_nm_total := upd_mh_nm (get_nm_total \<phi>) mh \<rparr>"
+
+fun upd_mh_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> heap_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "upd_mh_loc_total \<omega> l p = upd_mh_total \<omega> ((get_mh_total \<omega>)(l := p))"
+
+fun upd_mp_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_mask \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "upd_mp_total \<phi> mp = \<phi>\<lparr> get_nm_total := upd_mp_nm (get_nm_total \<phi>) mp \<rparr>"
+
+fun upd_mp_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "upd_mp_loc_total \<omega> lp p = upd_mp_total \<omega> ((get_mp_total \<omega>)(lp := p))"
+
+fun upd_m_total :: "('a, 'b) total_state_scheme \<Rightarrow> field_mask \<times> 'a predicate_mask \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "upd_m_total \<omega> m = upd_mp_total (upd_mh_total \<omega> (fst m)) (snd m)"
+
+fun upd_fnm_total :: "('a, 'b) total_state_scheme \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask) \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "upd_fnm_total \<phi> fnm = \<phi>\<lparr> get_nm_total := upd_fnm_nm (get_nm_total \<phi>) fnm \<rparr>"
+
+fun upd_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "upd_nm_loc_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := upd_nm_loc_nm (get_nm_total \<phi>) lp nm \<rparr>"
+
+fun upd_nm_loc_opt_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "upd_nm_loc_opt_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := upd_nm_loc_opt_nm (get_nm_total \<phi>) lp nm \<rparr>"
+
+fun add_to_mp_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "add_to_mp_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := add_to_mp_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
+
+fun add_to_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "add_to_nm_loc_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := add_to_nm_loc_nm (get_nm_total \<phi>) lp nm \<rparr>"
+
+fun mult_nm_total :: "('a, 'b) total_state_scheme \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "mult_nm_total \<phi> p = \<phi>\<lparr> get_nm_total := (nested_mask_multiply (get_nm_total \<phi>) p) \<rparr>"
+
+
+subsection \<open>Full Total State Getters and Setters\<close>
+
+fun get_hh_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a total_heap"
+  where "get_hh_total_full \<omega> = get_hh_total (get_total_full \<omega>)"
+
+fun get_nm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a nested_mask"
+  where "get_nm_total_full \<omega> = get_nm_total (get_total_full \<omega>)"
+
+fun get_mh_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> field_mask"
+  where "get_mh_total_full \<omega> = get_mh_total (get_total_full \<omega>)"
+
+fun get_mp_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_mask"
+  where "get_mp_total_full \<omega> = get_mp_total (get_total_full \<omega>)"
+
+fun get_fnm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask)"
+  where "get_fnm_total_full \<omega> = get_fnm_total (get_total_full \<omega>)"
+
+fun get_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
+  where "get_nm_loc_total_full \<omega> lp = get_nm_loc_total (get_total_full \<omega>) lp"
+
+fun get_m_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> field_mask \<times> 'a predicate_mask"
+  where "get_m_total_full \<omega> = (get_mh_total_full \<omega>, get_mp_total_full \<omega>)"
+
+fun upd_hh_total_full ::  "('a, 'b) full_total_state_scheme \<Rightarrow> 'a total_heap \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "upd_hh_total_full \<omega> hh = \<omega>\<lparr> get_total_full := upd_hh_total (get_total_full \<omega>) hh \<rparr>"
+
+fun upd_hh_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> heap_loc \<Rightarrow> 'a val \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "upd_hh_loc_total_full \<omega> l v =
+        \<omega>\<lparr> get_total_full := upd_hh_loc_total (get_total_full \<omega>) l v \<rparr>"
+
+fun upd_m_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> field_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "upd_m_total_full \<omega> m pm = \<omega>\<lparr> get_total_full := upd_mp_total (upd_mh_total (get_total_full \<omega>) m) pm \<rparr>"
+
+fun upd_mh_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> field_mask \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "upd_mh_total_full \<omega> mh = \<omega>\<lparr> get_total_full :=  upd_mh_total (get_total_full \<omega>) mh \<rparr>"
+
+fun upd_mp_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_mask \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "upd_mp_total_full \<omega> mp = \<omega>\<lparr> get_total_full := upd_mp_total (get_total_full \<omega>) mp \<rparr>"
+
+fun upd_mh_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> heap_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "upd_mh_loc_total_full \<omega> l p =
+        \<omega>\<lparr> get_total_full := upd_mh_loc_total (get_total_full \<omega>) l p \<rparr>"
+
+fun upd_mp_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "upd_mp_loc_total_full \<omega> lp p =
+        \<omega>\<lparr> get_total_full := upd_mp_loc_total (get_total_full \<omega>) lp p \<rparr>"
+
+fun upd_fnm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask) \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "upd_fnm_total_full \<omega> fnm = \<omega>\<lparr> get_total_full := upd_fnm_total (get_total_full \<omega>) fnm \<rparr>"
+
+fun upd_nm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "upd_nm_total_full \<omega> nm = \<omega>\<lparr> get_total_full := (get_total_full \<omega>)\<lparr> get_nm_total := nm \<rparr> \<rparr>"
+
+fun upd_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "upd_nm_loc_total_full \<omega> lp nm = \<omega>\<lparr> get_total_full := upd_nm_loc_total (get_total_full \<omega>) lp nm \<rparr>"
+
+fun upd_nm_loc_opt_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "upd_nm_loc_opt_total_full \<omega> lp nm = \<omega>\<lparr> get_total_full := upd_nm_loc_opt_total (get_total_full \<omega>) lp nm \<rparr>"
+
+fun add_to_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "add_to_nm_loc_total_full \<omega> lp nm =
+        \<omega>\<lparr> get_total_full := add_to_nm_loc_total (get_total_full \<omega>) lp nm \<rparr>"
+
+fun mult_nm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "mult_nm_total_full \<omega> p = upd_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) p)"
+
+fun mult_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "mult_nm_loc_total_full \<omega> lp p = upd_nm_loc_opt_total_full \<omega> lp (nested_mask_multiply_option (get_nm_loc_total_full \<omega> lp) p)"
+
+
+subsection \<open>Empty States\<close>
+
+definition is_empty_total :: "('a,'b) total_state_scheme \<Rightarrow> bool"
+  where "is_empty_total \<phi> \<equiv> get_mh_total \<phi> = zero_mask \<and> get_mp_total \<phi> = zero_mask"
+
+definition is_empty_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> bool"
+  where "is_empty_total_full \<omega> \<equiv> is_empty_total (get_total_full \<omega>)"
+
+lemma is_empty_total_wf_mask: "is_empty_total_full \<omega> \<Longrightarrow> wf_mask_simple (get_mh_total_full \<omega>)"
+  unfolding is_empty_total_full_def is_empty_total_def
+  by (simp add: wf_zero_mask)
+
+(* lemma is_empty_total_less_eq:
+  assumes "is_empty_total \<phi>" and
+          "get_hh_total \<phi> = get_hh_total \<phi>'" and
+          "get_hp_total \<phi> = get_hp_total \<phi>'" and
+          "total_state.more \<phi> = total_state.more \<phi>'"
+        shows "\<phi> \<le> \<phi>'"
+  using assms zero_mask_less_eq_mask
+  unfolding less_eq_total_state_ext_def is_empty_total_def 
+  by metis
+
+lemma is_empty_total_full_less_eq:
+  assumes "is_empty_total_full \<omega>" and
+          "get_store_total \<omega> = get_store_total \<omega>'" and
+          "get_trace_total \<omega> = get_trace_total \<omega>'" and
+          "get_hh_total_full \<omega> = get_hh_total_full \<omega>'" and
+          "get_hp_total_full \<omega> = get_hp_total_full \<omega>'" and
+          "full_total_state.more \<omega> = full_total_state.more \<omega>'"
+        shows "\<omega> \<le> \<omega>'"
+proof -
+  have "get_total_full \<omega> \<le> get_total_full \<omega>'"
+    using is_empty_total_less_eq assms 
+    unfolding is_empty_total_full_def
+    by fastforce
+
+  thus ?thesis
+    using assms
+    unfolding less_eq_full_total_state_ext_def
+    by auto
+qed
+
+definition empty_full_total_state :: "'a store \<Rightarrow> 'a total_trace \<Rightarrow> 'a total_heap \<Rightarrow> 'a predicate_heap \<Rightarrow> 'a full_total_state"
+  where "empty_full_total_state \<sigma> t hh hp =
+   \<lparr> get_store_total = \<sigma>, 
+     get_trace_total = t, 
+     get_total_full = \<lparr> get_hh_total = hh, get_hp_total = hp, get_mh_total = zero_mask, get_mp_total = zero_mask \<rparr> 
+   \<rparr>"
+
+lemma get_store_empty_full_total_state [simp]: "get_store_total (empty_full_total_state \<sigma> t hh hp) = \<sigma>"
+  by (simp add: empty_full_total_state_def)
+
+lemma get_trace_empty_full_total_state [simp]: "get_trace_total (empty_full_total_state \<sigma> t hh hp) = t"
+  by (simp add: empty_full_total_state_def)
+
+lemma is_empty_empty_full_total_state: "is_empty_total_full (empty_full_total_state \<sigma> t hh hp)"
+  unfolding is_empty_total_full_def is_empty_total_def empty_full_total_state_def
+  by simp *)
 
 
 subsection \<open>update_store_total\<close>
@@ -42,115 +253,6 @@ lemma update_trace_total_mask_same: "get_mh_total_full (update_trace_total \<ome
   by simp
 
 
-subsection \<open>heap and mask in total state\<close>
-
-fun get_m_total :: "('a, 'b) total_state_scheme \<Rightarrow> field_mask \<times> 'a predicate_mask"
-  where "get_m_total \<omega> = (get_mh_total \<omega>, get_mp_total \<omega>)"
-
-fun update_m_total :: "('a, 'b) total_state_scheme \<Rightarrow> field_mask \<times> 'a predicate_mask \<Rightarrow> ('a, 'b) total_state_scheme"
-  where "update_m_total \<omega> m = mp_total_update (mh_total_update \<omega> (fst m)) (snd m)"
-
-fun update_hh_loc_total :: "'a total_state \<Rightarrow> heap_loc \<Rightarrow> 'a val \<Rightarrow> 'a total_state"
-  where "update_hh_loc_total \<omega> l v = \<omega>\<lparr> get_hh_total := (get_hh_total \<omega>)(l := v) \<rparr>"
-
-fun update_mh_loc_total :: "'a total_state \<Rightarrow> heap_loc \<Rightarrow> preal \<Rightarrow> 'a total_state"
-  where "update_mh_loc_total \<omega> l p = mh_total_update \<omega> ((get_mh_total \<omega>)(l := p))"
-
-fun update_mp_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a total_state"
-  where "update_mp_loc_total \<omega> lp p = mp_total_update \<omega> ((get_mp_total \<omega>)(lp := p))"
-
-fun add_to_mp_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a total_state"
-  where "add_to_mp_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := add_to_mp_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
-
-fun update_mh_total :: "'a total_state \<Rightarrow> field_mask \<Rightarrow> 'a total_state"
-  where "update_mh_total \<omega> mh = mh_total_update \<omega> mh"
-
-fun update_mp_total :: "'a total_state \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a total_state"
-  where "update_mp_total \<omega> mp = mp_total_update \<omega> mp"
-
-fun update_fnm_total :: "'a total_state \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask) \<Rightarrow> 'a total_state"
-  where "update_fnm_total \<omega> fnm = fnm_total_update \<omega> fnm"
-
-fun update_hh_total :: "'a total_state \<Rightarrow> 'a total_heap \<Rightarrow> 'a total_state"
-  where "update_hh_total \<omega> hh = \<omega>\<lparr> get_hh_total := hh \<rparr>"
-
-fun get_nm_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
-  where "get_nm_loc_total \<omega> lp = get_fnm_total \<omega> lp"
-
-fun update_nm_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a total_state"
-  where "update_nm_loc_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := upd_nm_loc_nm (get_nm_total \<phi>) lp nm \<rparr>"
-
-fun update_nm_loc_opt_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> 'a total_state"
-  where "update_nm_loc_opt_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := upd_nm_loc_opt_nm (get_nm_total \<phi>) lp nm \<rparr>"
-
-fun add_to_nm_loc_total :: "'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a total_state"
-  where "add_to_nm_loc_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := add_to_nm_loc_nm (get_nm_total \<phi>) lp nm \<rparr>"
-
-fun mult_nm_total :: "'a total_state \<Rightarrow> preal \<Rightarrow> 'a total_state"
-  where "mult_nm_total \<phi> p = \<phi>\<lparr> get_nm_total := (nested_mask_multiply (get_nm_total \<phi>) p) \<rparr>"
-
-
-subsection \<open>heap and mask in full total state\<close>
-
-subsubsection \<open>Definitions\<close>
-
-fun update_hh_total_full ::  "'a full_total_state \<Rightarrow> 'a total_heap \<Rightarrow> 'a full_total_state"
-  where "update_hh_total_full \<omega> hh = \<omega>\<lparr> get_total_full := update_hh_total (get_total_full \<omega>) hh \<rparr>"
-
-fun update_hh_loc_total_full :: "'a full_total_state \<Rightarrow> heap_loc \<Rightarrow> 'a val \<Rightarrow> 'a full_total_state"
-  where "update_hh_loc_total_full \<omega> l v =
-        \<omega>\<lparr> get_total_full := update_hh_loc_total (get_total_full \<omega>) l v \<rparr>"
-
-fun get_m_total_full :: "'a full_total_state \<Rightarrow> field_mask \<times> 'a predicate_mask"
-  where "get_m_total_full \<omega> = (get_mh_total_full \<omega>, get_mp_total_full \<omega>)"
-
-fun update_m_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> field_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> ('a,'b) full_total_state_scheme"
-  where "update_m_total_full \<omega> m pm =
-              \<omega>\<lparr> get_total_full := update_mp_total (update_mh_total (get_total_full \<omega>) m) pm \<rparr>"
-
-fun update_mh_total_full :: "'a full_total_state \<Rightarrow> field_mask \<Rightarrow> 'a full_total_state"
-  where "update_mh_total_full \<omega> mh = \<omega>\<lparr> get_total_full :=  update_mh_total (get_total_full \<omega>) mh \<rparr>"
-
-fun update_mp_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a full_total_state"
-  where "update_mp_total_full \<omega> mp = \<omega>\<lparr> get_total_full := update_mp_total (get_total_full \<omega>) mp \<rparr>"
-
-fun update_fnm_total_full :: "'a full_total_state \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask) \<Rightarrow> 'a full_total_state"
-  where "update_fnm_total_full \<omega> fnm = \<omega>\<lparr> get_total_full := update_fnm_total (get_total_full \<omega>) fnm \<rparr>"
-
-fun update_mh_loc_total_full :: "'a full_total_state \<Rightarrow> heap_loc \<Rightarrow> preal \<Rightarrow> 'a full_total_state"
-  where "update_mh_loc_total_full \<omega> l p =
-        \<omega>\<lparr> get_total_full := update_mh_loc_total (get_total_full \<omega>) l p \<rparr>"
-
-fun update_mp_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a full_total_state"
-  where "update_mp_loc_total_full \<omega> lp p =
-        \<omega>\<lparr> get_total_full := update_mp_loc_total (get_total_full \<omega>) lp p \<rparr>"
-
-fun get_nm_total_full :: "'a full_total_state \<Rightarrow> 'a nested_mask"
-  where "get_nm_total_full \<omega> = get_nm_total (get_total_full \<omega>)"
-
-fun update_nm_total_full :: "'a full_total_state \<Rightarrow> 'a nested_mask \<Rightarrow> 'a full_total_state"
-  where "update_nm_total_full \<omega> nm = \<omega>\<lparr> get_total_full := (get_total_full \<omega>)\<lparr> get_nm_total := nm \<rparr> \<rparr>"
-
-fun get_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
-  where "get_nm_loc_total_full \<omega> lp = get_nm_loc_total (get_total_full \<omega>) lp"
-
-fun update_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a full_total_state"
-  where "update_nm_loc_total_full \<omega> lp nm = \<omega>\<lparr> get_total_full := update_nm_loc_total (get_total_full \<omega>) lp nm \<rparr>"
-
-fun update_nm_loc_opt_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> 'a full_total_state"
-  where "update_nm_loc_opt_total_full \<omega> lp nm = \<omega>\<lparr> get_total_full := update_nm_loc_opt_total (get_total_full \<omega>) lp nm \<rparr>"
-
-fun add_to_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a full_total_state"
-  where "add_to_nm_loc_total_full \<omega> lp nm =
-        \<omega>\<lparr> get_total_full := add_to_nm_loc_total (get_total_full \<omega>) lp nm \<rparr>"
-
-fun mult_nm_total_full :: "'a full_total_state \<Rightarrow> preal \<Rightarrow> 'a full_total_state"
-  where "mult_nm_total_full \<omega> p = update_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) p)"
-
-fun mult_nm_loc_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a full_total_state"
-  where "mult_nm_loc_total_full \<omega> lp p = update_nm_loc_opt_total_full \<omega> lp (nested_mask_multiply_option (get_nm_loc_total_full \<omega> lp) p)"
-
-
 subsection \<open>Nested Mask Equality\<close>
 
 lemma nested_mask_equality:
@@ -162,7 +264,16 @@ lemma nested_mask_equality:
   using assms by auto
 
 
-subsection \<open>Lemmas on State Update\<close>
+subsection \<open>Location Sets\<close>
+
+definition get_valid_locs :: "'a full_total_state \<Rightarrow> heap_loc set"
+  where "get_valid_locs \<omega> = {lh |lh. get_mh_total_full \<omega> lh > 0}"
+
+definition get_writeable_locs :: "'a full_total_state \<Rightarrow> heap_loc set"
+  where "get_writeable_locs \<omega> = {lh |lh. get_mh_total_full \<omega> lh = 1}"
+
+
+subsection \<open>Simplification Lemmas on State Update\<close>
 
 \<comment> \<open>nested masks\<close>
 
@@ -212,20 +323,20 @@ lemma upd_nm_loc_opt_nm_mp_rel [simp]:
 
 \<comment> \<open>full total states\<close>
 
-lemma update_mh_loc_total_full_mh_rel:
-  shows "get_mh_total_full (update_mh_loc_total_full \<omega> l p) = (get_mh_total_full \<omega>)( l := p )"
+lemma upd_mh_loc_total_full_mh_rel:
+  shows "get_mh_total_full (upd_mh_loc_total_full \<omega> l p) = (get_mh_total_full \<omega>)( l := p )"
   using upd_mh_nm_mh_rel by auto
 
-lemma update_mh_loc_total_full_mp_eq:
-  shows "get_mp_total_full \<omega> = get_mp_total_full (update_mh_loc_total_full \<omega> l p)"
+lemma upd_mh_loc_total_full_mp_eq:
+  shows "get_mp_total_full \<omega> = get_mp_total_full (upd_mh_loc_total_full \<omega> l p)"
   by simp
 
-lemma update_mp_loc_total_full_mh_eq:
-  shows "get_mh_total_full \<omega> = get_mh_total_full (update_mp_loc_total_full \<omega> lp p)"
+lemma upd_mp_loc_total_full_mh_eq:
+  shows "get_mh_total_full \<omega> = get_mh_total_full (upd_mp_loc_total_full \<omega> lp p)"
   by simp
 
-lemma update_mp_loc_total_full_mp_rel:
-  shows "get_mp_total_full (update_mp_loc_total_full \<omega> lp p) = (get_mp_total_full \<omega>)( lp := p )"
+lemma upd_mp_loc_total_full_mp_rel:
+  shows "get_mp_total_full (upd_mp_loc_total_full \<omega> lp p) = (get_mp_total_full \<omega>)( lp := p )"
   using upd_mp_nm_mp_rel by auto
 
 lemma mult_nm_loc_total_full_mh_eq:
@@ -237,7 +348,7 @@ lemma mult_nm_loc_total_full_mp_eq:
   by simp
 
 
-subsubsection \<open>Lemmas on mask subtraction\<close>
+subsection \<open>Lemmas on mask subtraction\<close>
 
 lemma mh_upd_loc_diff:
   assumes "p \<le> mh l"
@@ -258,9 +369,9 @@ proof
 qed
 
 
-subsubsection \<open>Lemmas\<close>
+subsection \<open>Lemmas\<close>
 
-lemma update_mh_m_total: "update_mh_total_full \<omega> mh' = update_m_total_full \<omega> mh' (get_mp_total_full \<omega>)"
+lemma update_mh_m_total: "upd_mh_total_full \<omega> mh' = upd_m_total_full \<omega> mh' (get_mp_total_full \<omega>)"
   apply simp
   by (metis get_fnm_nm.simps get_mh_nm.simps get_mp_nm.simps nested_mask_equality upd_mh_nm_mp_rel upd_mp_nm.simps)
 
@@ -288,15 +399,259 @@ lemma shift_1_shift_and_add_total:
   unfolding DeBruijn.shift_def
   by auto
 
+
 subsection \<open>Well-typed states\<close>
 
 definition total_heap_well_typed :: "program \<Rightarrow> ('a \<Rightarrow> abs_type) \<Rightarrow> 'a total_heap \<Rightarrow> bool"
   where "total_heap_well_typed Pr \<Delta> h \<equiv>
            \<forall>loc \<tau>. declared_fields Pr (snd loc) = Some \<tau> \<longrightarrow> has_type \<Delta> \<tau> (h loc)"
 
+
+subsection \<open>Order Instantiation\<close>
+
+lemma zero_mask_less_eq_mask: "zero_mask \<le> m"
+  unfolding zero_mask_def le_fun_def
+  by (simp add: all_pos)
+  
+(*
+instantiation total_state_ext :: (type,type) order
+begin
+
+definition less_eq_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a,'b) total_state_ext \<Rightarrow> bool"
+  where "\<phi>1 \<le> \<phi>2 \<equiv> 
+         get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and>
+         (get_mh_total \<phi>1) \<le> (get_mh_total \<phi>2) \<and>
+         (get_mp_total \<phi>1) \<le> (get_mp_total \<phi>2) \<and>
+         total_state.more \<phi>1 = total_state.more \<phi>2"
+
+definition less_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a,'b) total_state_ext \<Rightarrow> bool"
+  where "\<phi>1 < \<phi>2 \<equiv> 
+         get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and>
+         get_hp_total \<phi>1 = get_hp_total \<phi>2 \<and>
+         ( ((get_mh_total \<phi>1) < (get_mh_total \<phi>2) \<and> (get_mp_total \<phi>1) \<le> (get_mp_total \<phi>2)) \<or>
+           ((get_mh_total \<phi>1) \<le> (get_mh_total \<phi>2) \<and> (get_mp_total \<phi>1) < (get_mp_total \<phi>2))) \<and>
+         total_state.more \<phi>1 = total_state.more \<phi>2"
+instance
+proof
+  fix x y z :: "('a,'b) total_state_ext"
+
+  show "(x < y) = (x \<le> y \<and> \<not> y \<le> x)"
+  proof
+    assume "x < y"
+    show "x \<le> y \<and> \<not> y \<le> x"
+    proof (rule conjI)
+      show "x \<le> y"
+        using \<open>x < y\<close> 
+        unfolding less_total_state_ext_def less_eq_total_state_ext_def
+        by auto
+    next
+      show "\<not> y \<le> x"
+      using \<open>x < y\<close> 
+      unfolding less_total_state_ext_def less_eq_total_state_ext_def
+      by auto
+    qed
+  next
+    assume *: "x \<le> y \<and> \<not> y \<le> x"
+    thus "x < y"
+      unfolding less_total_state_ext_def less_eq_total_state_ext_def
+      by force        
+  qed
+
+  show "x \<le> x"
+    unfolding less_eq_total_state_ext_def
+    by blast
+
+  show "x \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z"
+    unfolding less_eq_total_state_ext_def
+    by auto
+  
+  show "x \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y"
+    unfolding less_eq_total_state_ext_def
+    by auto
+qed
+
+end
+
+instantiation full_total_state_ext :: (type,type) order
+begin
+
+definition less_eq_full_total_state_ext :: "('a,'b) full_total_state_ext \<Rightarrow> ('a,'b) full_total_state_ext \<Rightarrow> bool"
+  where "\<omega>1 \<le> \<omega>2 \<equiv> 
+         get_store_total \<omega>1 = get_store_total \<omega>2 \<and>
+         dom (get_trace_total \<omega>1) = dom (get_trace_total \<omega>2) \<and>
+         (\<forall>lbl \<phi> \<phi>'. (get_trace_total \<omega>1 lbl = Some \<phi> \<and> 
+                      get_trace_total \<omega>2 lbl = Some \<phi>') \<longrightarrow> \<phi> \<le> \<phi>') \<and>
+         get_total_full \<omega>1 \<le> get_total_full \<omega>2 \<and>
+         full_total_state.more \<omega>1 = full_total_state.more \<omega>2"
+
+definition less_full_total_state_ext :: "('a,'b) full_total_state_ext \<Rightarrow> ('a,'b) full_total_state_ext \<Rightarrow> bool"
+  where "\<omega>1 < \<omega>2 \<equiv> 
+           \<omega>1 \<le> \<omega>2 \<and> 
+           (get_total_full \<omega>1 < get_total_full \<omega>2 \<or>
+           (\<exists>lbl \<phi> \<phi>'. get_trace_total \<omega>1 lbl = Some \<phi> \<and> get_trace_total \<omega>2 lbl = Some \<phi>' \<and>
+                        \<phi> < \<phi>'))"
+
+instance
+proof
+  fix x y z :: "('a,'b) full_total_state_ext"
+
+  show "(x < y) = (x \<le> y \<and> \<not> y \<le> x)"
+  proof
+    assume "x < y"
+    show "x \<le> y \<and> \<not> y \<le> x"
+    proof (rule conjI)
+      show "x \<le> y"
+        using \<open>x < y\<close> 
+        unfolding less_full_total_state_ext_def
+        by simp
+    next
+      from \<open>x < y\<close> consider "get_total_full x < get_total_full y" |
+                            "(\<exists>lbl \<phi> \<phi>'. get_trace_total x lbl = Some \<phi> \<and> get_trace_total y lbl = Some \<phi>' \<and>
+                                         \<phi> < \<phi>')"
+        unfolding less_full_total_state_ext_def
+        by blast
+      thus "\<not> y \<le> x"
+        by (metis TotalViperState.less_eq_full_total_state_ext_def leD)
+    qed
+  next
+    assume "x \<le> y \<and> \<not> y \<le> x"
+    thus "x < y"
+      unfolding less_full_total_state_ext_def less_eq_full_total_state_ext_def
+      by fastforce
+  qed
+
+  show "x \<le> x"
+    unfolding less_eq_full_total_state_ext_def
+    by auto
+
+  show "x \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z"
+  proof -
+    assume Leqs: "x \<le> y" "y \<le> z"
+
+    show "x \<le> z"
+      unfolding less_eq_full_total_state_ext_def
+    proof (intro conjI)
+      show "\<forall>lbl \<phi> \<phi>'. get_trace_total x lbl = Some \<phi> \<and> get_trace_total z lbl = Some \<phi>' \<longrightarrow> \<phi> \<le> \<phi>'"
+        using Leqs
+        unfolding less_eq_full_total_state_ext_def
+        by (metis (mono_tags, opaque_lifting) domIff dual_order.trans not_None_eq)
+    qed (insert Leqs[simplified less_eq_full_total_state_ext_def], auto)
+  qed
+
+  show "x \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y"
+  proof -
+    assume "x \<le> y" and "y \<le> x"
+
+    show ?thesis
+    proof (rule full_total_state.equality)
+      show "get_store_total x = get_store_total y"
+        using \<open>x \<le> y\<close> less_eq_full_total_state_ext_def by blast
+    
+      show "get_trace_total x = get_trace_total y"
+      proof -
+        have *: "\<And> lbl \<phi> \<phi>'. get_trace_total x lbl = Some \<phi> \<Longrightarrow> get_trace_total y lbl = Some \<phi>' \<Longrightarrow> \<phi> = \<phi>'"
+          using \<open>x \<le> y\<close> \<open>y \<le> x\<close> less_eq_full_total_state_ext_def
+          by fastforce
+        have DomEq: "dom (get_trace_total x) = dom (get_trace_total y)"
+          using \<open>x \<le> y\<close> less_eq_full_total_state_ext_def by blast
+        show ?thesis
+          apply (rule HOL.ext)
+          using * DomEq
+          by (metis domIff not_None_eq)
+      qed
+
+      show "get_total_full x = get_total_full y"
+        using \<open>x \<le> y\<close> \<open>y \<le> x\<close> less_eq_full_total_state_ext_def
+        by auto
+
+      show "full_total_state.more x = full_total_state.more y "
+        using \<open>x \<le> y\<close> less_eq_full_total_state_ext_def by blast
+    qed
+  qed         
+qed
+
+end
+
+lemma less_eq_total_stateI:
+  " get_hh_total \<phi>1 = get_hh_total \<phi>2 \<Longrightarrow>
+    get_hp_total \<phi>1 = get_hp_total \<phi>2 \<Longrightarrow>
+     (get_mh_total \<phi>1) \<le> (get_mh_total \<phi>2) \<Longrightarrow>
+     (get_mp_total \<phi>1) \<le> (get_mp_total \<phi>2) \<Longrightarrow>
+    total_state.more \<phi>1 = total_state.more \<phi>2 \<Longrightarrow>
+    \<phi>1 \<le> \<phi>2"
+  unfolding less_eq_total_state_ext_def
+  by blast
+
+lemma less_eq_total_stateD: "\<phi>1 \<le> \<phi>2 \<Longrightarrow>
+         get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and>
+         get_hp_total \<phi>1 = get_hp_total \<phi>2 \<and>
+         ((get_mh_total \<phi>1) \<le> (get_mh_total \<phi>2) \<and> (get_mp_total \<phi>1) \<le> (get_mp_total \<phi>2)) \<and>
+         total_state.more \<phi>1 = total_state.more \<phi>2"
+  unfolding less_eq_total_state_ext_def
+  by blast
+
+lemma less_eq_total_stateE:
+  assumes "\<phi>1 \<le> \<phi>2" and
+          "get_hh_total \<phi>1 = get_hh_total \<phi>2 \<Longrightarrow>
+           get_hp_total \<phi>1 = get_hp_total \<phi>2 \<Longrightarrow>
+           (get_mh_total \<phi>1) \<le> (get_mh_total \<phi>2) \<Longrightarrow>
+           (get_mp_total \<phi>1) \<le> (get_mp_total \<phi>2) \<Longrightarrow>
+           total_state.more \<phi>1 = total_state.more \<phi>2 \<Longrightarrow> P"
+        shows P
+  using assms 
+  by (auto dest: less_eq_total_stateD)
+
+lemma less_eq_full_total_stateI:
+    "get_store_total \<omega>1 = get_store_total \<omega>2 \<Longrightarrow>
+     get_trace_total \<omega>1 = get_trace_total \<omega>2 \<Longrightarrow>
+     get_total_full \<omega>1 \<le> get_total_full \<omega>2 \<Longrightarrow>
+     full_total_state.more \<omega>1 = full_total_state.more \<omega>2 \<Longrightarrow>
+     \<omega>1 \<le> \<omega>2"
+  unfolding less_eq_full_total_state_ext_def
+  by auto
+
+lemma less_eq_full_total_stateI2:
+    "get_store_total \<omega>1 = get_store_total \<omega>2 \<Longrightarrow>
+     dom (get_trace_total \<omega>1) = dom (get_trace_total \<omega>2) \<Longrightarrow>
+     (\<forall>lbl \<phi> \<phi>'. (get_trace_total \<omega>1 lbl = Some \<phi> \<and> 
+                      get_trace_total \<omega>2 lbl = Some \<phi>') \<longrightarrow> \<phi> \<le> \<phi>') \<Longrightarrow>
+     get_total_full \<omega>1 \<le> get_total_full \<omega>2 \<Longrightarrow>
+     full_total_state.more \<omega>1 = full_total_state.more \<omega>2 \<Longrightarrow>
+     \<omega>1 \<le> \<omega>2"
+  unfolding less_eq_full_total_state_ext_def
+  by auto
+
+lemma less_eq_full_total_stateD:
+  assumes "\<omega>1 \<le> \<omega>2"
+  shows "get_store_total \<omega>1 = get_store_total \<omega>2 \<and>
+         dom (get_trace_total \<omega>1) = dom (get_trace_total \<omega>2) \<and>      
+         (\<forall>lbl \<phi> \<phi>'. (get_trace_total \<omega>1 lbl = Some \<phi> \<and> 
+                      get_trace_total \<omega>2 lbl = Some \<phi>') \<longrightarrow> \<phi> \<le> \<phi>') \<and>   
+         get_total_full \<omega>1 \<le> get_total_full \<omega>2 \<and>
+         full_total_state.more \<omega>1 = full_total_state.more \<omega>2"
+  using assms
+  unfolding less_eq_full_total_state_ext_def
+  by argo
+
+lemma less_eq_full_total_stateE:
+  assumes "\<omega>1 \<le> \<omega>2" and
+          "get_store_total \<omega>1 = get_store_total \<omega>2 \<Longrightarrow>
+           dom (get_trace_total \<omega>1) = dom (get_trace_total \<omega>2) \<Longrightarrow>   
+           (\<forall>lbl \<phi> \<phi>'. (get_trace_total \<omega>1 lbl = Some \<phi> \<and> 
+                        get_trace_total \<omega>2 lbl = Some \<phi>') \<longrightarrow> \<phi> \<le> \<phi>') \<Longrightarrow>
+           get_total_full \<omega>1 \<le> get_total_full \<omega>2 \<Longrightarrow>
+           full_total_state.more \<omega>1 = full_total_state.more \<omega>2 \<Longrightarrow> P"
+  shows P
+  using assms
+  unfolding less_eq_full_total_state_ext_def
+  by blast
+*)
+
+
 subsection \<open>Ordering lemmas\<close>
 
-(* lemma less_eq_full_total_stateD_2:
+(*
+lemma less_eq_full_total_stateD_2:
   assumes "\<omega>1 \<le> \<omega>2"
   shows "get_h_total_full \<omega>1 = get_h_total_full \<omega>2 \<and>
          get_mh_total_full \<omega>1 \<le> get_mh_total_full \<omega>2 \<and>
@@ -456,7 +811,7 @@ definition plus_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a,'b
               (let (mh1, mp1, mh2, mp2) = (get_mh_total \<phi>1, get_mp_total \<phi>1, get_mh_total \<phi>2, get_mp_total \<phi>2) in
                    if get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and>
                       total_state.more \<phi>1 = total_state.more \<phi>2
-                   then Some (update_m_total \<phi>1 (the (mh1 \<oplus> mh2), the (mp1 \<oplus> mp2)))
+                   then Some (upd_m_total \<phi>1 (the (mh1 \<oplus> mh2), the (mp1 \<oplus> mp2)))
                    else None)"
 
 instance proof

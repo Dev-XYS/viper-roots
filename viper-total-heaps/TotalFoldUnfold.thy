@@ -50,7 +50,7 @@ inductive fold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarr
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
      q \<noteq> 0;
      \<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>;
-     red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal q) pred_body) \<omega>0 (RNormal \<omega>1);
+     red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal q) pred_body) \<omega>0 (RNormal \<omega>1);
      nm_exh = nested_mask_subtract (get_nm_total_full \<omega>0) (get_nm_total_full \<omega>1);
      \<omega>' = \<lparr> get_store_total = get_store_total \<omega>,
             get_trace_total = get_trace_total \<omega>,
@@ -68,7 +68,7 @@ inductive fold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarr
      \<omega>0 = \<lparr> get_store_total = nth_option vs,
             get_trace_total = Map.empty,
             get_total_full = get_total_full \<omega> \<rparr>;
-     red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal q) pred_body) \<omega>0 RFailure
+     red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal q) pred_body) \<omega>0 RFailure
    \<rbrakk> \<Longrightarrow>
    fold_rel ctxt pred_id vs q \<omega> RFailure"
 

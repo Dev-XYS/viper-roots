@@ -1861,8 +1861,8 @@ lemma state_rel0_heap_update:
                       (ran (field_translation Tr)) \<union>
                       (range (const_repr Tr)) \<union>
                       dom AuxPred) = {}"
-      and UpdStates: "\<omega>def' = update_hh_total_full \<omega>def hh'" 
-                     "\<omega>' = update_hh_total_full \<omega> hh'"
+      and UpdStates: "\<omega>def' = upd_hh_total_full \<omega>def hh'" 
+                     "\<omega>' = upd_hh_total_full \<omega> hh'"
       and Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega>def' \<and> StateCons \<omega>'"
       and OnlyHeapAffected: "(\<And>x. x \<notin> {hvar', hvar_def'} \<Longrightarrow> lookup_var \<Lambda> ns x = lookup_var \<Lambda> ns' x)"
       and HeapRel: "heap_var_rel Pr \<Lambda> TyRep (field_translation Tr) hvar' \<omega>' ns'"
@@ -2037,7 +2037,7 @@ next
     using heap_var_disjoint[OF StateRel]
     by simp
 next
-  show "\<omega>def' = update_hh_total_full \<omega>def (get_hh_total_full \<omega>def')"
+  show "\<omega>def' = upd_hh_total_full \<omega>def (get_hh_total_full \<omega>def')"
     apply (rule full_total_state.equality)
        apply (simp add: OnlyHeapAffectedVpr WellDefSame)
       apply (simp add: OnlyHeapAffectedVpr WellDefSame)
@@ -2045,7 +2045,7 @@ next
     using OnlyHeapAffectedVpr
     by auto
 next
-  show "\<omega>' = update_hh_total_full \<omega> (get_hh_total_full \<omega>def')"
+  show "\<omega>' = upd_hh_total_full \<omega> (get_hh_total_full \<omega>def')"
     apply (rule full_total_state.equality)
        apply (simp add: OnlyHeapAffectedVpr WellDefSame)
       apply (simp add: OnlyHeapAffectedVpr WellDefSame)
@@ -2066,7 +2066,7 @@ lemma heap_var_rel_update:
      VVprTy:   "get_type (domain_type TyRep) v_vpr = ty_vpr" and
      FieldTranslation: "field_translation Tr f_vpr = Some f_bpl" and
      FieldTranslationInj: "inj_on (field_translation Tr) (dom (field_translation Tr))"
-  shows "heap_var_rel Pr \<Lambda> TyRep (field_translation Tr) (heap_var Tr) (update_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr)
+  shows "heap_var_rel Pr \<Lambda> TyRep (field_translation Tr) (heap_var Tr) (upd_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr)
      (update_var \<Lambda> ns (heap_var Tr) (AbsV (AHeap (heap_bpl_upd_normal_field hb (Address addr) f_bpl ty_vpr (val_rel_vpr_bpl v_vpr)))))"
       (is "heap_var_rel Pr \<Lambda> TyRep _ (heap_var Tr) ?\<omega>' ?ns'")
 proof -
@@ -2104,7 +2104,7 @@ proof -
        using HeapVarRel LookupHeapVar
        unfolding heap_var_rel_def
        by auto
-    have AuxUpdateHeap:"\<And>l. l \<noteq> (addr, f_vpr) \<Longrightarrow> get_hh_total_full (update_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr) l = 
+    have AuxUpdateHeap:"\<And>l. l \<noteq> (addr, f_vpr) \<Longrightarrow> get_hh_total_full (upd_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr) l = 
                                                    get_hh_total_full \<omega> l"
       by simp     
   
@@ -2132,13 +2132,13 @@ proof -
       qed
     qed
   next
-    show "total_heap_well_typed Pr (domain_type TyRep)(get_hh_total_full (update_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr))"
+    show "total_heap_well_typed Pr (domain_type TyRep)(get_hh_total_full (upd_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr))"
       unfolding total_heap_well_typed_def
     proof (rule allI | rule impI)+
       fix loc :: heap_loc
       fix  \<tau>
       assume *: "declared_fields Pr (snd loc) = Some \<tau>"
-      show "has_type (domain_type TyRep) \<tau> (get_hh_total_full (update_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr) loc) "
+      show "has_type (domain_type TyRep) \<tau> (get_hh_total_full (upd_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr) loc) "
       proof (cases "loc = (addr, f_vpr)")
         case True
         then show ?thesis 
@@ -2160,15 +2160,15 @@ lemma state_rel_heap_update_3:
      WfTyRep: "wf_ty_repr_bpl TyRep" and
      StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" and
      WellDefSame: "\<omega>def = \<omega> \<and> heap_var Tr = heap_var_def Tr" and
-     Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (update_hh_loc_total_full \<omega>def (addr, f_vpr) v_vpr) \<and> StateCons (update_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr)" and
+     Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega>def (addr, f_vpr) v_vpr) \<and> StateCons (upd_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr)" and
      LookupHeap:  "lookup_var (var_context ctxt) ns (heap_var Tr) = Some (AbsV (AHeap hb))" and
      FieldLookup: "declared_fields Pr f_vpr = Some ty_vpr" and
      FieldTranslation: "field_translation Tr f_vpr = Some f_bpl" and
      TyTranslation: "vpr_to_bpl_ty TyRep ty_vpr = Some ty_bpl" and
      VVprTy: "get_type (domain_type TyRep) v_vpr = ty_vpr" 
    shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt 
-      (update_hh_loc_total_full \<omega>def (addr, f_vpr) v_vpr)
-      (update_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr)
+      (upd_hh_loc_total_full \<omega>def (addr, f_vpr) v_vpr)
+      (upd_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr)
       (update_var (var_context ctxt) ns (heap_var Tr) (AbsV (AHeap (heap_bpl_upd_normal_field hb (Address addr) f_bpl ty_vpr (val_rel_vpr_bpl v_vpr)))))"
          (is "state_rel Pr StateCons TyRep Tr AuxPred ctxt ?\<omega>def' ?\<omega>' ?ns'")
 proof (rule state_rel_heap_update_2[OF StateRel])
@@ -2206,8 +2206,8 @@ lemma state_rel_heap_update_2_ext:
      WfTyRep: "wf_ty_repr_bpl TyRep" and
      StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" and
      WellDefSame: "\<omega>def = \<omega> \<and> heap_var Tr = heap_var_def Tr" and
-     Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (update_hh_loc_total_full \<omega>def (addr, f_vpr) v)"
-                 "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (update_hh_loc_total_full \<omega> (addr, f_vpr) v)" and
+     Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega>def (addr, f_vpr) v)"
+                 "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega> (addr, f_vpr) v)" and
      FieldLookup: "declared_fields Pr f_vpr = Some ty_vpr" and
      FieldTranslation: "field_translation Tr f_vpr = Some f_bpl" and
      TyTranslation: "vpr_to_bpl_ty TyRep ty_vpr = Some ty_bpl" and
@@ -2217,8 +2217,8 @@ lemma state_rel_heap_update_2_ext:
     lookup_var (var_context ctxt) ns f_bpl = Some (AbsV (AField f_bpl_val)) \<and>
     field_ty_fun_opt TyRep f_bpl_val = Some ((TFieldId TyRep), [TConSingle (TNormalFieldId TyRep), ty_bpl]) \<and>
     state_rel Pr StateCons TyRep Tr AuxPred ctxt
-      (update_hh_loc_total_full \<omega>def (addr, f_vpr) v)
-      (update_hh_loc_total_full \<omega> (addr, f_vpr) v)
+      (upd_hh_loc_total_full \<omega>def (addr, f_vpr) v)
+      (upd_hh_loc_total_full \<omega> (addr, f_vpr) v)
        (update_var (var_context ctxt) ns (heap_var Tr) 
                                (AbsV (AHeap (hb( (Address addr,f_bpl_val) \<mapsto> (val_rel_vpr_bpl v) ))))
                          )"
@@ -2237,14 +2237,14 @@ proof -
     using TyTranslation
     by simp
 
-  let ?\<omega>def' = "update_hh_loc_total_full \<omega>def (addr, f_vpr) v"
-  let ?\<omega>' = "update_hh_loc_total_full \<omega> (addr, f_vpr) v"
+  let ?\<omega>def' = "upd_hh_loc_total_full \<omega>def (addr, f_vpr) v"
+  let ?\<omega>' = "upd_hh_loc_total_full \<omega> (addr, f_vpr) v"
   from state_rel_heap_update_3[OF WfTyRep StateRel]
   have "state_rel Pr StateCons TyRep Tr AuxPred ctxt 
         ?\<omega>def'
         ?\<omega>' 
         (update_var (var_context ctxt) ns (heap_var Tr) (AbsV (AHeap (heap_bpl_upd_normal_field hb (Address addr) f_bpl ty_vpr (val_rel_vpr_bpl v)))))"
-    using assms LookupHeapVar 
+    using assms LookupHeapVar
     by fast
    
   thus  ?thesis
@@ -2263,7 +2263,7 @@ lemma state_rel_heap_var_update:
                       dom AuxPred)"
     shows "state_rel Pr StateCons TyRep (Tr\<lparr>heap_var := hvar'\<rparr>) AuxPred ctxt \<omega>def \<omega> ns"
 proof (rule state_rel_heap_update[OF StateRel, where ?hvar' = hvar'])
-  show "\<omega> = update_hh_total_full \<omega> (get_hh_total_full \<omega>)"
+  show "\<omega> = upd_hh_total_full \<omega> (get_hh_total_full \<omega>)"
     by simp
 next
   from VarFresh heap_var_disjoint[OF state_rel_state_rel0[OF StateRel]]
@@ -2284,7 +2284,7 @@ lemma state_rel_heap_var_def_update:
                       dom AuxPred)"
     shows "state_rel Pr StateCons TyRep (Tr\<lparr>heap_var_def := hvar_def'\<rparr>) AuxPred ctxt \<omega>def \<omega> ns"
 proof (rule state_rel_heap_update[OF StateRel, where ?hvar_def' = hvar_def'])
-  show "\<omega>def = update_hh_total_full \<omega>def (get_hh_total_full \<omega>def)"
+  show "\<omega>def = upd_hh_total_full \<omega>def (get_hh_total_full \<omega>def)"
     by simp
 next
   from VarFresh heap_var_disjoint[OF state_rel_state_rel0[OF StateRel]]
@@ -2307,7 +2307,7 @@ lemma state_rel0_mask_update:
                             (ran (field_translation Tr)) \<union>
                             (range (const_repr Tr)) \<union>
                             dom AuxPred) = {}" and
-          UpdStates: "\<omega>' = update_mh_total_full \<omega> mh'"
+          UpdStates: "\<omega>' = upd_mh_total_full \<omega> mh'"
              "get_store_total \<omega>def' = get_store_total \<omega>' \<and>
               get_trace_total \<omega>def' = get_trace_total \<omega>' \<and>
               get_hh_total_full \<omega>def' = get_hh_total_full \<omega>'" and
@@ -2461,14 +2461,14 @@ lemma state_rel0_mask_update_2:
         shows "state_rel0 Pr StateCons TyInterp \<Lambda> TyRep Tr AuxPred \<omega>def' \<omega>' ns'" 
 
 proof -
-  have "\<omega>' = update_nm_total_full \<omega> (get_nm_total_full \<omega>')"
+  have "\<omega>' = upd_nm_total_full \<omega> (get_nm_total_full \<omega>')"
     using OnlyMaskAffectedVpr
     by simp
 
   show ?thesis
   proof (cases "mask_var Tr = mask_var_def Tr")
     case True
-    hence "\<omega>def' = update_nm_total_full \<omega> (get_nm_total_full \<omega>')"
+    hence "\<omega>def' = upd_nm_total_full \<omega> (get_nm_total_full \<omega>')"
       using WellDefSame \<open>\<omega>' = _\<close>
       by presburger
 
@@ -2595,9 +2595,9 @@ lemma state_rel_mask_update_3:
 lemma state_rel_mask_update_4:
   assumes StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" and 
                     "\<Lambda> = (var_context ctxt)" and
-          WellDefSame: "mask_var Tr = mask_var_def Tr \<Longrightarrow> \<omega>def' = update_mh_loc_total_full \<omega> (addr, f_vpr) p"
+          WellDefSame: "mask_var Tr = mask_var_def Tr \<Longrightarrow> \<omega>def' = upd_mh_loc_total_full \<omega> (addr, f_vpr) p"
                        "mask_var Tr \<noteq> mask_var_def Tr \<Longrightarrow> \<omega>def' = \<omega>def"  and
-        Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (update_mh_loc_total_full \<omega> (addr, f_vpr) p)" and
+        Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_mh_loc_total_full \<omega> (addr, f_vpr) p)" and
         TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and
         LookupMask: "lookup_var (var_context ctxt) ns (mask_var Tr) = Some (AbsV (AMask mb))" and
                     "1 \<ge> p" and
@@ -2607,7 +2607,7 @@ lemma state_rel_mask_update_4:
                     "p_bpl = Rep_preal p"
                   shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt 
                       \<omega>def'
-                      (update_mh_loc_total_full \<omega> (addr, f_vpr) p) 
+                      (upd_mh_loc_total_full \<omega> (addr, f_vpr) p) 
                       (update_var \<Lambda> ns (mask_var Tr) (AbsV (AMask (mask_bpl_upd_normal_field mb (Address addr) f_bpl ty_vpr p_bpl))))"
             (is "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def' ?\<omega>' ?ns'")
   unfolding state_rel_def TypeInterp
@@ -2775,7 +2775,7 @@ lemma state_rel_mask_var_update:
                       dom AuxPred)" 
     shows "state_rel Pr StateCons TyRep (Tr\<lparr>mask_var := mvar'\<rparr>) AuxPred ctxt \<omega>def \<omega> ns"
 proof (rule state_rel_mask_update_wip[OF StateRel, where ?mvar' = mvar'])
-  show "\<omega> = update_mh_total_full \<omega> (get_mh_total_full \<omega>)"
+  show "\<omega> = upd_mh_total_full \<omega> (get_mh_total_full \<omega>)"
     apply (rule full_total_state.equality)
        apply simp+
      apply (metis get_mh_nm.simps total_state.surjective total_state.update_convs(2) upd_mh_nm.elims)
@@ -2801,7 +2801,7 @@ lemma state_rel_mask_var_def_update:
                       dom AuxPred)" 
     shows "state_rel Pr StateCons TyRep (Tr\<lparr>mask_var_def := mvar_def'\<rparr>) AuxPred ctxt \<omega>def \<omega> ns"
 proof (rule state_rel_mask_update_wip[OF StateRel, where ?mvar_def' = "mvar_def'"])      
-  show "\<omega> = update_mh_total_full \<omega> (get_mh_total_full \<omega>)"
+  show "\<omega> = upd_mh_total_full \<omega> (get_mh_total_full \<omega>)"
     apply simp
     apply (rule full_total_state.equality)
        apply force+

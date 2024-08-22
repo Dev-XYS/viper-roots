@@ -515,7 +515,7 @@ next
     unfolding inhale_acc_normal_premise_def
     by metis
 
-  show " \<omega>' = ite_vc (r = Null) \<omega> (update_mh_loc_total_full \<omega> ?lh (get_mh_total_full \<omega> (the_address r, f_vpr) + Abs_preal p))"
+  show " \<omega>' = ite_vc (r = Null) \<omega> (upd_mh_loc_total_full \<omega> ?lh (get_mh_total_full \<omega> (the_address r, f_vpr) + Abs_preal p))"
    
   proof (cases "r = Null")
     case True
@@ -526,7 +526,7 @@ next
   next
     case False
     have "inhale_perm_single StateCons \<omega> ?lh (Some (Abs_preal p)) = 
-          {update_mh_loc_total_full \<omega> ?lh (get_mh_total_full \<omega> ?lh + Abs_preal p)}"
+          {upd_mh_loc_total_full \<omega> ?lh (get_mh_total_full \<omega> ?lh + Abs_preal p)}"
       apply (rule inhale_perm_single_nonempty)
       using \<open>\<omega>' \<in> _\<close> False
       by fastforce

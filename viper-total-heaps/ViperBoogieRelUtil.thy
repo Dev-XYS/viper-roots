@@ -123,7 +123,7 @@ lemma mask_upd_rel:
     SuccessUpdState: "\<And> \<omega> \<omega>' ns. R \<omega> ns \<Longrightarrow> Success \<omega> \<omega>' \<Longrightarrow>
                          fst \<omega>' = (if mask_var_def Tr = mask_var Tr \<and> r \<noteq> Null then snd \<omega>' else fst \<omega>) \<and>
                          snd \<omega>' = (if r = Null then (snd \<omega>) else 
-                                      update_mh_loc_total_full (snd \<omega>) (the_address r,f_vpr) (p_preal \<omega>))" and
+                                      upd_mh_loc_total_full (snd \<omega>) (the_address r,f_vpr) (p_preal \<omega>))" and
     RedRcvBpl: "\<And> \<omega> \<omega>' ns. R \<omega> ns \<Longrightarrow> Success \<omega> \<omega>' \<Longrightarrow> red_expr_bpl ctxt e_rcv_bpl ns (AbsV (ARef r))" and
     RedPermBpl: "\<And> \<omega> \<omega>' ns. R \<omega> ns \<Longrightarrow> Success \<omega> \<omega>' \<Longrightarrow> 
                    red_expr_bpl ctxt new_perm_bpl ns 
@@ -180,7 +180,7 @@ proof (rule rel_intro)
     using TyTr
     by simp
     
-  let ?\<omega>' = "(if r = Null then (snd \<omega>) else update_mh_loc_total_full (snd \<omega>) (the_address r,f_vpr) (p_preal \<omega>))"
+  let ?\<omega>' = "(if r = Null then (snd \<omega>) else upd_mh_loc_total_full (snd \<omega>) (the_address r,f_vpr) (p_preal \<omega>))"
 
   let ?ns' = "update_var (var_context ctxt) ns m_bpl (AbsV (AMask ?mb'))"
 
@@ -209,7 +209,7 @@ proof (rule rel_intro)
     case False
     from this obtain a where "r = Address a" 
       using ref.exhaust by auto
-    hence "snd \<omega>' = update_mh_loc_total_full (snd \<omega>) (a,f_vpr) (p_preal \<omega>)"
+    hence "snd \<omega>' = upd_mh_loc_total_full (snd \<omega>) (a,f_vpr) (p_preal \<omega>)"
       using SuccessUpdState[OF \<open>R \<omega> ns\<close> Success] False
       by simp
    
@@ -264,7 +264,7 @@ lemma mask_upd_rel_2:
     FieldRelSingle: "field_rel_single Pr TyRep Tr f_vpr e_f_bpl \<tau>_bpl" and
     SuccessUpdState: "\<And> \<omega> \<omega>'. Success \<omega> \<omega>' \<Longrightarrow>
                          \<omega>' = (if r = Null then \<omega> else 
-                                      update_mh_loc_total_full \<omega> (the_address r,f_vpr) (p_preal \<omega>))" and
+                                      upd_mh_loc_total_full \<omega> (the_address r,f_vpr) (p_preal \<omega>))" and
     RedRcvBpl: "\<And> \<omega> \<omega>' ns. R \<omega> ns \<Longrightarrow> Success \<omega> \<omega>' \<Longrightarrow> red_expr_bpl ctxt e_rcv_bpl ns (AbsV (ARef r))" and
     RedPermBpl: "\<And> \<omega> \<omega>' ns. R \<omega> ns \<Longrightarrow> Success \<omega> \<omega>' \<Longrightarrow> 
                    red_expr_bpl ctxt new_perm_bpl ns 
@@ -485,15 +485,15 @@ lemma state_rel_pred_independent:
 
 lemma state_rel_mask_pred_independent:
   assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega> \<omega> ns"
-      and "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (update_mp_total_full \<omega> mp)"
-  shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt (update_mp_total_full \<omega> mp) (update_mp_total_full \<omega> mp) ns"
+      and "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_mp_total_full \<omega> mp)"
+  shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt (upd_mp_total_full \<omega> mp) (upd_mp_total_full \<omega> mp) ns"
   using assms
   by (rule state_rel_pred_independent) auto
 
 lemma state_rel_fnm_independent:
   assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega> \<omega> ns"
-      and "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (update_fnm_total_full \<omega> fnm)"
-  shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt (update_fnm_total_full \<omega> fnm) (update_fnm_total_full \<omega> fnm) ns"
+      and "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_fnm_total_full \<omega> fnm)"
+  shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt (upd_fnm_total_full \<omega> fnm) (upd_fnm_total_full \<omega> fnm) ns"
   using assms
   by (rule state_rel_pred_independent) auto
 
@@ -764,7 +764,7 @@ lemma mask_var_upd_red_ast_bpl_propagate:
           LookupTyNewVar: "lookup_var_ty (var_context ctxt) mvar' = Some (TConSingle (TMaskId TyRep))" and
           WfMask:         "wf_mask_simple mh'" and
           Consistent: "(consistent_state_rel_opt (state_rel_opt Tr)) \<Longrightarrow> 
-                        StateCons (update_mh_total_full \<omega> mh') \<and> StateCons (update_mh_total_full \<omega>def mh')" and
+                        StateCons (upd_mh_total_full \<omega> mh') \<and> StateCons (upd_mh_total_full \<omega>def mh')" and
           TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and          
           Disj: "mvar' \<notin> ({heap_var Tr, heap_var_def Tr} \<union>
                       (ran (var_translation Tr)) \<union>
@@ -775,11 +775,11 @@ lemma mask_var_upd_red_ast_bpl_propagate:
         MaskRel:    "mask_rel Pr (field_translation Tr) mh' mbpl'"
         shows "\<exists>ns'. red_ast_bpl P ctxt ((BigBlock name (Assign mvar' e_bpl#cs) str tr, cont), Normal ns) 
                                   ((BigBlock name cs str tr, cont), Normal ns') \<and>
-                     state_rel Pr StateCons TyRep (Tr\<lparr>mask_var := mvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt (update_mh_total_full \<omega>def mh') (update_mh_total_full \<omega> mh') ns'"
+                     state_rel Pr StateCons TyRep (Tr\<lparr>mask_var := mvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt (upd_mh_total_full \<omega>def mh') (upd_mh_total_full \<omega> mh') ns'"
 proof -
 
-  let ?\<omega>' = "update_mh_total_full \<omega> mh'"
-  let ?\<omega>def' = "update_mh_total_full \<omega>def mh'"
+  let ?\<omega>' = "upd_mh_total_full \<omega> mh'"
+  let ?\<omega>def' = "upd_mh_total_full \<omega>def mh'"
   let ?ns' = "update_var (var_context ctxt) ns mvar' (AbsV (AMask mbpl'))"
 
   have Red: "red_ast_bpl P ctxt   ((BigBlock name ((Assign mvar' e_bpl)#cs) str tr, cont), Normal ns) 
@@ -822,7 +822,7 @@ lemma heap_var_eval_def_havoc_upd_red_ast_bpl_propagate:
           StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" and
           LookupDeclNewVar: "lookup_var_decl (var_context ctxt) hvar' = Some (TConSingle (THeapId TyRep), None)" and
           Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> 
-                       StateCons (update_hh_total_full \<omega>def hh') \<and> StateCons (update_hh_total_full \<omega> hh')" and 
+                       StateCons (upd_hh_total_full \<omega>def hh') \<and> StateCons (upd_hh_total_full \<omega> hh')" and 
           WfTyRep: "wf_ty_repr_bpl TyRep" and
           TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and
           TotalHeapWellTy: "total_heap_well_typed Pr (domain_type TyRep) hh'" and
@@ -834,7 +834,7 @@ lemma heap_var_eval_def_havoc_upd_red_ast_bpl_propagate:
                       dom AuxPred" 
         shows "\<exists>ns'. red_ast_bpl P ctxt ((BigBlock name (Havoc hvar'#cs) str tr, cont), Normal ns) 
                                   ((BigBlock name cs str tr, cont), Normal ns') \<and>
-                     state_rel Pr StateCons TyRep (Tr\<lparr>heap_var := hvar', heap_var_def := hvar'\<rparr>) AuxPred ctxt (update_hh_total_full \<omega>def hh') (update_hh_total_full \<omega> hh') ns'"
+                     state_rel Pr StateCons TyRep (Tr\<lparr>heap_var := hvar', heap_var_def := hvar'\<rparr>) AuxPred ctxt (upd_hh_total_full \<omega>def hh') (upd_hh_total_full \<omega> hh') ns'"
 proof -
   from state_rel_field_rel[OF StateRel] 
   have Inj: "inj_on (field_translation Tr) (dom (field_translation Tr))"
@@ -852,18 +852,18 @@ proof -
     using StateRel
     by (simp add: state_rel_def state_rel0_def)
 
-  have HeapVarRel: "heap_var_rel Pr (var_context ctxt) TyRep (field_translation Tr) hvar' (update_hh_total_full \<omega> hh') ?ns'"
+  have HeapVarRel: "heap_var_rel Pr (var_context ctxt) TyRep (field_translation Tr) hvar' (upd_hh_total_full \<omega> hh') ?ns'"
     unfolding heap_var_rel_def
     using lookup_var_decl_ty_Some LookupDeclNewVar HeapTyBpl HeapRel TotalHeapWellTy
     by auto
 
-  hence HeapVarRelDef: "heap_var_rel Pr (var_context ctxt) TyRep (field_translation Tr) hvar' (update_hh_total_full \<omega>def hh') ?ns'"
+  hence HeapVarRelDef: "heap_var_rel Pr (var_context ctxt) TyRep (field_translation Tr) hvar' (upd_hh_total_full \<omega>def hh') ?ns'"
     by (rule heap_var_rel_stable) auto
   have BinderEmpty: "binder_state ns = Map.empty"
     using StateRel
     by (simp add: state_rel_def state_rel0_def state_well_typed_def)
 
-  have StateRel': "state_rel Pr StateCons TyRep (Tr\<lparr>heap_var := hvar', heap_var_def := hvar'\<rparr>) AuxPred ctxt (update_hh_total_full \<omega>def hh') (update_hh_total_full \<omega> hh') ?ns'" 
+  have StateRel': "state_rel Pr StateCons TyRep (Tr\<lparr>heap_var := hvar', heap_var_def := hvar'\<rparr>) AuxPred ctxt (upd_hh_total_full \<omega>def hh') (upd_hh_total_full \<omega> hh') ?ns'" 
     apply (rule state_rel_heap_update[OF StateRel TypeInterp])
              apply blast
     using VarFresh
@@ -928,10 +928,10 @@ proof -
   from heap_var_eval_def_havoc_upd_red_ast_bpl_propagate[OF state_rel_disable_consistency[OF StateRel] LookupDeclHeap _ WfTyRep TypeInterp HeapWellTy ] \<open>hvar' \<notin> ?B\<close> obtain ns'
     where RedBpl1: "red_ast_bpl P ctxt ((BigBlock name (Havoc hvar'#Assign mvar' e_bpl#cs) str tr, cont), Normal ns) 
                             ((BigBlock name (Assign mvar' e_bpl#cs) str tr, cont), Normal ns')" and
-          StateRel1: "state_rel Pr StateCons TyRep (?Tr'\<lparr>heap_var := hvar', heap_var_def := hvar'\<rparr>) AuxPred ctxt (update_hh_total_full \<omega>0 ?hh') (update_hh_total_full \<omega>0 ?hh') ns'"
+          StateRel1: "state_rel Pr StateCons TyRep (?Tr'\<lparr>heap_var := hvar', heap_var_def := hvar'\<rparr>) AuxPred ctxt (upd_hh_total_full \<omega>0 ?hh') (upd_hh_total_full \<omega>0 ?hh') ns'"
     by force
 
-  let ?\<omega>' = "(update_mh_total_full (update_hh_total_full \<omega>0 (get_hh_total_full \<omega>1)) ?mh')"
+  let ?\<omega>' = "(upd_mh_total_full (upd_hh_total_full \<omega>0 (get_hh_total_full \<omega>1)) ?mh')"
 
   from mask_var_upd_red_ast_bpl_propagate[OF StateRel1 LookupTyMask WfMask _ TypeInterp _ RedMaskBpl[OF StateRel1] ]
   obtain ns'' where
@@ -947,7 +947,7 @@ proof -
     using StateRel2 Aux
     by argo
     
-  let ?\<omega>'' = "update_trace_total (update_fnm_total_full (update_mp_total_full ?\<omega>' (get_mp_total_full \<omega>1)) (get_fnm_total_full \<omega>1)) (get_trace_total \<omega>1)"
+  let ?\<omega>'' = "update_trace_total (upd_fnm_total_full (upd_mp_total_full ?\<omega>' (get_mp_total_full \<omega>1)) (get_fnm_total_full \<omega>1)) (get_trace_total \<omega>1)"
 
   from state_rel_trace_independent[OF _ _ state_rel_fnm_independent[OF state_rel_mask_pred_independent[OF StateRel3]]] have
     StateRel4: "state_rel Pr StateCons TyRep (?Tr'\<lparr>heap_var := hvar', mask_var := mvar', heap_var_def := hvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt ?\<omega>'' ?\<omega>'' ns''"

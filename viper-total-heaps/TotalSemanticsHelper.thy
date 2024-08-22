@@ -59,10 +59,10 @@ lemmas red_inhale_elims =
 
 subsubsection \<open>Exhale\<close>
 
-inductive_cases ExhStar_case: "red_exhale ctxt \<omega>0 (A && B) m_pm res"
+inductive_cases ExhStar_case: "red_exhale ctxt R \<omega>0 (A && B) m_pm res"
 
 lemma ExhPure_case:
-  assumes "red_exhale ctxt \<omega>0 (Atomic (Pure e)) \<omega> res"
+  assumes "red_exhale ctxt R \<omega>0 (Atomic (Pure e)) \<omega> res"
       and "\<And>b. ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<Longrightarrow> res = (exh_if_total b \<omega>) \<Longrightarrow> P"
       and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<Longrightarrow> res = RFailure \<Longrightarrow> P"
     shows "P"

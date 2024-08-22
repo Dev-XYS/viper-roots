@@ -226,11 +226,11 @@ lemma eval_is_deterministic:
 \<comment> \<open>The total state \<phi> we give to \<^const>\<open>sat\<close> does not matter.\<close>
 
 lemma update_nm_total_full_trace_unchanged:
-  shows "get_trace_total \<omega> = get_trace_total (update_nm_total_full \<omega> nm)"
+  shows "get_trace_total \<omega> = get_trace_total (upd_nm_total_full \<omega> nm)"
   by force
 
 lemma update_nm_total_full_store_unchanged:
-  shows "get_store_total \<omega> = get_store_total (update_nm_total_full \<omega> nm)"
+  shows "get_store_total \<omega> = get_store_total (upd_nm_total_full \<omega> nm)"
   by force
 
 lemma eval_frac_mask_does_not_matter:
@@ -1340,9 +1340,9 @@ lemma field_assignment_no_perm_PEC:
               ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl \<Longrightarrow>
               pred_self_framing ctxt pred_decl"
     shows "consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p \<Longrightarrow>
-           consistent_external_wrt_ploc ctxt (update_hh_loc_total \<phi> loc v) (pred_id,vs) p"
+           consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v) (pred_id,vs) p"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
-           consistent_external ctxt (update_hh_loc_total \<phi> loc v)"
+           consistent_external ctxt (upd_hh_loc_total \<phi> loc v)"
 proof (induct rule: consistent_external_wrt_ploc_consistent_external.inducts)
   case IH: (SatStep pred_id pred_decl pred_body vs \<phi> p)
   show ?case
@@ -1352,19 +1352,19 @@ proof (induct rule: consistent_external_wrt_ploc_consistent_external.inducts)
   proof -
     have store_equal:
       "get_store_total (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = \<phi>\<rparr>) =
-       get_store_total (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = update_hh_loc_total \<phi> loc v\<rparr>)"
+       get_store_total (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = upd_hh_loc_total \<phi> loc v\<rparr>)"
       by simp
     have "get_mh_total \<phi> loc = 0"
       using assms(2) sorry
     hence hh_unchanged:
-      "\<forall>l. get_mh_total (update_hh_loc_total \<phi> loc v) l > 0 \<longrightarrow>
+      "\<forall>l. get_mh_total (upd_hh_loc_total \<phi> loc v) l > 0 \<longrightarrow>
            get_hh_total_full (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = \<phi>\<rparr>) l =
-           get_hh_total_full (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = update_hh_loc_total \<phi> loc v\<rparr>) l"
+           get_hh_total_full (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = upd_hh_loc_total \<phi> loc v\<rparr>) l"
       by simp
     show "sat ctxt
-            \<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = update_hh_loc_total \<phi> loc v\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>
-            (get_mh_total (update_hh_loc_total \<phi> loc v))
-            (get_mp_total (update_hh_loc_total \<phi> loc v))
+            \<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = upd_hh_loc_total \<phi> loc v\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>
+            (get_mh_total (upd_hh_loc_total \<phi> loc v))
+            (get_mp_total (upd_hh_loc_total \<phi> loc v))
             (syntactic_mult (Rep_preal p) pred_body)"
       using IH pred_self_framing_subst[OF _ IH(2) store_equal hh_unchanged]
       apply simp
@@ -1376,25 +1376,25 @@ next
   show ?case
   proof
     fix pred_id vs q
-    assume "get_mp_total (update_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
+    assume "get_mp_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
     hence "get_mp_total \<phi> (pred_id, vs) = q"
       by simp
     from IH(1)[OF this]
-    show "(q = 0) = (get_nm_loc_total (update_hh_loc_total \<phi> loc v) (pred_id, vs) = None)"
+    show "(q = 0) = (get_nm_loc_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs) = None)"
       by simp
   next
     fix pred_id vs q nm'
-    assume "get_mp_total (update_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
-       and "Some nm' = get_nm_loc_total (update_hh_loc_total \<phi> loc v) (pred_id, vs)"
+    assume "get_mp_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
+       and "Some nm' = get_nm_loc_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs)"
     hence "get_mp_total \<phi> (pred_id, vs) = q"
       and "Some nm' = get_nm_loc_total \<phi> (pred_id, vs)"
       by simp+
-    with IH have "consistent_external_wrt_ploc ctxt (update_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v) (pred_id, vs) q"
+    with IH have "consistent_external_wrt_ploc ctxt (upd_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v) (pred_id, vs) q"
       by blast
-    moreover have "update_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v =
-                   update_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>"
+    moreover have "upd_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v =
+                   upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>"
       by simp
-    ultimately show "consistent_external_wrt_ploc ctxt (update_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pred_id, vs) q"
+    ultimately show "consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pred_id, vs) q"
       by argo
   qed
 qed
@@ -1407,7 +1407,7 @@ lemma field_assignment_preserves_external_consistency':
       and "\<And>pred_id pred_decl.
               ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl \<Longrightarrow>
               pred_self_framing ctxt pred_decl"
-    shows "consistent_external ctxt (update_hh_loc_total \<phi> loc v)"
+    shows "consistent_external ctxt (upd_hh_loc_total \<phi> loc v)"
 proof -
   have zero_perm: "\<And>ploc nm. get_nm_loc_total \<phi> ploc = Some nm \<Longrightarrow> nm_loc_sum loc nm 0" sorry
   show ?thesis
@@ -1416,16 +1416,16 @@ proof -
      apply fastforce
   proof -
     fix pred_id vs q nm'
-    assume "get_mp_total (update_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
-       and nm': "Some nm' = get_nm_loc_total (update_hh_loc_total \<phi> loc v) (pred_id, vs)"
+    assume "get_mp_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
+       and nm': "Some nm' = get_nm_loc_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs)"
     hence "get_mp_total \<phi> (pred_id, vs) = q"
       and "Some nm' = get_nm_loc_total \<phi> (pred_id, vs)"
       by simp+
     moreover hence "consistent_external_wrt_ploc ctxt (\<phi>\<lparr>get_nm_total := nm'\<rparr>) (pred_id, vs) q"
       by (metis assms(1) consistent_external.cases)
-    moreover have "update_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr> = update_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v"
+    moreover have "upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr> = upd_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v"
       by simp
-    ultimately show "consistent_external_wrt_ploc ctxt (update_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pred_id, vs) q"
+    ultimately show "consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pred_id, vs) q"
       by (metis assms(4) consistent_external_wrt_ploc.cases field_assignment_no_perm_PEC(1) total_state_update_nm_read zero_perm)
   qed
 qed
@@ -1434,18 +1434,18 @@ qed
 
 lemma exhale_preserves_external_consistency:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
-      and "red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>')"
+      and "red_exhale ctxt R \<omega> A \<omega> (RNormal \<omega>')"
     shows "consistent_external ctxt (get_total_full \<omega>')"
   sorry
 
 lemma exhale_diff_external_consistent:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
-      and "red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>')"
+      and "red_exhale ctxt R \<omega> A \<omega> (RNormal \<omega>')"
     shows "consistent_external ctxt (\<lparr> get_hh_total = get_hh_total_full \<omega>', get_nm_total = nested_mask_subtract (get_nm_total_full \<omega>) (get_nm_total_full \<omega>') \<rparr>)"
   sorry
 
 lemma exhale_preserves_hh:
-  assumes "red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>')"
+  assumes "red_exhale ctxt R \<omega> A \<omega> (RNormal \<omega>')"
   shows "get_hh_total_full \<omega> = get_hh_total_full \<omega>'"
   sorry
 
@@ -1478,12 +1478,12 @@ proof -
     "fold_rel ctxt pred_id v_args (Abs_preal v_p) \<omega> (RNormal \<omega>')"
     using assms(3)
     by (auto elim: RedFold_case)
-  then obtain pred_decl pred_body \<omega>0 \<omega>1 nm_exh where
+  then obtain pred_decl pred_body \<omega>0 R \<omega>1 nm_exh where
     pred_decl: "ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl" and
     pred_body: "ViperLang.predicate_decl.body pred_decl = Some pred_body" and
     "Abs_preal v_p \<noteq> 0" and
     \<omega>0: "\<omega>0 = \<lparr> get_store_total = nth_option v_args, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>" and
-    exhale: "red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body) \<omega>0 (RNormal \<omega>1)" and
+    exhale: "red_exhale ctxt R \<omega>0 (syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body) \<omega>0 (RNormal \<omega>1)" and
     nm_exh: "nm_exh = nested_mask_subtract (get_nm_total_full \<omega>0) (get_nm_total_full \<omega>1)" and
     \<omega>': "\<omega>' = \<lparr> get_store_total = get_store_total \<omega>,
                 get_trace_total = get_trace_total \<omega>,
@@ -1529,9 +1529,9 @@ proof -
                  get_trace_total = \<lambda>x. None,
                  get_total_full = \<phi>_exh\<lparr>get_nm_total := empty_nm \<rparr> \<rparr>
                (get_mh_nm nm') (get_mp_nm nm') (syntactic_mult (Rep_preal q) pred_body)"
-          using exhale_diff_sat[of ctxt \<omega>0 \<omega>0 "(syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)" _ \<omega>1,
+          using exhale_diff_sat[of ctxt \<omega>0 R \<omega>0 "(syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)" _ \<omega>1,
                                 OF \<omega>0_consistent exhale _ sup_mult]
-          by (smt (verit, del_insts) True \<omega>0 \<phi>_exh_def assms(2) full_total_state.select_convs(1) full_total_state.select_convs(3) get_mp_nm.simps get_mp_total.simps old.unit.exhaust perm total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
+          by (smt (verit, ccfv_SIG) True \<omega>0 \<phi>_exh_def assms(2) full_total_state.select_convs(1) full_total_state.select_convs(3) get_mp_nm.simps get_mp_total.elims old.unit.exhaust perm total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
       next
         show "consistent_external ctxt (\<phi>_exh\<lparr>get_nm_total := nm'\<rparr>)"
           by (smt (verit, del_insts) TotalStateUtil.get_nm_loc_total.simps True \<omega>0 \<phi>_exh_def assms(1) assms(2) exhale exhale_diff_external_consistent exhale_preserves_hh full_total_state.select_convs(3) get_fnm_nm.simps get_fnm_total.simps get_hh_total_full.elims nm' nm_exh option.inject total_state.select_convs(2) total_state.update_convs(2))
@@ -1574,11 +1574,11 @@ proof -
     have "get_hh_total \<phi>' = get_hh_total \<phi>"
     proof -
       have \<open>get_hh_total (add_to_nm_loc_total
-                  (update_mp_loc_total (get_total_full \<omega>1) (pred_id,v_args) (get_mp_total_full \<omega>1 (pred_id,v_args) + Abs_preal v_p))
+                  (upd_mp_loc_total (get_total_full \<omega>1) (pred_id,v_args) (get_mp_total_full \<omega>1 (pred_id,v_args) + Abs_preal v_p))
                   (pred_id,v_args) nm_exh) = get_hh_total \<phi>'\<close>
         by (simp add: \<omega>' assms(4))
       thus ?thesis
-        by (metis \<open>get_hh_total_full \<omega>1 = get_hh_total \<phi>\<close> add_to_nm_loc_total_preserves_hh get_hh_total_full.simps update_mp_loc_total_preserves_hh)
+        by (metis \<open>get_hh_total_full \<omega>1 = get_hh_total \<phi>\<close> get_hh_total_full.simps update_mp_loc_total_preserves_hh)
     qed
     thus ?thesis
       using sum_consistent_external[of ctxt "get_hh_total \<phi>" "get_nm_total_full \<omega>1" "get_nm_total \<phi>_exh", OF cons1 cons2]

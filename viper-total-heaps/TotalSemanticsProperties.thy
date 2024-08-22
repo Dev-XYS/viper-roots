@@ -24,7 +24,7 @@ lemma eval_with_no_trace:
 \<comment> \<open>Properties on \<^const>\<open>red_exhale\<close>\<close>
 
 lemma exhale_fraction:
-  assumes "red_exhale ctxt \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
+  assumes "red_exhale ctxt R \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
   shows "get_nm_loc_total_full \<omega>' ploc =
          nested_mask_multiply_option (get_nm_loc_total_full \<omega> ploc)
                                      (get_mp_total_full \<omega>' ploc / get_mp_total_full \<omega> ploc)"
@@ -73,26 +73,26 @@ lemma same_mp_diff:
 lemma dec_mh_mh_diff:
   assumes "p < get_mh_total_full \<omega> loc"
   shows "field_mask_sub (get_mh_total_full \<omega>)
-                        (get_mh_total_full (update_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
+                        (get_mh_total_full (upd_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
          singleton_mh loc p"
 proof -
   have "get_mh_total_full \<omega> loc - (get_mh_total_full \<omega> loc - p) = p"
     using assms minus_preal_gte by auto
   thus ?thesis
-    by (metis assms mh_upd_loc_diff order_less_imp_le psub_smaller update_mh_loc_total_full_mh_rel)
+    by (metis assms mh_upd_loc_diff order_less_imp_le psub_smaller upd_mh_loc_total_full_mh_rel)
 qed
 
 lemma dec_mh_mp_diff:
   shows "predicate_mask_sub (get_mp_total_full \<omega>)
-                            (get_mp_total_full (update_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
+                            (get_mp_total_full (upd_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
          zero_mp"
-  by (metis same_mp_diff update_mh_loc_total_full_mp_eq)
+  by (metis same_mp_diff upd_mh_loc_total_full_mp_eq)
 
 lemma exhale_mh_diff:
   shows "field_mask_sub (get_mh_total_full \<omega>)
                         (get_mh_total_full (exhale_pred \<omega> ploc p)) =
          zero_mh"
-  by (metis exhale_pred_def mult_nm_loc_total_full_mh_eq same_mh_diff update_mp_loc_total_full_mh_eq)
+  by (metis exhale_pred_def mult_nm_loc_total_full_mh_eq same_mh_diff upd_mp_loc_total_full_mh_eq)
 
 lemma exhale_mp_diff:
   assumes "p \<le> get_mp_total_full \<omega> ploc"
@@ -100,18 +100,18 @@ lemma exhale_mp_diff:
                             (get_mp_total_full (exhale_pred \<omega> ploc p)) =
          singleton_mp ploc p"
 proof -
-  have 1: "get_mp_total_full (exhale_pred \<omega> ploc p) = get_mp_total_full (update_mp_loc_total_full \<omega> ploc (get_mp_total_full \<omega> ploc - p))"
+  have 1: "get_mp_total_full (exhale_pred \<omega> ploc p) = get_mp_total_full (upd_mp_loc_total_full \<omega> ploc (get_mp_total_full \<omega> ploc - p))"
     by (metis exhale_pred_def mult_nm_loc_total_full_mp_eq)
   have 2: "get_mp_total_full \<omega> ploc - (get_mp_total_full \<omega> ploc - p) = p"
     using assms minus_preal_gte by auto
   show ?thesis
     apply (simp only: 1)
-    by (metis 2 assms mp_upd_loc_diff psub_smaller update_mp_loc_total_full_mp_rel)
+    by (metis 2 assms mp_upd_loc_diff psub_smaller upd_mp_loc_total_full_mp_rel)
 qed
 
 \<comment> \<open>already proved elsewhere, but need adjustment\<close>
 lemma exhale_smaller:
-  assumes "red_exhale ctxt \<omega>_def A \<omega> (RNormal \<omega>')"
+  assumes "red_exhale ctxt R \<omega>_def A \<omega> (RNormal \<omega>')"
     shows "\<And>x. get_mh_total_full \<omega> x \<ge> get_mh_total_full \<omega>' x"
       and "\<And>x. get_mp_total_full \<omega> x \<ge> get_mp_total_full \<omega>' x"
   sorry
@@ -145,7 +145,7 @@ lemma mp_sub_twice:
 
 lemma exhale_diff_sat:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
-      and "red_exhale ctxt \<omega>\<^sub>0 A \<omega> res" and "res = RNormal \<omega>'"
+      and "red_exhale ctxt R \<omega>\<^sub>0 A \<omega> res" and "res = RNormal \<omega>'"
       and "supported_pred_body A"
     shows "sat ctxt (\<lparr> get_store_total = get_store_total \<omega>,
                        get_trace_total = Map.empty,
@@ -157,7 +157,7 @@ lemma exhale_diff_sat:
 proof (induction arbitrary: \<omega>')
   case IH: (ExhAcc mh \<omega> e_r r e_p p a f)
   have 1: "0 \<le> p \<and> (if r = Null then p = 0 else Abs_preal p \<le> mh (a, f))"
-   and \<omega>': "\<omega>' = (if r = Null then \<omega> else update_mh_loc_total_full \<omega> (a, f) (mh (a, f) - Abs_preal p))"
+   and \<omega>': "\<omega>' = (if r = Null then \<omega> else upd_mh_loc_total_full \<omega> (a, f) (mh (a, f) - Abs_preal p))"
     using exh_if_total_normal[OF IH(5)] exh_if_total_normal_2[OF IH(5)]
     by blast+
   show ?case
@@ -166,12 +166,12 @@ proof (induction arbitrary: \<omega>')
          apply fastforce+
     using 1
       apply blast
-     apply (metis "1" IH.hyps(1) IH.hyps(4) \<omega>' mh_upd_loc_diff minus_preal_gte psub_smaller update_mh_loc_total_full_mh_rel)
+     apply (metis "1" IH.hyps(1) IH.hyps(4) \<omega>' mh_upd_loc_diff minus_preal_gte psub_smaller upd_mh_loc_total_full_mh_rel)
     by (metis IH.hyps(1) \<omega>' dec_mh_mp_diff same_mp_diff)
 next
   case IH: (ExhAccWildcard mh \<omega> e_r r a f q)
   have 1: "mh (a,f) \<noteq> 0 \<and> r \<noteq> Null"
-   and \<omega>': "\<omega>' = update_mh_loc_total_full \<omega> (a, f) (mh (a,f) - q)"
+   and \<omega>': "\<omega>' = upd_mh_loc_total_full \<omega> (a, f) (mh (a,f) - q)"
     using IH.prems(1) exh_if_total_normal exh_if_total_normal_2
     by blast+
   show ?case

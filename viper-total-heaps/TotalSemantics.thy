@@ -50,7 +50,7 @@ text\<open>\<^term>\<open>havoc_locs_heap hh locs\<close> denotes the set of hea
 
 definition havoc_locs_state :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> heap_loc set \<Rightarrow> 'a full_total_state set"
   where "havoc_locs_state ctxt \<omega> locs =
-    { update_hh_total_full \<omega> hh' | (\<omega>' :: 'a full_total_state) (hh' :: 'a total_heap).
+    { upd_hh_total_full \<omega> hh' | (\<omega>' :: 'a full_total_state) (hh' :: 'a total_heap).
                                    total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) hh' \<and>
                                    hh' \<in> havoc_locs_heap (get_hh_total_full \<omega>) locs}"
 
@@ -79,7 +79,7 @@ proof -
   assume "\<omega>' \<in> havoc_locs_state ctxt \<omega> locs"
 
   from this obtain hh' where "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) hh'" and
-                            "\<omega>' = update_hh_total_full \<omega> hh'"
+                            "\<omega>' = upd_hh_total_full \<omega> hh'"
     unfolding havoc_locs_state_def
     by blast
 
@@ -154,7 +154,7 @@ inductive red_stmt_total :: "'a total_context \<Rightarrow> ('a full_total_state
 always has at least one failure transition. This is in-sync with the Carbon implementation.\<close>
 
 | RedExhale:
-  "\<lbrakk> red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>_exh);
+  "\<lbrakk> red_exhale ctxt R \<omega> A \<omega> (RNormal \<omega>_exh);
      \<omega>' \<in> havoc_locs_state ctxt \<omega>_exh ({loc. get_mh_total_full \<omega> loc > 0 \<and> get_mh_total_full \<omega>_exh loc = 0})
      \<comment>\<open>We havoc all locations \<^term>\<open>l\<close> for which both of the following conditions hold:
          (1) there is no direct permission to \<^term>\<open>l\<close> after the exhale
@@ -164,13 +164,13 @@ always has at least one failure transition. This is in-sync with the Carbon impl
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Exhale A) \<omega> (RNormal \<omega>')"
 | RedExhaleFailure:
-  "\<lbrakk> red_exhale ctxt \<omega> A \<omega> RFailure \<rbrakk> \<Longrightarrow>
+  "\<lbrakk> red_exhale ctxt R \<omega> A \<omega> RFailure \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Exhale A) \<omega> RFailure"
 | RedAssert:
-  "\<lbrakk> red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>_exh) \<rbrakk> \<Longrightarrow>
+  "\<lbrakk> red_exhale ctxt R \<omega> A \<omega> (RNormal \<omega>_exh) \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Assert A) \<omega> (RNormal \<omega>)"
 | RedAssertFailure:
-  "\<lbrakk> red_exhale ctxt \<omega> A \<omega> RFailure \<rbrakk> \<Longrightarrow>
+  "\<lbrakk> red_exhale ctxt R \<omega> A \<omega> RFailure \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Assert A) \<omega> RFailure"
 
 \<comment>\<open>TODO: Add semantics for \<^term>\<open>Assume A\<close>. \<close>
@@ -494,8 +494,8 @@ lemma red_exhale_acc_normalI:
       and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
       and "a = the_address r"
       and "p \<ge> 0 \<and> (if r = Null then p = 0 else get_mh_total_full \<omega> (a,f) \<ge> Abs_preal p)" (is "?Success")
-      and "\<omega>' = (if r = Null then \<omega> else update_mh_loc_total_full \<omega> (a,f) ((get_mh_total_full \<omega> (a,f)) - (Abs_preal p)))" (is "\<omega>' = ?\<omega>def")
-    shows "red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> (RNormal \<omega>')"
+      and "\<omega>' = (if r = Null then \<omega> else upd_mh_loc_total_full \<omega> (a,f) ((get_mh_total_full \<omega> (a,f)) - (Abs_preal p)))" (is "\<omega>' = ?\<omega>def")
+    shows "red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> (RNormal \<omega>')"
 proof -
   have Eq: "RNormal \<omega>' = exh_if_total ?Success ?\<omega>def"
     using assms
@@ -512,9 +512,9 @@ lemma red_exhale_acc_failureI:
       and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
       and "a = the_address r"
       and "\<not>(p \<ge> 0 \<and> (if r = Null then p = 0 else get_mh_total_full \<omega> (a,f) \<ge> Abs_preal p))" (is "\<not>?Success")
-    shows "red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> RFailure"
+    shows "red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> RFailure"
 proof -
-  have Eq: "RFailure = exh_if_total ?Success (if r = Null then \<omega> else update_mh_loc_total_full \<omega> (a,f) ((get_mh_total_full \<omega> (a,f)) - (Abs_preal p)))"
+  have Eq: "RFailure = exh_if_total ?Success (if r = Null then \<omega> else upd_mh_loc_total_full \<omega> (a,f) ((get_mh_total_full \<omega> (a,f)) - (Abs_preal p)))"
     using assms
     by auto
   show ?thesis

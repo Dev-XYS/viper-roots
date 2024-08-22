@@ -95,9 +95,9 @@ definition is_exh_rel_invariant
                   (Q A1 \<omega>def \<omega>) \<and> 
                   (\<forall>\<omega>'. red_exhale ctxt StateCons \<omega>def A1 \<omega> (RNormal \<omega>') \<longrightarrow> Q A2 \<omega>def \<omega>')) \<and>
           (\<forall> e A \<omega>def \<omega>. Q (assert.Imp e A) \<omega>def \<omega> \<and> cond_exp e \<longrightarrow>
-                         ctxt, StateCons, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<longrightarrow> Q A \<omega>def \<omega>) \<and>
+                         ctxt, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<longrightarrow> Q A \<omega>def \<omega>) \<and>
           (\<forall> e A B \<omega>def \<omega> b. Q (assert.CondAssert e A B) \<omega>def \<omega> \<and> cond_exp e \<longrightarrow>
-                         ctxt, StateCons, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool b)) \<longrightarrow>
+                         ctxt, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool b)) \<longrightarrow>
                                   (if b then Q A \<omega>def \<omega> else Q B \<omega>def \<omega>))"
 
 lemma is_exh_rel_invariant_intro:
@@ -106,9 +106,9 @@ lemma is_exh_rel_invariant_intro:
                                                     \<Longrightarrow> red_exhale ctxt StateCons \<omega>def A1 \<omega> (RNormal \<omega>') 
                                                    \<Longrightarrow> Q A2 \<omega>def \<omega>'" and
           "\<And> e A \<omega>def \<omega>. Q (assert.Imp e A) \<omega>def \<omega> \<Longrightarrow> cond_exp e \<Longrightarrow> 
-                    ctxt, StateCons, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<Longrightarrow> Q A \<omega>def \<omega>"
+                    ctxt, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<Longrightarrow> Q A \<omega>def \<omega>"
           "\<And> e A B \<omega>def \<omega> b. Q (assert.CondAssert e A B) \<omega>def \<omega> \<Longrightarrow> cond_exp e \<Longrightarrow> 
-                              ctxt, StateCons, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool b)) \<Longrightarrow> 
+                              ctxt, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool b)) \<Longrightarrow> 
                               if b then Q A \<omega>def \<omega> else Q B \<omega>def \<omega>"
         shows "is_exh_rel_invariant ctxt StateCons cond_assert cond_exp Q"
   using assms
@@ -329,15 +329,15 @@ next
     by metis
 
   with RedCond ConstrainedExp
-  have "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
+  have "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
     by (metis \<open>(\<omega>def::'a::type full_total_state) \<succeq> (\<omega>::'a::type full_total_state)\<close> \<open>(\<omega>def::'a::type full_total_state) \<succeq> (\<omega>inh::'a::type full_total_state)\<close> full_total_state_greater_only_mask_changed red_pure_exp_only_differ_on_mask(1))
 
-  with \<open>\<omega>def \<succeq> \<omega>inh\<close> have "ctxt_vpr, StateCons, Some \<omega>inh \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<or>
-                           ctxt_vpr, StateCons, Some \<omega>inh \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t VFailure"
+  with \<open>\<omega>def \<succeq> \<omega>inh\<close> have "ctxt_vpr, Some \<omega>inh \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<or>
+                           ctxt_vpr, Some \<omega>inh \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t VFailure"
     using ConstrainedExp red_pure_exp_different_def_state
     by blast
 
-  hence "ctxt_vpr, StateCons, Some \<omega>inh \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
+  hence "ctxt_vpr, Some \<omega>inh \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
     using AssertionFraming inh_cond_assert_failure
     unfolding assertion_framing_state_def
     by blast

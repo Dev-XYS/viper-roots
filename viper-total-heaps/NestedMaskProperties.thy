@@ -1,6 +1,6 @@
 theory NestedMaskProperties
   imports HOL.Groups_Big "HOL-Analysis.Infinite_Sum"
-          TotalMaskUtil
+          TotalMaskUtil TotalStateUtil
 begin
 
 
