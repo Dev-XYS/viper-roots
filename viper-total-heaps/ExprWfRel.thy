@@ -1,6 +1,7 @@
 theory ExprWfRel
-imports ViperBoogieBasicRel ViperBoogieFunctionInst ExpRel Simulation TotalSemProperties
+  imports ViperBoogieBasicRel ViperBoogieFunctionInst ExpRel Simulation TotalSemProperties
 begin
+
 
 subsection \<open>Semantic relation well-definedness\<close>
 
@@ -53,14 +54,14 @@ lemma wf_rel_general_1:
 abbreviation expr_wf_rel :: "('a vpr_state \<Rightarrow> 'a vpr_state \<Rightarrow>  ('a vbpl_absval) nstate \<Rightarrow> bool) \<Rightarrow> 'a total_context \<Rightarrow> ('a vpr_state \<Rightarrow> bool) \<Rightarrow> ast \<Rightarrow> 'a econtext_bpl \<Rightarrow>
        viper_expr \<Rightarrow> (Ast.bigblock \<times> cont) \<Rightarrow> (Ast.bigblock \<times> cont) \<Rightarrow> bool" where 
   "expr_wf_rel R ctxt_vpr StateCons P ctxt e_vpr \<gamma> \<gamma>' \<equiv>
-   wf_rel R R (\<lambda>\<omega>def \<omega>. \<exists>v. (ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v )) (\<lambda>\<omega>def \<omega>. (ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure)) P ctxt \<gamma> \<gamma>'"
+   wf_rel R R (\<lambda>\<omega>def \<omega>. \<exists>v. (ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v )) (\<lambda>\<omega>def \<omega>. (ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure)) P ctxt \<gamma> \<gamma>'"
 
 
 definition exprs_wf_rel :: "('a vpr_state \<Rightarrow> 'a vpr_state \<Rightarrow>  ('a vbpl_absval) nstate \<Rightarrow> bool) \<Rightarrow> 'a total_context \<Rightarrow> ('a vpr_state \<Rightarrow> bool) \<Rightarrow>  ast \<Rightarrow> 'a econtext_bpl \<Rightarrow>
        viper_expr list \<Rightarrow> (Ast.bigblock \<times> cont) \<Rightarrow> (Ast.bigblock \<times> cont) \<Rightarrow> bool"
   where "exprs_wf_rel R ctxt_vpr StateCons P ctxt es \<equiv>
-           wf_rel R R (\<lambda>\<omega>def \<omega>. \<exists>vs. red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) es \<omega> (Some vs)) 
-                      (\<lambda>\<omega>def \<omega>. red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) es \<omega> None) P ctxt"
+           wf_rel R R (\<lambda>\<omega>def \<omega>. \<exists>vs. red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega> (Some vs)) 
+                      (\<lambda>\<omega>def \<omega>. red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega> None) P ctxt"
 
 fun exprs_wf_rel_alt :: "('a vpr_state \<Rightarrow> 'a vpr_state \<Rightarrow>  ('a vbpl_absval) nstate \<Rightarrow> bool) \<Rightarrow> 'a total_context \<Rightarrow> ('a vpr_state \<Rightarrow> bool) \<Rightarrow>  ast \<Rightarrow> 'a econtext_bpl \<Rightarrow>
        viper_expr list \<Rightarrow> (Ast.bigblock \<times> cont) \<Rightarrow> (Ast.bigblock \<times> cont) \<Rightarrow> bool"
@@ -103,7 +104,7 @@ lemma exprs_wf_rel_normal_elim:
   assumes 
        "exprs_wf_rel R ctxt_vpr StateCons P ctxt es \<gamma> \<gamma>'" and
        "R \<omega>def \<omega> ns"
-       "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) es \<omega> (Some vs)"
+       "red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega> (Some vs)"
   shows
         "\<exists> ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R \<omega>def \<omega> ns'"
   using assms
@@ -114,7 +115,7 @@ lemma exprs_wf_rel_alt_normal_elim:
   assumes 
        "exprs_wf_rel_alt R ctxt_vpr StateCons P ctxt es \<gamma> \<gamma>'" and
        "R \<omega>def \<omega> ns"
-       "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) es \<omega> (Some vs)"
+       "red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega> (Some vs)"
   shows
         "\<exists> ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R \<omega>def \<omega> ns'"
   using assms
@@ -128,10 +129,10 @@ next
     WfRelE:"expr_wf_rel R ctxt_vpr StateCons P ctxt e \<gamma> \<gamma>''" and 
     WfRelEs:"exprs_wf_rel_alt R ctxt_vpr StateCons P ctxt es \<gamma>'' \<gamma>'" by auto
 
-  note RedExps=\<open>red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) (e # es) \<omega> (Some vs)\<close>
+  note RedExps=\<open>red_pure_exps_total ctxt_vpr (Some \<omega>def) (e # es) \<omega> (Some vs)\<close>
   from this obtain v' vs' where "vs = v'#vs'" and
-         "red_pure_exp_total ctxt_vpr StateCons (Some \<omega>def) e  \<omega> (Val v')" and
-         RedExpsEs:"red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) es \<omega> (Some vs')"
+         "red_pure_exp_total ctxt_vpr (Some \<omega>def) e  \<omega> (Val v')" and
+         RedExpsEs:"red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega> (Some vs')"
     by (auto elim: red_exp_list_normal_elim)
 
   with wf_rel_normal_elim[OF WfRelE \<open>R _ _ _\<close>] obtain ns' where
@@ -162,7 +163,7 @@ lemma exprs_wf_rel_failure_elim:
   assumes 
        "exprs_wf_rel R ctxt_vpr StateCons P ctxt es \<gamma> \<gamma>'" and
        "R \<omega>def \<omega> ns"
-       "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) es \<omega> None"
+       "red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega> None"
   shows
        "\<exists> c. red_ast_bpl P ctxt (\<gamma>, Normal ns) c \<and> snd c = Failure"
   using assms
@@ -173,7 +174,7 @@ lemma exprs_wf_rel_alt_failure_elim:
   assumes 
        "exprs_wf_rel_alt R ctxt_vpr StateCons P ctxt es \<gamma> \<gamma>'" and
        "R \<omega>def \<omega> ns"
-       "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) es \<omega> None"
+       "red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega> None"
   shows
        "\<exists> c. red_ast_bpl P ctxt (\<gamma>, Normal ns) c \<and> snd c = Failure"
   using assms
@@ -191,9 +192,9 @@ next
     WfRelEs: "exprs_wf_rel_alt R ctxt_vpr StateCons P ctxt es \<gamma>'' \<gamma>'"
     by auto
 
-  consider (FailHd) "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure" 
-         | (FailTl) v where "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v" and
-                       "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) es \<omega> None"
+  consider (FailHd) "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure" 
+         | (FailTl) v where "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v" and
+                       "red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega> None"
     using 2 
     by (blast elim: red_exp_list_failure_elim)
 
@@ -222,12 +223,12 @@ lemma exprs_wf_rel_alt_implies_exprs_wf_rel:
 lemma expr_wf_rel_intro:
   assumes
    "\<And>v \<omega>def \<omega> ns. R \<omega>def \<omega> ns \<Longrightarrow> 
-        ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow>
+        ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow>
          \<exists> ns'.           
            red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and>
            R \<omega>def \<omega> ns'" and
     "\<And>v \<omega>def \<omega> ns. R \<omega>def \<omega> ns \<Longrightarrow> 
-         ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t v \<Longrightarrow> 
+         ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t v \<Longrightarrow> 
          v = VFailure \<Longrightarrow> 
          (\<exists>c'.           
           red_ast_bpl P ctxt (\<gamma>, Normal ns) c' \<and>
@@ -237,13 +238,13 @@ lemma expr_wf_rel_intro:
   by (auto intro: wf_rel_intro)
 
 lemma expr_wf_rel_intro_trivial:
-  assumes "\<And>v \<omega>def \<omega>. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t v \<Longrightarrow> v \<noteq> VFailure"  
+  assumes "\<And>v \<omega>def \<omega>. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t v \<Longrightarrow> v \<noteq> VFailure"  
   shows "expr_wf_rel R ctxt_vpr StateCons P ctxt e_vpr \<gamma> \<gamma>"
 proof (rule expr_wf_rel_intro)
 next
   fix v \<omega>def \<omega> ns
   assume "R \<omega>def \<omega> ns"
-  assume "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+  assume "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
   show 
    " \<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>, Normal ns') \<and> R \<omega>def \<omega> ns'"
     apply (rule exI)
@@ -307,24 +308,24 @@ lemma wf_rel_extend_2_same_rel:
 subsection \<open>Specific expressions\<close>
 
 lemma var_never_fails: 
-  assumes "Pr, ctxt_vpr, \<omega>def \<turnstile> \<langle>ViperLang.Var x; \<omega>\<rangle> [\<Down>]\<^sub>t v"
+  assumes "ctxt_vpr, \<omega>def \<turnstile> \<langle>ViperLang.Var x; \<omega>\<rangle> [\<Down>]\<^sub>t v"
   shows "v \<noteq> VFailure"
   using assms
   by (cases) auto
 
 lemma lit_never_fails:
-  assumes "ctxt_vpr, StateCons, \<omega>def \<turnstile> \<langle>ViperLang.ELit lit; \<omega>\<rangle> [\<Down>]\<^sub>t v"
+  assumes "ctxt_vpr, \<omega>def \<turnstile> \<langle>ViperLang.ELit lit; \<omega>\<rangle> [\<Down>]\<^sub>t v"
   shows "v \<noteq> VFailure"
   using assms
   by (cases) auto
 
 lemma unop_elim:
-  assumes "ctxt_vpr, StateCons, \<omega>def \<turnstile> \<langle>ViperLang.Unop uop e; \<omega>\<rangle> [\<Down>]\<^sub>t v"
+  assumes "ctxt_vpr, \<omega>def \<turnstile> \<langle>ViperLang.Unop uop e; \<omega>\<rangle> [\<Down>]\<^sub>t v"
   shows 
      "if v = VFailure then 
-        ctxt_vpr, StateCons, \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure 
+        ctxt_vpr, \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure 
       else 
-        \<exists>v'. ctxt_vpr, StateCons, \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v'"
+        \<exists>v'. ctxt_vpr, \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v'"
   using assms 
   by (cases) (auto elim: red_pure_exps_total_singleton)
 
@@ -341,15 +342,15 @@ lemma unop_expr_wf_rel_2:
   by (fastforce dest: unop_elim wf_rel_normal_elim wf_rel_failure_elim
                 intro: wf_rel_intro)
 
-abbreviation wf_rel_bop_op 
+abbreviation wf_rel_bop_op
   where "wf_rel_bop_op R R' ctxt_vpr StateCons P ctxt e1 bop e2 \<equiv>  wf_rel R R'
-            (\<lambda>\<omega>def \<omega>. (\<exists>v1 v2. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v1) \<and> 
-                                ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v2) \<and> 
-                                (\<exists>v'. eval_binop v1 bop v2 = BinopNormal v'))
+            (\<lambda>\<omega>def \<omega>. (\<exists>v1 v2. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v1) \<and> 
+                                ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v2) \<and> 
+                                (\<exists>v'. eval_binop False v1 bop v2 = BinopNormal v'))
                        )
-            (\<lambda>\<omega>def \<omega>. (\<exists>v1 v2. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v1) \<and> 
-                                ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v2) \<and> 
-                                eval_binop v1 bop v2 = BinopOpFailure))
+            (\<lambda>\<omega>def \<omega>. (\<exists>v1 v2. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v1) \<and> 
+                                ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v2) \<and> 
+                                eval_binop False v1 bop v2 = BinopOpFailure))
             P ctxt"
 
 lemma binop_eager_expr_wf_rel:
@@ -362,7 +363,7 @@ lemma binop_eager_expr_wf_rel:
 proof (rule expr_wf_rel_intro)
   text\<open>Normal case\<close>
   fix v \<omega>def \<omega> ns
-  assume R:"R \<omega>def \<omega> ns" and RedExp:"ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+  assume R:"R \<omega>def \<omega> ns" and RedExp:"ctxt_vpr, Some \<omega>def \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
   from RedExp
   show "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>0, Normal ns) (\<gamma>3, Normal ns') \<and> R \<omega>def \<omega> ns'"
   proof cases
@@ -377,9 +378,11 @@ proof (rule expr_wf_rel_intro)
              "red_ast_bpl P ctxt (\<gamma>0, Normal ns) (\<gamma>2, Normal ns'')"
         using wf_rel_normal_elim[OF Rel2] RedBinop
         using red_ast_bpl_transitive by blast
-      thus ?thesis      
-        using wf_rel_normal_elim[OF RelOp] RedBinop
-        using red_ast_bpl_transitive by blast
+      thus ?thesis
+        using RedBinop
+        apply (simp only: is_none_code)
+        using wf_rel_normal_elim[OF RelOp] red_ast_bpl_transitive
+        by blast
   next
     case (RedBinopLazy v1)
     then show ?thesis using \<open>binop_lazy _ = _\<close> eval_binop_lazy_iff_2
@@ -388,9 +391,9 @@ proof (rule expr_wf_rel_intro)
 next
   text \<open>Failure case\<close>
   fix v \<omega>def \<omega> ns
-  assume R:"R \<omega>def \<omega> ns" and "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t v" and "v = VFailure"
+  assume R:"R \<omega>def \<omega> ns" and "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t v" and "v = VFailure"
 
-  hence Red:"ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>Binop e1 bop e2; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  hence Red:"ctxt_vpr, Some \<omega>def \<turnstile> \<langle>Binop e1 bop e2; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
     by simp
   from Red
   show "\<exists>c'. red_ast_bpl P ctxt (\<gamma>0, Normal ns) c' \<and> snd c' = Failure"
@@ -419,8 +422,10 @@ next
         using wf_rel_normal_elim[OF Rel1 R] wf_rel_normal_elim[OF Rel2] red_ast_bpl_def
         by (metis (no_types, lifting) rtranclp_trans)
       then show ?thesis
-      using wf_rel_failure_elim[OF RelOp \<open>R \<omega>def \<omega> ns'\<close>] RedBinopOpFailure red_ast_bpl_def
-      by (metis (no_types, lifting) rtranclp_trans)      
+        using RedBinopOpFailure
+        apply (simp only: is_none_code)
+        using wf_rel_failure_elim[OF RelOp \<open>R \<omega>def \<omega> ns'\<close>] red_ast_bpl_def
+        by (metis (no_types, lifting) rtranclp_trans)
   next
     case RedSubFailure
     then show ?thesis
@@ -434,22 +439,22 @@ lemma binop_lazy_expr_wf_rel:
    Lazy:"binop_lazy bop = Some(b1,bResult)" and
    Rel1: "expr_wf_rel R ctxt_vpr StateCons P ctxt e1 \<gamma>0 \<gamma>1" and
    Rel2a: "expr_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> 
-                        (\<exists>b. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b) \<and> b \<noteq> b1 \<and> 
-                             (\<exists> v2. eval_binop b bop v2 \<noteq> BinopTypeFailure))
+                        (\<exists>b. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b) \<and> b \<noteq> b1 \<and> 
+                             (\<exists> v2. eval_binop False b bop v2 \<noteq> BinopTypeFailure))
                        ) ctxt_vpr StateCons P ctxt e2 \<gamma>1 \<gamma>2" and
-   Rel2b: "wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b1)) (\<lambda>_ _. False) P ctxt \<gamma>1 \<gamma>2"
+   Rel2b: "wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b1)) (\<lambda>_ _. False) P ctxt \<gamma>1 \<gamma>2"
  shows "expr_wf_rel R ctxt_vpr StateCons P ctxt (ViperLang.Binop e1 bop e2) \<gamma>0 \<gamma>2"
 proof (rule expr_wf_rel_intro)
   text \<open>Normal case\<close>
     fix v \<omega>def \<omega> ns
-  assume R:"R \<omega>def \<omega> ns" and RedExp:"ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+  assume R:"R \<omega>def \<omega> ns" and RedExp:"ctxt_vpr, Some \<omega>def \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
   from RedExp 
   show "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>0, Normal ns) (\<gamma>2, Normal ns') \<and> R \<omega>def \<omega> ns'"
   proof cases
     case (RedBinop v1 v2)
     hence "v1 \<noteq> b1" using Lazy eval_binop_lazy_iff by force
-    from RedBinop have v1BinopWellTy:"\<exists> v2. eval_binop v1 bop v2 \<noteq> BinopTypeFailure"
-      by (metis binop_result.distinct(3))
+    from RedBinop have v1BinopWellTy:"\<exists> v2. eval_binop False v1 bop v2 \<noteq> BinopTypeFailure"
+      by (metis (full_types) binop_result.distinct(3) is_none_code(2))
     from RedBinop obtain ns' where
              "R \<omega>def \<omega> ns'" and
              "red_ast_bpl P ctxt (\<gamma>0, Normal ns) (\<gamma>1, Normal ns')"
@@ -476,8 +481,8 @@ proof (rule expr_wf_rel_intro)
 next
   text \<open>Failure case\<close>
   fix v \<omega>def \<omega> ns
-  assume R:"R \<omega>def \<omega> ns" and "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t v" and "v = VFailure"
-    hence Red:"ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  assume R:"R \<omega>def \<omega> ns" and "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t v" and "v = VFailure"
+    hence Red:"ctxt_vpr, Some \<omega>def \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
     by simp
   from Red
   show "\<exists>c'. red_ast_bpl P ctxt (\<gamma>0, Normal ns) c' \<and> snd c' = Failure"
@@ -494,8 +499,10 @@ next
       using Lazy eval_binop_lazy_iff by force
     from this show ?thesis
       using Red_s_s' wf_rel_failure_elim[OF Rel2a HOL.conjI[OF Red_s_s'(1)] RedBinopRightFailure(2)] RedBinopRightFailure(1)
-            \<open>\<exists>v2. eval_binop v1 bop v2 \<noteq> BinopTypeFailure\<close>
-      using red_ast_bpl_transitive by blast
+            \<open>\<exists>v2. eval_binop (Option.is_none (Some \<omega>def)) v1 bop v2 \<noteq> BinopTypeFailure\<close>
+      using red_ast_bpl_transitive
+      apply (simp only: is_none_code(2))
+      by blast
   next
     case (RedBinopOpFailure v1 v2)  
     moreover from this have "binop_lazy bop = None"
@@ -514,9 +521,9 @@ qed
 
 abbreviation wf_rel_fieldacc
   where "wf_rel_fieldacc admissible_locs R R' ctxt_vpr StateCons P ctxt e f \<equiv> wf_rel R R'
-           (\<lambda>\<omega>def \<omega>. (\<exists>a. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VRef (Address a))) \<and> 
+           (\<lambda>\<omega>def \<omega>. (\<exists>a. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VRef (Address a))) \<and> 
                        (a,f) \<in> admissible_locs \<omega>def))
-           (\<lambda>\<omega>def \<omega>. (\<exists>v. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v) \<and> 
+           (\<lambda>\<omega>def \<omega>. (\<exists>v. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v) \<and> 
                            ((v = VRef Null) \<or> (\<exists>a. v = VRef (Address a) \<and> (a,f) \<notin> admissible_locs \<omega>def))))
            P
            ctxt"
@@ -530,7 +537,7 @@ proof (rule expr_wf_rel_intro)
 
   fix v \<omega>def \<omega> ns
   assume R:"R \<omega>def \<omega> ns" and
-         RedExp:"ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>FieldAcc e f;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+         RedExp:"ctxt_vpr, Some \<omega>def \<turnstile> \<langle>FieldAcc e f;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
   from RedExp show "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>1, Normal ns) (\<gamma>3, Normal ns') \<and> R \<omega>def \<omega> ns'"
   proof cases
     case (RedField a v')
@@ -552,9 +559,9 @@ next
 
   fix v \<omega>def \<omega> ns
   assume R:"R \<omega>def \<omega> ns" and
-         "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>FieldAcc e f;\<omega>\<rangle> [\<Down>]\<^sub>t v" and
+         "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>FieldAcc e f;\<omega>\<rangle> [\<Down>]\<^sub>t v" and
          "v = VFailure"
-  hence "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>FieldAcc e f;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  hence "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>FieldAcc e f;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
     by simp
 
   thus "\<exists>c'. red_ast_bpl P ctxt (\<gamma>1, Normal ns) c' \<and> snd c' = Failure"
@@ -596,7 +603,7 @@ next
       using red_ast_bpl_transitive by blast
   next
     case RedSubFailure
-    hence "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+    hence "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
       by (fastforce elim: red_pure_exps_total_singleton)
     then show ?thesis using assms wf_rel_failure_elim
       using \<open>R \<omega>def \<omega> ns\<close> by blast
@@ -619,15 +626,15 @@ lemma cond_exp_wf_rel:
 proof (rule rel_general_cond)
   fix \<omega> \<omega>' ns
   assume R: "R (fst \<omega>) (snd \<omega>) ns"
-     and *: "\<omega> = \<omega>' \<and> (\<exists>v. ctxt_vpr, StateCons, Some (fst \<omega>) \<turnstile> \<langle>pure_exp.CondExp cond e_thn e_els;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v)" (is "_ \<and> (\<exists>v. ?RedCondVpr v)")
+     and *: "\<omega> = \<omega>' \<and> (\<exists>v. ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>pure_exp.CondExp cond e_thn e_els;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v)" (is "_ \<and> (\<exists>v. ?RedCondVpr v)")
   from this obtain v where  "?RedCondVpr v"
     by blast
 
-  thus "(\<omega> = \<omega> \<and> (\<exists>v. ctxt_vpr, StateCons, Some (fst \<omega>) \<turnstile> \<langle>cond;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v)) \<and>
+  thus "(\<omega> = \<omega> \<and> (\<exists>v. ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>cond;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v)) \<and>
        (red_expr_bpl ctxt cond_bpl ns (BoolV True) \<and>
-        R (fst \<omega>) (snd \<omega>) ns \<and> \<omega> = \<omega>' \<and> (\<exists>v. ctxt_vpr, StateCons, Some (fst \<omega>) \<turnstile> \<langle>e_thn;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<or>
+        R (fst \<omega>) (snd \<omega>) ns \<and> \<omega> = \<omega>' \<and> (\<exists>v. ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>e_thn;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<or>
         red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and>
-        R (fst \<omega>) (snd \<omega>) ns \<and> \<omega> = \<omega>' \<and> (\<exists>v. ctxt_vpr, StateCons, Some (fst \<omega>) \<turnstile> \<langle>e_els;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v))"
+        R (fst \<omega>) (snd \<omega>) ns \<and> \<omega> = \<omega>' \<and> (\<exists>v. ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>e_els;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v))"
     apply (cases)
      apply (insert exp_rel_vpr_bplD[OF CondExpRel])
      apply (metis R * val_rel_vpr_bpl.simps(2))
@@ -636,13 +643,13 @@ proof (rule rel_general_cond)
 next
   fix \<omega> ns
   assume R: "R (fst \<omega>) (snd \<omega>) ns"
-  assume "ctxt_vpr, StateCons, Some (fst \<omega>) \<turnstile> \<langle>pure_exp.CondExp cond e_thn e_els;snd \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
-  thus "ctxt_vpr, StateCons, Some (fst \<omega>) \<turnstile> \<langle>cond;snd \<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<or>
-       (\<omega> = \<omega> \<and> (\<exists>v. ctxt_vpr, StateCons, Some (fst \<omega>) \<turnstile> \<langle>cond;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v)) \<and>
+  assume "ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>pure_exp.CondExp cond e_thn e_els;snd \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  thus "ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>cond;snd \<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<or>
+       (\<omega> = \<omega> \<and> (\<exists>v. ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>cond;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v)) \<and>
        (red_expr_bpl ctxt cond_bpl ns (BoolV True) \<and>
-        R (fst \<omega>) (snd \<omega>) ns \<and> ctxt_vpr, StateCons, Some (fst \<omega>) \<turnstile> \<langle>e_thn;snd \<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<or>
+        R (fst \<omega>) (snd \<omega>) ns \<and> ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>e_thn;snd \<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<or>
         red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and>
-        R (fst \<omega>) (snd \<omega>) ns \<and> ctxt_vpr, StateCons, Some (fst \<omega>) \<turnstile> \<langle>e_els;snd \<omega>\<rangle> [\<Down>]\<^sub>t VFailure) "
+        R (fst \<omega>) (snd \<omega>) ns \<and> ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>e_els;snd \<omega>\<rangle> [\<Down>]\<^sub>t VFailure) "
     apply (cases)
       apply (insert exp_rel_vpr_bplD[OF CondExpRel])
       apply (metis R val_rel_vpr_bpl.simps(2))
@@ -658,7 +665,7 @@ lemma assertion_framing_exprs_wf_rel_inh:
                assertion_framing_state ctxt_vpr StateCons A \<omega>def \<and>
                get_store_total \<omega> = get_store_total \<omega>def \<and> 
                get_trace_total \<omega> = get_trace_total \<omega>def \<and>
-               get_h_total_full \<omega> = get_h_total_full \<omega>def"
+               get_hh_total_full \<omega> = get_hh_total_full \<omega>def"
       and "es = direct_sub_expressions_assertion A"
       and ExprConstraint: "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) es"
     shows "exprs_wf_rel R ctxt_vpr StateCons P ctxt es \<gamma> \<gamma>"
@@ -674,17 +681,17 @@ next
 proof (rule wf_rel_intro)
   fix contra
   fix \<omega>def \<omega> ns
-  assume "R \<omega>def \<omega> ns" and RedExps: "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) es \<omega> None"
+  assume "R \<omega>def \<omega> ns" and RedExps: "red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega> None"
 
   from \<open>R \<omega>def \<omega> ns\<close> have
     AssertionFramed: "assertion_framing_state ctxt_vpr StateCons A \<omega>def" and
     OnlyMaskDiffers: "get_store_total \<omega> = get_store_total \<omega>def \<and> 
      get_trace_total \<omega> = get_trace_total \<omega>def \<and>
-     get_h_total_full \<omega> = get_h_total_full \<omega>def"
+     get_hh_total_full \<omega> = get_hh_total_full \<omega>def"
     using assms
     by auto
 
-  from RedExps OnlyMaskDiffers have "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) es \<omega>def None"
+  from RedExps OnlyMaskDiffers have "red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega>def None"
     using red_pure_exp_only_differ_on_mask(2) ExprConstraint
     by blast
   hence "red_inhale ctxt_vpr StateCons A \<omega>def RFailure"
@@ -728,7 +735,7 @@ next
   proof (rule wf_rel_intro)
     fix contra
     fix \<omega>def \<omega> ns
-    assume "R \<omega>def \<omega> ns" and RedExps: "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) es \<omega> None"
+    assume "R \<omega>def \<omega> ns" and RedExps: "red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega> None"
   
     from \<open>R \<omega>def \<omega> ns\<close> have
       AssertionFramed: "assertion_framing_state ctxt_vpr StateCons A \<omega>def" and "\<omega> = \<omega>def"
@@ -762,18 +769,18 @@ lemma exprs_wf_rel_singletonD:
   shows "expr_wf_rel R ctxt_vpr StateCons P ctxt e \<gamma> \<gamma>"
 proof (rule expr_wf_rel_intro)
   fix v \<omega>def \<omega> ns
-  assume "R \<omega>def \<omega> ns" and "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
-  hence "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) [e] \<omega> (Some [v])"
-    by (auto intro: red_exp_inhale_unfold_intros)
+  assume "R \<omega>def \<omega> ns" and "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+  hence "red_pure_exps_total ctxt_vpr (Some \<omega>def) [e] \<omega> (Some [v])"
+    by (auto intro: red_pure_exp_intros)
 
   thus "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>, Normal ns') \<and> R \<omega>def \<omega> ns'"
     using assms exprs_wf_rel_normal_elim \<open>R _ _ _\<close>
     by blast
 next
   fix v \<omega>def \<omega> ns
-  assume "R \<omega>def \<omega> ns" and "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t v" and "v = VFailure"
-  hence "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>def) [e] \<omega> None"
-    by (auto intro: red_exp_inhale_unfold_intros)
+  assume "R \<omega>def \<omega> ns" and "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t v" and "v = VFailure"
+  hence "red_pure_exps_total ctxt_vpr (Some \<omega>def) [e] \<omega> None"
+    by (auto intro: red_pure_exp_intros)
 
   thus "\<exists>c'. red_ast_bpl P ctxt (\<gamma>, Normal ns) c' \<and> snd c' = Failure"
     using assms exprs_wf_rel_failure_elim \<open>R _ _ _\<close>
@@ -792,7 +799,7 @@ lemma wf_rel_bop_op_trivial:
 
 lemma eval_binop_div_mod_normal_types:
   assumes "bop \<in> {IntDiv, PermDiv, ViperLang.Mod}"
-          "eval_binop v1 bop v2 = BinopNormal v'"
+          "eval_binop t v1 bop v2 = BinopNormal v'"
   shows "((\<exists>i. v1 = VInt i) \<or> (\<exists>p. v1 = VPerm p)) \<and> ((\<exists>i. v2 = VInt i) \<or> (\<exists>p. v2 = VPerm p))"
   by (rule eval_binop.elims[OF assms(2)], insert assms(1), auto)
 
@@ -813,8 +820,8 @@ lemma syn_bop_op_non_trivial_wf_rel:
 proof (rule wf_rel_intro)
 \<comment>\<open>Normal case\<close>
   fix v \<omega>def \<omega> ns
-  assume R: "R \<omega>def \<omega> ns" and "\<exists>v1 v2. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1 \<and> ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2 \<and> (\<exists>v'. eval_binop v1 bop v2 = BinopNormal v')"
-  from this obtain v1 v2 v' where Red2:"ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and EvalBinop: "eval_binop v1 bop v2 = BinopNormal v'"
+  assume R: "R \<omega>def \<omega> ns" and "\<exists>v1 v2. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1 \<and> ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2 \<and> (\<exists>v'. eval_binop False v1 bop v2 = BinopNormal v')"
+  from this obtain v1 v2 v' where Red2:"ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and EvalBinop: "eval_binop False v1 bop v2 = BinopNormal v'"
     by auto
   hence NonZero:"v2 \<noteq> VInt(0) \<and> v2 \<noteq> VPerm(0)"
     using eval_binop_not_failure_2 Bop
@@ -897,8 +904,8 @@ proof (rule wf_rel_intro)
 next
 \<comment>\<open>Failure case\<close>
   fix v \<omega>def \<omega> ns
-  assume R: "R \<omega>def \<omega> ns" and "\<exists>v1 v2. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1 \<and> ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2 \<and> (eval_binop v1 bop v2 = BinopOpFailure)"
-  from this obtain v1 v2 where Red2:"ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and EvalBinop: "eval_binop v1 bop v2 = BinopOpFailure"
+  assume R: "R \<omega>def \<omega> ns" and "\<exists>v1 v2. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1 \<and> ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2 \<and> (eval_binop False v1 bop v2 = BinopOpFailure)"
+  from this obtain v1 v2 where Red2:"ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and EvalBinop: "eval_binop False v1 bop v2 = BinopOpFailure"
     by auto
   hence IntOrPerm:"v2 = VInt 0 \<or> v2 = VPerm 0"
     by (metis Bop eval_binop_failure_int eval_binop_failure_perm insert_iff)
@@ -1025,18 +1032,18 @@ lemma syn_lazy_bop_short_circuit_wf_rel:
                (is "expr_wf_rel ?R_ext _ _ _ _ _ ?\<gamma>'' _")
   shows
    Rel2a: "expr_wf_rel (\<lambda>\<omega>def \<omega> s. R \<omega>def \<omega> s \<and> 
-                                    (\<exists>b. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b) \<and> b \<noteq> b1 \<and>
-                                         (\<exists> v2. eval_binop b bop v2 \<noteq> BinopTypeFailure))) 
+                                    (\<exists>b. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b) \<and> b \<noteq> b1 \<and>
+                                         (\<exists> v2. eval_binop False b bop v2 \<noteq> BinopTypeFailure))) 
                         ctxt_vpr StateCons P ctxt e2 
                         (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd#thnTl) els)) None, cont)
                         \<gamma>'" (is "expr_wf_rel ?R_ext _ _ _ _ _ ?\<gamma> ?\<gamma>'")
 proof (rule expr_wf_rel_intro)
   text \<open>Normal case\<close>
   fix v \<omega>def \<omega> ns
-  assume Rext:"?R_ext \<omega>def \<omega> ns" (is "?R \<and> ?Re1") and RedExp: "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+  assume Rext:"?R_ext \<omega>def \<omega> ns" (is "?R \<and> ?Re1") and RedExp: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
 
-  from Rext obtain v1 v2 where RedE1: "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and NotB1:"v1 \<noteq> b1" and
-                            v1BopWellTy: "eval_binop v1 bop v2 \<noteq> BinopTypeFailure"
+  from Rext obtain v1 v2 where RedE1: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and NotB1:"v1 \<noteq> b1" and
+                            v1BopWellTy: "eval_binop False v1 bop v2 \<noteq> BinopTypeFailure"
     by blast
 
   from Lazy v1BopWellTy  obtain b where "v1 = VBool b"
@@ -1078,12 +1085,12 @@ proof (rule expr_wf_rel_intro)
 next
   text \<open>Failure case\<close>
   fix v \<omega>def \<omega> ns
-  assume Rext:"?R_ext \<omega>def \<omega> ns" and "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t v" and "v = VFailure"
-  hence E2Fail: "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  assume Rext:"?R_ext \<omega>def \<omega> ns" and "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t v" and "v = VFailure"
+  hence E2Fail: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
     by blast
 
-  from Rext obtain v1 v2 where RedE1: "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and NotB1:"v1 \<noteq> b1" and
-                            v1BopWellTy: "eval_binop v1 bop v2 \<noteq> BinopTypeFailure"
+  from Rext obtain v1 v2 where RedE1: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and NotB1:"v1 \<noteq> b1" and
+                            v1BopWellTy: "eval_binop False v1 bop v2 \<noteq> BinopTypeFailure"
     by blast
 
   from Lazy v1BopWellTy  obtain b where "v1 = VBool b"
@@ -1133,13 +1140,13 @@ lemma syn_lazy_bop_no_short_circuit_wf_rel:
          "bop = ViperLang.Or \<Longrightarrow> guard = UnOp Not e1_bpl" and
    ExpRel: "exp_rel_vpr_bpl R ctxt_vpr ctxt e1 e1_bpl"
   shows
-   "wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b1)) (\<lambda>_ _. False) P ctxt 
+   "wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b1)) (\<lambda>_ _. False) P ctxt 
                        (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd#thnTl)  [empty_bigblock elseName])) None, cont)
                        (empty_bigblock elseName, cont)" (is "wf_rel R _ _ _ _ _ ?\<gamma> ?\<gamma>'")
 proof (rule wf_rel_intro)
   text \<open>Normal case\<close>
   fix \<omega>def \<omega> ns
-  assume R:"R \<omega>def \<omega> ns" and "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b1"
+  assume R:"R \<omega>def \<omega> ns" and "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b1"
 
   moreover obtain b where "b1 = VBool b"
     using Lazy
@@ -1183,11 +1190,11 @@ lemma syn_lazy_bop_no_short_circuit_seq_wf_rel:
          "bop = ViperLang.Or \<Longrightarrow> guard = UnOp Not e1_bpl" and
    ExpRel: "exp_rel_vpr_bpl R ctxt_vpr ctxt e1 e1_bpl"
   shows
-   "wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b1)) (\<lambda>_ _. False) P ctxt 
+   "wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b1)) (\<lambda>_ _. False) P ctxt 
                        (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd#thnTl)  [empty_bigblock elseName])) None, KSeq bNext cont)
                        (bNext, cont)" (is "wf_rel R _ _ _ _ _ ?\<gamma> ?\<gamma>'")
 proof -
-  have A:"wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b1)) (\<lambda>_ _. False) P ctxt 
+  have A:"wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b1)) (\<lambda>_ _. False) P ctxt 
                (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd#thnTl)  [empty_bigblock elseName])) None, KSeq bNext cont)
                (empty_bigblock elseName, KSeq bNext cont)"
     by (blast intro!: syn_lazy_bop_no_short_circuit_wf_rel assms)
@@ -1222,13 +1229,13 @@ proof (rule binop_lazy_expr_wf_rel[OF Lazy])
   show "expr_wf_rel R ctxt_vpr StateCons P ctxt e1 \<gamma>0 (?b_if, ?cont_if)"
     by (auto intro: wf_rel_extend_1 Rel1 Red2)
 next
-  show "expr_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> (\<exists>b. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b \<and> b \<noteq> b1 \<and> (\<exists>v2. eval_binop b bop v2 \<noteq> BinopTypeFailure)))
+  show "expr_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> (\<exists>b. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b \<and> b \<noteq> b1 \<and> (\<exists>v2. eval_binop False b bop v2 \<noteq> BinopTypeFailure)))
      ctxt_vpr StateCons P ctxt e2 (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd # thnTl) [empty_bigblock elseName])) None, KSeq bNext cont) (bNext, cont)"
     apply (rule syn_lazy_bop_short_circuit_wf_rel[OF Lazy])
     apply (insert Guard)
     by (auto intro: ExpRel WfRel)
 next
-  show "wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b1) (\<lambda>_ _. False) P ctxt
+  show "wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b1) (\<lambda>_ _. False) P ctxt
      (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd # thnTl) [empty_bigblock elseName])) None, KSeq bNext cont) (bNext, cont)"
     apply (rule syn_lazy_bop_no_short_circuit_seq_wf_rel[OF Lazy])
       apply (insert Guard)
@@ -1261,7 +1268,7 @@ proof (rule binop_lazy_expr_wf_rel[OF Lazy])
 next                                                                             
   from ElseBlockEmpty obtain else_name where "empty_else_block = empty_bigblock else_name" 
     using is_empty_bigblock.elims(2) by auto
-  have "expr_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> (\<exists>b. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b \<and> b \<noteq> b1 \<and> (\<exists>v2. eval_binop b bop v2 \<noteq> BinopTypeFailure)))
+  have "expr_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> (\<exists>b. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b \<and> b \<noteq> b1 \<and> (\<exists>v2. eval_binop False b bop v2 \<noteq> BinopTypeFailure)))
      ctxt_vpr StateCons P ctxt e2 (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd # thnTl) [empty_bigblock else_name])) None, KSeq bNext cont) (bNext, cont)"
     apply (rule syn_lazy_bop_short_circuit_wf_rel[OF Lazy])
        apply (insert Guard)
@@ -1272,19 +1279,19 @@ next
      apply (rule WfRel)
     by (fastforce intro: Red3) 
   thus "expr_wf_rel
-     (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> (\<exists>b. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b \<and> b \<noteq> b1 \<and> (\<exists>v2. eval_binop b bop v2 \<noteq> BinopTypeFailure)))
+     (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> (\<exists>b. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b \<and> b \<noteq> b1 \<and> (\<exists>v2. eval_binop False b bop v2 \<noteq> BinopTypeFailure)))
      ctxt_vpr StateCons P ctxt e2 (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd # thnTl) [empty_else_block])) None, KSeq bNext cont) (bNext, cont)"
     using \<open>empty_else_block = _\<close>
     by simp
 next
   from ElseBlockEmpty obtain else_name where "empty_else_block = empty_bigblock else_name" 
     using is_empty_bigblock.elims(2) by auto
-  have "wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b1) (\<lambda>_ _. False) P ctxt
+  have "wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b1) (\<lambda>_ _. False) P ctxt
      (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd # thnTl) [empty_bigblock else_name])) None, KSeq bNext cont) (bNext, cont)"
     apply (rule syn_lazy_bop_no_short_circuit_seq_wf_rel[OF Lazy])
       apply (insert Guard)
     by (auto intro: ExpRel)
-  thus "wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b1) (\<lambda>_ _. False) P ctxt
+  thus "wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b1) (\<lambda>_ _. False) P ctxt
      (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd # thnTl) [empty_else_block])) None, KSeq bNext cont) (bNext, cont)"
     using \<open>empty_else_block = _\<close>
     by simp
@@ -1348,7 +1355,7 @@ proof (rule wf_rel_intro)
       using if_SomeD by fastforce
 
   text \<open>Show normal case\<close>
-  show "\<exists>a. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a)) \<and> (a, f) \<in> get_valid_locs \<omega>def \<Longrightarrow>
+  show "\<exists>a. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a)) \<and> (a, f) \<in> get_valid_locs \<omega>def \<Longrightarrow>
           \<exists>ns'. red_ast_bpl P ctxt
                  ((BigBlock name (cmd.Assert (FunExp has_perm_name ts [e_m_bpl, e_r_bpl, e_f_bpl]) # cs) str tr, cont), Normal ns)
                  ((BigBlock name cs str tr, cont), Normal ns') \<and>
@@ -1357,7 +1364,7 @@ proof (rule wf_rel_intro)
     assume "?A"
 
     from this obtain a where
-      RedRcv: "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))" and
+      RedRcv: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))" and
       ValidLoc: "(a, f) \<in> get_valid_locs \<omega>def"
       by auto
 
@@ -1365,11 +1372,11 @@ proof (rule wf_rel_intro)
       using exp_rel_vpr_bpl_elim[OF ExpRel] RedRcv R   
       by (metis val_rel_vpr_bpl.simps(3))
   
-    from ValidLoc have VprHasPerm: "pgt (get_mh_total_full \<omega>def (a,f)) pnone"
+    from ValidLoc have VprHasPerm: "get_mh_total_full \<omega>def (a,f) > 0"
       by (simp add: get_valid_locs_def)
   
-    with MaskRelLoc[OF RedRcvBpl] have BplHasPerm: "m_bpl (Address a, NormalField f_bpl \<tau>) > 0" 
-      by (simp add: PosReal.pgt.rep_eq zero_preal.rep_eq)
+    with MaskRelLoc[OF RedRcvBpl] have BplHasPerm: "m_bpl (Address a, NormalField f_bpl \<tau>) > 0"
+      by (simp add: less_preal.rep_eq zero_preal.rep_eq)
   
     have "red_ast_bpl P ctxt
               ((BigBlock name (cmd.Assert (FunExp has_perm_name ts [e_m_bpl, e_r_bpl, e_f_bpl]) # cs) str tr, cont), Normal ns)
@@ -1381,7 +1388,7 @@ proof (rule wf_rel_intro)
   qed
 
   text \<open>Show failure case\<close>
-  show "\<exists>v. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v \<and>
+  show "\<exists>v. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v \<and>
            (v = VRef Null \<or> (\<exists>a. v = VRef (Address a) \<and> (a, f) \<notin> get_valid_locs \<omega>def)) \<Longrightarrow>
        \<exists>c'. red_ast_bpl P ctxt
              ((BigBlock name (cmd.Assert (FunExp has_perm_name ts [e_m_bpl, e_r_bpl, e_f_bpl]) # cs) str tr, cont), Normal ns) c' \<and>
@@ -1391,7 +1398,7 @@ proof (rule wf_rel_intro)
     assume "?A"
 
     from this obtain r where
-      RedRcv: "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
+      RedRcv: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
       RcvVal: "r = Null \<or> (\<exists>a. r = Address a \<and> (a, f) \<notin> get_valid_locs \<omega>def)"
       by blast
 
@@ -1410,8 +1417,8 @@ proof (rule wf_rel_intro)
       case 2
       then show ?thesis 
         using MaskRel MaskRelLoc ExpRel
-        unfolding mask_rel_def get_valid_locs_def        
-        by (metis R RedRcv exp_rel_vpr_bpl_elim mem_Collect_eq zero_preal.rep_eq preal_pnone_pgt val_rel_vpr_bpl.simps(3))
+        unfolding mask_rel_def get_valid_locs_def
+        using RedRcvBpl preal_not_0_gt_0 zero_preal.rep_eq by fastforce
     qed
 
     have "red_ast_bpl P ctxt
@@ -1492,7 +1499,7 @@ proof (rule wf_rel_intro)
       by (simp add: if_Some_iff)
 
   text \<open>Show normal case\<close>
-  show "\<exists>a. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a)) \<and> (a, f) \<in> get_writeable_locs \<omega>def \<Longrightarrow>
+  show "\<exists>a. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a)) \<and> (a, f) \<in> get_writeable_locs \<omega>def \<Longrightarrow>
           \<exists>ns'. red_ast_bpl P ctxt
                  ((BigBlock name (cmd.Assert (expr.Var writePermConst \<guillemotleft>Lang.binop.Eq\<guillemotright> mask_lookup) # cs) str tr, cont), Normal ns)
                  ((BigBlock name cs str tr, cont), Normal ns') \<and>
@@ -1501,7 +1508,7 @@ proof (rule wf_rel_intro)
     assume "?A"
 
     from this obtain a where
-      RedRcv: "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))" and
+      RedRcv: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))" and
       WriteableLocs: "(a, f) \<in> get_writeable_locs \<omega>def"
       by auto
 
@@ -1509,7 +1516,7 @@ proof (rule wf_rel_intro)
       using exp_rel_vpr_bpl_elim[OF ExpRel] RedRcv R   
       by (metis val_rel_vpr_bpl.simps(3))
   
-    from WriteableLocs have VprHasPerm: "(get_mh_total_full \<omega>def (a,f)) = pwrite"
+    from WriteableLocs have VprHasPerm: "get_mh_total_full \<omega>def (a,f) = 1"
       by (simp add: get_writeable_locs_def)
   
     with MaskRelLoc[OF RedRcvBpl] have BplHasPerm: "m_bpl (Address a, NormalField f_bpl \<tau>) = 1"    
@@ -1525,7 +1532,7 @@ proof (rule wf_rel_intro)
   qed
 
   text \<open>Show failure case\<close>
-  show "\<exists>v. ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v \<and>
+  show "\<exists>v. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v \<and>
            (v = VRef Null \<or> (\<exists>a. v = VRef (Address a) \<and> (a, f) \<notin> get_writeable_locs \<omega>def)) \<Longrightarrow>
        \<exists>c'. red_ast_bpl P ctxt
              ((BigBlock name (cmd.Assert (expr.Var writePermConst \<guillemotleft>Lang.binop.Eq\<guillemotright> mask_lookup) # cs) str tr, cont), Normal ns) c' \<and>
@@ -1535,7 +1542,7 @@ proof (rule wf_rel_intro)
     assume "?A"
 
     from this obtain r where
-      RedRcv: "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
+      RedRcv: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
       RcvVal: "r = Null \<or> (\<exists>a. r = Address a \<and> (a, f) \<notin> get_writeable_locs \<omega>def)"
       by blast
 

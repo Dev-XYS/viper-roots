@@ -164,6 +164,10 @@ inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_st
   "red_pure_exps_total ctxt \<omega>_def Nil \<omega> (Some Nil)"
 
 
+lemmas red_pure_exp_intros = red_pure_exp_total_red_pure_exps_total.intros
+lemmas red_pure_exp_inducts = red_pure_exp_total_red_pure_exps_total.inducts
+
+
 subsection \<open>Elimination and Introduction Rules\<close>
 
 lemmas red_exp_intros = red_pure_exp_total_red_pure_exps_total.intros

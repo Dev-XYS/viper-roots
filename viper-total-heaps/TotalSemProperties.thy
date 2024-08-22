@@ -365,75 +365,73 @@ qed (rule HOL.TrueI)+
 \<comment>\<open>The generalization of the following lemma to function calls will require a restriction on the function interpretation,
    which states that the mask has no effect on function values.\<close>
 
-(* lemma red_pure_exp_only_differ_on_mask:
-  shows "ctxt, StateCons, \<omega>def_opt \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t resE \<Longrightarrow>
+lemma red_pure_exp_only_differ_on_mask:
+  shows "ctxt, \<omega>def_opt \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t resE \<Longrightarrow>
          no_perm_pure_exp e \<and> no_unfolding_pure_exp e \<Longrightarrow>
          get_store_total \<omega> = get_store_total \<omega>' \<and> 
          get_trace_total \<omega> = get_trace_total \<omega>' \<and>
-         get_h_total_full \<omega> = get_h_total_full \<omega>' \<Longrightarrow>
-         ctxt, StateCons, \<omega>def_opt \<turnstile> \<langle>e; \<omega>'\<rangle> [\<Down>]\<^sub>t resE" and
-        "red_pure_exps_total ctxt StateCons \<omega>def_opt es \<omega> resES \<Longrightarrow>
+         get_hh_total_full \<omega> = get_hh_total_full \<omega>' \<Longrightarrow>
+         ctxt, \<omega>def_opt \<turnstile> \<langle>e; \<omega>'\<rangle> [\<Down>]\<^sub>t resE" and
+        "red_pure_exps_total ctxt \<omega>def_opt es \<omega> resES \<Longrightarrow>
                  list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) es \<Longrightarrow>
                  get_store_total \<omega> = get_store_total \<omega>' \<and> 
                  get_trace_total \<omega> = get_trace_total \<omega>' \<and>
-                 get_h_total_full \<omega> = get_h_total_full \<omega>' \<Longrightarrow>
-                 red_pure_exps_total ctxt StateCons \<omega>def_opt es \<omega>' resES" and
-        "red_inhale ctxt StateCons A \<omega>1 res1 \<Longrightarrow> True" and
-        "unfold_rel ctxt StateCons x12 x13 x14 x15 x16 \<Longrightarrow> True"
-proof (induction arbitrary: \<omega>' and \<omega>' rule: red_exp_inhale_unfold_inducts)
+                 get_hh_total_full \<omega> = get_hh_total_full \<omega>' \<Longrightarrow>
+                 red_pure_exps_total ctxt \<omega>def_opt es \<omega>' resES"
+proof (induction arbitrary: \<omega>' and \<omega>' rule: red_pure_exp_inducts)
   case (RedLit \<omega>_def l uu)
   then show ?case 
-    by (auto intro: red_exp_inhale_unfold_intros)
+    by (auto intro: red_pure_exp_intros)
 next
   case (RedVar \<omega> n v \<omega>_def)
   then show ?case 
-    by (auto intro: red_exp_inhale_unfold_intros)
+    by (auto intro: red_pure_exp_intros)
 next
   case (RedResult \<omega> v \<omega>_def)
   then show ?case 
-    by (auto intro: red_exp_inhale_unfold_intros)
+    by (auto intro: red_pure_exp_intros)
 next
   case (RedBinopLazy \<omega>_def e1 \<omega> v1 bop v e2)
   then show ?case 
-    by (auto intro: red_exp_inhale_unfold_intros)
+    by (auto intro: red_pure_exp_intros)
 next
   case (RedBinop \<omega>_def e1 \<omega> v1 e2 v2 bop v)
   then show ?case 
-  by (auto intro: red_exp_inhale_unfold_intros)
+  by (auto intro: red_pure_exp_intros)
 next
   case (RedBinopRightFailure \<omega>_def e1 \<omega> v1 e2 bop)
   then show ?case 
-  by (auto intro: red_exp_inhale_unfold_intros)
+  by (auto intro: red_pure_exp_intros)
 next
   case (RedBinopOpFailure \<omega>_def e1 \<omega> v1 e2 v2 bop)
   then show ?case 
-  by (auto intro: red_exp_inhale_unfold_intros)
+  by (auto intro: red_pure_exp_intros)
 next
   case (RedUnop \<omega>_def e \<omega> v unop v')
   then show ?case 
-  by (auto intro: red_exp_inhale_unfold_intros)
+  by (auto intro: red_pure_exp_intros)
 next
   case (RedCondExpTrue \<omega>_def e1 \<omega> e2 r e3)
   then show ?case 
-  by (auto intro: red_exp_inhale_unfold_intros)
+  by (auto intro: red_pure_exp_intros)
 next
   case (RedCondExpFalse \<omega>_def e1 \<omega> e3 r e2)
   then show ?case 
-  by (auto intro: red_exp_inhale_unfold_intros)
+  by (auto intro: red_pure_exp_intros)
 next
   case (RedOld \<omega> l \<phi> \<omega>_def e v)
   then show ?case
-  by (auto intro: red_exp_inhale_unfold_intros)
+  by (auto intro: red_pure_exp_intros)
 next
   case (RedOldFailure \<omega> l \<omega>_def e)
   then show ?case
-  by (auto intro: red_exp_inhale_unfold_intros)
+  by (auto intro: red_pure_exp_intros)
 next
   case (RedField \<omega>_def e \<omega> a f v)
   hence "get_hh_total_full \<omega>' (a,f) = v"
     by simp
 
-  moreover from RedField have "ctxt, StateCons, \<omega>_def \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))"
+  moreover from RedField have "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))"
     by simp
 
   ultimately show ?case 
@@ -441,7 +439,7 @@ next
 next
   case (RedFieldNullFailure \<omega>_def e \<omega> f)
   then show ?case 
-    by (auto intro: red_exp_inhale_unfold_intros)
+    by (auto intro: red_pure_exp_intros)
 next
   case (RedPermNull \<omega>_def e \<omega> f)
   then show ?case by auto \<comment>\<open>cannot occur\<close>    
@@ -467,20 +465,21 @@ next
   hence "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) (sub_pure_exp_total e')"
     by (simp add: list_all_length)    
   with RedSubFailure show ?case 
-  by (auto intro: red_exp_inhale_unfold_intros)    
+  by (auto intro: red_pure_exp_intros)    
 next
   case (RedExpListCons \<omega>_def e \<omega> v es res res')
   then show ?case 
-    by (auto intro: red_exp_inhale_unfold_intros)
+    by (auto intro: red_pure_exp_intros)
 next
   case (RedExpListFailure \<omega>_def e \<omega> es)
   then show ?case 
-  by (auto intro: red_exp_inhale_unfold_intros)
+  by (auto intro: red_pure_exp_intros)
 next
   case (RedExpListNil \<omega>_def \<omega>)
   then show ?case 
-  by (auto intro: red_exp_inhale_unfold_intros)
-qed (rule HOL.TrueI)+ *)
+  by (auto intro: red_pure_exp_intros)
+qed
+
 
 subsection \<open>Inhale\<close>
 
@@ -1628,13 +1627,15 @@ lemma exhale_pure_normal_same:
     shows "\<omega> = \<omega>'"
   using assms
   by (induction) (auto elim: exh_if_total.elims)
+*)
+
 
 subsection \<open>Relationship inhale and exhale\<close>
 
 lemma assertion_framing_state_sub_exps_not_failure:
   assumes AssertionFraming: "assertion_framing_state ctxt StateCons (Atomic atm) \<omega>_inh" 
      and  "es = sub_expressions_atomic atm"
-   shows "\<not> red_pure_exps_total ctxt StateCons (Some \<omega>_inh) es \<omega>_inh None"
+   shows "\<not> red_pure_exps_total ctxt (Some \<omega>_inh) es \<omega>_inh None"
 proof (cases es)
   case Nil
   then show ?thesis 
@@ -1648,6 +1649,7 @@ next
     by (metis direct_sub_expressions_assertion.simps(1) list.discI)
 qed
 
+(*
 lemma red_pure_exp_sub_exp_atomic_change_state:
   assumes RedExp: "list_all2 (\<lambda>e v. ctxt, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) es vs"
       and OnlyMaskChanged:
