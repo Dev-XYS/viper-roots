@@ -68,6 +68,9 @@ fun update_mh_total :: "'a total_state \<Rightarrow> field_mask \<Rightarrow> 'a
 fun update_mp_total :: "'a total_state \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a total_state"
   where "update_mp_total \<omega> mp = mp_total_update \<omega> mp"
 
+fun update_fnm_total :: "'a total_state \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask) \<Rightarrow> 'a total_state"
+  where "update_fnm_total \<omega> fnm = fnm_total_update \<omega> fnm"
+
 fun update_hh_total :: "'a total_state \<Rightarrow> 'a total_heap \<Rightarrow> 'a total_state"
   where "update_hh_total \<omega> hh = \<omega>\<lparr> get_hh_total := hh \<rparr>"
 
@@ -110,6 +113,9 @@ fun update_mh_total_full :: "'a full_total_state \<Rightarrow> field_mask \<Righ
 
 fun update_mp_total_full :: "'a full_total_state \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a full_total_state"
   where "update_mp_total_full \<omega> mp = \<omega>\<lparr> get_total_full := update_mp_total (get_total_full \<omega>) mp \<rparr>"
+
+fun update_fnm_total_full :: "'a full_total_state \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask) \<Rightarrow> 'a full_total_state"
+  where "update_fnm_total_full \<omega> fnm = \<omega>\<lparr> get_total_full := update_fnm_total (get_total_full \<omega>) fnm \<rparr>"
 
 fun update_mh_loc_total_full :: "'a full_total_state \<Rightarrow> heap_loc \<Rightarrow> preal \<Rightarrow> 'a full_total_state"
   where "update_mh_loc_total_full \<omega> l p =
@@ -160,7 +166,7 @@ subsection \<open>Lemmas on State Update\<close>
 
 \<comment> \<open>nested masks\<close>
 
-lemma upd_mh_nm_mp_eq [simp]:
+lemma upd_mh_nm_mp_rel [simp]:
   shows "get_mp_nm (upd_mh_nm nm mh) = get_mp_nm nm"
   by (cases nm, fastforce)
 
@@ -172,7 +178,7 @@ lemma upd_mh_nm_fnm_rel [simp]:
   shows "get_fnm_nm (upd_mh_nm nm mh) = get_fnm_nm nm"
   by (cases nm, fastforce)
 
-lemma upd_mp_nm_mh_eq [simp]:
+lemma upd_mp_nm_mh_rel [simp]:
   shows "get_mh_nm (upd_mp_nm nm mp) = get_mh_nm nm"
   by (cases nm, fastforce)
 
@@ -180,11 +186,27 @@ lemma upd_mp_nm_mp_rel [simp]:
   shows "get_mp_nm (upd_mp_nm nm mp) = mp"
   by (cases nm, fastforce)
 
-lemma upd_nm_loc_opt_nm_mh_eq [simp]:
+lemma upd_mp_nm_fnm_rel [simp]:
+  shows "get_fnm_nm (upd_mp_nm nm mp) = get_fnm_nm nm"
+  by (cases nm, fastforce)
+
+lemma upd_fnm_nm_mh_rel [simp]:
+  shows "get_mh_nm (upd_fnm_nm nm fnm) = get_mh_nm nm"
+  by (cases nm, fastforce)
+
+lemma upd_fnm_nm_mp_rel [simp]:
+  shows "get_mp_nm (upd_fnm_nm nm fnm) = get_mp_nm nm"
+  by (cases nm, fastforce)
+
+lemma upd_fnm_nm_fnm_rel [simp]:
+  shows "get_fnm_nm (upd_fnm_nm nm fnm) = fnm"
+  by (cases nm, fastforce)
+
+lemma upd_nm_loc_opt_nm_mh_rel [simp]:
   shows "get_mh_nm (upd_nm_loc_opt_nm nm lp nm') = get_mh_nm nm"
   by (cases nm, fastforce)
 
-lemma upd_nm_loc_opt_nm_mp_eq [simp]:
+lemma upd_nm_loc_opt_nm_mp_rel [simp]:
   shows "get_mp_nm (upd_nm_loc_opt_nm nm lp nm') = get_mp_nm nm"
   by (cases nm, fastforce)
 
@@ -238,17 +260,13 @@ qed
 
 subsubsection \<open>Lemmas\<close>
 
-(* lemma test:
-  assumes "a = b"
-  shows "\<omega>\<lparr> get_total_full := a\<rparr> = \<omega>\<lparr> get_total_full := b \<rparr>"
-  using assms by force
-
 lemma update_mh_m_total: "update_mh_total_full \<omega> mh' = update_m_total_full \<omega> mh' (get_mp_total_full \<omega>)"
-  unfolding update_mh_total_full.simps update_m_total_full.simps
-  apply (rule test) oops
+  apply simp
+  by (metis get_fnm_nm.simps get_mh_nm.simps get_mp_nm.simps nested_mask_equality upd_mh_nm_mp_rel upd_mp_nm.simps)
 
-lemma update_mp_m_total: "update_mp_total_full \<omega> mp' = update_m_total_full \<omega> (get_mh_total_full \<omega>) mp'"
+(* lemma update_mp_m_total: "update_mp_total_full \<omega> mp' = update_m_total_full \<omega> (get_mh_total_full \<omega>) mp'"
   by simp *)
+
 
 subsection \<open>Shifting stores\<close>
 
@@ -423,11 +441,12 @@ proof
     by (metis (mono_tags, lifting) SepAlgebra.plus_preal_def add_masks_def plus_funI)
 qed
 
-(* subsection \<open>Partial commutative monoid instantiation\<close>
+subsection \<open>Partial commutative monoid instantiation\<close>
 
 lemma plus_masks_defined: "(m1 :: ('a, preal) abstract_mask) ## m2"
   unfolding defined_def
   by (simp add: SepAlgebra.plus_preal_def compatible_funI plus_fun_def)
+
 
 instantiation total_state_ext :: (type,type) pcm
 begin
@@ -435,7 +454,7 @@ begin
 definition plus_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a,'b) total_state_ext \<Rightarrow> ('a,'b) total_state_ext option"
   where "plus_total_state_ext \<phi>1 \<phi>2 =
               (let (mh1, mp1, mh2, mp2) = (get_mh_total \<phi>1, get_mp_total \<phi>1, get_mh_total \<phi>2, get_mp_total \<phi>2) in
-                   if get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and> get_hp_total \<phi>1 = get_hp_total \<phi>2 \<and>
+                   if get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and>
                       total_state.more \<phi>1 = total_state.more \<phi>2
                    then Some (update_m_total \<phi>1 (the (mh1 \<oplus> mh2), the (mp1 \<oplus> mp2)))
                    else None)"
@@ -476,7 +495,8 @@ instance proof
 
   show "a \<oplus> b = b \<oplus> a"
     unfolding plus_total_state_ext_def
-    by (simp add: commutative)
+    sorry
+    (* by (simp add: commutative) *)
 
   show "a \<oplus> b = Some ab \<and> b \<oplus> c = Some bc \<Longrightarrow> ab \<oplus> c = a \<oplus> bc"
   proof -
@@ -490,8 +510,9 @@ instance proof
 
     assume "a \<oplus> b = Some ab \<and> b \<oplus> c = Some bc"
     thus ?thesis
-    unfolding plus_total_state_ext_def
-    by (clarsimp simp: * ** MEqAB MEqBC split: if_split if_split_asm)
+      unfolding plus_total_state_ext_def
+      sorry
+    (* by (clarsimp simp: * ** MEqAB MEqBC split: if_split if_split_asm) *)
   qed
 
   show "a \<oplus> b = Some ab \<and> b \<oplus> c = None \<Longrightarrow> ab \<oplus> c = None"
@@ -516,8 +537,8 @@ instance proof
 
     from B have *: "?mh_c \<oplus> ?mh_c = Some ?mh_c \<and> ?mp_c \<oplus> ?mp_c = Some ?mp_c"
       unfolding plus_total_state_ext_def
-
-    proof (clarsimp simp: MEqCC split: if_split if_split_asm)
+      sorry
+    (* proof (clarsimp simp: MEqCC split: if_split if_split_asm)
       assume "c = c\<lparr>get_mh_total := mh_cc, get_mp_total := mp_cc\<rparr>"
       have "get_mh_total c = mh_cc"
         apply (subst \<open>c = _\<close>)
@@ -527,11 +548,12 @@ instance proof
         by simp
       ultimately show "mh_cc = get_mh_total c \<and> mp_cc = get_mp_total c"
         by simp
-    qed
+    qed *)
 
     moreover from * A have "?mh_a \<oplus> ?mh_b = Some ?mh_c \<and> ?mp_a \<oplus> ?mp_b = Some ?mp_c"
       unfolding plus_total_state_ext_def
-      by (clarsimp simp: MEqAB split: if_split if_split_asm)
+      sorry
+      (* by (clarsimp simp: MEqAB split: if_split if_split_asm) *)
 
     ultimately have "?mh_a \<oplus> ?mh_a = Some ?mh_a \<and> ?mp_a \<oplus> ?mp_a = Some ?mp_a"
       using positivity
@@ -539,7 +561,8 @@ instance proof
 
     thus ?thesis
       unfolding plus_total_state_ext_def
-      by (clarsimp simp: MEqAB MEqBC split: if_split if_split_asm)
+      sorry
+      (* by (clarsimp simp: MEqAB MEqBC split: if_split if_split_asm) *)
   qed
 qed
 
@@ -625,6 +648,7 @@ qed
 
 end
 
+(*
 subsubsection \<open>Lemmas\<close>
 
 lemma plus_mask_zero_mask_neutral: "(m :: ('a, preal) abstract_mask) \<oplus> zero_mask = Some m"

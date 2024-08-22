@@ -61,6 +61,9 @@ fun upd_mh_nm :: "'a nested_mask \<Rightarrow> field_mask \<Rightarrow> 'a neste
 fun upd_mp_nm :: "'a nested_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a nested_mask"
   where "upd_mp_nm (NM mh _ fnm) mp = NM mh mp fnm"
 
+fun upd_fnm_nm :: "'a nested_mask \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask) \<Rightarrow> 'a nested_mask"
+  where "upd_fnm_nm (NM mh mp _) fnm = NM mh mp fnm"
+
 fun upd_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
   where "upd_nm_loc_nm (NM mh mp fnm) lp nm = NM mh mp (fnm( lp := Some nm ))"
 
@@ -96,7 +99,7 @@ fun get_fnm_total :: "('a, 'b) total_state_scheme \<Rightarrow> ('a predicate_lo
   where "get_fnm_total \<phi> = get_fnm_nm (get_nm_total \<phi>)"
 
 fun fnm_total_update :: "('a, 'b) total_state_scheme \<Rightarrow> ('a predicate_loc \<rightharpoonup> 'a nested_mask) \<Rightarrow> ('a, 'b) total_state_scheme"
-  where "fnm_total_update \<phi> fnm = (case get_nm_total \<phi> of (NM mh mp _) \<Rightarrow> \<phi>\<lparr> get_nm_total := NM mh mp fnm \<rparr>)"
+  where "fnm_total_update \<phi> fnm = \<phi>\<lparr> get_nm_total := upd_fnm_nm (get_nm_total \<phi>) fnm \<rparr>"
 
 fun get_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
   where "get_nm_loc_total \<phi> lp = get_fnm_total \<phi> lp"

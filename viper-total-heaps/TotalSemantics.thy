@@ -531,7 +531,7 @@ text \<open>Many of the theorems are parametrized by the state consistency. Many
 certain properties on the state consistency. The following well-formedness definition captures
 these properties.\<close>
 
-(* definition wf_total_consistency
+definition wf_total_consistency
   where "wf_total_consistency ctxt R Rt \<equiv>
                mono_prop_downward R \<and>
                (\<forall>\<omega>. is_empty_total_full \<omega> \<longrightarrow> R \<omega>) \<and>
@@ -599,6 +599,7 @@ lemma total_consistency_trace_update_2:
   unfolding wf_total_consistency_def
   by simp
 
+(*
 lemma wf_total_consistency_trace_mono_downwardD:
   assumes "wf_total_consistency ctxt R Rt"
   shows "mono_prop_downward R"

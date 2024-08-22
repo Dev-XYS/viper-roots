@@ -2,6 +2,7 @@ theory ViperBoogieRelUtil
   imports ViperBoogieTranslationInterface ExpRel Simulation
 begin
 
+
 subsection \<open>Temporary variable management\<close>
 
 lemma store_temporary_var:
@@ -43,7 +44,7 @@ lemma store_vpr_exp_to_temporary_var:
          DisjAux: "temp_var \<notin> {heap_var Tr, mask_var Tr, heap_var_def Tr, mask_var_def Tr} \<union> ran (var_translation Tr) \<union> 
                      ran (field_translation Tr) \<union> range (const_repr Tr) \<union> dom AuxPred" and
          LookupTyTemp: "lookup_var_ty (var_context ctxt) temp_var = Some \<tau>_bpl" and
-  RedRhsVpr:  "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v" and
+  RedRhsVpr:  "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v" and
   ExpRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt) ctxt_vpr ctxt e_vpr e_bpl" and
          TyValBpl:  "type_of_val (type_interp ctxt) (val_rel_vpr_bpl v) = \<tau>_bpl"
    shows "\<exists>ns'. red_ast_bpl P ctxt (((BigBlock name (Lang.Assign temp_var e_bpl # cs) s tr), cont), Normal ns)
@@ -58,7 +59,7 @@ qed
 lemma store_temporary_perm_rel:
   assumes
   StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" (is "?R \<omega>def \<omega> ns") and
-  RedPerm:  "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)" and
+  RedPerm:  "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)" and
   ExpRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt) ctxt_vpr ctxt e_vpr e_bpl" and
          DisjAux: "temp_var \<notin> {heap_var Tr, mask_var Tr, heap_var_def Tr, mask_var_def Tr} \<union> ran (var_translation Tr) \<union> 
                      ran (field_translation Tr) \<union> range (const_repr Tr) \<union> dom AuxPred" and
@@ -127,7 +128,7 @@ lemma mask_upd_rel:
     RedPermBpl: "\<And> \<omega> \<omega>' ns. R \<omega> ns \<Longrightarrow> Success \<omega> \<omega>' \<Longrightarrow> 
                    red_expr_bpl ctxt new_perm_bpl ns 
                                (if r = Null then RealV 0 else (RealV (Rep_preal (p_preal \<omega>)))) \<and>
-                   (r \<noteq> Null \<longrightarrow> pgte pwrite (p_preal \<omega>))"
+                   (r \<noteq> Null \<longrightarrow> 1 \<ge> (p_preal \<omega>))"
   shows "rel_general R 
                   (uncurry (state_rel Pr StateCons TyRep Tr AuxPred ctxt))
                   Success
@@ -222,7 +223,7 @@ proof (rule rel_intro)
       apply (subst \<open>m_bpl = _\<close>)
       apply (rule state_rel_mask_update_4[OF StateRelInst])
                apply simp
-              
+
       using SuccessUpdState[OF \<open>R \<omega> ns\<close> Success] False \<open>r = _\<close>
               apply force
       using SuccessUpdState[OF \<open>R \<omega> ns\<close> Success] False \<open>r = _\<close>
@@ -268,7 +269,7 @@ lemma mask_upd_rel_2:
     RedPermBpl: "\<And> \<omega> \<omega>' ns. R \<omega> ns \<Longrightarrow> Success \<omega> \<omega>' \<Longrightarrow> 
                    red_expr_bpl ctxt new_perm_bpl ns 
                                (if r = Null then RealV 0 else (RealV (Rep_preal (p_preal \<omega>)))) \<and>
-                   (r \<noteq> Null \<longrightarrow> pgte pwrite (p_preal \<omega>))"
+                   (r \<noteq> Null \<longrightarrow> 1 \<ge> (p_preal \<omega>))"
   shows "rel_general R 
                   (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt)
                   Success
@@ -489,15 +490,21 @@ lemma state_rel_mask_pred_independent:
   using assms
   by (rule state_rel_pred_independent) auto
 
-lemma state_rel_heap_pred_independent:
+lemma state_rel_fnm_independent:
+  assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega> \<omega> ns"
+      and "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (update_fnm_total_full \<omega> fnm)"
+  shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt (update_fnm_total_full \<omega> fnm) (update_fnm_total_full \<omega> fnm) ns"
+  using assms
+  by (rule state_rel_pred_independent) auto
+
+(* lemma state_rel_heap_pred_independent:
   assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega> \<omega> ns"
       and "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (update_hp_total_full \<omega> mp)"
   shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt (update_hp_total_full \<omega> mp) (update_hp_total_full \<omega> mp) ns"
   using assms
-  by (rule state_rel_pred_independent) auto
+  by (rule state_rel_pred_independent) auto *)
 
 
-               
 subsection \<open>Introducing new Boogie variables for the evaluation and well-definedness state\<close>
 
 subsubsection \<open>Evaluation state\<close>
@@ -787,21 +794,21 @@ proof -
 
   have StateRel':"state_rel Pr StateCons TyRep (Tr\<lparr>mask_var := mvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt ?\<omega>def' ?\<omega>' ?ns'"
     apply (rule state_rel_mask_update_wip[OF StateRel TypeInterp])
-               apply simp
+                apply simp
     using mask_var_disjoint[OF state_rel_state_rel0[OF StateRel]] Disj
-              apply simp
-             apply (rule update_mh_m_total)
+               apply simp
+              apply auto[1]
     using state_rel_eval_welldef_eq[OF StateRel]
-            apply simp
-
-           apply simp
-          apply (simp add: WfMask)
+             apply simp
+    using \<open>get_store_total \<omega>def = get_store_total \<omega> \<and> get_trace_total \<omega>def = get_trace_total \<omega> \<and> get_hh_total_full \<omega>def = get_hh_total_full \<omega>\<close>
+            apply fastforce+
            apply (simp add: WfMask)
-          apply (erule Consistent)
+          apply (simp add: WfMask)
+         apply (erule Consistent)
         apply (fastforce simp: mask_var_rel_def intro: LookupTyNewVar MaskRel)
        apply (fastforce simp: mask_var_rel_def intro: LookupTyNewVar MaskRel)
       apply (metis global_state_update_local global_state_update_other option.exhaust)
-         apply (simp add: update_var_old_global_same)
+     apply (simp add: update_var_old_global_same)
     using BinderEmpty
     by (simp add: update_var_binder_same)
 
@@ -841,12 +848,9 @@ proof -
 
   let ?ns' = "update_var (var_context ctxt) ns hvar' (AbsV (AHeap hb))"
 
-  have HeapSameEvalDef: "get_h_total_full \<omega>def = get_h_total_full \<omega>"
+  have HeapSameEvalDef: "get_hh_total_full \<omega>def = get_hh_total_full \<omega>"
     using StateRel
     by (simp add: state_rel_def state_rel0_def)
-
-  hence HeapPredSameEvalDef: "get_hp_total_full \<omega>def = get_hp_total_full \<omega>"
-    by simp
 
   have HeapVarRel: "heap_var_rel Pr (var_context ctxt) TyRep (field_translation Tr) hvar' (update_hh_total_full \<omega> hh') ?ns'"
     unfolding heap_var_rel_def
@@ -864,10 +868,9 @@ proof -
              apply blast
     using VarFresh
             apply blast
-           apply (rule update_hh_h_total)
-          apply (subst HeapPredSameEvalDef)
-            apply (rule update_hh_h_total)
-           apply (erule Consistent)
+            apply auto[1]
+           apply auto[1]
+          apply (erule Consistent)
          apply simp
         apply (rule HeapVarRel)
        apply (rule HeapVarRelDef)    
@@ -944,21 +947,21 @@ proof -
     using StateRel2 Aux
     by argo
     
-  let ?\<omega>'' = "update_trace_total (update_hp_total_full (update_mp_total_full ?\<omega>' (get_mp_total_full \<omega>1)) (get_hp_total_full \<omega>1)) (get_trace_total \<omega>1)"
+  let ?\<omega>'' = "update_trace_total (update_fnm_total_full (update_mp_total_full ?\<omega>' (get_mp_total_full \<omega>1)) (get_fnm_total_full \<omega>1)) (get_trace_total \<omega>1)"
 
-  from state_rel_trace_independent[OF _ _ state_rel_heap_pred_independent[OF state_rel_mask_pred_independent[OF StateRel3]]] have
+  from state_rel_trace_independent[OF _ _ state_rel_fnm_independent[OF state_rel_mask_pred_independent[OF StateRel3]]] have
     StateRel4: "state_rel Pr StateCons TyRep (?Tr'\<lparr>heap_var := hvar', mask_var := mvar', heap_var_def := hvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt ?\<omega>'' ?\<omega>'' ns''"
     by simp
   \<comment>\<open>Here, we reenable the state consistency using the consistency assumption on the final state.\<close>
 
   have "?\<omega>'' = \<omega>1"
     apply (rule full_total_state.equality)
-       apply (simp add:  StoreSame)
+       apply (simp add: StoreSame)
       apply simp
      apply (rule total_state.equality)
-    by auto
+    by (simp_all add: nested_mask_equality)
 
-  hence  "state_rel Pr StateCons TyRep (Tr\<lparr>heap_var := hvar', mask_var := mvar', heap_var_def := hvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt \<omega>1 \<omega>1 ns''"
+    hence "state_rel Pr StateCons TyRep (Tr\<lparr>heap_var := hvar', mask_var := mvar', heap_var_def := hvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt \<omega>1 \<omega>1 ns''"
     using state_rel_enable_consistency_2[OF StateRel4] Consistent
     by auto
 
