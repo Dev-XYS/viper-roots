@@ -1,7 +1,11 @@
+section \<open>Key Properties of THSem\<close>
+
 theory TotalSemanticsProperties
   imports TotalSemProperties
 begin
 
+
+subsection \<open>Expression Evaluation Properties\<close>
 
 lemma eval_with_None:
   assumes "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
@@ -21,7 +25,7 @@ lemma eval_with_no_trace:
   sorry
 
 
-\<comment> \<open>Properties on \<^const>\<open>red_exhale\<close>\<close>
+subsection \<open>Exhale Properties\<close>
 
 lemma exhale_fraction:
   assumes "red_exhale ctxt R \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
@@ -51,42 +55,6 @@ lemma eval_multi_exhale_sat_helper:
              get_total_full = get_total_full \<omega>\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>
          (Some vs)"
   sorry
-
-lemma same_mh_diff:
-  shows "field_mask_sub (get_mh_total_full \<omega>)
-                        (get_mh_total_full \<omega>) =
-         zero_mh"
-  apply standard
-  apply simp
-  using minus_preal.abs_eq zero_preal_def
-  by force
-
-lemma same_mp_diff:
-  shows "predicate_mask_sub (get_mp_total_full \<omega>)
-                            (get_mp_total_full \<omega>) =
-         zero_mp"
-  apply standard
-  apply simp
-  using minus_preal.abs_eq zero_preal_def
-  by force
-
-lemma dec_mh_mh_diff:
-  assumes "p < get_mh_total_full \<omega> loc"
-  shows "field_mask_sub (get_mh_total_full \<omega>)
-                        (get_mh_total_full (upd_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
-         singleton_mh loc p"
-proof -
-  have "get_mh_total_full \<omega> loc - (get_mh_total_full \<omega> loc - p) = p"
-    using assms minus_preal_gte by auto
-  thus ?thesis
-    by (metis assms mh_upd_loc_diff order_less_imp_le psub_smaller upd_mh_loc_total_full_mh_rel)
-qed
-
-lemma dec_mh_mp_diff:
-  shows "predicate_mask_sub (get_mp_total_full \<omega>)
-                            (get_mp_total_full (upd_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
-         zero_mp"
-  by (metis same_mp_diff upd_mh_loc_total_full_mp_eq)
 
 lemma exhale_mh_diff:
   shows "field_mask_sub (get_mh_total_full \<omega>)
