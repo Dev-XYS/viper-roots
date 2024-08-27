@@ -12,17 +12,17 @@ subsection \<open>Self-Framing Assertion Definition Based on \<^const>\<open>red
 
 definition assertion_framing_state :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> bool"
   where
-    "assertion_framing_state ctxt StateCons A \<omega> \<equiv> 
+    "assertion_framing_state ctxt StateCons A \<omega> \<equiv>
       \<forall> res. red_inhale ctxt StateCons A \<omega> res \<longrightarrow> res \<noteq> RFailure"
 
 definition assertion_self_framing_store :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> assertion \<Rightarrow> 'a store \<Rightarrow> bool"
   where
-    "assertion_self_framing_store ctxt StateCons A \<sigma> \<equiv> 
+    "assertion_self_framing_store ctxt StateCons A \<sigma> \<equiv>
       \<forall> \<omega>. assertion_framing_state ctxt StateCons A (update_store_total \<omega> \<sigma>)"
 
 lemma assertion_framing_star: 
   assumes "assertion_framing_state ctxt StateCons (A1 && A2) \<omega>" 
-  shows "assertion_framing_state ctxt StateCons A1 \<omega> \<and> 
+  shows "assertion_framing_state ctxt StateCons A1 \<omega> \<and>
         (\<forall> \<omega>'. red_inhale ctxt StateCons A1 \<omega> (RNormal \<omega>') \<longrightarrow> assertion_framing_state ctxt StateCons A2 \<omega>')" (is "?Goal1 \<and> ?Goal2")
 proof 
   show "assertion_framing_state ctxt StateCons A1 \<omega>"

@@ -1,8 +1,16 @@
 section \<open>Key Properties of THSem\<close>
 
 theory TotalSemanticsProperties
-  imports TotalSemProperties
+  imports TotalSemProperties TotalExtConsProps
 begin
+
+
+subsection \<open>Predicate Body Manipulation\<close>
+
+lemma syntactic_mult_supported:
+  assumes "supported_pred_body A"
+    shows "supported_pred_body (syntactic_mult p A)"
+  sorry
 
 
 subsection \<open>Expression Evaluation Properties\<close>
@@ -15,7 +23,7 @@ lemma eval_with_None:
 lemma eval_with_no_nm:
   assumes "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
       and "no_perm_pure_exp e"
-    shows "ctxt, \<omega>_def \<turnstile> \<langle>e; update_nm_total_full \<omega> empty_nm\<rangle> [\<Down>]\<^sub>t Val v"
+    shows "ctxt, \<omega>_def \<turnstile> \<langle>e; upd_nm_total_full \<omega> empty_nm\<rangle> [\<Down>]\<^sub>t Val v"
   sorry
 
 lemma eval_with_no_trace:
@@ -23,6 +31,236 @@ lemma eval_with_no_trace:
       and "no_old_pure_exp e"
     shows "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<lparr> get_trace_total := Map.empty \<rparr>\<rangle> [\<Down>]\<^sub>t Val v"
   sorry
+
+thm red_pure_exp_total_red_pure_exps_total.induct
+
+lemma eval_with_same_store_same_hh:
+  shows "ctxt, \<omega>_def\<^sub>1 \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t r\<^sub>1 \<Longrightarrow>
+         ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t r\<^sub>2 \<Longrightarrow>
+         r\<^sub>1 = Val v\<^sub>1 \<Longrightarrow>
+         r\<^sub>2 = Val v\<^sub>2 \<Longrightarrow>
+         supported_pred_expr e \<Longrightarrow>
+         get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2 \<Longrightarrow>
+         get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2 \<Longrightarrow>
+         v\<^sub>1 = v\<^sub>2" and
+        "red_pure_exps_total ctxt \<omega>_def\<^sub>1 es \<omega>\<^sub>1 rs\<^sub>1 \<Longrightarrow>
+         red_pure_exps_total ctxt \<omega>_def\<^sub>2 es \<omega>\<^sub>2 rs\<^sub>2 \<Longrightarrow>
+         rs\<^sub>1 = Some vs\<^sub>1 \<Longrightarrow>
+         rs\<^sub>2 = Some vs\<^sub>2 \<Longrightarrow>
+         list_all supported_pred_expr es \<Longrightarrow>
+         get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2 \<Longrightarrow>
+         get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2 \<Longrightarrow>
+         vs\<^sub>1 = vs\<^sub>2"
+proof (induction arbitrary: v\<^sub>1 r\<^sub>2 v\<^sub>2 rule: red_pure_exp_inducts)
+  case (RedLit \<omega>_def l \<omega>\<^sub>1)
+  then show ?case
+    by (metis RedLit_case extended_val.inject)
+next
+  case (RedVar \<omega>\<^sub>1 n v\<^sub>1 \<omega>_def)
+  then show ?case
+    by (metis RedVar_case option.inject)
+next
+  case (RedResult \<omega> v \<omega>_def)
+  then show ?case
+    by (metis eval_is_deterministic extended_val.inject red_pure_exp_total_red_pure_exps_total.RedResult)
+next
+  case IH: (RedBinopLazy \<omega>_def\<^sub>1 e1 \<omega>\<^sub>1 v1\<^sub>1 bop v e2)
+  obtain v1\<^sub>2 where "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e1;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v1\<^sub>2"
+    by (metis IH.prems(1) IH.prems(3) red_pure_exp_total_elims(4))
+  moreover hence "v1\<^sub>1 = v1\<^sub>2"
+    using IH.IH(2) IH.prems(4) IH.prems(5) IH.prems(6)
+    by auto
+  ultimately show ?case
+    using IH.hyps IH.prems(1) IH.prems(2) IH.prems(3) RedBinopLazy eval_is_deterministic
+    by blast
+next
+  case (RedBinop \<omega>_def e1 \<omega> v1 e2 v2 bop v)
+  then show ?case sorry
+next
+  case (RedBinopRightFailure \<omega>_def e1 \<omega> v1 e2 bop)
+  then show ?case
+    by fastforce
+next
+  case (RedBinopOpFailure \<omega>_def e1 \<omega> v1 e2 v2 bop)
+  then show ?case
+    by fastforce
+next
+  case (RedUnop \<omega>_def e \<omega> v unop v')
+  then show ?case sorry
+next
+  case (RedCondExpTrue \<omega>_def e1 \<omega> e2 r e3)
+  then show ?case sorry
+next
+  case (RedCondExpFalse \<omega>_def e1 \<omega> e3 r e2)
+  then show ?case sorry
+next
+  case (RedOld \<omega> l \<phi> \<omega>_def' \<omega>_def e v)
+  then show ?case sorry
+next
+  case (RedOldFailure \<omega> l \<omega>_def e)
+  then show ?case
+    by fastforce
+next
+  case (RedField \<omega>_def e \<omega> a f v)
+  then show ?case sorry
+next
+  case (RedFieldNullFailure \<omega>_def e \<omega> f)
+  then show ?case
+    by fastforce
+next
+  case (RedPermNull \<omega>_def e \<omega> f)
+  then show ?case sorry
+next
+  case (RedPerm \<omega>_def e \<omega> a f v)
+  then show ?case sorry
+next
+  case (RedUnfolding ubody \<omega> v p es)
+  then show ?case sorry
+next
+  case (RedUnfoldingDefNoPred \<omega>_def es \<omega> vs pred_id pred_decl p ubody)
+  then show ?case
+    by fastforce
+next
+  case (RedUnfoldingDef \<omega>_def es \<omega> vs perm pred_id shift_up p nm' \<omega>'_def ubody v)
+  then show ?case sorry
+next
+  case (RedSubFailure e' \<omega>_def \<omega>)
+  then show ?case
+    by fastforce
+next
+  case (RedExpListCons \<omega>_def\<^sub>1 e \<omega>\<^sub>1 v\<^sub>1 es rs\<^sub>1 rs\<^sub>1')
+  then show ?case
+    sorry
+next
+  case (RedExpListFailure \<omega>_def e \<omega> es)
+  then show ?case
+    by fastforce
+next
+  case (RedExpListNil \<omega>_def \<omega>)
+  then show ?case
+    using red_exp_list_failure_Nil by auto
+qed
+
+lemma eval_ok_no_type_error:
+  assumes "get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2"
+      and "get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2"
+    shows "ctxt, \<omega>_def\<^sub>1 \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t res\<^sub>1 \<Longrightarrow>
+           supported_pred_expr e \<Longrightarrow>
+           \<exists>res\<^sub>2. ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t res\<^sub>2" and
+          "red_pure_exps_total ctxt \<omega>_def\<^sub>1 es \<omega>\<^sub>1 (Some ress\<^sub>1) \<Longrightarrow>
+           list_all supported_pred_expr es \<Longrightarrow>
+           \<exists>ress\<^sub>2. red_pure_exps_total ctxt \<omega>_def\<^sub>2 es \<omega>\<^sub>2 (Some ress\<^sub>2)"
+  using assms
+proof (induction rule: red_pure_exp_inducts)
+  case (RedLit \<omega>_def l uu)
+  then show ?case
+    using red_pure_exp_total_red_pure_exps_total.RedLit by blast
+next
+  case (RedVar \<omega> n v \<omega>_def)
+  then show ?case
+    by (metis red_pure_exp_total_red_pure_exps_total.RedVar)
+next
+  case (RedResult \<omega> v \<omega>_def)
+  then show ?case
+    by (metis red_pure_exp_total_red_pure_exps_total.RedResult)
+next
+  case IH: (RedBinopLazy \<omega>_def e1 \<omega> v1 bop v e2)
+  then obtain res1 where res1: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e1;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t res1"
+    by (metis pure_exp_pred.elims(2) pure_exp_pred_rec.simps(4))
+  show ?case
+  proof (cases res1)
+    case (Val v1')
+    with IH res1 have "v1' = v1"
+      using eval_with_same_store_same_hh(1)[OF IH(1) res1[simplified Val]]
+      apply simp
+      by presburger
+    then show ?thesis
+      using IH.hyps RedBinopLazy Val res1 by blast
+  next
+    case VFailure
+    then show ?thesis
+      using red_exp_binop_sub_left_failure res1 by blast
+  qed
+next
+  case (RedBinop \<omega>_def e1 \<omega> v1 e2 v2 bop v)
+  then show ?case sorry
+next
+  case (RedBinopRightFailure \<omega>_def e1 \<omega> v1 e2 bop)
+  then show ?case sorry
+next
+  case (RedBinopOpFailure \<omega>_def e1 \<omega> v1 e2 v2 bop)
+  then show ?case sorry
+next
+  case IH: (RedUnop \<omega>_def e \<omega> v1 unop v')
+  then obtain res where res: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t res"
+    by auto
+  show ?case
+  proof (cases res)
+    case (Val v1')
+    with IH res have "v1' = v1"
+      using eval_with_same_store_same_hh(1)[OF IH(1) res[simplified Val]]
+      apply simp
+      by presburger
+    then show ?thesis
+      using IH.hyps RedBinopLazy Val res RedUnop
+      by blast
+  next
+    case VFailure
+    then show ?thesis
+      using res red_exp_unop_sub_failure by blast
+  qed
+next
+  case (RedCondExpTrue \<omega>_def e1 \<omega> e2 r e3)
+  then show ?case
+    by (metis eval_with_same_store_same_hh(1) extended_val.exhaust pure_exp_pred.elims(2) pure_exp_pred_rec.simps(5) red_exp_condexp_sub_failure red_pure_exp_total_red_pure_exps_total.RedCondExpTrue)
+next
+  case (RedCondExpFalse \<omega>_def e1 \<omega> e3 r e2)
+  then show ?case
+    by (metis eval_with_same_store_same_hh(1) extended_val.exhaust pure_exp_pred.elims(2) pure_exp_pred_rec.simps(5) red_exp_condexp_sub_failure red_pure_exp_total_red_pure_exps_total.RedCondExpFalse)
+next
+  case (RedOld \<omega> l \<phi> \<omega>_def' \<omega>_def e v)
+  then show ?case
+    by simp
+next
+  case (RedOldFailure \<omega> l \<omega>_def e)
+  then show ?case
+    by simp
+next
+  case (RedField \<omega>_def e \<omega> a f v)
+  then show ?case sorry
+next
+  case (RedFieldNullFailure \<omega>_def e \<omega> f)
+  then show ?case sorry
+next
+  case (RedPermNull \<omega>_def e \<omega> f)
+  then show ?case
+    by simp
+next
+  case (RedPerm \<omega>_def e \<omega> a f v)
+  then show ?case
+    by simp
+next
+  case (RedUnfolding ubody \<omega> v p es)
+  then show ?case sorry
+next
+  case (RedUnfoldingDefNoPred \<omega>_def es \<omega> vs pred_id pred_decl p ubody)
+  then show ?case sorry
+next
+  case (RedUnfoldingDef \<omega>_def es \<omega> vs perm pred_id shift_up p nm' \<omega>'_def ubody v)
+  then show ?case sorry
+next
+  case (RedSubFailure e' \<omega>_def \<omega>)
+  then show ?case sorry
+next
+  case (RedExpListCons \<omega>_def e \<omega> v es res res')
+  then show ?case sorry
+next
+  case (RedExpListFailure \<omega>_def e \<omega> es)
+  then show ?case sorry
+next
+  case (RedExpListNil \<omega>_def \<omega>)
+  then show ?case sorry
+qed
 
 
 subsection \<open>Exhale Properties\<close>
@@ -134,7 +372,7 @@ proof (induction arbitrary: \<omega>')
          apply fastforce+
     using 1
       apply blast
-     apply (metis "1" IH.hyps(1) IH.hyps(4) \<omega>' mh_upd_loc_diff minus_preal_gte psub_smaller upd_mh_loc_total_full_mh_rel)
+     apply (metis 1 IH.hyps(1) IH.hyps(4) \<omega>' mh_upd_loc_diff minus_preal_gte psub_smaller same_mh_diff upd_mh_loc_total_full_mh_rel)
     by (metis IH.hyps(1) \<omega>' dec_mh_mp_diff same_mp_diff)
 next
   case IH: (ExhAccWildcard mh \<omega> e_r r a f q)
@@ -246,6 +484,293 @@ next
   case (ExhSubExpFailure A \<omega>)
   then show ?case
     by blast
+qed
+
+
+subsection \<open>External Consistent State \<Longrightarrow> Inhaled State\<close>
+
+lemma eval_framed_state_helper:
+  assumes "es = direct_sub_expressions_assertion A"
+      and "red_pure_exps_total ctxt None es \<omega>\<^sub>0 (Some vs)"
+      and "assertion_framing_state ctxt (\<lambda>_. True) A \<omega>"
+      and "supported_pred_body A"
+    shows "red_pure_exps_total ctxt (Some \<omega>) es \<omega> (Some vs)"
+  sorry
+
+lemma red_pure_exps_totalI_helper:
+  assumes "length es = length vs"
+      and "\<And>i. 0 \<le> i \<Longrightarrow> i < length es \<Longrightarrow> ctxt, \<omega>_def \<turnstile> \<langle>es ! i; \<omega>\<rangle> [\<Down>]\<^sub>t Val (vs ! i)"
+    shows "red_pure_exps_total ctxt \<omega>_def es \<omega> (Some vs)"
+  sorry
+
+lemma red_pure_exps_totalE_helper:
+  assumes "length es = length vs"
+      and "red_pure_exps_total ctxt \<omega>_def es \<omega> (Some vs)"
+    shows "\<And>i. 0 \<le> i \<Longrightarrow> i < length es \<Longrightarrow> ctxt, \<omega>_def \<turnstile> \<langle>es ! i; \<omega>\<rangle> [\<Down>]\<^sub>t Val (vs ! i)"
+  sorry
+
+lemma singleton_set_helper:
+  assumes "a = b"
+    shows "a \<in> {b}"
+  using assms
+  by blast
+
+lemma extcons_state_can_be_inhaled_assertion:
+  assumes Sat: "sat ctxt \<omega>\<^sub>0 mh mp A"
+      and mh_nm: "mh = get_mh_nm nm"
+      and mp_nm: "mp = get_mp_nm nm"
+      and ExtCons: "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = nm \<rparr>"
+      and \<omega>hh: "get_hh_total_full \<omega> = hh"
+      and \<omega>\<^sub>0hh: "get_hh_total_full \<omega>\<^sub>0 = hh"
+      and SameStore: "get_store_total \<omega> = get_store_total \<omega>\<^sub>0"
+      and Framed: "assertion_framing_state ctxt (\<lambda>_. True) A \<omega>"
+      and SupPred: "supported_pred_body A"
+    shows "red_inhale ctxt (\<lambda>_. True) A \<omega> (RNormal (add_to_nm_total_full \<omega> nm))"
+
+  using Sat mh_nm mp_nm ExtCons \<omega>hh SameStore Framed SupPred
+proof (induction A arbitrary: \<omega> nm)
+
+  case IH: (SatAcc e_r r e_p p a mh f mp)
+  hence "supported_pred_expr e_r" and "supported_pred_expr e_p"
+    by simp+
+
+  have "red_pure_exps_total ctxt None [e_r, e_p] \<omega>\<^sub>0 (Some [VRef r, VPerm p])"
+    by (metis (no_types, lifting) IH.hyps(1) IH.hyps(2) add.right_neutral add_Suc_right less_Suc0 less_Suc_eq list.size(3) list.size(4) nth_Cons_0 nth_Cons_Suc red_pure_exps_totalI_helper)
+  hence "red_pure_exps_total ctxt (Some \<omega>) [e_r, e_p] \<omega> (Some [VRef r, VPerm p])"
+    using IH(1,2,12,13) eval_framed_state_helper
+    by (metis direct_sub_expressions_assertion.simps(1) sub_expressions_atomic.simps(2) sub_expressions_exp_or_wildcard.simps(1))
+
+  have eval_e_r: "ctxt, Some \<omega> \<turnstile> \<langle>e_r;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
+       eval_e_p: "ctxt, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+    using \<open>red_pure_exps_total ctxt (Some \<omega>) [e_r, e_p] \<omega> (Some [VRef r, VPerm p])\<close> red_exp_list_normal_elim
+     apply fastforce
+    by (smt (verit, best) \<open>red_pure_exps_total ctxt (Some \<omega>) [e_r, e_p] \<omega> (Some [VRef r, VPerm p])\<close> list.discI list.inject red_exp_list_normal_elim)
+
+  define W where "W =
+    (if r = Null then {\<omega>}
+     else inhale_perm_single (\<lambda>_. True) \<omega> (the_address r, f)
+           (Some (Abs_preal p)))"
+
+  show ?case
+    apply standard
+    using eval_e_r eval_e_p W_def
+       apply blast+
+  proof (cases "r = Null")
+    case True
+    with IH have "p = 0"
+      by presburger
+    from True W_def have "W = {\<omega>}"
+      by auto
+    have "nm = empty_nm"
+      apply (rule nested_mask_equality)
+        apply (simp_all add: empty_nm_def)
+      using IH.hyps(5) IH.prems(1) True
+        apply auto[1]
+      using IH.hyps(6) IH.prems(2)
+       apply auto[1]
+      by (metis IH.hyps(6) IH.prems(2) IH.prems(3) SatAll_case prod.exhaust total_state.select_convs(2) zero_mp.simps)
+    show "th_result_rel (0 \<le> p) (W \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null)) W (RNormal (add_to_nm_total_full \<omega> nm))"
+      apply (simp add: \<open>p = 0\<close> \<open>W = {\<omega>}\<close> True th_result_rel.simps)
+      by (simp add: \<open>nm = empty_nm\<close> add_empty_nm)
+  next
+    case False
+    have mh: "get_mh_nm nm = singleton_mh (a, f) (Abs_preal p)"
+      using False IH.hyps(5) IH.prems(1) by presburger
+    have fnm: "get_fnm_nm nm = (\<lambda>_. None)"
+      by (metis IH.hyps(6) IH.prems(2) IH.prems(3) SatAll_case surj_pair total_state.select_convs(2) zero_mp.simps)
+    show "th_result_rel (0 \<le> p) (W \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null)) W (RNormal (add_to_nm_total_full \<omega> nm))"
+      apply (simp add: IH(4) W_def inhale_perm_single_def False)
+      apply (rule THResultNormal)
+      apply (rule singleton_set_helper)
+      apply (rule full_total_state.equality)
+         apply simp_all
+      apply (rule total_state.equality)
+        apply simp_all
+      apply (rule nested_mask_equality)
+        apply simp_all
+        apply (simp add: mh)
+        apply standard
+        apply simp
+        apply (simp add: IH.hyps(3) fun_comb_def)
+       apply (metis IH.hyps(6) IH.prems(2) add_empty_nm empty_nm_def get_mp_nm.simps get_mp_nm__merge predicate_mask_merge.simps)
+      apply (simp add: fnm)
+      apply (metis add_empty_nm empty_nm_def get_fnm_nm.simps get_fnm_nm__merge)
+      done
+  qed
+
+next
+  case (SatAccWildcard e_r r a f mh mp)
+  then show ?case sorry
+next
+  case (SatAccPred e_args v_args e_p p mh mp pred_id)
+  then show ?case sorry
+next
+  case (SatAccPredWildcard e_args v_args mh pred_id mp)
+  then show ?case sorry
+
+next
+  case IH: (SatPure e mh mp)
+  hence "supported_pred_expr e"
+    by simp
+  then obtain res where \<omega>_eval: "ctxt, Some \<omega> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t res"
+    by (metis IH.hyps(1) IH.prems(4) IH.prems(5) eval_ok_no_type_error(1) \<omega>\<^sub>0hh)
+  show ?case
+  proof (cases res)
+    case (Val v)
+    then have "v = VBool True"
+      using eval_with_same_store_same_hh(1)[OF IH(1)] IH(10) IH(7) IH(8) \<omega>\<^sub>0hh \<omega>_eval \<open>supported_pred_expr e\<close>
+      apply simp
+      by presburger
+    have "nm = empty_nm"
+      apply (rule nested_mask_equality)
+        apply (metis IH.hyps(2) IH.prems(1) empty_nm_def get_mh_nm.simps)
+       apply (metis IH.hyps(3) IH.prems(2) empty_nm_def get_mp_nm.simps)
+      apply (simp add: empty_nm_def)
+      by (metis IH(3) IH(6) IH.prems(2) SatAll_case surj_pair total_state.select_convs(2) zero_mp.elims)
+    hence "add_to_nm_total_full \<omega> nm = \<omega>"
+      apply simp
+      by (simp add: add_empty_nm)
+    then show ?thesis
+      by (metis Val \<omega>_eval \<open>v = VBool True\<close> inh_pure_normal)
+  next
+    case VFailure
+    then show ?thesis
+      using IH.prems(6) RedExpListFailure \<omega>_eval assertion_framing_state_sub_exps_not_failure by fastforce
+  qed
+
+next
+  case (SatStar mh mh\<^sub>1 mh\<^sub>2 mp mp\<^sub>1 mp\<^sub>2 A B)
+  then show ?case sorry
+
+next
+  case (SatImpTrue e mh mp A)
+  then show ?case sorry
+next
+  case (SatImpFalse e mh mp A)
+  then show ?case sorry
+next
+  case (SatCondTrue e mh mp A B)
+  then show ?case sorry
+next
+  case (SatCondFalse e mh mp B A)
+  then show ?case sorry
+qed
+
+
+lemma extcons_state_can_be_inhaled:
+  assumes PredDecl: "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
+      and PredBody: "ViperLang.predicate_decl.body pdecl = Some pbody"
+      and SupPred: "supported_pred_body pbody"
+      and SelfFraming: "\<And>q. assertion_framing_state ctxt (\<lambda>_. True) (syntactic_mult q pbody) \<omega>"
+      and ExtCons: "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = hh, get_nm_total = nm \<rparr> (pid,vs) p"
+      and \<omega>hh: "get_hh_total_full \<omega> = hh"
+      and \<omega>Store: "get_store_total \<omega> = nth_option vs"
+    shows "red_inhale ctxt (\<lambda>_. True) (syntactic_mult (Rep_preal p) pbody) \<omega> (RNormal (add_to_nm_total_full \<omega> nm))"
+proof -
+  have "sat ctxt \<lparr> get_store_total = nth_option vs,
+                   get_trace_total = Map.empty,
+                   get_total_full = \<lparr> get_hh_total = hh, get_nm_total = empty_nm \<rparr> \<rparr>
+            (get_mh_nm nm) (get_mp_nm nm)
+            (syntactic_mult (Rep_preal p) pbody)" and
+    "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = nm \<rparr>"
+    using SatStep_case PredDecl PredBody ExtCons by fastforce+
+  moreover have "assertion_framing_state ctxt (\<lambda>_. True) (syntactic_mult (Rep_preal p) pbody) \<omega>"
+    using SelfFraming by auto
+  ultimately show ?thesis
+    using \<omega>Store \<omega>hh extcons_state_can_be_inhaled_assertion
+    by (metis SupPred full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps syntactic_mult_supported total_state.select_convs(1))
+qed
+
+
+subsection \<open>Inhale Simulates Unfold\<close>
+
+lemma inhale_simulates_unfold:
+  assumes Unfold: "unfold_rel ctxt pid vs p \<phi> \<phi>'"
+      and ExtCons: "consistent_external ctxt \<phi>"
+      and PredDecl: "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
+      and PredBody: "ViperLang.predicate_decl.body pdecl = Some pbody"
+      and SupPred: "supported_pred_body pbody"
+      and SelfFraming: "\<And>q. assertion_self_framing_store ctxt (\<lambda>_. True) (syntactic_mult q pbody) (nth_option vs)"
+      and "\<phi>\<^sub>d = rm_from_mp_loc_total (mult_rm_nm_loc_total \<phi> (pid,vs) p) (pid,vs) p"
+    shows "red_inhale ctxt (\<lambda>_. True) (syntactic_mult (Rep_preal p) pbody)
+                      \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr>
+             (RNormal \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>' \<rparr>)"
+proof -
+  from assms(1)
+  obtain nm nm' where
+    "shift_up pid vs p nm nm'"
+    "get_nm_total \<phi> = nm"
+    "get_nm_total \<phi>' = nm'"
+    "get_hh_total \<phi>' = get_hh_total \<phi>"
+    by (blast elim: unfold_rel.cases)
+
+  then obtain mh mp fnm pnm pp mp' fnm' nm\<^sub>d where
+    "nm = NM mh mp fnm" and
+    "Some pnm = fnm (pid,vs)" and
+    "pp = mp (pid,vs)" and
+    "p \<le> pp" and
+    "p \<noteq> 0" and
+    mp': "mp' = mp( (pid,vs) := pp - p )" and
+    fnm': "fnm' = fnm( (pid,vs) := if p = pp then None else Some (nested_mask_multiply pnm ((pp - p) / pp)) )" and
+    nm\<^sub>d: "nm\<^sub>d = NM mh mp' fnm'" and
+    nm': "nm' = nested_mask_merge nm\<^sub>d (nested_mask_multiply pnm (p / pp))"
+    by (blast elim: shift_up_case)
+
+  define nm\<^sub>s where "nm\<^sub>s = nested_mask_multiply pnm (p / pp)"
+
+  \<comment> \<open>The shifted part is external consistent w.r.t. the predicate.\<close>
+  have pnm_cons: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := pnm \<rparr>) (pid,vs) pp"
+    using ExtCons SatAll_case \<open>Some pnm = fnm (pid, vs)\<close> \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> \<open>pp = mp (pid, vs)\<close> get_fnm_nm.simps
+    by fastforce
+  have "0 < p / pp"
+    using \<open>p \<le> pp\<close> \<open>p \<noteq> 0\<close>
+    apply (simp add: preal_to_real)
+    by (metis divide_pos_pos order_antisym order_le_imp_less_or_eq prat_non_negative)
+  moreover hence "p / pp * pp = p"
+    apply (simp add: preal_to_real)
+    using divide_preal.rep_eq less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq
+    by auto
+  moreover have "\<lparr> get_hh_total = get_hh_total \<phi>, get_nm_total = nm\<^sub>s \<rparr> = \<phi>\<lparr> get_nm_total := nm\<^sub>s \<rparr>"
+    by simp
+  ultimately have
+    ShiftExtCons: "consistent_external_wrt_ploc ctxt \<lparr>get_hh_total = get_hh_total \<phi>, get_nm_total = nm\<^sub>s\<rparr> (pid, vs) p"
+    using fraction_consistent_external(1)[of "p / pp", OF _ pnm_cons] nm\<^sub>s_def
+    by (metis mult_nm_total.elims total_state.ext_inject total_state.surjective total_state.update_convs(2))
+
+  have "fnm (pid,vs) = Some pnm"
+    using \<open>Some pnm = fnm (pid, vs)\<close>
+    by force
+  have "get_nm_total \<phi>\<^sub>d = nm\<^sub>d"
+    apply (simp add: assms(5) nm\<^sub>d \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> fnm' \<open>pp = mp (pid,vs)\<close>)
+    apply (simp add: mp' \<open>pp = mp (pid,vs)\<close> \<open>fnm (pid,vs) = Some pnm\<close>)
+    apply (rule conjI)
+     apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(7))
+    apply standard
+    apply (rule nested_mask_equality)
+      apply simp_all
+      apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(7))+
+    by (metis Rep_preal_inverse SatStep_case \<open>Some pnm = fnm (pid, vs)\<close> \<open>p \<le> pp\<close> \<open>pp = mp (pid, vs)\<close> add_0 all_pos divide_eq_0_iff divide_preal.rep_eq greater_minus_plus leD nested_mask_multiply_option.simps(2) pnm_cons zero_preal.rep_eq)
+
+  hence 1: "add_to_nm_total_full
+          \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr> nm\<^sub>s =
+          \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>' \<rparr>"
+    apply simp
+    apply (rule total_state.equality)
+      apply (simp add: \<open>get_hh_total \<phi>' = get_hh_total \<phi>\<close> assms(5))
+    by (simp_all add: \<open>get_nm_total \<phi>' = nm'\<close> nm' nm\<^sub>s_def assms(7))
+
+  have Framed: "\<And>q. assertion_framing_state ctxt (\<lambda>_. True) (syntactic_mult q pbody)
+                      \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr>"
+    using assertion_self_framing_store_def SelfFraming
+    by (metis full_total_state.update_convs(1) update_store_total.simps)
+
+  have 2: "get_hh_total_full \<lparr>get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>'\<rparr> = get_hh_total \<phi>"
+    apply simp
+    using \<open>get_hh_total \<phi>' = get_hh_total \<phi>\<close> by auto
+
+  show ?thesis
+    using extcons_state_can_be_inhaled[OF PredDecl PredBody SupPred Framed ShiftExtCons] 1 2 assms(7)
+    by auto
 qed
 
 

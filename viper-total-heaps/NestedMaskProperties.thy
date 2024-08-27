@@ -5,7 +5,7 @@ begin
 
 
 abbreviation has_sumA :: "('a \<Rightarrow> 'b :: {comm_monoid_add, topological_space}) \<Rightarrow> 'b \<Rightarrow> bool" (infixr "has'_sumA" 46) where
-  "(f has_sumA S) \<equiv> has_sum f UNIV S"
+  "(f has_sumA S) \<equiv> (f has_sum S) UNIV"
 
 
 function (sequential) nm_loc_sum :: "heap_loc \<Rightarrow> 'a nested_mask \<Rightarrow> preal \<Rightarrow> bool" where

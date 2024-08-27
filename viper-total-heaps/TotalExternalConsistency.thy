@@ -8,22 +8,8 @@ begin
 
 subsection \<open>Satisfiability\<close>
 
-fun proportional_split :: "'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> bool" where
-  "proportional_split \<omega> \<omega>\<^sub>1 \<omega>\<^sub>2 = ((\<forall>l. get_mh_total_full \<omega>\<^sub>1 l + get_mh_total_full \<omega>\<^sub>2 l = get_mh_total_full \<omega> l) \<and>
-    (\<forall>pl. get_mp_total_full \<omega>\<^sub>1 pl + get_mp_total_full \<omega>\<^sub>2 pl = get_mp_total_full \<omega> pl \<and>
-      get_nm_loc_total_full \<omega>\<^sub>1 pl = nested_mask_multiply_option (get_nm_loc_total_full \<omega> pl)
-        (get_mp_total_full \<omega>\<^sub>1 pl / get_mp_total_full \<omega> pl) \<and>
-      get_nm_loc_total_full \<omega>\<^sub>2 pl = nested_mask_multiply_option (get_nm_loc_total_full \<omega> pl)
-        (get_mp_total_full \<omega>\<^sub>2 pl / get_mp_total_full \<omega> pl)))"
-
-fun mh_split :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask \<Rightarrow> bool" where
-  "mh_split mh mh\<^sub>1 mh\<^sub>2 = (mh = (mh\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mh\<^sub>2))"
-
-fun mp_split :: "'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
-  "mp_split mp mp\<^sub>1 mp\<^sub>2 = (mp = (mp\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mp\<^sub>2))"
-
 inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> field_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> assertion \<Rightarrow> bool"
-  for ctxt :: "'a total_context" where
+  for ctxt :: "'a total_context" and \<omega> :: "'a full_total_state" where
 
 \<comment>\<open>sat acc(e.f, p)
   The mask must have exactly p amount of permission.\<close>
@@ -32,7 +18,7 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
      ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      a = the_address r;
      p \<ge> 0;
-     if r = Null then p = 0 else mh = singleton_mh (a,f) (Abs_preal p);
+     if r = Null then p = 0 \<and> mh = zero_mh else mh = singleton_mh (a,f) (Abs_preal p);
      mp = zero_mp
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Atomic (Acc e_r f (PureExp e_p)))"

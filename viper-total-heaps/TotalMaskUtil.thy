@@ -90,6 +90,9 @@ fun is_singleton_mh :: "heap_loc \<Rightarrow> field_mask \<Rightarrow> bool" wh
 fun is_singleton_mp :: "'a predicate_loc \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
   "is_singleton_mp ploc mp = (\<exists>p > 0. mp = singleton_mp ploc p)"
 
+definition empty_nm :: "'a nested_mask"
+  where "empty_nm \<equiv> NM zero_mh zero_mp Map.empty"
+
 
 subsection \<open>Mask Subtraction\<close>
 
@@ -109,10 +112,13 @@ termination
   using Option.is_none_def by fastforce
 
 
-subsection \<open>Nested Mask Update\<close>
+subsection \<open>Mask Split\<close>
 
-fun add_to_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
-  where "add_to_nm_loc_nm (NM mh mp fnm) loc nm = NM mh mp (fnm( loc := nested_mask_merge_option (fnm loc) (Some nm) ))"
+fun mh_split :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask \<Rightarrow> bool" where
+  "mh_split mh mh\<^sub>1 mh\<^sub>2 = (mh = (mh\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mh\<^sub>2))"
+
+fun mp_split :: "'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
+  "mp_split mp mp\<^sub>1 mp\<^sub>2 = (mp = (mp\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ mp\<^sub>2))"
 
 
 end

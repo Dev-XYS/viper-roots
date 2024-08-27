@@ -43,9 +43,6 @@ subsection \<open>Nested Mask\<close>
 
 datatype 'a nested_mask = NM field_mask "'a predicate_mask" "('a predicate_loc \<rightharpoonup> 'a nested_mask)"
 
-definition empty_nm :: "'a nested_mask"
-  where "empty_nm = NM (\<lambda>_. 0) (\<lambda>_. 0) Map.empty"
-
 
 subsection \<open>Total State\<close>
 

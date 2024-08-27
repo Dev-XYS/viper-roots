@@ -163,6 +163,7 @@ lemma nested_mask_equality:
 
 subsection \<open>Simplification Lemmas on State Update\<close>
 
+
 subsubsection \<open>Nested Masks\<close>
 
 lemma upd_mh_nm_mp_rel [simp]:
@@ -208,6 +209,18 @@ lemma upd_nm_loc_opt_nm_mh_rel [simp]:
 lemma upd_nm_loc_opt_nm_mp_rel [simp]:
   shows "get_mp_nm (upd_nm_loc_opt_nm nm lp nm') = get_mp_nm nm"
   by (cases nm, fastforce)
+
+
+subsubsection \<open>Total States\<close>
+
+lemma mult_rm_nm_loc_total__nm_rel [simp]:
+  shows "get_nm_total (mult_rm_nm_loc_total \<phi> lp f) = mult_rm_nm_loc_nm (get_nm_total \<phi>) lp f"
+  by simp
+
+lemma rm_from_mp_loc_total__nm_rel [simp]:
+  shows "get_nm_total (rm_from_mp_loc_total \<phi> lp p) = rm_from_mp_loc_nm (get_nm_total \<phi>) lp p"
+  by simp
+
 
 subsubsection \<open>Full Total States\<close>
 
@@ -291,6 +304,210 @@ lemma dec_mh_mp_diff:
                             (get_mp_total_full (upd_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
          zero_mp"
   by (metis same_mp_diff upd_mh_loc_total_full_mp_eq)
+
+
+subsection \<open>Helper Lemmas for Mask Multiplication\<close>
+
+lemma singleton_mh_multiply:
+  shows "singleton_mh loc (q * p) = ((*) q) \<circ> singleton_mh loc p"
+  by (standard, simp)
+
+lemma singleton_mp_multiply:
+  shows "singleton_mp loc (q * p) = ((*) q) \<circ> singleton_mp loc p"
+  by (standard, simp)
+
+lemma zero_mh_multiply:
+  fixes frac :: preal
+  shows "field_mask_multiply zero_mh frac = zero_mh"
+  by (standard, simp)
+
+lemma zero_mp_multiply:
+  fixes frac :: preal
+  shows "predicate_mask_multiply zero_mp frac = zero_mp"
+  by (standard, simp)
+
+lemma get_mh_multiply [simp]:
+  fixes frac :: preal
+  shows "get_mh_nm (nested_mask_multiply (get_nm_total \<phi>) frac) = field_mask_multiply (get_mh_total \<phi>) frac"
+  by (metis get_fnm_nm.cases get_mh_nm.simps get_mh_total.simps nested_mask_multiply.simps)
+
+lemma get_mp_multiply [simp]:
+  fixes frac :: preal
+  shows "get_mp_nm (nested_mask_multiply (get_nm_total \<phi>) frac) = predicate_mask_multiply (get_mp_total \<phi>) frac"
+  by (metis get_fnm_nm.cases get_mp_nm.simps get_mp_total.simps nested_mask_multiply.simps)
+
+lemma get_nm_loc_total_multiply [simp]:
+  fixes frac :: preal
+  shows "get_nm_loc_total (\<phi>\<lparr>get_nm_total := nested_mask_multiply (get_nm_total \<phi>) frac\<rparr>) loc =
+         get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) loc"
+  by (metis TotalStateUtil.get_nm_loc_total.simps get_fnm_nm.simps get_fnm_total.simps get_nm_loc_nm.simps nested_mask_multiply.elims total_state.simps(2) total_state.simps(5) total_state.surjective)
+
+lemma get_nm_loc_nm_multiply:
+  fixes frac :: preal
+  shows "get_nm_loc_nm (nested_mask_multiply nm frac) loc =
+         map_option (\<lambda>m. nested_mask_multiply m frac) (get_nm_loc_nm nm loc)"
+  by (metis comp_apply get_fnm_nm.cases get_nm_loc_nm.simps nested_mask_multiply.simps)
+
+lemma get_mp_total_full_multiply:
+  fixes frac :: preal
+  assumes "get_mp_total_full \<omega> loc = p"
+  shows "get_mp_total_full (mult_nm_total_full \<omega> frac) loc = p * frac"
+  apply simp
+  using PosReal.pmult_comm assms by fastforce
+
+lemma get_hh_total_full_multiply:
+  fixes frac :: preal
+  assumes "get_hh_total_full \<omega> loc = v"
+  shows "get_hh_total_full (mult_nm_total_full \<omega> frac) loc = v"
+  apply simp
+  using assms by force
+
+lemma get_valid_locs_multiply:
+  fixes frac :: preal
+  assumes "frac > 0"
+  shows "get_valid_locs \<omega> = get_valid_locs (mult_nm_total_full \<omega> frac)"
+  apply (simp add: get_valid_locs_def)
+  apply (rule Set.Collect_cong)
+  apply standard
+  using PosReal.pgt.rep_eq assms preal_pnone_pgt times_preal.rep_eq zero_preal.rep_eq less_preal.rep_eq
+   apply simp
+  using mult_not_zero preal_not_0_gt_0
+  by blast
+
+lemma nm_multiply_none:
+    fixes frac :: preal
+  assumes "frac > 0"
+    shows "(get_nm_loc_nm nm loc = None) = (get_nm_loc_nm (nested_mask_multiply nm frac) loc = None)"
+  by (metis None_eq_map_option_iff get_nm_loc_nm.elims get_nm_loc_nm.simps nested_mask_multiply.simps o_apply)
+
+lemma nm_multiply_mp_value:
+  fixes frac
+  shows "get_mp_nm (nested_mask_multiply nm frac) loc = frac * get_mp_nm nm loc"
+  by (metis get_mp_multiply get_mp_total.elims o_def predicate_mask_multiply.elims total_state.select_convs(2))
+
+lemma nm_multiply_back:
+    fixes frac :: preal
+  assumes "frac > 0"
+      and "get_mp_nm (nested_mask_multiply nm frac) loc = q"
+    shows "get_mp_nm nm loc = q / frac"
+  by (metis Rep_preal_inverse assms(1) assms(2) divide_preal.rep_eq dual_order.refl linorder_not_less nm_multiply_mp_value nonzero_mult_div_cancel_left times_preal.rep_eq zero_preal.rep_eq)
+
+lemma nm_multiply_twice:
+  fixes f1 f2 :: preal
+  shows "nested_mask_multiply (nested_mask_multiply nm f1) f2 = nested_mask_multiply nm (f1 * f2)"
+  sorry
+
+lemma nm_multiply_1:
+  shows "nested_mask_multiply nm 1 = nm"
+  sorry
+
+lemma nm_multiply_back_nm:
+    fixes frac :: preal
+  assumes "frac > 0"
+      and "nm' = nested_mask_multiply nm frac"
+    shows "nm = nested_mask_multiply nm' (1 / frac)"
+proof -
+  from assms(2) have "nested_mask_multiply nm' (1 / frac)
+                      = nested_mask_multiply (nested_mask_multiply nm frac) (1 / frac)"
+    by auto
+  show "nm = nested_mask_multiply nm' (1 / frac)" using nm_multiply_twice nm_multiply_1
+    by (metis PosReal.field_divide_inverse PosReal.field_inverse assms(1) assms(2) mult.commute order_less_irrefl)
+qed
+
+lemma mh_split_multiply:
+  fixes frac :: preal
+  assumes "mh_split mh mh\<^sub>1 mh\<^sub>2"
+  shows "mh_split (field_mask_multiply mh frac) (field_mask_multiply mh\<^sub>1 frac) (field_mask_multiply mh\<^sub>2 frac)"
+  apply simp
+  apply standard
+  by (metis PosReal.pmult_distr assms comp_apply fun_comb_def mh_split.elims(2))
+
+lemma mp_split_multiply:
+  fixes frac :: preal
+  assumes "mp_split mp mp\<^sub>1 mp\<^sub>2"
+  shows "mp_split (predicate_mask_multiply mp frac) (predicate_mask_multiply mp\<^sub>1 frac) (predicate_mask_multiply mp\<^sub>2 frac)"
+  apply simp
+  apply standard
+  by (metis (no_types, opaque_lifting) PosReal.pmult_distr assms comp_eq_dest_lhs fun_comb_def mp_split.simps)
+
+lemma mh_split_zero:
+  assumes "mh_split mh zero_mh zero_mh"
+  shows "mh = zero_mh"
+  apply standard
+  apply simp
+  by (metis add.right_neutral assms fun_comb_def mh_split.elims(2) zero_mh.simps)
+
+lemma mp_split_zero:
+  assumes "mp_split mp zero_mp zero_mp"
+  shows "mp = zero_mp"
+  apply standard
+  apply simp
+  by (metis add.right_neutral assms fun_comb_def mp_split.simps zero_mp.simps)
+
+lemma mh_split_twice:
+  assumes "mh_split s a b"
+      and "mh_split a a1 a2"
+      and "mh_split b b1 b2"
+      and "mh_split s1 a1 b1"
+      and "mh_split s2 a2 b2"
+    shows "mh_split s s1 s2"
+  apply simp
+  apply standard
+  apply (simp add: fun_comb_def)
+proof -
+  fix x
+  have "s1 x = a1 x + b1 x"
+    by (metis assms(4) fun_comb_def mh_split.elims(1))
+  moreover have "s2 x = a2 x + b2 x"
+    by (metis assms(5) fun_comb_def mh_split.elims(1))
+  ultimately show "s x = s1 x + s2 x"
+    by (metis (no_types, lifting) ab_semigroup_add_class.add_ac(1) assms(1-3) fun_comb_def group_cancel.add2 mh_split.elims(2))
+qed
+
+lemma mp_split_twice:
+  assumes "mp_split s a b"
+      and "mp_split a a1 a2"
+      and "mp_split b b1 b2"
+      and "mp_split s1 a1 b1"
+      and "mp_split s2 a2 b2"
+    shows "mp_split s s1 s2"
+  apply simp
+  apply standard
+  apply (simp add: fun_comb_def)
+proof -
+  fix x
+  have "s1 x = a1 x + b1 x"
+    by (metis assms(4) fun_comb_def mp_split.elims(1))
+  moreover have "s2 x = a2 x + b2 x"
+    by (metis assms(5) fun_comb_def mp_split.elims(1))
+  ultimately show "s x = s1 x + s2 x"
+    by (metis (no_types, lifting) ab_semigroup_add_class.add_ac(1) assms(1-3) fun_comb_def group_cancel.add2 mp_split.elims(2))
+qed
+
+
+subsection \<open>Simplification Lemmas for Nested Mask Merge\<close>
+
+lemma get_mh_nm__merge [simp]:
+  shows "get_mh_nm (nested_mask_merge nm1 nm2) = field_mask_merge (get_mh_nm nm1) (get_mh_nm nm2)"
+  by (cases nm1, cases nm2, simp)
+
+lemma get_mp_nm__merge [simp]:
+  shows "get_mp_nm (nested_mask_merge nm1 nm2) = predicate_mask_merge (get_mp_nm nm1) (get_mp_nm nm2)"
+  by (cases nm1, cases nm2, simp)
+
+lemma get_fnm_nm__merge [simp]:
+  shows "get_fnm_nm (nested_mask_merge nm1 nm2) = pfun_comb (get_fnm_nm nm1) nested_mask_merge (get_fnm_nm nm2)"
+  by (cases nm1, cases nm2, simp)
+
+
+subsection \<open>Empty States Properties\<close>
+
+lemma add_empty_nm:
+  shows "nested_mask_merge nm empty_nm = nm"
+  apply (simp add: empty_nm_def; cases nm; simp add: pfun_comb_def; standard+)
+   apply (simp add: fun_comb_def)
+  apply (standard+, simp add: fun_comb_def)
+  by (standard, simp add: pfun_comb_def)
 
 
 subsection \<open>Legacy Lemmas\<close>

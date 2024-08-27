@@ -38,6 +38,18 @@ fun upd_nm_loc_opt_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Righta
 fun add_to_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
   where "add_to_mp_loc_nm (NM mh mp fnm) lp p = NM mh (mp( lp := mp lp + p )) fnm"
 
+fun add_to_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
+  where "add_to_nm_loc_nm (NM mh mp fnm) loc nm = NM mh mp (fnm( loc := nested_mask_merge_option (fnm loc) (Some nm) ))"
+
+fun rm_from_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
+  where "rm_from_mp_loc_nm (NM mh mp fnm) lp p = NM mh (mp( lp := mp lp - p )) fnm"
+
+fun mult_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
+  where "mult_nm_loc_nm (NM mh mp fnm) lp p = NM mh mp (fnm( lp := nested_mask_multiply_option (fnm lp) p ))"
+
+fun mult_rm_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
+  where "mult_rm_nm_loc_nm (NM mh mp fnm) lp p = NM mh mp (fnm( lp := if mp lp = p then None else nested_mask_multiply_option (fnm lp) ((mp lp - p) / mp lp)))"
+
 
 subsection \<open>Total State Getters and Setters\<close>
 
@@ -86,14 +98,26 @@ fun upd_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_
 fun upd_nm_loc_opt_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> ('a, 'b) total_state_scheme"
   where "upd_nm_loc_opt_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := upd_nm_loc_opt_nm (get_nm_total \<phi>) lp nm \<rparr>"
 
+fun add_to_nm_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "add_to_nm_total \<phi> nm = \<phi>\<lparr> get_nm_total := nested_mask_merge (get_nm_total \<phi>) nm \<rparr>"
+
 fun add_to_mp_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
   where "add_to_mp_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := add_to_mp_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
 
 fun add_to_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) total_state_scheme"
   where "add_to_nm_loc_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := add_to_nm_loc_nm (get_nm_total \<phi>) lp nm \<rparr>"
 
+fun rm_from_mp_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "rm_from_mp_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := rm_from_mp_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
+
 fun mult_nm_total :: "('a, 'b) total_state_scheme \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
-  where "mult_nm_total \<phi> p = \<phi>\<lparr> get_nm_total := (nested_mask_multiply (get_nm_total \<phi>) p) \<rparr>"
+  where "mult_nm_total \<phi> p = \<phi>\<lparr> get_nm_total := nested_mask_multiply (get_nm_total \<phi>) p \<rparr>"
+
+fun mult_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "mult_nm_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := mult_nm_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
+
+fun mult_rm_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "mult_rm_nm_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := mult_rm_nm_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
 
 
 subsection \<open>Full Total State Getters and Setters\<close>
@@ -155,6 +179,10 @@ fun upd_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a 
 fun upd_nm_loc_opt_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> ('a, 'b) full_total_state_scheme"
   where "upd_nm_loc_opt_total_full \<omega> lp nm = \<omega>\<lparr> get_total_full := upd_nm_loc_opt_total (get_total_full \<omega>) lp nm \<rparr>"
 
+fun add_to_nm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "add_to_nm_total_full \<omega> nm =
+        \<omega>\<lparr> get_total_full := add_to_nm_total (get_total_full \<omega>) nm \<rparr>"
+
 fun add_to_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) full_total_state_scheme"
   where "add_to_nm_loc_total_full \<omega> lp nm =
         \<omega>\<lparr> get_total_full := add_to_nm_loc_total (get_total_full \<omega>) lp nm \<rparr>"
@@ -197,6 +225,17 @@ definition get_valid_locs :: "'a full_total_state \<Rightarrow> heap_loc set"
 
 definition get_writeable_locs :: "'a full_total_state \<Rightarrow> heap_loc set"
   where "get_writeable_locs \<omega> = {lh |lh. get_mh_total_full \<omega> lh = 1}"
+
+
+subsection \<open>Full Total State Split\<close>
+
+fun proportional_split :: "'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> bool" where
+  "proportional_split \<omega> \<omega>\<^sub>1 \<omega>\<^sub>2 = ((\<forall>l. get_mh_total_full \<omega>\<^sub>1 l + get_mh_total_full \<omega>\<^sub>2 l = get_mh_total_full \<omega> l) \<and>
+    (\<forall>pl. get_mp_total_full \<omega>\<^sub>1 pl + get_mp_total_full \<omega>\<^sub>2 pl = get_mp_total_full \<omega> pl \<and>
+      get_nm_loc_total_full \<omega>\<^sub>1 pl = nested_mask_multiply_option (get_nm_loc_total_full \<omega> pl)
+        (get_mp_total_full \<omega>\<^sub>1 pl / get_mp_total_full \<omega> pl) \<and>
+      get_nm_loc_total_full \<omega>\<^sub>2 pl = nested_mask_multiply_option (get_nm_loc_total_full \<omega> pl)
+        (get_mp_total_full \<omega>\<^sub>2 pl / get_mp_total_full \<omega> pl)))"
 
 
 end

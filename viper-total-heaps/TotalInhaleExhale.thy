@@ -12,7 +12,7 @@ definition inhale_perm_single :: "('a full_total_state \<Rightarrow> bool) \<Rig
   where "inhale_perm_single R \<omega> lh p_opt =
     { \<omega>'| \<omega>' q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
-            get_mh_total_full \<omega> lh + q \<le> 1 \<and>  \<comment> \<open>There can be at most 1 field permission\<close>
+            \<comment> \<open>get_mh_total_full \<omega> lh + q \<le> 1 \<and>\<close>  \<comment> \<open>There can be at most 1 field permission\<close>
             \<comment> \<open>Should be removed? Included in internal consistency.\<close>
             \<omega>' = upd_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + q) \<and>
             R \<omega>'

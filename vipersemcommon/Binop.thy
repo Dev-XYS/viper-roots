@@ -262,12 +262,24 @@ lemma eval_unop_typing_agree:
   by (cases ty1; simp; safe elim!:unop_type_elim; cases op; auto intro:unop_type.intros)
 
 
-\<comment> \<open>Some other lemmas\<close>
+subsection \<open>Some Other Lemmas (Todo: move to proper sections)\<close>
 
 lemma eval_binop_perm_mult_constant:
   assumes "eval_binop t (VPerm p) Mult x = BinopNormal (VPerm r)"
   shows "eval_binop t (VPerm (q * p)) Mult x = BinopNormal (VPerm (q * r))"
   apply (cases x)
   using assms by force+
+
+lemma eval_total_non_total_same_or_fail:
+  assumes "eval_binop t a bop b = BinopNormal v"
+  shows "eval_binop t' a bop b = BinopNormal v \<or> eval_binop t' a bop b = BinopOpFailure"
+  using assms
+  apply (cases a; cases b; simp?; cases bop; force?)
+       apply (metis binop_result.distinct(5) eval_int_int.simps(6))
+      apply (metis binop_result.distinct(5) eval_int_int.simps(7))
+     apply (metis binop_result.distinct(5) eval_int_int.simps(8))
+    apply (metis binop_result.distinct(5) eval_int_perm.simps(2))
+   apply (metis binop_result.distinct(5) eval_perm_int.simps(2))
+  by (metis binop_result.distinct(5) eval_perm_perm.simps(6))
 
 end
