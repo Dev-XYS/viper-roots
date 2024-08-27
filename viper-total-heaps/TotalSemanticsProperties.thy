@@ -32,8 +32,6 @@ lemma eval_with_no_trace:
     shows "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<lparr> get_trace_total := Map.empty \<rparr>\<rangle> [\<Down>]\<^sub>t Val v"
   sorry
 
-thm red_pure_exp_total_red_pure_exps_total.induct
-
 lemma eval_with_same_store_same_hh:
   shows "ctxt, \<omega>_def\<^sub>1 \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t r\<^sub>1 \<Longrightarrow>
          ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t r\<^sub>2 \<Longrightarrow>
@@ -51,7 +49,7 @@ lemma eval_with_same_store_same_hh:
          get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2 \<Longrightarrow>
          get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2 \<Longrightarrow>
          vs\<^sub>1 = vs\<^sub>2"
-proof (induction arbitrary: v\<^sub>1 r\<^sub>2 v\<^sub>2 rule: red_pure_exp_inducts)
+proof (induction arbitrary: v\<^sub>1 r\<^sub>2 v\<^sub>2 \<omega>_def\<^sub>2 and vs\<^sub>1 rs\<^sub>2 vs\<^sub>2 rule: red_pure_exp_inducts)
   case (RedLit \<omega>_def l \<omega>\<^sub>1)
   then show ?case
     by (metis RedLit_case extended_val.inject)
@@ -62,7 +60,7 @@ next
 next
   case (RedResult \<omega> v \<omega>_def)
   then show ?case
-    by (metis eval_is_deterministic extended_val.inject red_pure_exp_total_red_pure_exps_total.RedResult)
+    by (metis eval_is_deterministic(1) extended_val.inject red_pure_exp_total_red_pure_exps_total.RedResult)
 next
   case IH: (RedBinopLazy \<omega>_def\<^sub>1 e1 \<omega>\<^sub>1 v1\<^sub>1 bop v e2)
   obtain v1\<^sub>2 where "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e1;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v1\<^sub>2"
@@ -71,11 +69,31 @@ next
     using IH.IH(2) IH.prems(4) IH.prems(5) IH.prems(6)
     by auto
   ultimately show ?case
-    using IH.hyps IH.prems(1) IH.prems(2) IH.prems(3) RedBinopLazy eval_is_deterministic
+    using IH.hyps IH.prems(1) IH.prems(2) IH.prems(3) RedBinopLazy eval_is_deterministic(1)
     by blast
 next
-  case (RedBinop \<omega>_def e1 \<omega> v1 e2 v2 bop v)
-  then show ?case sorry
+  case IH: (RedBinop \<omega>_def\<^sub>1 e1 \<omega>\<^sub>1 v1\<^sub>1 e2 v2\<^sub>1 bop v)
+  from IH(7,9) obtain v1\<^sub>2 where v1\<^sub>2: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e1;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v1\<^sub>2"
+    by (blast elim: RedBinop_case)
+  moreover hence v1_uni: "\<And>v. ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e1;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow> v = v1\<^sub>2"
+    using eval_is_deterministic(1) by blast
+  moreover from v1\<^sub>2 IH have "v1\<^sub>1 = v1\<^sub>2"
+    by (metis pure_exp_pred.elims(2) pure_exp_pred_rec.simps(4))
+  ultimately obtain v2\<^sub>2 where v2\<^sub>2: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e2;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v2\<^sub>2"
+    by (metis IH.hyps(1) IH.prems(1) IH.prems(3) RedBinop_case option.distinct(1))
+  hence "v2\<^sub>1 = v2\<^sub>2"
+    using IH(10) IH(11) IH(12) IH(4)
+    by auto
+
+  have "eval_binop (Option.is_none \<omega>_def\<^sub>2) v1\<^sub>2 bop v2\<^sub>2 \<noteq> BinopOpFailure"
+    using IH.hyps(1) IH.prems(1) IH.prems(3) RedBinopOpFailure \<open>v1\<^sub>1 = v1\<^sub>2\<close> eval_is_deterministic(1) extended_val.discI v1\<^sub>2 v2\<^sub>2
+    by blast
+  hence "eval_binop (Option.is_none \<omega>_def\<^sub>2) v1\<^sub>2 bop v2\<^sub>2 = BinopNormal v"
+    using IH(6) eval_total_non_total_not_fail_same \<open>v1\<^sub>1 = v1\<^sub>2\<close> \<open>v2\<^sub>1 = v2\<^sub>2\<close>
+    by blast
+  then show ?case
+    using IH.hyps(1) IH.prems(1) IH.prems(2) IH.prems(3) RedBinop \<open>v1\<^sub>1 = v1\<^sub>2\<close> eval_is_deterministic v1\<^sub>2 v2\<^sub>2
+    by blast
 next
   case (RedBinopRightFailure \<omega>_def e1 \<omega> v1 e2 bop)
   then show ?case
@@ -85,52 +103,156 @@ next
   then show ?case
     by fastforce
 next
-  case (RedUnop \<omega>_def e \<omega> v unop v')
-  then show ?case sorry
+  case IH: (RedUnop \<omega>_def\<^sub>1 e \<omega>\<^sub>1 v unop v')
+  then obtain v\<^sub>2 where v\<^sub>2: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v\<^sub>2"
+    by (blast elim: RedUnop_case)
+  hence v_uni: "\<And>v. ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow> v = v\<^sub>2"
+    using eval_is_deterministic
+    by blast
+  have "v = v\<^sub>2"
+    using IH(2)[OF v\<^sub>2, of v v\<^sub>2] IH.prems(4) IH.prems(5) IH.prems(6)
+    by auto
+  then show ?case
+    using IH.hyps IH.prems(1) IH.prems(2) IH.prems(3) RedUnop eval_is_deterministic v\<^sub>2
+    by blast
 next
-  case (RedCondExpTrue \<omega>_def e1 \<omega> e2 r e3)
-  then show ?case sorry
+  case IH: (RedCondExpTrue \<omega>_def e1 \<omega> e2 r e3)
+  then obtain v1\<^sub>2 where v1\<^sub>2: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e1;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v1\<^sub>2"
+    by (blast elim: RedCondExp_case)
+  with IH have "v1\<^sub>2 = VBool True"
+    by fastforce
+
+  have "\<And>v. ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e1;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow> v = VBool True"
+    using eval_is_deterministic v1\<^sub>2 \<open>v1\<^sub>2 = VBool True\<close>
+    by blast
+  then obtain v2\<^sub>2 where v2\<^sub>2: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e2;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v2\<^sub>2"
+    using IH.prems(1) IH.prems(3) RedCondExp_case
+    by blast
+  then show ?case
+    by (metis IH.IH(4) IH.prems(1) IH.prems(2) IH.prems(3) IH.prems(4) IH.prems(5) IH.prems(6) RedCondExpTrue \<open>\<And>thesis. (\<And>v1\<^sub>2. ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e1;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v1\<^sub>2 \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close> \<open>\<And>v. ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e1;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow> v = VBool True\<close> eval_is_deterministic(1) pure_exp_pred.elims(1) pure_exp_pred_rec.simps(5))
 next
-  case (RedCondExpFalse \<omega>_def e1 \<omega> e3 r e2)
-  then show ?case sorry
+  case IH: (RedCondExpFalse \<omega>_def e1 \<omega> e3 r e2)
+  then obtain v1\<^sub>2 where v1\<^sub>2: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e1;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v1\<^sub>2"
+    by (blast elim: RedCondExp_case)
+  with IH have "v1\<^sub>2 = VBool False"
+    by fastforce
+
+  have "\<And>v. ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e1;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow> v = VBool False"
+    using eval_is_deterministic v1\<^sub>2 \<open>v1\<^sub>2 = VBool False\<close>
+    by blast
+  then obtain v3\<^sub>2 where v3\<^sub>2: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e3;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v3\<^sub>2"
+    using IH.prems(1) IH.prems(3) RedCondExp_case
+    by blast
+  then show ?case
+    by (metis IH.IH(4) IH.prems(1) IH.prems(2) IH.prems(3) IH.prems(4) IH.prems(5) IH.prems(6) RedCondExpFalse \<open>\<And>thesis. (\<And>v1\<^sub>2. ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e1;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v1\<^sub>2 \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close> \<open>\<And>v. ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e1;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow> v = VBool False\<close> eval_is_deterministic(1) pure_exp_pred.elims(1) pure_exp_pred_rec.simps(5))
 next
   case (RedOld \<omega> l \<phi> \<omega>_def' \<omega>_def e v)
-  then show ?case sorry
+  then show ?case
+    by auto
 next
   case (RedOldFailure \<omega> l \<omega>_def e)
   then show ?case
-    by fastforce
+    by blast
 next
-  case (RedField \<omega>_def e \<omega> a f v)
-  then show ?case sorry
+  case IH: (RedField \<omega>_def e \<omega> a f v)
+  then obtain r\<^sub>2 where r\<^sub>2: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val r\<^sub>2"
+    by (blast elim: RedField_case)
+  with IH have "r\<^sub>2 = VRef (Address a)"
+    by fastforce
+  then show ?case
+    by (metis IH.hyps IH.prems(1) IH.prems(2) IH.prems(3) IH.prems(5) RedFieldNormal_case eval_is_deterministic(1) extended_val.inject extended_val.simps(3) r\<^sub>2 ref.sel val.inject(4))
 next
   case (RedFieldNullFailure \<omega>_def e \<omega> f)
   then show ?case
-    by fastforce
+    by force
 next
   case (RedPermNull \<omega>_def e \<omega> f)
-  then show ?case sorry
+  then show ?case
+    by auto
 next
   case (RedPerm \<omega>_def e \<omega> a f v)
-  then show ?case sorry
+  then show ?case
+    by auto
 next
-  case (RedUnfolding ubody \<omega> v p es)
-  then show ?case sorry
+  case IH: (RedUnfolding ubody \<omega> v p es)
+  show ?case
+  proof (cases \<omega>_def\<^sub>2)
+    case None
+    then obtain v\<^sub>2 where v\<^sub>2: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>ubody;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v\<^sub>2"
+      using IH
+      by (blast elim: RedUnfoldingBoth_case)
+    with IH have "v\<^sub>2 = v\<^sub>1"
+      by fastforce
+    then show ?thesis
+      by (metis IH.prems(1) IH.prems(3) None RedUnfolding_case eval_is_deterministic(1) extended_val.inject v\<^sub>2)
+  next
+    case (Some \<omega>\<^sub>0)
+    then obtain v\<^sub>2 \<omega>_def\<^sub>2' where v\<^sub>2: "ctxt, \<omega>_def\<^sub>2' \<turnstile> \<langle>ubody;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v\<^sub>2"
+      using IH
+      by (blast elim: RedUnfoldingBoth_case)
+    with IH have "v\<^sub>2 = v\<^sub>1"
+      by fastforce
+    then show ?thesis
+      by (metis IH.prems(1) IH.prems(3) RedUnfolding_case eval_is_deterministic(1) eval_with_None extended_val.inject option.exhaust v\<^sub>2)
+  qed
 next
   case (RedUnfoldingDefNoPred \<omega>_def es \<omega> vs pred_id pred_decl p ubody)
   then show ?case
     by fastforce
 next
-  case (RedUnfoldingDef \<omega>_def es \<omega> vs perm pred_id shift_up p nm' \<omega>'_def ubody v)
-  then show ?case sorry
+  case IH: (RedUnfoldingDef \<omega>_def es \<omega> vs perm pred_id shift_up p nm' \<omega>'_def ubody v)
+  show ?case
+  proof (cases \<omega>_def\<^sub>2)
+    case None
+    then obtain v\<^sub>2 where v\<^sub>2: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>ubody;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v\<^sub>2"
+      using IH
+      by (blast elim: RedUnfoldingBoth_case)
+    with IH have "v\<^sub>2 = v\<^sub>1"
+      by fastforce
+    then show ?thesis
+      using IH.prems(1) IH.prems(3) None RedUnfolding eval_is_deterministic(1) v\<^sub>2
+      by blast
+  next
+    case (Some \<omega>\<^sub>0)
+    then obtain v\<^sub>2 \<omega>_def\<^sub>2' where v\<^sub>2: "ctxt, \<omega>_def\<^sub>2' \<turnstile> \<langle>ubody;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v\<^sub>2"
+      using IH
+      by (blast elim: RedUnfoldingBoth_case)
+    with IH have "v\<^sub>2 = v\<^sub>1"
+      by fastforce
+    then show ?thesis
+      by (metis IH.prems(1) IH.prems(3) RedUnfolding_case eval_is_deterministic(1) eval_with_None extended_val.inject option.exhaust_sel v\<^sub>2)
+  qed
 next
   case (RedSubFailure e' \<omega>_def \<omega>)
   then show ?case
     by fastforce
 next
-  case (RedExpListCons \<omega>_def\<^sub>1 e \<omega>\<^sub>1 v\<^sub>1 es rs\<^sub>1 rs\<^sub>1')
-  then show ?case
-    sorry
+  case IH: (RedExpListCons \<omega>_def\<^sub>1 e \<omega>\<^sub>1 v\<^sub>1 es rs'\<^sub>1 rs\<^sub>1)
+  then obtain v\<^sub>2 where v\<^sub>2: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v\<^sub>2"
+    by (blast elim: RedExpList_case)
+  with IH have "v\<^sub>2 = v\<^sub>1"
+    by fastforce
+  from IH obtain vs'\<^sub>2 where vs'\<^sub>2: "red_pure_exps_total ctxt \<omega>_def\<^sub>2 es \<omega>\<^sub>2 (Some vs'\<^sub>2)"
+    by (smt (verit, best) RedExpListCons_case map_option_eq_Some)
+  moreover have "list_all supported_pred_expr es"
+    using IH.prems(4)
+    by fastforce
+  moreover obtain vs'\<^sub>1 where "rs'\<^sub>1 = Some vs'\<^sub>1"
+    using IH.hyps IH.prems(2)
+    by blast
+  ultimately have "vs'\<^sub>2 = vs'\<^sub>1"
+    using IH.IH(4) IH.prems(5) IH.prems(6)
+    by auto
+  moreover have "\<And>v. ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t v \<Longrightarrow> v = Val v\<^sub>2"
+    by (simp add: eval_is_deterministic v\<^sub>2)
+  moreover have "\<And>v. red_pure_exps_total ctxt \<omega>_def\<^sub>2 es \<omega>\<^sub>2 v \<Longrightarrow> v = Some vs'\<^sub>2"
+    using eval_is_deterministic(2) vs'\<^sub>2
+    by blast
+  moreover hence "rs\<^sub>2 = map_option ((#) v\<^sub>2) (Some vs'\<^sub>2)"
+    by (metis IH.prems(1) IH.prems(3) RedExpListCons_case calculation(2) extended_val.sel)
+  ultimately show ?case
+    using IH.hyps IH.prems(2) IH.prems(3) \<open>rs'\<^sub>1 = Some vs'\<^sub>1\<close> \<open>v\<^sub>2 = v\<^sub>1\<close>
+    by blast
 next
   case (RedExpListFailure \<omega>_def e \<omega> es)
   then show ?case
@@ -689,7 +811,7 @@ lemma inhale_simulates_unfold:
       and ExtCons: "consistent_external ctxt \<phi>"
       and PredDecl: "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
       and PredBody: "ViperLang.predicate_decl.body pdecl = Some pbody"
-      and SupPred: "supported_pred_body pbody"
+      and SupPred: "supported_pred_body pbody" \<comment> \<open>change name\<close>
       and SelfFraming: "\<And>q. assertion_self_framing_store ctxt (\<lambda>_. True) (syntactic_mult q pbody) (nth_option vs)"
       and "\<phi>\<^sub>d = rm_from_mp_loc_total (mult_rm_nm_loc_total \<phi> (pid,vs) p) (pid,vs) p"
     shows "red_inhale ctxt (\<lambda>_. True) (syntactic_mult (Rep_preal p) pbody)

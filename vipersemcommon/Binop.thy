@@ -282,4 +282,11 @@ lemma eval_total_non_total_same_or_fail:
    apply (metis binop_result.distinct(5) eval_perm_int.simps(2))
   by (metis binop_result.distinct(5) eval_perm_perm.simps(6))
 
+lemma eval_total_non_total_not_fail_same:
+  assumes "eval_binop t a bop b = BinopNormal v"
+      and "eval_binop t' a bop b \<noteq> BinopOpFailure"
+    shows "eval_binop t' a bop b = BinopNormal v"
+  using assms(1) assms(2) eval_total_non_total_same_or_fail
+  by blast
+
 end

@@ -141,7 +141,7 @@ inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_st
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>_def) es \<omega> (Some vs);
      perm = get_mp_total_full \<omega>_def (pred_id,vs);
      shift_up p vs (perm / Abs_preal 2) (get_nm_total_full \<omega>_def) nm';
-     \<omega>'_def = \<omega>_def \<lparr> get_total_full := get_total_full \<omega>_def \<lparr> get_nm_total := nm' \<rparr> \<rparr>;
+     \<omega>'_def = upd_nm_total_full \<omega>_def nm';
      ctxt, (Some \<omega>'_def) \<turnstile> \<langle>ubody; \<omega>\<rangle> [\<Down>]\<^sub>t v \<rbrakk> \<Longrightarrow>
    ctxt, (Some \<omega>_def) \<turnstile> \<langle>Unfolding p es ubody ; \<omega>\<rangle> [\<Down>]\<^sub>t v"
 
@@ -176,10 +176,17 @@ inductive_cases RedVar_case: "ctxt, \<omega>_def \<turnstile> \<langle>Var n; \<
 inductive_cases RedOld_case: "ctxt, \<omega>_def \<turnstile> \<langle>RedOld \<omega> l \<phi> \<omega>_def' \<omega>_def e v; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
 inductive_cases RedUnop_case: "ctxt, \<omega>_def \<turnstile> \<langle>Unop unop e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v'"
 inductive_cases RedBinop_case: "ctxt, \<omega>_def \<turnstile> \<langle>Binop e1 bop e2; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+inductive_cases RedCondExp_case: "ctxt, \<omega>_def \<turnstile> \<langle>CondExp e1 e2 e3; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+inductive_cases RedField_case: "ctxt, \<omega>_def \<turnstile> \<langle>FieldAcc e f; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
 inductive_cases RedFunApp_case: "ctxt, \<omega>_def \<turnstile> \<langle>FunApp fname es; \<omega>\<rangle> [\<Down>]\<^sub>t res"
 inductive_cases RedPerm_case: "ctxt, \<omega>_def \<turnstile> \<langle>Perm e f; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+inductive_cases RedUnfolding_case: "ctxt, None \<turnstile> \<langle>Unfolding p es ubody; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+inductive_cases RedUnfoldingDef_case: "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>Unfolding p es ubody; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+inductive_cases RedUnfoldingBoth_case: "ctxt, \<omega>_def \<turnstile> \<langle>Unfolding p es ubody; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
 
 inductive_cases RedExpList_case: "red_pure_exps_total ctxt LH es \<omega> (Some vs)"
+inductive_cases RedExpListCons_case: "red_pure_exps_total ctxt LH (e#es) \<omega> (Some vs)"
+inductive_cases RedExpListConsGeneral_case: "red_pure_exps_total ctxt LH (e#es) \<omega> res"
 inductive_cases RedExpListFailure_case: "red_pure_exps_total ctxt LH es \<omega> None"
 inductive_cases RedExpListGeneral_case: "red_pure_exps_total ctxt LH es \<omega> res"
 

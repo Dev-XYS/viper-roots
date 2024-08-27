@@ -1,17 +1,11 @@
 section \<open>Properties of External Consistency\<close>
 
 theory TotalExtConsProps
-  imports TotalExternalConsistency TotalStateProperties
+  imports TotalExternalConsistency TotalStateProperties TotalSemProperties
 begin
 
 
 subsection \<open>Helper Lemma (Todo: move to proper places)\<close>
-
-lemma eval_is_deterministic:
-  assumes "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t v\<^sub>1"
-      and "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t v\<^sub>2"
-    shows "v\<^sub>1 = v\<^sub>2"
-  sorry
 
 lemma total_state_update_nm_read:
   shows "get_nm_total (\<phi>\<lparr> get_nm_total := nm \<rparr>) = nm"

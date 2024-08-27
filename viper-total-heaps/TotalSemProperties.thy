@@ -1,3 +1,8 @@
+section \<open>Basic Properties of THSem\<close>
+
+text \<open>This file contains lemmas that can be proved using only the semantics.
+  More complex lemmas are contained in \<open>TotalSemanticsProperties.thy\<close>.\<close>
+
 theory TotalSemProperties
   imports TotalSemantics
 begin
@@ -160,6 +165,15 @@ lemma red_exp_condexp_sub_failure:
   apply (rule RedSubFailure)
   using assms
   by (simp add: RedExpListFailure assms)+
+
+lemma eval_is_deterministic:
+  shows "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r\<^sub>1 \<Longrightarrow>
+         ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r\<^sub>2 \<Longrightarrow>
+         r\<^sub>1 = r\<^sub>2" and
+        "red_pure_exps_total ctxt \<omega>_def es \<omega> rs\<^sub>1 \<Longrightarrow>
+         red_pure_exps_total ctxt \<omega>_def es \<omega> rs\<^sub>2 \<Longrightarrow>
+         rs\<^sub>1 = rs\<^sub>2"
+  sorry
 
 subsubsection \<open>Main lemmas\<close>
 
