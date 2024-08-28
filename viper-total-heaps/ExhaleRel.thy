@@ -146,7 +146,7 @@ lemma framing_exhI:
 lemma framing_exhI_state_rel:
   assumes StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega> \<omega> ns"
       and ConsistencyEnabled: "consistent_state_rel_opt (state_rel_opt Tr)"      
-      and Framed: "assertion_framing_state ctxt_vpr StateCons A (update_m_total_full \<omega> zero_mask zero_mask)"      
+      and Framed: "assertion_framing_state ctxt_vpr StateCons A (upd_nm_total_full \<omega> empty_nm)"
     shows "framing_exh ctxt_vpr StateCons A \<omega> \<omega>"
 proof (rule framing_exhI[OF _ _ Framed])
   show "StateCons \<omega>"
@@ -157,7 +157,7 @@ next
     using state_rel_wf_mask_simple[OF StateRel]
     by blast
 next
-  show "update_m_total_full \<omega> zero_mask zero_mask \<oplus> \<omega> = Some \<omega>"
+  show "upd_nm_total_full \<omega> empty_nm \<oplus> \<omega> = Some \<omega>"
     by (rule plus_full_total_state_zero_mask) simp_all
 next
   show "\<omega> \<succeq> \<omega>"

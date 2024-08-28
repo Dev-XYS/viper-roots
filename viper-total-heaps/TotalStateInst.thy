@@ -1,7 +1,7 @@
 section \<open>Total State Instantiations\<close>
 
 theory TotalStateInst
-  imports TotalStateUtil TotalStateProperties
+  imports HOL.Groups TotalStateUtil
 begin
 
 
@@ -10,24 +10,35 @@ subsection \<open>Order Instantiation\<close>
 lemma zero_mask_less_eq_mask: "zero_mask \<le> m"
   unfolding zero_mask_def le_fun_def
   by (simp add: all_pos)
-  
-(*
+
+instantiation nested_mask :: (type) order
+begin
+
+definition less_eq_nested_mask :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool"
+  where "nm1 \<le> nm2 \<equiv> nested_mask_le nm1 nm2"
+
+definition less_nested_mask :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool"
+  where "nm1 < nm2 \<equiv> nested_mask_le nm1 nm2 \<and> nm1 \<noteq> nm2"
+
+instance
+  sorry
+
+end
+
+
 instantiation total_state_ext :: (type,type) order
 begin
 
 definition less_eq_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a,'b) total_state_ext \<Rightarrow> bool"
   where "\<phi>1 \<le> \<phi>2 \<equiv> 
          get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and>
-         (get_mh_total \<phi>1) \<le> (get_mh_total \<phi>2) \<and>
-         (get_mp_total \<phi>1) \<le> (get_mp_total \<phi>2) \<and>
+         get_nm_total \<phi>1 \<le> get_nm_total \<phi>2 \<and>
          total_state.more \<phi>1 = total_state.more \<phi>2"
 
 definition less_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a,'b) total_state_ext \<Rightarrow> bool"
   where "\<phi>1 < \<phi>2 \<equiv> 
          get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and>
-         get_hp_total \<phi>1 = get_hp_total \<phi>2 \<and>
-         ( ((get_mh_total \<phi>1) < (get_mh_total \<phi>2) \<and> (get_mp_total \<phi>1) \<le> (get_mp_total \<phi>2)) \<or>
-           ((get_mh_total \<phi>1) \<le> (get_mh_total \<phi>2) \<and> (get_mp_total \<phi>1) < (get_mp_total \<phi>2))) \<and>
+         get_nm_total \<phi>1 < get_nm_total \<phi>2 \<and>
          total_state.more \<phi>1 = total_state.more \<phi>2"
 instance
 proof
@@ -109,7 +120,7 @@ proof
         unfolding less_full_total_state_ext_def
         by blast
       thus "\<not> y \<le> x"
-        by (metis TotalViperState.less_eq_full_total_state_ext_def leD)
+        by (metis less_eq_full_total_state_ext_def leD)
     qed
   next
     assume "x \<le> y \<and> \<not> y \<le> x"
@@ -170,11 +181,17 @@ qed
 
 end
 
+
+lemma less_eq_nested_maskD: "nm1 \<le> nm2 \<Longrightarrow>
+         get_mh_nm nm1 \<le> get_mh_nm nm2 \<and>
+         get_mp_nm nm1 \<le> get_mp_nm nm2"
+  unfolding less_eq_nested_mask_def
+  apply (cases nm1, cases nm2)
+  by simp
+
 lemma less_eq_total_stateI:
   " get_hh_total \<phi>1 = get_hh_total \<phi>2 \<Longrightarrow>
-    get_hp_total \<phi>1 = get_hp_total \<phi>2 \<Longrightarrow>
-     (get_mh_total \<phi>1) \<le> (get_mh_total \<phi>2) \<Longrightarrow>
-     (get_mp_total \<phi>1) \<le> (get_mp_total \<phi>2) \<Longrightarrow>
+     get_nm_total \<phi>1 \<le> get_nm_total \<phi>2 \<Longrightarrow>
     total_state.more \<phi>1 = total_state.more \<phi>2 \<Longrightarrow>
     \<phi>1 \<le> \<phi>2"
   unfolding less_eq_total_state_ext_def
@@ -182,8 +199,7 @@ lemma less_eq_total_stateI:
 
 lemma less_eq_total_stateD: "\<phi>1 \<le> \<phi>2 \<Longrightarrow>
          get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and>
-         get_hp_total \<phi>1 = get_hp_total \<phi>2 \<and>
-         ((get_mh_total \<phi>1) \<le> (get_mh_total \<phi>2) \<and> (get_mp_total \<phi>1) \<le> (get_mp_total \<phi>2)) \<and>
+         get_nm_total \<phi>1 \<le> get_nm_total \<phi>2 \<and>
          total_state.more \<phi>1 = total_state.more \<phi>2"
   unfolding less_eq_total_state_ext_def
   by blast
@@ -191,9 +207,7 @@ lemma less_eq_total_stateD: "\<phi>1 \<le> \<phi>2 \<Longrightarrow>
 lemma less_eq_total_stateE:
   assumes "\<phi>1 \<le> \<phi>2" and
           "get_hh_total \<phi>1 = get_hh_total \<phi>2 \<Longrightarrow>
-           get_hp_total \<phi>1 = get_hp_total \<phi>2 \<Longrightarrow>
-           (get_mh_total \<phi>1) \<le> (get_mh_total \<phi>2) \<Longrightarrow>
-           (get_mp_total \<phi>1) \<le> (get_mp_total \<phi>2) \<Longrightarrow>
+           get_nm_total \<phi>1 \<le> get_nm_total \<phi>2 \<Longrightarrow>
            total_state.more \<phi>1 = total_state.more \<phi>2 \<Longrightarrow> P"
         shows P
   using assms 
@@ -243,51 +257,54 @@ lemma less_eq_full_total_stateE:
   using assms
   unfolding less_eq_full_total_state_ext_def
   by blast
-*)
 
 
 subsection \<open>Ordering lemmas\<close>
 
-(*
 lemma less_eq_full_total_stateD_2:
   assumes "\<omega>1 \<le> \<omega>2"
-  shows "get_h_total_full \<omega>1 = get_h_total_full \<omega>2 \<and>
-         get_mh_total_full \<omega>1 \<le> get_mh_total_full \<omega>2 \<and>
-         get_mp_total_full \<omega>1 \<le> get_mp_total_full \<omega>2"
+  shows "get_hh_total_full \<omega>1 = get_hh_total_full \<omega>2 \<and>
+         get_nm_total_full \<omega>1 \<le> get_nm_total_full \<omega>2"
   using assms
   by (fastforce dest: less_eq_full_total_stateD less_eq_total_stateD)
 
-lemma update_mh_loc_total_mono:
-  assumes "\<omega>1 \<le> \<omega>2" and "p1 \<le> p2"
-  shows "update_mh_loc_total \<omega>1 l p1 \<le> update_mh_loc_total \<omega>2 l p2"
-proof -
-  have *: "(get_mh_total \<omega>1)(l := p1) \<le> (get_mh_total \<omega>2)(l := p2)"
-    using assms
-    by (simp add: le_funD le_funI less_eq_total_stateD)
+lemma update_mh_loc_nm_mono:
+  assumes "nm1 \<le> nm2" and "p1 \<le> p2"
+  shows "upd_mh_loc_nm nm1 l p1 \<le> upd_mh_loc_nm nm2 l p2"
+  apply (cases nm1, cases nm2)
+  unfolding less_eq_nested_mask_def
+  apply simp
+  by (smt (verit, ccfv_SIG) assms(1) assms(2) fun_upd_apply le_funD le_funI less_eq_nested_mask_def nested_mask_le.elims(2) nested_mask_le_opt.simps(3))
 
-  show ?thesis
+lemma update_mp_loc_nm_mono:
+  assumes "nm1 \<le> nm2" and "p1 \<le> p2"
+  shows "upd_mp_loc_nm nm1 lp p1 \<le> upd_mp_loc_nm nm2 lp p2"
+  apply (cases nm1, cases nm2)
+  unfolding less_eq_nested_mask_def
+  apply simp
+  by (smt (verit, ccfv_SIG) assms(1) assms(2) fun_upd_apply le_funD le_funI less_eq_nested_mask_def nested_mask_le.elims(2) nested_mask_le_opt.simps(3))
+
+lemma update_mh_loc_total_mono:
+  assumes "\<phi>1 \<le> \<phi>2" and "p1 \<le> p2"
+  shows "upd_mh_loc_total \<phi>1 l p1 \<le> upd_mh_loc_total \<phi>2 l p2"
+  apply (rule less_eq_total_stateI)
     apply (insert assms)
-    by (fastforce intro: less_eq_total_stateI dest: less_eq_total_stateD simp: * )
-qed
+    apply (auto dest: less_eq_total_stateD)
+  by (simp add: less_eq_total_stateD update_mh_loc_nm_mono)
 
 lemma update_mp_loc_total_mono:
   assumes "\<omega>1 \<le> \<omega>2" and "p1 \<le> p2"
-  shows "update_mp_loc_total \<omega>1 l p1 \<le> update_mp_loc_total \<omega>2 l p2"
-proof -
-  have *: "(get_mp_total \<omega>1)(l := p1) \<le> (get_mp_total \<omega>2)(l := p2)"
-    using assms
-    by (simp add: le_funD le_funI less_eq_total_stateD)
-
-  show ?thesis
+  shows "upd_mp_loc_total \<omega>1 l p1 \<le> upd_mp_loc_total \<omega>2 l p2"
+  apply (rule less_eq_total_stateI)
     apply (insert assms)
-    by (fastforce intro: less_eq_total_stateI dest: less_eq_total_stateD simp: * )
-qed
+    apply (auto dest: less_eq_total_stateD)
+  by (simp add: less_eq_total_stateD update_mp_loc_nm_mono)
 
 lemma update_mh_loc_total_full_mono:
   assumes "\<omega>1 \<le> \<omega>2" and "p1 \<le> p2"
-  shows "update_mh_loc_total_full \<omega>1 l p1 \<le> update_mh_loc_total_full \<omega>2 l p2"
+  shows "upd_mh_loc_total_full \<omega>1 l p1 \<le> upd_mh_loc_total_full \<omega>2 l p2"
 proof -
-  have *: "update_mh_loc_total (get_total_full \<omega>1) l p1 \<le> update_mh_loc_total (get_total_full \<omega>2) l p2"
+  have *: "upd_mh_loc_total (get_total_full \<omega>1) l p1 \<le> upd_mh_loc_total (get_total_full \<omega>2) l p2"
     using assms update_mh_loc_total_mono less_eq_full_total_state_ext_def
     by blast
 
@@ -299,9 +316,9 @@ qed
 
 lemma update_mp_loc_total_full_mono:
   assumes "\<omega>1 \<le> \<omega>2" and "p1 \<le> p2"
-  shows "update_mp_loc_total_full \<omega>1 l p1 \<le> update_mp_loc_total_full \<omega>2 l p2"
+  shows "upd_mp_loc_total_full \<omega>1 l p1 \<le> upd_mp_loc_total_full \<omega>2 l p2"
 proof -
-  have *: "update_mp_loc_total (get_total_full \<omega>1) l p1 \<le> update_mp_loc_total (get_total_full \<omega>2) l p2"
+  have *: "upd_mp_loc_total (get_total_full \<omega>1) l p1 \<le> upd_mp_loc_total (get_total_full \<omega>2) l p2"
     using assms update_mp_loc_total_mono less_eq_full_total_state_ext_def
     by blast
 
@@ -317,7 +334,7 @@ proof
   fix x
   show "m1 x \<le> (m1 x) + (m2 x)"
     by (simp add: padd_pgte)
-qed *)
+qed
 
 
 subsection \<open>Partial Commutative Monoid Instantiation\<close>
@@ -325,6 +342,31 @@ subsection \<open>Partial Commutative Monoid Instantiation\<close>
 lemma plus_masks_defined: "(m1 :: ('a, preal) abstract_mask) ## m2"
   unfolding defined_def
   by (simp add: SepAlgebra.plus_preal_def compatible_funI plus_fun_def)
+
+
+(*
+instantiation nested_mask :: (type) pcm
+begin
+
+definition plus_nested_mask :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask option"
+  where "nm1 \<oplus> nm2 = Some (nested_mask_merge nm1 nm2)"
+
+instance
+  sorry
+
+end
+*)
+
+instantiation nested_mask :: (type) ab_semigroup_add
+begin
+
+definition plus_nested_mask :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
+  where "plus_nested_mask = nested_mask_merge"
+
+instance
+  sorry
+
+end
 
 
 instantiation total_state_ext :: (type,type) pcm
@@ -335,7 +377,7 @@ definition plus_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a,'b
               (let (mh1, mp1, mh2, mp2) = (get_mh_total \<phi>1, get_mp_total \<phi>1, get_mh_total \<phi>2, get_mp_total \<phi>2) in
                    if get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and>
                       total_state.more \<phi>1 = total_state.more \<phi>2
-                   then Some (upd_m_total \<phi>1 (the (mh1 \<oplus> mh2), the (mp1 \<oplus> mp2)))
+                   then Some (\<phi>1\<lparr> get_nm_total := get_nm_total \<phi>1 + get_nm_total \<phi>2 \<rparr>)
                    else None)"
 
 instance proof
@@ -374,8 +416,7 @@ instance proof
 
   show "a \<oplus> b = b \<oplus> a"
     unfolding plus_total_state_ext_def
-    sorry
-    (* by (simp add: commutative) *)
+    by (simp add: add.commute)
 
   show "a \<oplus> b = Some ab \<and> b \<oplus> c = Some bc \<Longrightarrow> ab \<oplus> c = a \<oplus> bc"
   proof -
@@ -390,8 +431,9 @@ instance proof
     assume "a \<oplus> b = Some ab \<and> b \<oplus> c = Some bc"
     thus ?thesis
       unfolding plus_total_state_ext_def
-      sorry
-    (* by (clarsimp simp: * ** MEqAB MEqBC split: if_split if_split_asm) *)
+      apply simp
+      by (metis (no_types, lifting) add.assoc option.distinct(1) option.inject total_state.ext_inject total_state.surjective total_state.update_convs(2))
+      \<comment> \<open>Todo: Needs a better proof.\<close>
   qed
 
   show "a \<oplus> b = Some ab \<and> b \<oplus> c = None \<Longrightarrow> ab \<oplus> c = None"

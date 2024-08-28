@@ -1,7 +1,7 @@
 section \<open>Basic State Properties and Instantiations\<close>
 
 theory TotalStateProperties
-  imports TotalStateUtil
+  imports TotalStateUtil TotalStateInst
 begin
 
 
@@ -166,47 +166,71 @@ subsection \<open>Simplification Lemmas on State Update\<close>
 
 subsubsection \<open>Nested Masks\<close>
 
-lemma upd_mh_nm_mp_rel [simp]:
+lemma upd_mh_nm__mp_rel [simp]:
   shows "get_mp_nm (upd_mh_nm nm mh) = get_mp_nm nm"
   by (cases nm, fastforce)
 
-lemma upd_mh_nm_mh_rel [simp]:
+lemma upd_mh_nm__mh_rel [simp]:
   shows "get_mh_nm (upd_mh_nm nm mh) = mh"
   by (cases nm, fastforce)
 
-lemma upd_mh_nm_fnm_rel [simp]:
+lemma upd_mh_loc_nm__mh_rel [simp]:
+  shows "get_mh_nm (upd_mh_loc_nm nm l p) = (get_mh_nm nm)( l := p )"
+  by (cases nm, fastforce)
+
+lemma upd_mh_loc_nm__mp_rel [simp]:
+  shows "get_mp_nm (upd_mh_loc_nm nm l p) = get_mp_nm nm"
+  by (cases nm, fastforce)
+
+lemma upd_mh_loc_nm__fnm_rel [simp]:
+  shows "get_fnm_nm (upd_mh_loc_nm nm l p) = get_fnm_nm nm"
+  by (cases nm, fastforce)
+
+lemma upd_mh_nm__fnm_rel [simp]:
   shows "get_fnm_nm (upd_mh_nm nm mh) = get_fnm_nm nm"
   by (cases nm, fastforce)
 
-lemma upd_mp_nm_mh_rel [simp]:
+lemma upd_mp_nm__mh_rel [simp]:
   shows "get_mh_nm (upd_mp_nm nm mp) = get_mh_nm nm"
   by (cases nm, fastforce)
 
-lemma upd_mp_nm_mp_rel [simp]:
+lemma upd_mp_nm__mp_rel [simp]:
   shows "get_mp_nm (upd_mp_nm nm mp) = mp"
   by (cases nm, fastforce)
 
-lemma upd_mp_nm_fnm_rel [simp]:
+lemma upd_mp_nm__fnm_rel [simp]:
   shows "get_fnm_nm (upd_mp_nm nm mp) = get_fnm_nm nm"
   by (cases nm, fastforce)
 
-lemma upd_fnm_nm_mh_rel [simp]:
+lemma upd_mp_loc_nm__mh_rel [simp]:
+  shows "get_mh_nm (upd_mp_loc_nm nm lp p) = get_mh_nm nm"
+  by (cases nm, fastforce)
+
+lemma upd_mp_loc_nm__mp_rel [simp]:
+  shows "get_mp_nm (upd_mp_loc_nm nm lp p) = (get_mp_nm nm)( lp := p )"
+  by (cases nm, fastforce)
+
+lemma upd_mp_loc_nm__fnm_rel [simp]:
+  shows "get_fnm_nm (upd_mp_loc_nm nm lp p) = get_fnm_nm nm"
+  by (cases nm, fastforce)
+
+lemma upd_fnm_nm__mh_rel [simp]:
   shows "get_mh_nm (upd_fnm_nm nm fnm) = get_mh_nm nm"
   by (cases nm, fastforce)
 
-lemma upd_fnm_nm_mp_rel [simp]:
+lemma upd_fnm_nm__mp_rel [simp]:
   shows "get_mp_nm (upd_fnm_nm nm fnm) = get_mp_nm nm"
   by (cases nm, fastforce)
 
-lemma upd_fnm_nm_fnm_rel [simp]:
+lemma upd_fnm_nm__fnm_rel [simp]:
   shows "get_fnm_nm (upd_fnm_nm nm fnm) = fnm"
   by (cases nm, fastforce)
 
-lemma upd_nm_loc_opt_nm_mh_rel [simp]:
+lemma upd_nm_loc_opt_nm__mh_rel [simp]:
   shows "get_mh_nm (upd_nm_loc_opt_nm nm lp nm') = get_mh_nm nm"
   by (cases nm, fastforce)
 
-lemma upd_nm_loc_opt_nm_mp_rel [simp]:
+lemma upd_nm_loc_opt_nm__mp_rel [simp]:
   shows "get_mp_nm (upd_nm_loc_opt_nm nm lp nm') = get_mp_nm nm"
   by (cases nm, fastforce)
 
@@ -224,9 +248,9 @@ lemma rm_from_mp_loc_total__nm_rel [simp]:
 
 subsubsection \<open>Full Total States\<close>
 
-lemma upd_mh_loc_total_full_mh_rel:
+(* lemma upd_mh_loc_total_full_mh_rel:
   shows "get_mh_total_full (upd_mh_loc_total_full \<omega> l p) = (get_mh_total_full \<omega>)( l := p )"
-  using upd_mh_nm_mh_rel by auto
+  by simp
 
 lemma upd_mh_loc_total_full_mp_eq:
   shows "get_mp_total_full \<omega> = get_mp_total_full (upd_mh_loc_total_full \<omega> l p)"
@@ -238,7 +262,7 @@ lemma upd_mp_loc_total_full_mh_eq:
 
 lemma upd_mp_loc_total_full_mp_rel:
   shows "get_mp_total_full (upd_mp_loc_total_full \<omega> lp p) = (get_mp_total_full \<omega>)( lp := p )"
-  using upd_mp_nm_mp_rel by auto
+  using upd_mp_nm_mp_rel by auto*)
 
 lemma mult_nm_loc_total_full_mh_eq:
   shows "get_mh_total_full \<omega> = get_mh_total_full (mult_nm_loc_total_full \<omega> lp p)"
@@ -296,14 +320,18 @@ proof -
   have "get_mh_total_full \<omega> loc - (get_mh_total_full \<omega> loc - p) = p"
     using assms minus_preal_gte by auto
   thus ?thesis
-    by (metis assms mh_upd_loc_diff order_less_imp_le psub_smaller upd_mh_loc_total_full_mh_rel)
+    apply simp
+    using assms mh_upd_loc_diff psub_smaller
+    by auto
 qed
 
 lemma dec_mh_mp_diff:
   shows "predicate_mask_sub (get_mp_total_full \<omega>)
                             (get_mp_total_full (upd_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
          zero_mp"
-  by (metis same_mp_diff upd_mh_loc_total_full_mp_eq)
+  apply simp
+  using same_mp_diff
+  by auto
 
 
 subsection \<open>Helper Lemmas for Mask Multiplication\<close>
@@ -420,7 +448,8 @@ lemma mh_split_multiply:
   shows "mh_split (field_mask_multiply mh frac) (field_mask_multiply mh\<^sub>1 frac) (field_mask_multiply mh\<^sub>2 frac)"
   apply simp
   apply standard
-  by (metis PosReal.pmult_distr assms comp_apply fun_comb_def mh_split.elims(2))
+  apply (simp add: add_masks_def)
+  by (metis PosReal.pmult_distr add_masks_def assms mh_split.elims(2))
 
 lemma mp_split_multiply:
   fixes frac :: preal
@@ -428,21 +457,24 @@ lemma mp_split_multiply:
   shows "mp_split (predicate_mask_multiply mp frac) (predicate_mask_multiply mp\<^sub>1 frac) (predicate_mask_multiply mp\<^sub>2 frac)"
   apply simp
   apply standard
-  by (metis (no_types, opaque_lifting) PosReal.pmult_distr assms comp_eq_dest_lhs fun_comb_def mp_split.simps)
+  using assms
+  apply (simp add: add_masks_def)
+  using distrib_left
+  by blast
 
 lemma mh_split_zero:
   assumes "mh_split mh zero_mh zero_mh"
   shows "mh = zero_mh"
   apply standard
   apply simp
-  by (metis add.right_neutral assms fun_comb_def mh_split.elims(2) zero_mh.simps)
+  by (metis add_0 add_masks_def assms mh_split.elims(2) zero_mh.simps)
 
 lemma mp_split_zero:
   assumes "mp_split mp zero_mp zero_mp"
   shows "mp = zero_mp"
   apply standard
   apply simp
-  by (metis add.right_neutral assms fun_comb_def mp_split.simps zero_mp.simps)
+  by (metis add_0 add_masks_def assms mp_split.elims(2) zero_mp.simps)
 
 lemma mh_split_twice:
   assumes "mh_split s a b"
@@ -453,15 +485,15 @@ lemma mh_split_twice:
     shows "mh_split s s1 s2"
   apply simp
   apply standard
-  apply (simp add: fun_comb_def)
+  apply (simp add: add_masks_def)
 proof -
   fix x
   have "s1 x = a1 x + b1 x"
-    by (metis assms(4) fun_comb_def mh_split.elims(1))
+    by (metis assms(4) add_masks_def mh_split.elims(1))
   moreover have "s2 x = a2 x + b2 x"
-    by (metis assms(5) fun_comb_def mh_split.elims(1))
+    by (metis assms(5) add_masks_def mh_split.elims(1))
   ultimately show "s x = s1 x + s2 x"
-    by (metis (no_types, lifting) ab_semigroup_add_class.add_ac(1) assms(1-3) fun_comb_def group_cancel.add2 mh_split.elims(2))
+    by (metis add.assoc add.left_commute add_masks_def assms(1) assms(2) assms(3) mh_split.simps)
 qed
 
 lemma mp_split_twice:
@@ -473,19 +505,36 @@ lemma mp_split_twice:
     shows "mp_split s s1 s2"
   apply simp
   apply standard
-  apply (simp add: fun_comb_def)
+  apply (simp add: add_masks_def)
 proof -
   fix x
   have "s1 x = a1 x + b1 x"
-    by (metis assms(4) fun_comb_def mp_split.elims(1))
+    by (metis assms(4) add_masks_def mp_split.elims(1))
   moreover have "s2 x = a2 x + b2 x"
-    by (metis assms(5) fun_comb_def mp_split.elims(1))
+    by (metis assms(5) add_masks_def mp_split.elims(1))
   ultimately show "s x = s1 x + s2 x"
-    by (metis (no_types, lifting) ab_semigroup_add_class.add_ac(1) assms(1-3) fun_comb_def group_cancel.add2 mp_split.elims(2))
+    by (metis add.assoc add.left_commute add_masks_def assms(1) assms(2) assms(3) mp_split.simps)
 qed
 
 
 subsection \<open>Simplification Lemmas for Nested Mask Merge\<close>
+
+lemma get_mh_nm__plus [simp]:
+  shows "get_mh_nm (nm1 + nm2) = add_masks (get_mh_nm nm1) (get_mh_nm nm2)"
+  apply (cases nm1, cases nm2)
+  apply standard
+  by (simp add: plus_nested_mask_def add_masks_def)
+
+lemma get_mp_nm__plus [simp]:
+  shows "get_mp_nm (nm1 + nm2) = add_masks (get_mp_nm nm1) (get_mp_nm nm2)"
+  apply (cases nm1, cases nm2)
+  apply standard
+  by (simp add: plus_nested_mask_def add_masks_def)
+
+lemma get_fnm_nm__plus [simp]:
+  shows "get_fnm_nm (nm1 + nm2) = ((get_fnm_nm nm1) +\<lparr>(+)\<rparr>+ (get_fnm_nm nm2))"
+  apply (cases nm1, cases nm2)
+  by (simp add: plus_nested_mask_def)
 
 lemma get_mh_nm__merge [simp]:
   shows "get_mh_nm (nested_mask_merge nm1 nm2) = field_mask_merge (get_mh_nm nm1) (get_mh_nm nm2)"
@@ -505,8 +554,9 @@ subsection \<open>Empty States Properties\<close>
 lemma add_empty_nm:
   shows "nested_mask_merge nm empty_nm = nm"
   apply (simp add: empty_nm_def; cases nm; simp add: pfun_comb_def; standard+)
-   apply (simp add: fun_comb_def)
-  apply (standard+, simp add: fun_comb_def)
+   apply (simp add: add_masks_def)
+   apply (simp add: zero_mask_def)
+  apply (standard+, simp add: add_masks_def zero_mask_def)
   by (standard, simp add: pfun_comb_def)
 
 
@@ -514,7 +564,7 @@ subsection \<open>Legacy Lemmas\<close>
 
 lemma update_mh_m_total: "upd_mh_total_full \<omega> mh' = upd_m_total_full \<omega> mh' (get_mp_total_full \<omega>)"
   apply simp
-  by (metis get_fnm_nm.simps get_mh_nm.simps get_mp_nm.simps nested_mask_equality upd_mh_nm_mp_rel upd_mp_nm.simps)
+  by (metis get_mp_nm.simps upd_mh_nm.elims upd_mp_nm.simps)
 
 (* lemma update_mp_m_total: "update_mp_total_full \<omega> mp' = update_m_total_full \<omega> (get_mh_total_full \<omega>) mp'"
   by simp *)
@@ -548,7 +598,6 @@ definition total_heap_well_typed :: "program \<Rightarrow> ('a \<Rightarrow> abs
            \<forall>loc \<tau>. declared_fields Pr (snd loc) = Some \<tau> \<longrightarrow> has_type \<Delta> \<tau> (h loc)"
 
 
-(*
 subsubsection \<open>Lemmas\<close>
 
 lemma plus_mask_zero_mask_neutral: "(m :: ('a, preal) abstract_mask) \<oplus> zero_mask = Some m"
@@ -571,12 +620,13 @@ qed
 
 lemma total_state_plus_defined:
   assumes "a \<oplus> b = Some c"
-  shows "get_hh_total a = get_hh_total b \<and> get_hp_total a = get_hp_total b \<and> total_state.more a = total_state.more b \<and>
-         get_hh_total a = get_hh_total c \<and> get_hp_total a = get_hp_total c \<and> total_state.more a = total_state.more c"
+  shows "get_hh_total a = get_hh_total b \<and> total_state.more a = total_state.more b \<and>
+         get_hh_total a = get_hh_total c \<and> total_state.more a = total_state.more c"
   using assms
   unfolding plus_total_state_ext_def
   by (clarsimp split: if_split_asm )
 
+(*
 lemma plus_Some_total_state_eq:
   assumes "\<phi> \<oplus> \<phi>' = Some \<phi>sum"
   shows "\<phi>sum = \<phi> \<lparr> get_mh_total := add_masks (get_mh_total \<phi>) (get_mh_total \<phi>'),
@@ -599,21 +649,30 @@ lemma plus_Some_full_total_state_total_state:
   using assms
   unfolding plus_full_total_state_ext_def defined_def
   by (auto split: if_split_asm)
+*)
 
 lemma plus_total_state_zero_mask:
-  assumes "get_hh_total \<phi> = get_hh_total \<phi>' \<and> get_hp_total \<phi> = get_hp_total \<phi>' \<and> total_state.more \<phi> = total_state.more \<phi>'" and
-          "get_mh_total \<phi>' = zero_mask \<and> get_mp_total \<phi>' = zero_mask"
-        shows "\<phi>' \<oplus> \<phi> = Some \<phi>"
+  assumes "get_hh_total \<phi> = get_hh_total \<phi>' \<and> total_state.more \<phi> = total_state.more \<phi>'" and
+          "get_nm_total \<phi>' = empty_nm"
+    shows "\<phi>' \<oplus> \<phi> = Some \<phi>"
   using assms
   unfolding plus_total_state_ext_def
   apply simp
-  by (metis (no_types, lifting) commutative option.sel plus_mask_zero_mask_neutral total_state.surjective total_state.update_convs(3) total_state.update_convs(4))
+  apply (rule total_state.equality)
+    apply simp_all
+  apply (rule nested_mask_equality)
+  apply simp_all
+    apply (metis add.commute add_empty_nm get_mh_nm__plus plus_nested_mask_def)
+  apply (metis add.commute add_empty_nm get_mp_nm__plus plus_nested_mask_def)
+  by (metis add.commute add_empty_nm get_fnm_nm__plus plus_nested_mask_def)
+
 
 lemma plus_full_total_state_zero_mask:
-  assumes "get_store_total \<omega> = get_store_total \<omega>' \<and> get_trace_total \<omega> = get_trace_total \<omega>' \<and> get_h_total_full \<omega> = get_h_total_full \<omega>' \<and>
+  assumes "get_store_total \<omega> = get_store_total \<omega>' \<and> get_trace_total \<omega> = get_trace_total \<omega>' \<and>
+           get_hh_total_full \<omega> = get_hh_total_full \<omega>' \<and>
            full_total_state.more \<omega> = full_total_state.more \<omega>'" and
-          "get_mh_total_full \<omega>' = zero_mask \<and> get_mp_total_full \<omega>' = zero_mask"
-  shows "\<omega>' \<oplus> \<omega> = Some \<omega>"
+          "get_nm_total_full \<omega>' = empty_nm"
+        shows "\<omega>' \<oplus> \<omega> = Some \<omega>"
 proof -
   have "get_total_full \<omega>' \<oplus> get_total_full \<omega> = Some (get_total_full \<omega>)"
     apply (rule plus_total_state_zero_mask)
@@ -621,11 +680,12 @@ proof -
     by simp_all
 
   thus ?thesis
-  unfolding plus_full_total_state_ext_def defined_def
-  using plus_total_state_zero_mask assms
-  by simp
+    unfolding plus_full_total_state_ext_def defined_def
+    using plus_total_state_zero_mask assms
+    by simp
 qed
 
+(*
 lemma full_total_state_greater_only_mask_changed:
   assumes "\<omega> \<succeq> \<omega>'"
   shows "get_store_total \<omega> = get_store_total \<omega>' \<and>
@@ -1151,7 +1211,8 @@ lemma mono_prop_downward_ord_implies_mono_prop_downward:
   shows "mono_prop_downward StateCons"
   using assms full_total_state_succ_implies_gte
   unfolding mono_prop_downward_ord_def mono_prop_downward_def
-  by blast *)
+  by blast
+*)
 
 subsection \<open>valid mask (TODO: move to ViperLang?)\<close>
 

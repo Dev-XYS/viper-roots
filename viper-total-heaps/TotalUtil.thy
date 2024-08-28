@@ -952,9 +952,6 @@ qed
 
 subsection \<open>Function Combinators\<close>
 
-definition fun_comb :: "('a \<Rightarrow> 'b) \<Rightarrow> ('b \<Rightarrow> 'b \<Rightarrow> 'c) \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> ('a \<Rightarrow> 'c)" ("_ +\<lbrakk> _ \<rbrakk>+ _") where
-  "(f +\<lbrakk>c\<rbrakk>+ g) x = c (f x) (g x)"
-
 definition pfun_comb :: "('a \<rightharpoonup> 'b) \<Rightarrow> ('b \<Rightarrow> 'b \<Rightarrow> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b)" ("_ +\<lparr> _ \<rparr>+ _") where
   "(f +\<lparr>c\<rparr>+ g) x = combine_options c (f x) (g x)"
 
