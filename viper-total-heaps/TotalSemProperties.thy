@@ -533,9 +533,9 @@ lemma inhale_perm_single_pred_trace_same:
   unfolding inhale_perm_single_pred_def
   by auto
 
-(* lemma inhale_perm_single_pred_heap_same:
-  assumes  "\<omega>' \<in> inhale_perm_single_pred R \<omega> lh popt"
-  shows "get_h_total_full \<omega>' = get_h_total_full \<omega>"
+lemma inhale_perm_single_pred_heap_same:
+  assumes  "\<omega>' \<in> inhale_perm_single_pred ctxt R \<omega> lh popt"
+  shows "get_hh_total_full \<omega>' = get_hh_total_full \<omega>"
   using assms 
   unfolding inhale_perm_single_pred_def
   by fastforce
@@ -551,21 +551,19 @@ lemmas inhale_perm_pred_single_only_mask_changed=
   inhale_perm_single_pred_heap_same
 
 lemma inhale_only_changes_mask:
-  shows "ctxt, R, x1 \<turnstile> \<langle>x2;x3\<rangle> [\<Down>]\<^sub>t x4 \<Longrightarrow> True" and
-        "red_pure_exps_total ctxt R x5 x6 x7 x8 \<Longrightarrow> True" and
-        "red_inhale ctxt R A \<omega> res \<Longrightarrow> (\<And>\<omega>'. res = RNormal \<omega>' \<Longrightarrow> 
+  shows "red_inhale ctxt R A \<omega> res \<Longrightarrow> (\<And>\<omega>'. res = RNormal \<omega>' \<Longrightarrow> 
              get_store_total \<omega>' = get_store_total \<omega> \<and>
              get_trace_total \<omega>' = get_trace_total \<omega> \<and>
-             get_h_total_full \<omega>' = get_h_total_full \<omega>)" and
-        "unfold_rel ctxt R x12 x13 x14 x15 x16 \<Longrightarrow> True"
-proof (induction rule: red_exp_inhale_unfold_inducts)
+             get_hh_total_full \<omega>' = get_hh_total_full \<omega>)"
+proof (induction rule: red_inhale.inducts)
   case (InhAcc \<omega> e_r r e_p p W' f res)
   then show ?case 
     by (metis inhale_perm_single_only_mask_changed singleton_iff th_result_rel_normal)
 next
   case (InhAccPred \<omega> e_p p e_args v_args W' pred_id res)
   then show ?case 
-  using inhale_perm_pred_single_only_mask_changed th_result_rel_normal by blast
+    using inhale_perm_pred_single_only_mask_changed th_result_rel_normal
+    by metis
 next
   case (InhAccWildcard \<omega> e_r r W' f res)
   then show ?case     
@@ -573,11 +571,12 @@ next
 next
   case (InhAccPredWildcard \<omega> e_args v_args W' pred_id res)
   then show ?case
-    using inhale_perm_pred_single_only_mask_changed th_result_rel_normal by blast
+    using inhale_perm_pred_single_only_mask_changed th_result_rel_normal
+    by metis
 next
   case (InhPure \<omega> e b)
   then show ?case
-    by (metis stmt_result_total.distinct(3) stmt_result_total.inject)
+    by (metis result_total.distinct(3) result_total.inject)
 next
   case (InhSubExpFailure A \<omega>)
   then show ?case by simp
@@ -599,8 +598,9 @@ next
 next
   case (InhCondAssertFalse \<omega> e B res A)
   then show ?case by simp
-qed (rule HOL.TrueI)+
+qed
 
+(*
 text \<open>inhale preserves failure for smaller states if there is no permission introspection\<close>
 
 lemma inhale_perm_single_leq:
@@ -1536,11 +1536,14 @@ lemma mask_update_greater_aux_2:
 
 lemmas mask_update_succ_aux = succ_maskI[OF mask_update_greater_aux]
 lemmas mask_update_succ_aux_2 = succ_maskI[OF mask_update_greater_aux_2]
+*)
 
 lemma exhale_normal_result_smaller:
   assumes "red_exhale ctxt StateCons \<omega>def A \<omega> res" and
           "res = RNormal \<omega>'"
         shows "\<omega> \<succeq> \<omega>'"
+  sorry
+(*
   using assms
 proof (induction arbitrary: \<omega>')
   case (ExhAcc mh \<omega> e_r r e_p p a f)
@@ -1631,6 +1634,7 @@ next
   then show ?case
     by (simp add: succ_refl)
 qed (simp_all)
+*)
 
 lemma exhale_pure_normal_same:
   assumes "red_exhale ctxt R \<omega>def A \<omega> res" 
@@ -1639,7 +1643,6 @@ lemma exhale_pure_normal_same:
     shows "\<omega> = \<omega>'"
   using assms
   by (induction) (auto elim: exh_if_total.elims)
-*)
 
 
 subsection \<open>Relationship inhale and exhale\<close>
@@ -2662,18 +2665,19 @@ lemma inhale_perm_single_similar:
   unfolding inhale_perm_single_def
   oops
 
-(* lemma inhale_perm_single_Some_non_empty_preserve:
+lemma inhale_perm_single_Some_non_empty_preserve:
   assumes WfConsistent: "wf_total_consistency ctxt R Rt"
       and OnlyStoreDifferent: "get_total_full \<omega> = get_total_full \<omega>' \<and> get_trace_total \<omega> = get_trace_total \<omega>'"
       and InhPermSingle1: "inhale_perm_single R \<omega> lh (Some p) \<noteq> {}"
     shows "inhale_perm_single R \<omega>' lh (Some p) \<noteq> {}"
 proof -
-  have SufficientPerm: "pgte pwrite (padd (get_mh_total_full \<omega> lh) p)"
+  have SufficientPerm: "1 \<ge> (get_mh_total_full \<omega> lh + p)"
     using InhPermSingle1
-    unfolding inhale_perm_single_def
-    by fastforce
+    unfolding inhale_perm_single_def \<comment> \<open>Todo: state consistency\<close>
+    (* by fastforce *)
+    sorry
 
-  let ?\<omega>0 = "(update_mh_loc_total_full \<omega> lh (padd (get_mh_total_full \<omega> lh) p))"
+  let ?\<omega>0 = "(upd_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + p))"
   have "?\<omega>0 \<in> inhale_perm_single R \<omega> lh (Some p)"
     using inhale_perm_single_nonempty InhPermSingle1
     by blast
@@ -2682,7 +2686,7 @@ proof -
     unfolding inhale_perm_single_def
     by blast  
         
-  let ?\<omega>1 = "update_mh_loc_total_full \<omega>' lh (padd (get_mh_total_full \<omega>' lh) p)"
+  let ?\<omega>1 = "upd_mh_loc_total_full \<omega>' lh (get_mh_total_full \<omega>' lh + p)"
   have "?\<omega>1 \<in> inhale_perm_single R \<omega>' lh (Some p)"
   proof (rule inhale_perm_single_elem, simp)
     show "R ?\<omega>1"
@@ -2690,75 +2694,74 @@ proof -
       using OnlyStoreDifferent
       by auto
   next
-    show "option_fold ((=) p) (p \<noteq> pnone) (Some p)"
+    show "option_fold ((=) p) (p \<noteq> 0) (Some p)"
       by simp
   next
-    show "pgte pwrite (padd (get_mh_total_full \<omega>' lh) p)"
+    show "1 \<ge> (get_mh_total_full \<omega>' lh + p)"
       using SufficientPerm OnlyStoreDifferent
       by simp
   qed
   then show ?thesis 
     by blast
-qed *)
+qed
 
 
 subsection \<open>Temp\<close>
 
-(* lemma red_pure_exp_inhale_store_same_on_free_var:
-  shows "ctxt, R, \<omega>_def_opt \<turnstile> \<langle>e;\<omega>1\<rangle> [\<Down>]\<^sub>t resE \<Longrightarrow>
+\<comment> \<open>Todo: The \<open>inhale\<close> part is removed.\<close>
+lemma red_pure_exp_store_same_on_free_var:
+  shows "ctxt, \<omega>_def_opt \<turnstile> \<langle>e;\<omega>1\<rangle> [\<Down>]\<^sub>t resE \<Longrightarrow>
          \<omega>_def_opt = Some \<omega>_def \<Longrightarrow>
         supported_pure_exp e \<Longrightarrow>
         (\<And> x. x \<in> free_var_pure_exp e \<Longrightarrow> get_store_total \<omega>1 x = get_store_total \<omega>2 x) \<Longrightarrow>     
         get_trace_total \<omega>1 = get_trace_total \<omega>2 \<and> get_total_full \<omega>1 = get_total_full \<omega>2 \<Longrightarrow>      
         get_trace_total \<omega>_def = get_trace_total \<omega>_def2 \<and> get_total_full \<omega>_def = get_total_full \<omega>_def2 \<Longrightarrow>  \<comment>\<open>just needed for IH (could also separate result on changing well-definedness state)\<close>                 
-        ctxt, R, Some \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t resE" and
-        "red_pure_exps_total ctxt R \<omega>_def_opt es \<omega>1 resES \<Longrightarrow> 
+        ctxt, Some \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t resE" and
+        "red_pure_exps_total ctxt \<omega>_def_opt es \<omega>1 resES \<Longrightarrow> 
          \<omega>_def_opt = Some \<omega>_def \<Longrightarrow>
          (\<And> x. x \<in> \<Union> (set (map free_var_pure_exp es)) \<Longrightarrow> get_store_total \<omega>1 x = get_store_total \<omega>2 x) \<Longrightarrow>
         get_trace_total \<omega>1 = get_trace_total \<omega>2 \<and> get_total_full \<omega>1 = get_total_full \<omega>2 \<Longrightarrow>     
         get_trace_total \<omega>_def = get_trace_total \<omega>_def2 \<and> get_total_full \<omega>_def = get_total_full \<omega>_def2 \<Longrightarrow>  \<comment>\<open>just needed for IH (could also separate result on changing well-definedness state)\<close>          
          list_all (\<lambda>e. supported_pure_exp e) es \<Longrightarrow>
-         red_pure_exps_total ctxt R (Some (\<omega>_def2)) es \<omega>2 resES" and
-        "red_inhale ctxt R A \<omega>1 res \<Longrightarrow> 
-         supported_assertion A \<Longrightarrow>
-         (\<And> x. x \<in> free_var_assertion A \<Longrightarrow> get_store_total \<omega>1 x = get_store_total \<omega>2 x) \<Longrightarrow> 
-         get_trace_total \<omega>1 = get_trace_total \<omega>2 \<and> get_total_full \<omega>1 = get_total_full \<omega>2 \<Longrightarrow> 
-         wf_total_consistency ctxt R Rt \<Longrightarrow> 
-         red_inhale ctxt R A \<omega>2 (map_stmt_result_total (\<lambda>\<omega>. \<omega> \<lparr> get_store_total := get_store_total \<omega>2 \<rparr>) res)" and
-        "unfold_rel ctxt R x12 x13 x14 x15 x16 \<Longrightarrow> True"
-proof (induction arbitrary: \<omega>_def \<omega>2 \<omega>_def2 and \<omega>_def \<omega>2 \<omega>_def2 and \<omega>2 rule: red_exp_inhale_unfold_inducts)
+         red_pure_exps_total ctxt (Some (\<omega>_def2)) es \<omega>2 resES"
+proof (induction arbitrary: \<omega>_def \<omega>2 \<omega>_def2 and \<omega>_def \<omega>2 \<omega>_def2 and \<omega>2 rule: red_pure_exp_inducts)
   case (RedLit \<omega>_def l uu)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
+  then show ?case by (auto intro!: red_pure_exp_intros)
 next
   case (RedVar \<omega> n v \<omega>_def_opt)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
+  then show ?case by (auto intro!: red_pure_exp_intros)
 next
   case (RedBinopLazy \<omega>_def_opt e1 \<omega> v1 bop v e2)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
+  then show ?case by (auto intro!: red_pure_exp_intros)
 next
   case (RedBinop \<omega>_def_opt e1 \<omega> v1 e2 v2 bop v)  
-  hence "ctxt, R, Some \<omega>_def2 \<turnstile> \<langle>e1; \<omega>2\<rangle> [\<Down>]\<^sub>t Val v1" and "ctxt, R, Some \<omega>_def2 \<turnstile> \<langle>e2; \<omega>2\<rangle> [\<Down>]\<^sub>t Val v2"
+  hence "ctxt, Some \<omega>_def2 \<turnstile> \<langle>e1; \<omega>2\<rangle> [\<Down>]\<^sub>t Val v1" and "ctxt, Some \<omega>_def2 \<turnstile> \<langle>e2; \<omega>2\<rangle> [\<Down>]\<^sub>t Val v2"
     by fastforce+
-  then show ?case 
-    using RedBinop
-    by (blast intro!: TotalExpressions.RedBinop)    
+  then show ?case
+    using RedBinop.hyps(1) RedBinop.hyps(2) RedBinop.prems(1) red_pure_exp_total_red_pure_exps_total.RedBinop
+    by fastforce
 next
   case (RedBinopRightFailure \<omega>_def_opt e1 \<omega> v1 e2 bop)
-  hence "ctxt, R, Some \<omega>_def2 \<turnstile> \<langle>e1; \<omega>2\<rangle> [\<Down>]\<^sub>t Val v1" and "ctxt, R, Some \<omega>_def2 \<turnstile> \<langle>e2; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure"
+  hence "ctxt, Some \<omega>_def2 \<turnstile> \<langle>e1; \<omega>2\<rangle> [\<Down>]\<^sub>t Val v1" and "ctxt, Some \<omega>_def2 \<turnstile> \<langle>e2; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure"
     by fastforce+
   then show ?case
-    using RedBinopRightFailure
-    by (blast intro!: TotalExpressions.RedBinopRightFailure)    
+    using RedBinopRightFailure.hyps(1) RedBinopRightFailure.hyps(2) RedBinopRightFailure.prems(1) red_pure_exp_total_red_pure_exps_total.RedBinopRightFailure
+    by force
 next
   case (RedBinopOpFailure \<omega>_def_opt e1 \<omega> v1 e2 v2 bop)
-  hence "ctxt, R, Some \<omega>_def2 \<turnstile> \<langle>e1; \<omega>2\<rangle> [\<Down>]\<^sub>t Val v1" and "ctxt, R, Some \<omega>_def2 \<turnstile> \<langle>e2; \<omega>2\<rangle> [\<Down>]\<^sub>t Val v2"
+  hence "ctxt, Some \<omega>_def2 \<turnstile> \<langle>e1; \<omega>2\<rangle> [\<Down>]\<^sub>t Val v1" and "ctxt, Some \<omega>_def2 \<turnstile> \<langle>e2; \<omega>2\<rangle> [\<Down>]\<^sub>t Val v2"
     by fastforce+
   then show ?case
+    apply (cases \<omega>_def_opt)
+    using RedBinopOpFailure.prems(1)
+     apply blast
     using RedBinopOpFailure
-    by (blast intro!: TotalExpressions.RedBinopOpFailure)    
+    apply simp
+    by (metis (full_types) is_none_code(2) red_pure_exp_total_red_pure_exps_total.RedBinopOpFailure)
 next
   case (RedUnop \<omega>_def_opt e \<omega> v unop v')
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
+  then show ?case
+    by (auto intro!: red_pure_exp_intros)
 next
   case (RedCondExpTrue \<omega>_def_opt e1 \<omega> e2 r e3)
   then show ?case 
@@ -2769,13 +2772,15 @@ next
     by (auto intro!: TotalExpressions.RedCondExpFalse)
 next
   case (RedOld \<omega> l \<phi> \<omega>_def' \<omega>_def e v)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
+  then show ?case
+    by (auto intro!: red_pure_exp_intros)
 next
   case (RedOldFailure \<omega> l \<omega>_def e)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
+  then show ?case
+    by (auto intro!: red_pure_exp_intros)
 next
   case (RedField \<omega>_def_opt e \<omega> a f v)
-  hence RedRcv: "ctxt, R, Some \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))"
+  hence RedRcv: "ctxt, Some \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))"
     by simp
 
   from RedField have SameHeap: "get_hh_total_full \<omega>2 (a,f) = v"
@@ -2797,27 +2802,33 @@ next
   qed
 next
   case (RedFieldNullFailure \<omega>_def_opt e \<omega> f)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
+  then show ?case
+    by (auto intro!: red_pure_exp_intros)
 next
   case (RedPermNull \<omega>_def_opt e \<omega> f)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
+  then show ?case
+    by (auto intro!: red_pure_exp_intros)
 next
   case (RedPerm \<omega>_def_opt e \<omega> a f v)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
+  then show ?case
+    by (auto intro!: red_pure_exp_intros)
 next
   case (RedUnfolding ubody \<omega> v p es)
-  then show ?case by simp
+  then show ?case
+    by simp
 next
   case (RedUnfoldingDefNoPred \<omega>_def_opt es \<omega> vs pred_id pred_decl p ubody)
-  then show ?case by simp \<comment>\<open>cannot occur\<close>
+  then show ?case
+    by simp \<comment>\<open>cannot occur\<close>
 next
   case (RedUnfoldingDef \<omega>_def_opt es \<omega> vs p \<omega>'_def ubody v)
-  then show ?case by simp \<comment>\<open>cannot occur\<close>
+  then show ?case
+    by simp \<comment>\<open>cannot occur\<close>
 next
   case (RedSubFailure e' \<omega>_def_opt \<omega>)
   hence "list_all supported_pure_exp (sub_pure_exp_total e')"
     using pure_exp_pred_subexp by presburger
-  hence "red_pure_exps_total ctxt R (Some \<omega>_def2) (sub_pure_exp_total e') \<omega>2 None"
+  hence "red_pure_exps_total ctxt (Some \<omega>_def2) (sub_pure_exp_total e') \<omega>2 None"
     using RedSubFailure free_var_subexp
     by blast 
   then show ?case 
@@ -2825,28 +2836,41 @@ next
     by (auto intro!: TotalExpressions.RedSubFailure)
 next
   case (RedExpListCons \<omega>_def_opt e \<omega> v es res res')
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
+  then show ?case
+    by (auto intro!: red_pure_exp_intros)
 next
   case (RedExpListFailure \<omega>_def_opt e \<omega> es)
-  hence "ctxt, R, Some \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure"
+  hence "ctxt, Some \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure"
     by auto
   thus ?case
-    by (auto intro!: red_exp_inhale_unfold_intros) 
+    by (auto intro!: red_pure_exp_intros) 
 next
   case (RedExpListNil \<omega>_def_opt \<omega>)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
-next
+  then show ?case
+    by (auto intro!: red_pure_exp_intros)
+qed simp_all
+
+\<comment> \<open>Todo: These are the cases for \<open>inhale\<close>\<close>
+lemma red_inhale_store_same_on_free_var:
+  assumes "red_inhale ctxt R A \<omega>1 res"
+      and "supported_assertion A"
+      and "\<And> x. x \<in> free_var_assertion A \<Longrightarrow> get_store_total \<omega>1 x = get_store_total \<omega>2 x"
+      and "get_trace_total \<omega>1 = get_trace_total \<omega>2 \<and> get_total_full \<omega>1 = get_total_full \<omega>2"
+      and "wf_total_consistency ctxt R Rt"
+    shows "red_inhale ctxt R A \<omega>2 (map_result_total (\<lambda>\<omega>. \<omega> \<lparr> get_store_total := get_store_total \<omega>2 \<rparr>) res)"
+  using assms
+proof (induction arbitrary: \<omega>2 rule: red_inhale.inducts)
   case (InhAcc \<omega> e_r r e_p p W' f res)
   note WfConsistent = \<open>wf_total_consistency ctxt R Rt\<close>
-  show ?case 
-  proof (rule TotalExpressions.InhAcc)
-    show "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e_r;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+  show ?case
+  proof (rule red_inhale.InhAcc)
+    show "ctxt, Some \<omega>2 \<turnstile> \<langle>e_r;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
       using InhAcc
-      by simp
+      by (simp add: red_pure_exp_store_same_on_free_var(1))
   next
-    show "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e_p;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+    show "ctxt, Some \<omega>2 \<turnstile> \<langle>e_p;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
       using InhAcc
-      by simp
+      by (simp add: red_pure_exp_store_same_on_free_var(1))
   next
     let ?W2' = "if r = Null then {\<omega>2} else inhale_perm_single R \<omega>2 (the_address r, f) (Some (Abs_preal p))"
     show "?W2' = ?W2'"
@@ -2855,7 +2879,7 @@ next
     from \<open>th_result_rel (0 \<le> p) (W' \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null)) W' res\<close>
     show "th_result_rel (0 \<le> p) (?W2' \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null))
              ?W2'
-             (map_stmt_result_total (get_store_total_update (\<lambda>_. get_store_total \<omega>2)) res)"
+             (map_result_total (get_store_total_update (\<lambda>_. get_store_total \<omega>2)) res)"
     proof (rule th_result_rel_convert)
       let ?f = "get_store_total_update (\<lambda>_. get_store_total \<omega>2)"
 
@@ -2879,21 +2903,21 @@ next
           by simp
       qed
 
-      show "map_stmt_result_total ?f res = map_stmt_result_total ?f res"
+      show "map_result_total ?f res = map_result_total ?f res"
         by simp
 
       fix \<omega>Elem
       assume "\<omega>Elem \<in> W'"
       hence TraceSame: "get_trace_total \<omega>Elem = get_trace_total \<omega>"
         unfolding \<open>W' = _\<close> inhale_perm_single_def
-        by (metis InhAcc.IH(5) \<open>\<omega>Elem \<in> W'\<close> inhale_perm_single_trace_same singletonD)
+        by (metis InhAcc(3,7) \<open>\<omega>Elem \<in> W'\<close> inhale_perm_single_trace_same singletonD)
 
 
       show "\<omega>Elem\<lparr>get_store_total := get_store_total \<omega>2\<rparr> \<in> ?W2'"
       proof (cases r)
         case (Address a)       
         with \<open>\<omega>Elem \<in> W'\<close> inhale_perm_single_nonempty have 
-         "\<omega>Elem = update_mh_loc_total_full \<omega> (a,f) (padd (get_mh_total_full \<omega> (a,f)) (Abs_preal p))"
+         "\<omega>Elem = upd_mh_loc_total_full \<omega> (a,f) (get_mh_total_full \<omega> (a,f) + Abs_preal p)"
           unfolding \<open>W' = _\<close>
           by fastforce
 
@@ -2902,18 +2926,18 @@ next
         proof (simp)
           show "\<omega>Elem\<lparr>get_store_total := get_store_total \<omega>2\<rparr> \<in> inhale_perm_single R \<omega>2 (a, f) (Some (Abs_preal p))"
           proof (rule inhale_perm_single_elem)
-            show "\<omega>Elem\<lparr>get_store_total := get_store_total \<omega>2\<rparr> = update_mh_loc_total_full \<omega>2 (a, f) (padd (get_mh_total_full \<omega>2 (a, f)) ((Abs_preal p)))"
+            show "\<omega>Elem\<lparr>get_store_total := get_store_total \<omega>2\<rparr> = upd_mh_loc_total_full \<omega>2 (a, f) (get_mh_total_full \<omega>2 (a, f) + Abs_preal p)"
               unfolding \<open>\<omega>Elem = _\<close>
             proof -
-              have "update_mh_loc_total_full \<omega> (a, f) (padd (get_mh_total_full \<omega> (a, f)) (Abs_preal p))\<lparr>get_store_total := get_store_total \<omega>2\<rparr> = 
-                    update_mh_loc_total_full (\<omega>\<lparr>get_store_total := get_store_total \<omega>2\<rparr>) (a,f) (padd (get_mh_total_full \<omega> (a, f)) (Abs_preal p))"
+              have "upd_mh_loc_total_full \<omega> (a, f) (get_mh_total_full \<omega> (a, f) + (Abs_preal p))\<lparr>get_store_total := get_store_total \<omega>2\<rparr> = 
+                    upd_mh_loc_total_full (\<omega>\<lparr>get_store_total := get_store_total \<omega>2\<rparr>) (a,f) (get_mh_total_full \<omega> (a, f) + Abs_preal p)"
                 by force
               moreover have "(\<omega>\<lparr>get_store_total := get_store_total \<omega>2\<rparr>) = \<omega>2"
                 apply (rule full_total_state.equality)
                 by (auto simp: TraceSame InhAcc)
               ultimately show 
-                "update_mh_loc_total_full \<omega> (a, f) (padd (get_mh_total_full \<omega> (a, f)) (Abs_preal p))\<lparr>get_store_total := get_store_total \<omega>2\<rparr> =
-                 update_mh_loc_total_full \<omega>2 (a, f) (padd (get_mh_total_full \<omega>2 (a, f)) (Abs_preal p))"
+                "upd_mh_loc_total_full \<omega> (a, f) (get_mh_total_full \<omega> (a, f) + Abs_preal p)\<lparr>get_store_total := get_store_total \<omega>2\<rparr> =
+                 upd_mh_loc_total_full \<omega>2 (a, f) (get_mh_total_full \<omega>2 (a, f) + Abs_preal p)"
                 using InhAcc
                 by force
             qed
@@ -2928,12 +2952,14 @@ next
                 by auto
             qed
           next
-            show "pgte pwrite (padd (get_mh_total_full \<omega>2 (a, f)) (Abs_preal p))"
+            show "1 \<ge> get_mh_total_full \<omega>2 (a, f) + Abs_preal p"
             proof -
               from \<open>\<omega>Elem \<in> _\<close>
-              have "pgte pwrite (padd (get_mh_total_full \<omega> (a, f)) (Abs_preal p))"
+              have "1 \<ge> get_mh_total_full \<omega> (a, f) + Abs_preal p"
                 unfolding \<open>W' = _\<close> inhale_perm_single_def \<open>r = _\<close>
-                by simp
+                (* by simp *)
+                  \<comment> \<open>Todo: state consistency\<close>
+                sorry
               thus ?thesis
                 using InhAcc
                 by simp
@@ -2956,13 +2982,13 @@ next
   qed
 next
   case (InhPure \<omega> e b)
-  hence "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
-    by auto
+  hence "ctxt, Some \<omega>2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
+    by (simp add: red_pure_exp_store_same_on_free_var(1))
   moreover have "\<omega>\<lparr>get_store_total := get_store_total \<omega>2\<rparr> = \<omega>2"
     apply (rule full_total_state.equality)
     by (auto simp: InhPure)
   ultimately show ?case
-    using TotalExpressions.InhPure
+    using red_inhale.InhPure
     by fastforce    
 next
   case (InhSubExpFailure A \<omega>)
@@ -2974,16 +3000,16 @@ next
     using free_var_assertion_map_free_var_pure_exp InhSubExpFailure
     by blast    
   ultimately show ?case 
-    using InhSubExpFailure  TotalExpressions.InhSubExpFailure 
-    by (metis map_stmt_result_total.simps(3))    
+    using InhSubExpFailure red_inhale.InhSubExpFailure
+    by (metis map_result_total.simps(3) red_pure_exp_store_same_on_free_var(2))
 next
   case (InhStarNormal A \<omega> \<omega>'' B res)
   let ?\<omega>''2 = "(\<omega>'' \<lparr> get_store_total := get_store_total \<omega>2 \<rparr>)"
   from InhStarNormal have "red_inhale ctxt R A \<omega>2 (RNormal ?\<omega>''2)"
     by simp
   moreover have "red_inhale ctxt R B ?\<omega>''2
-                             (map_stmt_result_total (get_store_total_update (\<lambda>_. get_store_total ?\<omega>''2)) res)"
-  proof (rule InhStarNormal.IH(4))
+                             (map_result_total (get_store_total_update (\<lambda>_. get_store_total ?\<omega>''2)) res)"
+  proof (rule InhStarNormal(4))
     from InhStarNormal show "supported_assertion B"
       by (meson assert_pred.simps assert_pred_rec.simps(4))
   next
@@ -2992,26 +3018,28 @@ next
     hence "x \<in> free_var_assertion (A&&B)"
       by simp
     have "get_store_total \<omega>'' = get_store_total \<omega>"
-      using InhStarNormal inhale_only_changes_mask(3)
+      using InhStarNormal inhale_only_changes_mask
       by metis
     thus "get_store_total \<omega>'' x = get_store_total (\<omega>''\<lparr>get_store_total := get_store_total \<omega>2\<rparr>) x"
       using InhStarNormal(6) \<open>x \<in> free_var_assertion (A&&B)\<close>
       by auto
   qed (insert \<open>wf_total_consistency ctxt R Rt\<close>, simp)
   ultimately show ?case
-    by (auto intro!: TotalExpressions.InhStarNormal)
+    by (auto intro!: red_inhale.InhStarNormal)
 next
   case (InhStarFailureMagic A \<omega> resA B)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
+  then show ?case
+    by (metis UnCI assert_pred.elims(2) assert_pred_rec.simps(4) free_var_assertion.simps(4) map_result_total.simps(2) map_result_total.simps(3) red_inhale.InhStarFailureMagic)
+    (* by (auto intro!: red_pure_exp_intros simp: red_pure_exp_store_same_on_free_var) *)
 next
   case (InhImpTrue \<omega> e A res)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
+  then show ?case sorry (* by (auto intro!: red_pure_exp_intros) *)
 next
   case (InhImpFalse \<omega> e A)
-  hence "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
-    by simp
+  hence "ctxt, Some \<omega>2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    by (simp add: red_pure_exp_store_same_on_free_var(1))
   hence "red_inhale ctxt R (Imp e A) \<omega>2 (RNormal \<omega>2)"
-    by (auto intro!: TotalExpressions.InhImpFalse)
+    by (auto intro!: red_inhale.InhImpFalse)
   moreover have "\<omega>2 = \<omega>\<lparr>get_store_total := get_store_total \<omega>2\<rparr>"
     apply (rule full_total_state.equality)
     using InhImpFalse
@@ -3020,17 +3048,18 @@ next
     by simp
 next
   case (InhCondAssertTrue \<omega> e A res B)
-  moreover from this have "red_inhale ctxt R A \<omega>2 (map_stmt_result_total (get_store_total_update (\<lambda>_. get_store_total \<omega>2)) res)"
+  moreover from this have "red_inhale ctxt R A \<omega>2 (map_result_total (get_store_total_update (\<lambda>_. get_store_total \<omega>2)) res)"
     by auto
   ultimately show ?case
-    by (auto intro!: TotalExpressions.InhCondAssertTrue)    
+    by (simp add: red_inhale.InhCondAssertTrue red_pure_exp_store_same_on_free_var(1))
 next
   case (InhCondAssertFalse \<omega> e B res A)
-  moreover from this have "red_inhale ctxt R B \<omega>2 (map_stmt_result_total (get_store_total_update (\<lambda>_. get_store_total \<omega>2)) res)"
+  moreover from this have "red_inhale ctxt R B \<omega>2 (map_result_total (get_store_total_update (\<lambda>_. get_store_total \<omega>2)) res)"
     by auto
   ultimately show ?case
-    by (auto intro!: TotalExpressions.InhCondAssertFalse)
+    by (simp add: red_inhale.InhCondAssertFalse red_pure_exp_store_same_on_free_var(1))
 qed simp_all
+
 
 lemma assertion_framing_store_same_on_free_var:
   assumes "wf_total_consistency ctxt StateCons StateCons_t"
@@ -3048,15 +3077,16 @@ proof (rule allI | rule impI)+
   proof 
     assume "res = RFailure"
     hence "red_inhale ctxt StateCons A \<omega> RFailure"
-      using red_pure_exp_inhale_store_same_on_free_var(3) RedInh assms
-      by (metis map_stmt_result_total.simps(3))      
+      using red_inhale_store_same_on_free_var RedInh assms
+      by (metis map_result_total.simps(3))      
     thus False
       using assms(2)
       unfolding assertion_framing_state_def
       by blast
   qed
-qed *)
+qed
 
+(*
 lemma exh_if_total_map_stmt_result_total:
   assumes "b \<longleftrightarrow> b'"
       and "\<omega> = f \<omega>'"
@@ -3077,7 +3107,7 @@ lemma red_exhale_accI:
   apply (rule ExhAcc)
   using assms by auto
 
-(* lemma exhale_same_on_free_var:
+lemma exhale_same_on_free_var:
   assumes "red_exhale ctxt StateCons \<omega>def1 A \<omega>1 res1"
       and "res2 = map_stmt_result_total (\<lambda>\<omega>. \<omega> \<lparr> get_store_total := get_store_total \<omega>2 \<rparr>) res1"
       and "\<And> x. x \<in> free_var_assertion A \<Longrightarrow> get_store_total \<omega>1 x = get_store_total \<omega>2 x"
@@ -3234,6 +3264,7 @@ next
   then show ?case 
     using ExhSubExpFailure    
     by (auto intro: TotalSemantics.ExhSubExpFailure)
-qed (simp_all) *)
+qed (simp_all)
+*)
 
 end

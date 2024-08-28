@@ -373,4 +373,56 @@ next
 qed
 
 
+section \<open>Ported From \<open>TotalExpressionOld.thy\<close>\<close>
+
+lemma red_pure_exps_total_list_all2:
+  assumes "red_pure_exps_total ctxt \<omega>_def es \<omega> (Some vs)"
+  shows "list_all2 (\<lambda>e v. red_pure_exp_total ctxt \<omega>_def e \<omega> (Val v)) es vs"
+  using assms
+proof (induction es arbitrary: vs)
+  case Nil
+  then show ?case 
+    by (auto elim: red_pure_exp_total_elims)
+next
+  case (Cons e es)
+  from this obtain vs_hd vs_tail where 
+     "vs = vs_hd # vs_tail" and
+     "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val vs_hd" and
+     "red_pure_exps_total ctxt \<omega>_def es \<omega> (Some vs_tail)"
+     by (auto elim: red_exp_list_normal_elim)
+  with Cons.IH show ?case
+    by blast
+qed
+
+lemma red_pure_exps_total_Some_lengthD: 
+  assumes "red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega> (Some v_args)"
+  shows "length es = length v_args"
+proof -
+  from red_pure_exps_total_list_all2[OF assms]
+  show ?thesis
+    by (simp add: list_all2_lengthD)
+qed
+
+lemma list_all2_red_pure_exps_total:
+  assumes "list_all2 (\<lambda>e v. red_pure_exp_total ctxt \<omega>_def e \<omega> (Val v)) es vs"
+  shows "red_pure_exps_total ctxt \<omega>_def es \<omega> (Some vs)"
+  using assms
+proof (induction es arbitrary: vs)
+  case Nil
+  then show ?case 
+    by (auto intro: red_pure_exp_intros)
+next
+  case (Cons e es)
+  from this obtain vs_hd vs_tail where 
+     "vs = vs_hd # vs_tail" and
+     "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val vs_hd" and
+     "list_all2 (\<lambda>e v. ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) es vs_tail"
+    by (metis (no_types, lifting) list_all2_Cons1)
+  with Cons.IH show ?case
+    unfolding \<open>vs = _\<close>
+    using option.simps(9) red_pure_exps_total.simps 
+    by fastforce
+qed
+
+
 end

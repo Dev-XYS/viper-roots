@@ -634,6 +634,7 @@ lemma plus_Some_total_state_eq:
   using assms
   unfolding plus_total_state_ext_def
   by (simp split: if_split_asm add: mask_plus_Some)
+*
 
 lemma plus_Some_full_total_state_eq:
   assumes "\<omega> \<oplus> \<omega>' = Some \<omega>sum"
@@ -842,10 +843,13 @@ next
   thus "\<omega> \<succeq> \<omega>'"
     by (auto simp add: greater_def)
 qed
+*)
 
 lemma full_total_state_succ_implies_gte:
   assumes "(\<omega> :: 'a full_total_state) \<succeq> \<omega>'"
   shows "\<omega> \<ge> \<omega>'"
+  sorry
+(*
 proof -
   from assms obtain \<omega>2 where Sum: "\<omega>' \<oplus> \<omega>2 = Some \<omega>"
     by (auto simp add: greater_def)
@@ -860,11 +864,14 @@ proof -
      apply blast
     by simp
 qed
+*)
 
 lemma full_total_state_gte_implies_succ:
   assumes "\<omega> \<ge> \<omega>'"
       and TraceEq: "get_trace_total \<omega> = get_trace_total \<omega>'"
-  shows "(\<omega> :: 'a full_total_state) \<succeq> \<omega>'"
+    shows "(\<omega> :: 'a full_total_state) \<succeq> \<omega>'"
+  sorry
+(*
 proof -
   from \<open>\<omega> \<ge> \<omega>'\<close> have "get_total_full \<omega> \<ge> get_total_full \<omega>'"
     using less_eq_full_total_state_ext_def
@@ -878,6 +885,7 @@ proof -
     using assms(1) less_eq_full_total_stateD_2 succ_full_total_stateI total_state_greater_mask
     by fastforce
 qed
+*)
 
 subsection \<open>Partial commutative monoid with core instantiation\<close>
 
@@ -885,7 +893,7 @@ instantiation total_state_ext :: (type,type) pcm_with_core
 begin
 
 definition core_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a, 'b) total_state_ext"
-  where "core_total_state_ext \<phi> = (update_m_total \<phi> (zero_mask, zero_mask))"
+  where "core_total_state_ext \<phi> = (upd_nm_total \<phi> empty_nm)"
 
 instance proof
   fix a b c x y :: "('a,'b) total_state_ext"
@@ -894,49 +902,35 @@ instance proof
     unfolding core_total_state_ext_def plus_total_state_ext_def
     apply simp
     using plus_mask_zero_mask_neutral
-    by (metis option.sel total_state.surjective total_state.update_convs(3) total_state.update_convs(4))
-
+    by (simp add: add_empty_nm plus_nested_mask_def)
 
   show "Some |x| = |x| \<oplus> |x|"
     unfolding core_total_state_ext_def plus_total_state_ext_def
     apply simp
     using plus_mask_zero_mask_neutral
-    by (metis option.sel)
+    by (simp add: add_empty_nm plus_nested_mask_def)
 
   show "Some x = x \<oplus> c \<Longrightarrow> \<exists>r. Some |x| = c \<oplus> r" (is "?lhs \<Longrightarrow> ?rhs")
   proof -
     assume ?lhs
 
-    have *: "get_mh_total c = zero_mask \<and> get_mp_total c = zero_mask"
-    proof -
-      note MaskPlusEq =
-          mask_plus_Some[of "get_mh_total x" "get_mh_total c"]
-          mask_plus_Some[of "get_mp_total x" "get_mp_total c"]
+    have "get_nm_total c = empty_nm" \<comment> \<open>Todo: This is actually incorrect. \<open>c\<close> might be something equivalent to \<open>empty_nm\<close>.\<close>
+      sorry
 
-      from \<open>?lhs\<close> show ?thesis
-        unfolding plus_total_state_ext_def
-        apply (simp split: if_split_asm)
-        apply (simp add: MaskPlusEq)
-        using add_masks_self_zero_mask
-        by (metis total_state.ext_inject total_state.surjective total_state.update_convs(3) total_state.update_convs(4))
-    qed
-
-    show ?thesis
-      unfolding core_total_state_ext_def plus_total_state_ext_def
-     apply (rule exI[where ?x="c\<lparr> get_mh_total := zero_mask, get_mp_total := zero_mask \<rparr>"])
-     apply (simp add: * split: if_split if_split_asm)
-      apply (simp add: plus_mask_zero_mask_neutral[simplified commutative])
-      using total_state_plus_defined[OF HOL.sym[OF \<open>?lhs\<close>]]
-      by simp
+    thus ?thesis
+      by (metis \<open>Some x = x \<oplus> c\<close> \<open>Some x = x \<oplus> |x|\<close> plus_total_state_zero_mask total_state_plus_defined)
   qed
 
   show "Some c = a \<oplus> b \<Longrightarrow> Some |c| = |a| \<oplus> |b|"
     unfolding core_total_state_ext_def plus_total_state_ext_def
-    by (clarsimp split: if_split if_split_asm simp: plus_mask_zero_mask_neutral)
+    sorry
+    (* by (clarsimp split: if_split if_split_asm simp: plus_mask_zero_mask_neutral) *)
 
   show "Some a = b \<oplus> x \<Longrightarrow> Some a = b \<oplus> y \<Longrightarrow> |x| = |y| \<Longrightarrow> x = y" (is "?A \<Longrightarrow> ?B \<Longrightarrow> _ \<Longrightarrow> _")
     \<comment>\<open>\<^prop>\<open>|x| = |y|\<close> is not needed, since it is always the case if he heap of \<^term>\<open>x\<close> and \<^term>\<open>y\<close>
        are the same, which it must be because of the first two assumptions\<close>
+    sorry
+  (*
   proof -
     assume ?A and ?B
 
@@ -967,10 +961,12 @@ instance proof
     thus ?thesis
       by (metis \<open>?A\<close> \<open>?B\<close> total_state.equality total_state_plus_defined)
   qed
+  *)
 qed
 
 end
 
+(*
 instantiation full_total_state_ext :: (type,type) pcm_with_core
 begin
 
@@ -1068,6 +1064,7 @@ instance proof
 qed
 
 end
+
 
 subsubsection \<open>Lemmas\<close>
 

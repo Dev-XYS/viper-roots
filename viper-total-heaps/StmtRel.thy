@@ -1,5 +1,5 @@
 theory StmtRel
-imports ExpRel ExprWfRel InhaleRel ExhaleRel TotalSemProperties ViperBoogieTranslationInterface Simulation
+  imports ExpRel ExprWfRel InhaleRel ExhaleRel TotalSemProperties ViperBoogieTranslationInterface Simulation TotalStateInst
 begin
 
 subsection \<open>Statement relation - general statement\<close>
@@ -8,7 +8,7 @@ text\<open> Points to think about:
   \<^item> backward vs. forward simulation (also tracking single Boogie state vs sets of Boogie states)
 \<close>
 
-type_synonym 'a stmt_config = "(stmt + unit) \<times> 'a stmt_result_total"
+type_synonym 'a stmt_config = "(stmt + unit) \<times> 'a result_total"
 
 definition stmt_rel :: "('a full_total_state \<Rightarrow> ('a vbpl_absval) nstate \<Rightarrow> bool) \<Rightarrow>
                                ('a full_total_state \<Rightarrow> ('a vbpl_absval) nstate \<Rightarrow> bool) \<Rightarrow> 
@@ -158,7 +158,7 @@ proof (rule rel_general_cond)
   fix \<omega> \<omega>' ns
   assume "R \<omega> ns"
   assume "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (stmt.If cond s_thn s_els) \<omega> (RNormal \<omega>')"
-  thus "((\<exists>v. ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and> \<omega> = \<omega>) \<and>
+  thus "((\<exists>v. ctxt_vpr, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and> \<omega> = \<omega>) \<and>
        ( red_expr_bpl ctxt cond_bpl ns (BoolV True) \<and> R \<omega> ns \<and> red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr s_thn \<omega> (RNormal \<omega>') \<or>
        red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and> R \<omega> ns \<and> red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr s_els \<omega> (RNormal \<omega>'))"
     apply (cases)
@@ -170,8 +170,8 @@ next
   fix \<omega> ns
   assume "R \<omega> ns"
   assume "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (stmt.If cond s_thn s_els) \<omega> RFailure"
-  thus " ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<or>
-       ((\<exists>v. ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and> \<omega> = \<omega>) \<and>
+  thus " ctxt_vpr, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<or>
+       ((\<exists>v. ctxt_vpr, Some \<omega> \<turnstile> \<langle>cond;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and> \<omega> = \<omega>) \<and>
        (red_expr_bpl ctxt cond_bpl ns (BoolV True) \<and> R \<omega> ns \<and>
         red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr s_thn \<omega> RFailure \<or>
         red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and> R \<omega> ns \<and>
@@ -229,7 +229,7 @@ proof (cases rule: stmt_rel_intro)
 
   show "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (?\<gamma>', Normal ns') \<and> R \<omega>' ns'"
   proof -
-    from RedVpr obtain v where RedEVpr: "ctxt_vpr, StateCons, (Some \<omega>) \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t (Val v)" and 
+    from RedVpr obtain v where RedEVpr: "ctxt_vpr, (Some \<omega>) \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t (Val v)" and 
                                 "\<omega>' = (update_var_total \<omega> x_vpr v)" and
                                 vTyVpr: "get_type (absval_interp_total ctxt_vpr) v = ty"      
       apply (rule red_stmt_total.cases)
@@ -286,7 +286,7 @@ next
   from RedVpr show "\<exists>c'. snd c' = Failure \<and> red_ast_bpl P ctxt (\<gamma>, Normal ns) c'"
   proof cases
   case (RedSubExpressionFailure)
-  hence "ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  hence "ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
     by (fastforce elim: red_pure_exps_total_singleton)
 
   then show ?thesis 
@@ -431,8 +431,9 @@ proof (rule stmt_rel_intro)
                    (update_var (var_context ctxt) ns3 h_bpl
                    (AbsV (AHeap (hb( (Address addr,f_bpl_val) \<mapsto> (val_rel_vpr_bpl v) ))))
              )" (is "R _ ?ns_upd")
-     using RFieldAssign[OF \<open>R \<omega> ns3\<close>] \<open>\<omega>' = _\<close>           
-     by metis
+     using RFieldAssign[OF \<open>R \<omega> ns3\<close>] \<open>\<omega>' = _\<close>
+     sorry
+     (* by metis *)
 
    from RcvRel have RedRcvBpl: "red_expr_bpl ctxt rcv_bpl ns3 (AbsV (ARef (Address addr)))"
      using \<open>?Rext \<omega> \<omega> ns3\<close>  RedFieldAssign exp_rel_vpr_bpl_elim
@@ -496,18 +497,18 @@ next
       by (meson snd_conv)
   next
     case RedSubExpressionFailure
-    hence RedSubExpFailureAux: "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>) [rcv_vpr, rhs_vpr] \<omega> None"
+    hence RedSubExpFailureAux: "red_pure_exps_total ctxt_vpr (Some \<omega>) [rcv_vpr, rhs_vpr] \<omega> None"
       by simp
     show ?thesis
-    proof (cases  "ctxt_vpr, StateCons, (Some \<omega>) \<turnstile> \<langle>rcv_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure")
+    proof (cases  "ctxt_vpr, (Some \<omega>) \<turnstile> \<langle>rcv_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure")
       case True
       then show ?thesis 
         using wf_rel_failure_elim[OF RcvWfRel \<open>?Rext \<omega> \<omega> ns\<close>]
         by blast
     next
       case False
-      from this obtain v where "ctxt_vpr, StateCons, (Some \<omega>) \<turnstile> \<langle>rcv_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v" and
-                               "ctxt_vpr, StateCons, (Some \<omega>) \<turnstile> \<langle>rhs_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure" 
+      from this obtain v where "ctxt_vpr, (Some \<omega>) \<turnstile> \<langle>rcv_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v" and
+                               "ctxt_vpr, (Some \<omega>) \<turnstile> \<langle>rhs_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure" 
         using RedSubExpFailureAux
         by (auto elim: red_pure_exp_total_elims)
       then show ?thesis 
@@ -554,12 +555,12 @@ proof (rule field_assign_rel[OF WfConsistency, where ?\<tau>_vpr = "the (declare
   fix \<omega> ns hb addr v
   assume "R \<omega> ns"
      and NewValVprTy: "get_type (domain_type TyRep) v = ?\<tau>_vpr"
-     and ConsistentUpdState: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (update_hh_loc_total_full \<omega> (addr,f_vpr) v)"
+     and ConsistentUpdState: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega> (addr,f_vpr) v)"
 
   from \<open>R \<omega> ns\<close> have StateRelInst: "state_rel_def_same (program_total ctxt_vpr) StateCons TyRep Tr AuxPred ctxt \<omega> ns"
     by (simp add: RStateRel)
 
-  let ?\<omega>' = "(update_hh_loc_total_full \<omega> (addr,f_vpr) v)"
+  let ?\<omega>' = "(upd_hh_loc_total_full \<omega> (addr,f_vpr) v)"
   let ?ns' = "\<lambda>f_bpl_val. (update_var (var_context ctxt) ns (heap_var Tr) 
                                (AbsV (AHeap (hb( (Address addr,f_bpl_val) \<mapsto> (val_rel_vpr_bpl v) ))))
                          )"      
@@ -730,25 +731,24 @@ proof (rule stmt_rel_intro)
   assume "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Exhale (Atomic (Pure (ELit (ViperLang.lit.LBool True))))) \<omega> (RNormal \<omega>')"
 
   hence "\<omega> = \<omega>'"
-  proof (rule RedExhale_case)
-    fix \<omega>_exh \<omega>''
-    assume RNormalEq: "RNormal \<omega>' = RNormal \<omega>''"
-       and RedExh: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (Pure (ELit (ViperLang.lit.LBool True)))) \<omega> (RNormal \<omega>_exh)"
-       and HavocState:"\<omega>'' \<in> havoc_locs_state ctxt_vpr \<omega>_exh
-           {loc. pnone < get_mh_total (get_total_full \<omega>) loc \<and> get_mh_total (get_total_full \<omega>_exh) loc = pnone}"
+  proof (rule RedExhaleNormal_case)
+    fix \<omega>_exh
+    assume RedExh: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (Pure (ELit (ViperLang.lit.LBool True)))) \<omega> (RNormal \<omega>_exh)"
+       and HavocState: "\<omega>' \<in> havoc_locs_state ctxt_vpr \<omega>_exh
+                               { loc. 0 < get_mh_nm (get_nm_total (get_total_full \<omega>)) loc \<and>
+                                      get_mh_nm (get_nm_total (get_total_full \<omega>_exh)) loc = 0 }"
 
     from RedExh have "\<omega> = \<omega>_exh"
       using exhale_pure_normal_same
-      by fastforce      
+      by fastforce
 
-    with HavocState have "\<omega>'' = \<omega>"
-      using havoc_locs_state_empty
-      by (metis (mono_tags, lifting) empty_Collect_eq less_imp_neq)
+    with HavocState have "\<omega>' \<in> havoc_locs_state ctxt_vpr \<omega>_exh {}"
+      by (metis (mono_tags, lifting) Collect_empty_eq less_imp_neq)
 
     thus "\<omega> = \<omega>'"
-      using RNormalEq
-      by auto
-  qed simp_all
+      by (simp add: \<open>\<omega> = \<omega>_exh\<close> havoc_locs_state_empty)
+
+  qed
 
   thus "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>, Normal ns') \<and> R' \<omega>' ns'"
     using assms \<open>R \<omega> ns\<close> red_ast_bpl_refl
@@ -892,7 +892,7 @@ proof -
         using MaskRel
         unfolding mask_rel_def
         by blast
-      hence "get_mh_total_full \<omega> heap_loc \<noteq> pnone"
+      hence "get_mh_total_full \<omega> heap_loc \<noteq> 0"
         using PermPos zero_preal.rep_eq by fastforce
 
       hence "get_hh_total_full \<omega> heap_loc = get_hh_total_full \<omega>' heap_loc"
@@ -990,7 +990,7 @@ proof -
       using \<open>\<omega>' \<in> _\<close> havoc_locs_state_same_store
       by metis
   next
-    show "get_m_total_full \<omega> = get_m_total_full \<omega>'"
+    show "get_nm_total_full \<omega> = get_nm_total_full \<omega>'"
       using \<open>\<omega>' \<in> _\<close> havoc_locs_state_same_mask
       by metis
   next
@@ -1439,7 +1439,7 @@ lemma method_call_stmt_rel_general:
       and RelPremises:
           "\<And> (\<omega>0 :: 'a full_total_state) ns0 v_args v_rets.  
             R \<omega>0 ns0 \<Longrightarrow>
-            red_pure_exps_total ctxt_vpr StateCons (Some \<omega>0) es \<omega>0 (Some v_args) \<Longrightarrow>      
+            red_pure_exps_total ctxt_vpr (Some \<omega>0) es \<omega>0 (Some v_args) \<Longrightarrow>      
             vals_well_typed (absval_interp_total ctxt_vpr) v_args (method_decl.args mdecl) \<Longrightarrow>
             vals_well_typed (absval_interp_total ctxt_vpr) v_rets (method_decl.rets mdecl) \<Longrightarrow>
             list_all2 (\<lambda>y t. y = Some t) (map \<Lambda>_vpr ys) (rets mdecl) \<Longrightarrow>
@@ -1528,7 +1528,7 @@ proof (rule stmt_rel_intro_2)
       using RedMethodCall \<open>mdecl = _\<close>
       by blast            
 
-    have ListAllArgsEvalVpr: "list_all2 (\<lambda>e v. ctxt_vpr, StateCons, Some \<omega>0 \<turnstile> \<langle>e; \<omega>0\<rangle> [\<Down>]\<^sub>t Val v) es v_args"
+    have ListAllArgsEvalVpr: "list_all2 (\<lambda>e v. ctxt_vpr, Some \<omega>0 \<turnstile> \<langle>e; \<omega>0\<rangle> [\<Down>]\<^sub>t Val v) es v_args"
       using red_pure_exps_total_list_all2 RedMethodCall
       by blast
 
@@ -1536,7 +1536,7 @@ proof (rule stmt_rel_intro_2)
     obtain ns_exh_in where
            RedExhIn: "red_ast_bpl P ctxt (\<gamma>, Normal ns0) (\<gamma>_exh_in, Normal ns_exh_in)"
        and RExhIn: "RExhIn (g_exh \<omega>0 ns0) (state_during_exhale_pre_call \<omega>0 v_args) ns_exh_in"
-      by blast      
+      by blast
       
     show ?thesis 
     proof (cases "resPre") \<comment>\<open>case split on exhale precondition outcome\<close>
@@ -1582,8 +1582,10 @@ proof (rule stmt_rel_intro_2)
 
       from RedMethodCall RNormal have 
          RedInh: "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Inhale (method_decl.post mdecl')) ?\<omega>havoc resPost" and
-         "res = map_stmt_result_total (reset_state_after_call ys v_rets \<omega>0) resPost"
-        by blast+
+         "res = map_result_total (reset_state_after_call ys v_rets \<omega>0) resPost"
+         apply blast
+        sorry
+        (* by blast+ *)
 
       show ?thesis
       proof (cases resPost) \<comment>\<open>case split on inhale postcondition outcome\<close>
@@ -1624,7 +1626,7 @@ proof (rule stmt_rel_intro_2)
           thus ?thesis
             unfolding rel_vpr_aux_def \<open>res = _\<close> \<open>resPost = _\<close>
             using RedBplPost
-            by (metis exh_if_total.elims exh_if_total_normal_2 map_stmt_result_total.simps(1) red_ast_bpl_transitive stmt_result_total.distinct(5))
+            by (metis exh_if_total.elims exh_if_total_normal_2 map_result_total.simps(1) red_ast_bpl_transitive result_total.distinct(5))
       qed
     qed
   next
@@ -1638,10 +1640,10 @@ proof (rule stmt_rel_intro_2)
     show ?thesis
       unfolding SubExpEq
     proof -
-      assume "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>0) (map pure_exp.Var ?xs) \<omega>0 None"
+      assume "red_pure_exps_total ctxt_vpr (Some \<omega>0) (map pure_exp.Var ?xs) \<omega>0 None"
 
       from this obtain i where 
-        "ctxt_vpr, StateCons, Some \<omega>0 \<turnstile> \<langle>pure_exp.Var (?xs ! i); \<omega>0\<rangle> [\<Down>]\<^sub>t VFailure"
+        "ctxt_vpr, Some \<omega>0 \<turnstile> \<langle>pure_exp.Var (?xs ! i); \<omega>0\<rangle> [\<Down>]\<^sub>t VFailure"
         using red_exp_list_failure_nth
         by (metis SubExpEq length_map local.RedSubExpressionFailure(2) nth_map)
         
@@ -1654,8 +1656,10 @@ proof (rule stmt_rel_intro_2)
   qed
 qed
 
+
 subsubsection \<open>Instantiated lemma\<close>
 
+\<comment> \<open>
 lemma method_call_stmt_rel_inst:
   assumes WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and ConsistencyDownwardMono: "mono_prop_downward_ord StateCons"
@@ -1723,7 +1727,7 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
   fix ns :: "'a vbpl_absval nstate"
   fix  v_args v_rets
   assume R0: "R \<omega> ns" 
-     and RedArgs: "red_pure_exps_total ctxt_vpr StateCons (Some \<omega>) es \<omega> (Some v_args)"
+     and RedArgs: "red_pure_exps_total ctxt_vpr (Some \<omega>) es \<omega> (Some v_args)"
      and ArgsWellTyped: "vals_well_typed (absval_interp_total ctxt_vpr) v_args (method_decl.args mdecl)"
      and RetsWellTyped: "vals_well_typed (absval_interp_total ctxt_vpr) v_rets (rets mdecl)"
      and RetsRespectVarContext: "list_all2 (\<lambda>y t. y = Some t) (map \<Lambda>_vpr ys) (rets mdecl)"
@@ -1785,7 +1789,7 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
       by (simp add: ranI)
   qed
 
-  have ListAllArgsEvalVpr: "list_all2 (\<lambda>e v. ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v) es v_args"
+  have ListAllArgsEvalVpr: "list_all2 (\<lambda>e v. ctxt_vpr, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v) es v_args"
     using red_pure_exps_total_list_all2 RedArgs
     by blast
 
@@ -1861,7 +1865,7 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
 
   have StoreValArgsVpr: "list_all2 (\<lambda>x v. get_store_total \<omega> x = Some v) xs v_args"
     proof -
-      have "list_all2 (\<lambda>x v. ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>ViperLang.Var x; \<omega>\<rangle> [\<Down>]\<^sub>t Val v) xs v_args"
+      have "list_all2 (\<lambda>x v. ctxt_vpr, Some \<omega> \<turnstile> \<langle>ViperLang.Var x; \<omega>\<rangle> [\<Down>]\<^sub>t Val v) xs v_args"
       proof (rule list_all2_all_nthI)
         show "length xs = length v_args"
           using LengthEqs
@@ -1870,7 +1874,7 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
         fix i
         assume "i < length xs"
        
-        hence *: "ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>es ! i; \<omega>\<rangle> [\<Down>]\<^sub>t Val (v_args ! i)"
+        hence *: "ctxt_vpr, Some \<omega> \<turnstile> \<langle>es ! i; \<omega>\<rangle> [\<Down>]\<^sub>t Val (v_args ! i)"
           using ListAllArgsEvalVpr LengthEqs
           by (simp add: list_all2_conv_all_nth)
   
@@ -1878,7 +1882,7 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
           using \<open>i < _\<close> \<open>es = _\<close>
           by auto
     
-        thus "ctxt_vpr, StateCons, Some \<omega> \<turnstile> \<langle>pure_exp.Var (xs ! i);\<omega>\<rangle> [\<Down>]\<^sub>t Val (v_args ! i)"
+        thus "ctxt_vpr, Some \<omega> \<turnstile> \<langle>pure_exp.Var (xs ! i);\<omega>\<rangle> [\<Down>]\<^sub>t Val (v_args ! i)"
           using *
           by simp
       qed
@@ -2074,8 +2078,8 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
     proof -
       let ?\<omega>0_rets_empty = "\<lparr> get_store_total = shift_and_add_list_alt Map.empty (v_args@v_rets), 
                     get_trace_total = [old_label \<mapsto> get_total_full \<omega>], 
-                    get_total_full = (get_total_full \<omega>)\<lparr> get_mh_total := zero_mask, get_mp_total := zero_mask \<rparr> \<rparr>"
-      let ?\<omega>0_empty = "?\<omega>0\<lparr> get_total_full := (get_total_full \<omega>)\<lparr> get_mh_total := zero_mask, get_mp_total := zero_mask \<rparr> \<rparr>"
+                    get_total_full = (get_total_full \<omega>)\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>"
+      let ?\<omega>0_empty = "?\<omega>0\<lparr> get_total_full := (get_total_full \<omega>)\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>"
   
       have "assertion_framing_state ctxt_vpr StateCons (method_decl.pre mdecl) ?\<omega>0_rets_empty"
         unfolding assertion_framing_state_def
@@ -2091,7 +2095,7 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
           unfolding heap_var_rel_def
           by simp
         moreover have "is_empty_total_full ?\<omega>0_rets_empty"
-          by (simp add: is_empty_total_full_def is_empty_total_def)
+          by (simp add: is_empty_total_full_def is_empty_total_def empty_nm_def)
         ultimately show "res \<noteq> RFailure"
           using MethodSpecsFramed
           unfolding vpr_method_spec_correct_total_def vpr_method_correct_total_aux_def
@@ -2479,7 +2483,7 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
      qed (simp_all add: \<open>\<omega>havoc = _\<close>)
 
      have PostFramed: "assertion_framing_state ctxt_vpr StateCons (method_decl.post mdecl) \<omega>havoc"       
-      proof -
+     proof -
         \<comment>\<open>We know that the postcondition is framed w.r.t. the precondition. More precisely, the assumption
            tells us that \<^emph>\<open>if\<close> the precondition is normally inhaled from an empty state \<^term>\<open>\<omega>_empty\<close> to reach \<^term>\<open>\<omega>inh\<close>, then the postcondition
            is framed in any well-typed state whose store is the same as \<^term>\<open>get_store_total \<omega>_empty\<close> and whose old state is given 
@@ -2494,10 +2498,10 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
 
         let ?\<omega>0_rets =  "?\<omega>0\<lparr> get_store_total := shift_and_add_list_alt Map.empty (v_args@v_rets) \<rparr>"
         let ?\<omega>0_rets_empty = "?\<omega>0\<lparr>   get_store_total := shift_and_add_list_alt Map.empty (v_args@v_rets),
-                                      get_total_full := (get_total_full \<omega>)\<lparr> get_mh_total := zero_mask, get_mp_total := zero_mask \<rparr> \<rparr>"         
+                                      get_total_full := (get_total_full \<omega>)\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>"         
 
         let ?\<omega>pre_rets = "\<omega>pre \<lparr> get_store_total := shift_and_add_list_alt Map.empty (v_args@v_rets) \<rparr>"
-        from (*\<open>red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Exhale (method_decl.pre mdecl')) ?\<omega>0 resPre\<close> *)
+        from \<open>red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Exhale (method_decl.pre mdecl')) ?\<omega>0 resPre\<close>
              RedExhPre
         obtain \<omega>pre_exh_aux where
           RedExh: "red_exhale ctxt_vpr StateCons ?\<omega>0 (method_decl.pre mdecl) ?\<omega>0 (RNormal \<omega>pre_exh_aux)"
@@ -2540,7 +2544,7 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
           by simp
         moreover have EmptyState: "is_empty_total_full ?\<omega>0_rets_empty"
           unfolding is_empty_total_full_def is_empty_total_def
-          by auto
+          by (simp add: empty_nm_def)
         moreover have "red_inhale ctxt_vpr StateCons (method_decl.pre mdecl) ?\<omega>0_rets_empty (RNormal (?\<omega>0_rets \<ominus> ?\<omega>pre_exh_aux_rets))"
         proof -
           have RedExhRets: "red_exhale ctxt_vpr StateCons ?\<omega>0_rets (method_decl.pre mdecl) ?\<omega>0_rets (RNormal ?\<omega>pre_exh_aux_rets)"
@@ -2914,6 +2918,7 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
     qed
   qed (simp)
 qed
+\<close>
 
 subsection \<open>Scoped variable\<close>
 
@@ -2944,7 +2949,7 @@ proof (rule stmt_rel_intro_2)
   from RedStmtVpr obtain res_body v where 
         NewValTy: "get_type (absval_interp_total ctxt_vpr) v = \<tau>_vpr"
     and RedBodyVpr: "red_stmt_total ctxt_vpr StateCons (shift_and_add \<Lambda>_vpr \<tau>_vpr) s_body (shift_and_add_state_total \<omega> v) res_body"
-    and ResEqUnshift: "res = map_stmt_result_total (unshift_state_total (Suc 0)) res_body"
+    and ResEqUnshift: "res = map_result_total (unshift_state_total (Suc 0)) res_body"
     by (auto elim: RedScope_case)
 
   from \<open>R \<omega> ns\<close> RedToHavocBpl obtain ns' where 
@@ -3042,7 +3047,7 @@ proof (rule stmt_rel_intro_2)
     with ResEqUnshift obtain \<omega>_body where 
       "res_body = RNormal \<omega>_body"
       "\<omega>' = unshift_state_total (Suc 0) \<omega>_body"
-      by (blast elim: map_stmt_result_total.elims)
+      by (blast elim: map_result_total.elims)
 
                         
     with RedBodyVpr stmt_rel_normal_elim[OF StmtRelBody StateRelBody]
@@ -3091,7 +3096,7 @@ proof (rule stmt_rel_intro_2)
     \<comment>\<open>Failure case\<close>
     assume "res = RFailure"
     with ResEqUnshift have "res_body = RFailure"
-      by (blast elim: map_stmt_result_total.elims)
+      by (blast elim: map_result_total.elims)
 
     with RedBodyVpr stmt_rel_failure_elim[OF StmtRelBody StateRelBody] 
     obtain \<gamma>fail where
@@ -3147,11 +3152,11 @@ lemma exp_rel_true_imp_1:
   shows "exp_rel_vpr_bpl R ctxt_vpr ctxt (Binop (ELit (ViperLang.LBool True)) BImp e_vpr) e_bpl"
 proof (rule exp_rel_equiv_vpr[OF _ assms])
   fix v1 StateCons \<omega> \<omega>_def_opt
-  assume "ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>Binop (ELit (ViperLang.LBool True)) BImp e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
-  thus "ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
+  assume "ctxt_vpr, \<omega>_def_opt \<turnstile> \<langle>Binop (ELit (ViperLang.LBool True)) BImp e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
+  thus "ctxt_vpr, \<omega>_def_opt \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
   proof (rule RedBinop_case)
     fix v1a contra
-    assume "ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>ELit (ViperLang.lit.LBool True);\<omega>\<rangle> [\<Down>]\<^sub>t Val v1a"
+    assume "ctxt_vpr, \<omega>_def_opt \<turnstile> \<langle>ELit (ViperLang.lit.LBool True);\<omega>\<rangle> [\<Down>]\<^sub>t Val v1a"
     hence "v1a = VBool True"
       by (metis TotalExpressions.RedLit_case extended_val.inject val_of_lit.simps(1))
     assume "eval_binop_lazy v1a BImp = Some v1"
@@ -3159,15 +3164,15 @@ proof (rule exp_rel_equiv_vpr[OF _ assms])
       by simp
   next
     fix v1a v2
-    assume "ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>ELit (ViperLang.lit.LBool True);\<omega>\<rangle> [\<Down>]\<^sub>t Val v1a"
+    assume "ctxt_vpr, \<omega>_def_opt \<turnstile> \<langle>ELit (ViperLang.lit.LBool True);\<omega>\<rangle> [\<Down>]\<^sub>t Val v1a"
     hence "v1a = VBool True"
       by (metis TotalExpressions.RedLit_case extended_val.inject val_of_lit.simps(1))
-    assume "eval_binop v1a BImp v2 = BinopNormal v1"
+    assume "eval_binop (Option.is_none \<omega>_def_opt) v1a BImp v2 = BinopNormal v1"
     hence "v2 = v1"
       unfolding \<open>v1a = _\<close>
       by (rule eval_binop.elims) auto
-    assume "ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2"
-    thus "ctxt_vpr, StateCons, \<omega>_def_opt \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
+    assume "ctxt_vpr, \<omega>_def_opt \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2"
+    thus "ctxt_vpr, \<omega>_def_opt \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
       by (simp add: \<open>v2 = v1\<close>)
   qed
 qed

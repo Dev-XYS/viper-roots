@@ -70,9 +70,9 @@ lemma havoc_locs_state_same_trace: "\<omega>' \<in> havoc_locs_state ctxt \<omeg
   unfolding havoc_locs_state_def
   by force
 
-(* lemma havoc_locs_state_same_mask: "\<omega>' \<in> havoc_locs_state ctxt \<omega> locs \<Longrightarrow> get_m_total_full \<omega>' = get_m_total_full \<omega>"
+lemma havoc_locs_state_same_mask: "\<omega>' \<in> havoc_locs_state ctxt \<omega> locs \<Longrightarrow> get_nm_total_full \<omega>' = get_nm_total_full \<omega>"
   unfolding havoc_locs_state_def
-  by force *)
+  by force
 
 lemma havoc_locs_state_well_typed_heap: "\<omega>' \<in> havoc_locs_state ctxt \<omega> locs \<Longrightarrow>
                                     total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>')"

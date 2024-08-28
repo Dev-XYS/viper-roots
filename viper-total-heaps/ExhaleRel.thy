@@ -143,6 +143,7 @@ lemma framing_exhI:
   unfolding framing_exh_def
   by blast
 
+(*
 lemma framing_exhI_state_rel:
   assumes StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega> \<omega> ns"
       and ConsistencyEnabled: "consistent_state_rel_opt (state_rel_opt Tr)"      
@@ -1021,5 +1022,6 @@ proof (rule exhale_rel_refl)
   thus "res \<noteq> RFailure \<and> (\<forall>\<omega>'. res = RNormal \<omega>' \<longrightarrow> \<omega>' = \<omega>)"
     by (cases) (auto elim: red_pure_exp_total_elims)
 qed
+*)
 
 end
