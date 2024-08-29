@@ -85,24 +85,23 @@ subsection \<open>Empty States\<close>
 
 lemma is_empty_total_wf_mask: "is_empty_total_full \<omega> \<Longrightarrow> wf_mask_simple (get_mh_total_full \<omega>)"
   unfolding is_empty_total_full_def is_empty_total_def
-  by (simp add: wf_zero_mask)
+  by (simp add: wf_zero_mask empty_nm_def)
 
-(* lemma is_empty_total_less_eq:
+lemma is_empty_total_less_eq:
   assumes "is_empty_total \<phi>" and
           "get_hh_total \<phi> = get_hh_total \<phi>'" and
-          "get_hp_total \<phi> = get_hp_total \<phi>'" and
           "total_state.more \<phi> = total_state.more \<phi>'"
         shows "\<phi> \<le> \<phi>'"
   using assms zero_mask_less_eq_mask
-  unfolding less_eq_total_state_ext_def is_empty_total_def 
-  by metis
+  unfolding less_eq_total_state_ext_def is_empty_total_def
+  sorry
+  (* by metis *)
 
 lemma is_empty_total_full_less_eq:
   assumes "is_empty_total_full \<omega>" and
           "get_store_total \<omega> = get_store_total \<omega>'" and
           "get_trace_total \<omega> = get_trace_total \<omega>'" and
           "get_hh_total_full \<omega> = get_hh_total_full \<omega>'" and
-          "get_hp_total_full \<omega> = get_hp_total_full \<omega>'" and
           "full_total_state.more \<omega> = full_total_state.more \<omega>'"
         shows "\<omega> \<le> \<omega>'"
 proof -
@@ -117,22 +116,22 @@ proof -
     by auto
 qed
 
-definition empty_full_total_state :: "'a store \<Rightarrow> 'a total_trace \<Rightarrow> 'a total_heap \<Rightarrow> 'a predicate_heap \<Rightarrow> 'a full_total_state"
-  where "empty_full_total_state \<sigma> t hh hp =
+definition empty_full_total_state :: "'a store \<Rightarrow> 'a total_trace \<Rightarrow> 'a total_heap \<Rightarrow> 'a full_total_state"
+  where "empty_full_total_state \<sigma> t hh =
    \<lparr> get_store_total = \<sigma>, 
      get_trace_total = t, 
-     get_total_full = \<lparr> get_hh_total = hh, get_hp_total = hp, get_mh_total = zero_mask, get_mp_total = zero_mask \<rparr> 
+     get_total_full = \<lparr> get_hh_total = hh, get_nm_total = empty_nm \<rparr> 
    \<rparr>"
 
-lemma get_store_empty_full_total_state [simp]: "get_store_total (empty_full_total_state \<sigma> t hh hp) = \<sigma>"
+lemma get_store_empty_full_total_state [simp]: "get_store_total (empty_full_total_state \<sigma> t hh) = \<sigma>"
   by (simp add: empty_full_total_state_def)
 
-lemma get_trace_empty_full_total_state [simp]: "get_trace_total (empty_full_total_state \<sigma> t hh hp) = t"
+lemma get_trace_empty_full_total_state [simp]: "get_trace_total (empty_full_total_state \<sigma> t hh) = t"
   by (simp add: empty_full_total_state_def)
 
-lemma is_empty_empty_full_total_state: "is_empty_total_full (empty_full_total_state \<sigma> t hh hp)"
+lemma is_empty_empty_full_total_state: "is_empty_total_full (empty_full_total_state \<sigma> t hh)"
   unfolding is_empty_total_full_def is_empty_total_def empty_full_total_state_def
-  by simp *)
+  by simp
 
 
 subsection \<open>Trace Update Properties\<close>

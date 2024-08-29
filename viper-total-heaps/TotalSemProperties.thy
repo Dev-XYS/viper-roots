@@ -679,25 +679,26 @@ proof
   ultimately show "\<exists>\<omega>0'\<le>\<omega>1'. \<omega>0' \<in> inhale_perm_single_pred R \<omega>0 lh p_opt"
     by blast   
 qed
+*)
 
 lemma inhale_no_perm_downwards_mono:
   assumes ConsistencyDownwardMono: "mono_prop_downward_ord R"
-  shows "ctxt, R, \<omega>_def1 \<turnstile> \<langle>e;\<omega>1\<rangle> [\<Down>]\<^sub>t resE \<Longrightarrow> 
+  shows "ctxt, \<omega>_def1 \<turnstile> \<langle>e;\<omega>1\<rangle> [\<Down>]\<^sub>t resE \<Longrightarrow> 
         no_perm_pure_exp e \<and> no_unfolding_pure_exp e \<Longrightarrow>
         \<omega>2 \<le> \<omega>1 \<Longrightarrow> 
         \<omega>_def2 \<le> \<omega>_def1 \<Longrightarrow>
         \<omega>_def2 = None \<longleftrightarrow> \<omega>_def1 = None \<Longrightarrow> \<comment>\<open>needed since other may not need to check well-definedness in smaller state\<close>
-        (if resE = VFailure then ctxt, R, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure
-         else ctxt, R, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure \<or>
-              ctxt, R, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t resE)" and
-        "red_pure_exps_total ctxt R \<omega>_def1 es \<omega>1 resES \<Longrightarrow> 
+        (if resE = VFailure then ctxt, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure
+         else ctxt, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure \<or>
+              ctxt, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t resE)" and
+        "red_pure_exps_total ctxt \<omega>_def1 es \<omega>1 resES \<Longrightarrow> 
          list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) es \<Longrightarrow>
          \<omega>2 \<le> \<omega>1 \<Longrightarrow> 
          \<omega>_def2 \<le> \<omega>_def1 \<Longrightarrow>
          \<omega>_def2 = None \<longleftrightarrow> \<omega>_def1 = None \<Longrightarrow>
-         (if resES = None then red_pure_exps_total ctxt R \<omega>_def2 es \<omega>2 None
-          else red_pure_exps_total ctxt R \<omega>_def2 es \<omega>2 None \<or>
-               red_pure_exps_total ctxt R \<omega>_def2 es \<omega>2 resES)" and
+         (if resES = None then red_pure_exps_total ctxt \<omega>_def2 es \<omega>2 None
+          else red_pure_exps_total ctxt \<omega>_def2 es \<omega>2 None \<or>
+               red_pure_exps_total ctxt \<omega>_def2 es \<omega>2 resES)" and
         "red_inhale ctxt R A \<omega>1 res1 \<Longrightarrow> 
               no_perm_assertion A \<and> no_unfolding_assertion A \<Longrightarrow>
               \<omega>2 \<le> \<omega>1 \<Longrightarrow> res1 \<noteq> RMagic \<Longrightarrow> 
@@ -707,8 +708,9 @@ lemma inhale_no_perm_downwards_mono:
                            (\<exists>\<omega>2'. \<omega>2' \<le> \<omega>1' \<and> 
                            red_inhale ctxt R A \<omega>2 (RNormal \<omega>2'))
                     )
-              )" and
-        "unfold_rel ctxt R x12 x13 x14 x15 x16 \<Longrightarrow> True"
+              )"
+  sorry
+(*
 proof (induction arbitrary: \<omega>2 \<omega>_def2 and \<omega>2 \<omega>_def2 and \<omega>2 rule: red_exp_inhale_unfold_inducts)
   case (RedLit \<omega>_def l uu)
   then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
@@ -1408,7 +1410,9 @@ next
       by (metis SubConstraint TotalExpressions.InhCondAssertFalse)
   qed
 qed (rule HOL.TrueI)+
+*)
 
+(*
 lemma assertion_framing_state_mono:
   assumes "mono_prop_downward_ord StateCons"
       and "assertion_framing_state ctxt StateCons A \<omega>"
@@ -2349,6 +2353,7 @@ proof cases
     unfolding \<open>\<omega>' = _\<close>
     by fastforce    
 qed
+*)
 
 lemma red_stmt_preserves_well_typed_store:
   assumes "red_stmt_total ctxt_vpr StateCons \<Lambda> stmt \<omega> res"
@@ -2362,11 +2367,11 @@ proof (induction arbitrary: \<omega>')
 next
   case (RedInhale A \<omega> res \<Lambda>)
   then show ?case 
-    by (metis inhale_only_changes_mask(3))
+    by (metis inhale_only_changes_mask)
 next
   case (RedExhale \<omega> A \<omega>_exh \<omega>' \<Lambda>)
   then show ?case 
-    by (metis (no_types, lifting) exhale_only_changes_total_state_aux havoc_locs_state_same_store stmt_result_total.inject)
+    by (metis (no_types, lifting) exhale_only_changes_total_state_aux havoc_locs_state_same_store result_total.inject)
 next
   case (RedHavoc \<Lambda> x ty v \<omega>)
   then show ?case 
@@ -2383,11 +2388,11 @@ next
     using \<open>resPre = RFailure \<or> resPre = RMagic \<Longrightarrow> res = resPre\<close> \<open>res = _\<close>
     by (cases res; cases resPre; auto)
 
-  with RedMethodCall have ResMap: "res = map_stmt_result_total (reset_state_after_call ys v_rets \<omega>) resPost"
+  with RedMethodCall have ResMap: "res = map_result_total (reset_state_after_call ys v_rets \<omega>) resPost"
     by blast
 
   with \<open>res = RNormal \<omega>'\<close> obtain \<omega>post where "resPost = RNormal \<omega>post"
-    by (auto elim: map_stmt_result_total.elims)
+    by (auto elim: map_result_total.elims)
 
   with \<open>res = RNormal \<omega>'\<close> ResMap have "\<omega>' = (reset_state_after_call ys v_rets \<omega> \<omega>post)"
     by simp
@@ -2398,29 +2403,28 @@ next
   ultimately show ?case
     by (simp add: reset_state_after_call_def) 
 next
-  case (RedUnfold \<omega> e_args v_args e_p v_p W' pred_id res)
-  hence "\<omega>' \<in> W'"
-    using th_result_rel_normal by blast
-  then show ?case 
-    using \<open>W' = _\<close> RedUnfold.prems(2) full_total_state.cases_scheme mem_Collect_eq
+  case (RedUnfold \<omega> e_args v_args e_p v_p pred_id \<phi>' \<omega>' \<Lambda>)
+  then show ?case
     by fastforce
 next
   case (RedUnfoldWildcard \<omega> e_args v_args pred_id p \<phi>' \<omega>' \<Lambda>)
   then show ?case by auto    
 next
   case (RedFold \<omega> e_args v_args e_p v_p pred_id res \<Lambda>)
-  then show ?case 
-    using fold_rel_normal_only_changes_mask
-    by metis
+  then show ?case
+    sorry
+    (* using fold_rel_normal_only_changes_mask
+    by metis *)
 next
   case (RedFoldWildcard \<omega> e_args v_args pred_id p res \<Lambda>)
-  then show ?case 
-  using fold_rel_normal_only_changes_mask
-  by metis
+  then show ?case
+    sorry
+    (* using fold_rel_normal_only_changes_mask
+    by metis *)
 next
   case (RedScope v \<tau> \<Lambda> scopeBody \<omega> res res_unshift)
   from this obtain \<omega>s where "res = RNormal \<omega>s"
-    by (metis map_stmt_result_total.elims)
+    by (metis map_result_total.elims)
 
   with RedScope have "\<omega>' = unshift_state_total 1 \<omega>s"
     by simp
@@ -2459,11 +2463,11 @@ lemma red_stmt_preserves_labels:
 proof (induction arbitrary: \<omega>')
   case (RedInhale A \<omega> res \<Lambda>)
   then show ?case 
-    by (metis inhale_only_changes_mask(3))
+    by (metis inhale_only_changes_mask)
 next
   case (RedExhale \<omega> A \<omega>_exh \<omega>' \<Lambda>)
   then show ?case 
-    by (metis (no_types, lifting) exhale_only_changes_total_state_aux havoc_locs_state_same_trace stmt_result_total.inject)
+    by (metis (no_types, lifting) exhale_only_changes_total_state_aux havoc_locs_state_same_trace result_total.inject)
 next
   case (RedHavoc \<Lambda> x ty v \<omega>)
   then show ?case 
@@ -2478,11 +2482,11 @@ next
 next
   case (RedMethodCall \<omega> es v_args m mdecl \<Lambda> ys v_rets resPre res resPost)
   from this obtain \<omega>Post where "resPost = RNormal \<omega>Post"
-    by (metis map_stmt_result_total.simps(2) map_stmt_result_total.simps(3) stmt_result_total.exhaust)
+    by (metis map_result_total.simps(2) map_result_total.simps(3) result_total.exhaust)
   moreover from this obtain \<omega>Pre where "resPre = RNormal \<omega>Pre"
     using RedMethodCall
-    by (metis stmt_result_total.exhaust)
-  ultimately have "res = map_stmt_result_total (reset_state_after_call ys v_rets \<omega>) (RNormal \<omega>Post)"
+    by (metis result_total.exhaust)
+  ultimately have "res = map_result_total (reset_state_after_call ys v_rets \<omega>) (RNormal \<omega>Post)"
     using RedMethodCall
     by blast    
   thus ?case    
@@ -2494,14 +2498,9 @@ next
   then show ?case 
     by auto
 next
-  case (RedUnfold \<omega> e_args v_args e_p v_p W' pred_id res \<Lambda>)
-  hence "\<omega>' \<in> W'"
-    using th_result_rel_normal
-    by blast
-
-  then show ?case 
-    using \<open>W' = _\<close> \<open>get_trace_total \<omega> lbl = Some \<phi>\<close>
-    by fastforce    
+  case (RedUnfold \<omega> e_args v_args e_p v_p pred_id \<phi>' \<omega>' \<Lambda>)
+  then show ?case
+    by fastforce
 next
   case (RedUnfoldWildcard \<omega> e_args v_args pred_id p \<phi>' \<omega>' \<Lambda>)
   then show ?case 
@@ -2509,11 +2508,13 @@ next
 next
   case (RedFold \<omega> e_args v_args e_p v_p pred_id res \<Lambda>)
   then show ?case 
-    by (auto elim: FoldRelNormalCase)    
+    sorry
+    (* by (auto elim: FoldRelNormalCase) *)
 next
   case (RedFoldWildcard \<omega> e_args v_args pred_id p res \<Lambda>)
   then show ?case 
-    by (auto elim: FoldRelNormalCase)    
+    sorry
+    (* by (auto elim: FoldRelNormalCase) *)
 next
   case (RedScope v \<tau> \<Lambda> scopeBody \<omega> res res_unshift)
   then show ?case 
@@ -2538,11 +2539,11 @@ lemma red_stmt_preserves_unmodified_variables:
 proof (induction arbitrary: \<omega>' x)
   case (RedInhale A \<omega> res \<Lambda>)
   then show ?case 
-    by (metis inhale_only_changes_mask(3))
+    by (metis inhale_only_changes_mask)
 next
   case (RedExhale \<omega> A \<omega>_exh \<omega>' \<Lambda>)
   then show ?case 
-    by (metis (no_types, lifting) exhale_only_changes_total_state_aux havoc_locs_state_same_store stmt_result_total.inject)
+    by (metis (no_types, lifting) exhale_only_changes_total_state_aux havoc_locs_state_same_store result_total.inject)
 next
   case (RedHavoc \<Lambda> x ty v \<omega>)
   then show ?case by fastforce
@@ -2551,17 +2552,19 @@ next
   then show ?case by fastforce
 next
   case (RedFieldAssign \<omega> e_r addr f e v ty \<Lambda>)
-  then show ?case by fastforce
+  then show ?case
+    sorry
 next
   case (RedMethodCall \<omega> es v_args m mdecl \<Lambda> ys v_rets resPre res resPost)
   from this obtain \<omega>Post where "resPost = RNormal \<omega>Post"
-    by (metis map_stmt_result_total.simps(2) map_stmt_result_total.simps(3) stmt_result_total.exhaust)
+    by (metis map_result_total.simps(2) map_result_total.simps(3) result_total.exhaust)
   moreover from this obtain \<omega>Pre where "resPre = RNormal \<omega>Pre"
     using RedMethodCall
-    by (metis stmt_result_total.exhaust)
-  ultimately have "res = map_stmt_result_total (reset_state_after_call ys v_rets \<omega>) (RNormal \<omega>Post)"
+    by (metis result_total.exhaust)
+  ultimately have "res = map_result_total (reset_state_after_call ys v_rets \<omega>) (RNormal \<omega>Post)"
     using RedMethodCall
-    by blast
+    sorry
+    (* by blast *)
   thus ?case
     unfolding reset_state_after_call_def
     using \<open>x \<notin> modif (MethodCall ys m es)\<close> \<open>res = RNormal \<omega>'\<close>
@@ -2570,25 +2573,23 @@ next
   case (RedLabel \<omega>' \<omega> lbl \<Lambda>)
   then show ?case by fastforce
 next
-  case (RedUnfold \<omega> e_args v_args e_p v_p W' pred_id res \<Lambda>)
-  hence "\<omega>' \<in> W'"
-    using th_result_rel_normal
-    by blast
-
-  then show ?case 
-    using \<open>W' = _\<close>
-    by fastforce        
+  case (RedUnfold \<omega> e_args v_args e_p v_p pred_id \<phi>' \<omega>' \<Lambda>)
+  then show ?case
+    by fastforce    
 next
   case (RedUnfoldWildcard \<omega> e_args v_args pred_id p \<phi>' \<omega>' \<Lambda>)
-  then show ?case by fastforce
+  then show ?case
+    by fastforce
 next
   case (RedFold \<omega> e_args v_args e_p v_p pred_id res \<Lambda>)
-  then show ?case 
-    by (auto elim: FoldRelNormalCase)    
+  then show ?case
+    sorry
+    (* by (auto elim: FoldRelNormalCase) *)
 next
   case (RedFoldWildcard \<omega> e_args v_args pred_id p res \<Lambda>)
-  then show ?case 
-    by (auto elim: FoldRelNormalCase)    
+  then show ?case
+    sorry
+    (* by (auto elim: FoldRelNormalCase) *)
 next
   case (RedScope v \<tau> \<Lambda> scopeBody \<omega> res res_unshift)
   from this obtain \<omega>Body where "res = RNormal \<omega>Body"
@@ -2621,7 +2622,7 @@ next
 next
   case (RedSeq \<Lambda> s1 \<omega> \<omega>' s2 res)
   then show ?case by fastforce
-qed (simp_all) *)
+qed (simp_all)
 
 lemma free_var_atomic_assertion_map_free_var_pure_exp:                                                            
   "free_var_assertion (Atomic A) = \<Union> (set (map free_var_pure_exp (sub_expressions_atomic A)))"

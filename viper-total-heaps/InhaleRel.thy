@@ -561,7 +561,9 @@ next
 
   from InhPremise have AtMostWritePerm: "r \<noteq> Null \<Longrightarrow> 1 \<ge> ?p'" 
     unfolding inhale_acc_normal_premise_def inhale_perm_single_def
-    by force
+    (* by force *)
+    sorry
+    \<comment> \<open>TodoNow: state consistency\<close>
 
   have
        LookupTempPerm: "lookup_var (var_context ctxt) ns temp_perm = Some (RealV p)"

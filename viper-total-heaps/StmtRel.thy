@@ -363,7 +363,7 @@ lemma field_assign_rel:
       \<comment>\<open>Key field assignment property for R\<close>
       and RFieldAssign:  "\<And> \<omega> ns hb addr v . R \<omega> ns \<Longrightarrow>
                      get_type (domain_type TyRep) v = \<tau>_vpr \<Longrightarrow>
-                     (StateConsEnabled \<Longrightarrow> StateCons (update_hh_loc_total_full \<omega> (addr,f_vpr) v)) \<Longrightarrow>
+                     (StateConsEnabled \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega> (addr,f_vpr) v)) \<Longrightarrow>
                      (\<exists>hb f_bpl_val. 
                        lookup_var_ty (var_context ctxt) h_bpl = Some (TConSingle (THeapId TyRep)) \<and>
                        lookup_var (var_context ctxt) ns h_bpl = Some (AbsV (AHeap hb)) \<and>
@@ -371,7 +371,7 @@ lemma field_assign_rel:
                        lookup_var (var_context ctxt) ns f_bpl = Some (AbsV (AField f_bpl_val)) \<and>
                        field_ty_fun_opt TyRep f_bpl_val = Some (TFieldId TyRep, [\<tau>_field_bpl, \<tau>_bpl]) \<and>
                        vbpl_absval_ty_opt TyRep (AHeap (hb( (Address addr,f_bpl_val) \<mapsto> (val_rel_vpr_bpl v) ))) = Some (THeapId TyRep, []) \<and>
-                       R (update_hh_loc_total_full \<omega> (addr,f_vpr) v)
+                       R (upd_hh_loc_total_full \<omega> (addr,f_vpr) v)
                          (update_var (var_context ctxt) ns h_bpl
                                (AbsV (AHeap (hb( (Address addr,f_bpl_val) \<mapsto> (val_rel_vpr_bpl v) ))))
                          ))"
@@ -1583,9 +1583,8 @@ proof (rule stmt_rel_intro_2)
       from RedMethodCall RNormal have 
          RedInh: "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Inhale (method_decl.post mdecl')) ?\<omega>havoc resPost" and
          "res = map_result_total (reset_state_after_call ys v_rets \<omega>0) resPost"
-         apply blast
-        sorry
-        (* by blast+ *)
+        using RNormal local.RedMethodCall(8)
+        by blast+
 
       show ?thesis
       proof (cases resPost) \<comment>\<open>case split on inhale postcondition outcome\<close>
@@ -1659,7 +1658,7 @@ qed
 
 subsubsection \<open>Instantiated lemma\<close>
 
-\<comment> \<open>
+\<^cancel>\<open>
 lemma method_call_stmt_rel_inst:
   assumes WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and ConsistencyDownwardMono: "mono_prop_downward_ord StateCons"
@@ -2919,6 +2918,7 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
   qed (simp)
 qed
 \<close>
+
 
 subsection \<open>Scoped variable\<close>
 

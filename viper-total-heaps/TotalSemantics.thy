@@ -195,7 +195,7 @@ always has at least one failure transition. This is in-sync with the Carbon impl
      declared_fields (program_total ctxt) f = Some ty;
      get_type (absval_interp_total ctxt) v = ty
    \<rbrakk> \<Longrightarrow>
-   red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal (update_hh_loc_total_full \<omega> (addr,f) v))"
+   red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal (upd_hh_loc_total_full \<omega> (addr,f) v))"
 \<comment>\<open>Is null case handled in NestedPermSem?\<close>
 | RedFieldAssignFailure:
   "\<lbrakk> ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r);
@@ -228,7 +228,7 @@ always has at least one failure transition. This is in-sync with the Carbon impl
                                get_trace_total = [old_label \<mapsto> get_total_full \<omega>],
                                get_total_full = get_total_full \<omega>Pre \<rparr>
                              resPost \<and>
-           res = map_stmt_result_total (reset_state_after_call ys v_rets \<omega>) resPost)
+           res = map_result_total (reset_state_after_call ys v_rets \<omega>) resPost)
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (MethodCall ys m es) \<omega> res"
 
@@ -338,7 +338,7 @@ inductive_cases RedAssertFailure_case: "red_stmt_total ctxt R \<Lambda> (Assert 
 inductive_cases RedScope_case: "red_stmt_total ctxt R \<Lambda> (Scope \<tau> scopeBody) \<omega> res_unshift"
 inductive_cases RedUnfold_case: "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
 inductive_cases RedFold_case: "red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
-inductive_cases RedFieldAssign_case: "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal (update_hh_loc_total_full \<omega> (addr,f) v))"
+inductive_cases RedFieldAssign_case: "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal (upd_hh_loc_total_full \<omega> (addr,f) v))"
 
 lemmas red_stmt_total_inversion_thms =
    RedSkip_case

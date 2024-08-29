@@ -206,7 +206,7 @@ fun mult_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a
 subsection \<open>Empty States\<close>
 
 definition is_empty_total :: "('a,'b) total_state_scheme \<Rightarrow> bool"
-  where "is_empty_total \<phi> \<equiv> get_mh_total \<phi> = zero_mask \<and> get_mp_total \<phi> = zero_mask"
+  where "is_empty_total \<phi> \<equiv> get_nm_total \<phi> = empty_nm"
 
 definition is_empty_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> bool"
   where "is_empty_total_full \<omega> \<equiv> is_empty_total (get_total_full \<omega>)"
