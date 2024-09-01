@@ -553,8 +553,32 @@ subsection \<open>Properties of Nested Mask Shift\<close>
 lemma shift_up_exists:
   assumes "q \<le> get_mp_nm nm (pid,vs)"
       and "q \<noteq> 0"
-  obtains nm' where "shift_up pred_id vs q nm nm'"
-  sorry
+    shows "\<exists>nm'. shift_up pid vs q nm nm'"
+proof -
+  obtain mh mp fnm where 1: "nm = NM mh mp fnm"
+    using nested_mask.exhaust
+    by blast
+  obtain pnm p where 2: "pnm = fnm (pid,vs)" and 3: "p = mp (pid,vs)"
+    by auto
+  obtain mp' fnm' nm'_sub where
+    6: "mp' = mp( (pid,vs) := p - q )" and
+    7: "fnm' = fnm( (pid,vs) := nested_mask_multiply_option pnm ((p - q) / p) )" and
+    8: "nm'_sub = NM mh mp' fnm'"
+    by auto
+  have
+    4: "q \<le> p" and
+    5: "q \<noteq> 0"
+    using \<open>nm = NM mh mp fnm\<close> \<open>p = mp (pid, vs)\<close> assms(1)
+     apply force
+    using assms(2)
+    by blast
+  obtain nm' where 9: "Some nm' = nested_mask_merge_option (Some nm'_sub) (nested_mask_multiply_option pnm (q / p))"
+    apply (simp add: combine_options_def)
+    by (metis option.case_eq_if)
+  show ?thesis
+    using ShiftAny[OF 1 2 3 4 5 6 7 8 9]
+    by blast
+qed
 
 
 subsection \<open>Empty States Properties\<close>
