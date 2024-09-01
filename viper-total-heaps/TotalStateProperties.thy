@@ -548,6 +548,15 @@ lemma get_fnm_nm__merge [simp]:
   by (cases nm1, cases nm2, simp)
 
 
+subsection \<open>Properties of Nested Mask Shift\<close>
+
+lemma shift_up_exists:
+  assumes "q \<le> get_mp_nm nm (pid,vs)"
+      and "q \<noteq> 0"
+  obtains nm' where "shift_up pred_id vs q nm nm'"
+  sorry
+
+
 subsection \<open>Empty States Properties\<close>
 
 lemma add_empty_nm:

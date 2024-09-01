@@ -463,7 +463,7 @@ next
   case (RedUnfolding ubody \<omega> v p es)
   then show ?case by auto \<comment>\<open>cannot occur\<close>    
 next
-  case (RedUnfoldingDefNoPred \<omega>_def es \<omega> vs pred_id pred_decl p ubody)
+  case (RedUnfoldingDefNoPred \<omega>_def es \<omega> vs pred_id p ubody)
   then show ?case by auto \<comment>\<open>cannot occur\<close>    
 next
   case (RedUnfoldingDef \<omega>_def es \<omega> vs p \<omega>'_def ubody v)

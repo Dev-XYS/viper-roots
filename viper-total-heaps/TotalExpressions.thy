@@ -130,20 +130,23 @@ inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_st
 \<comment> \<open>Viper allows unfolding a fraction of a predicate. Not reflected in the semantics?
      e.g. unfolding acc(P(x), 1/2) in x.f == 1\<close>
 | RedUnfolding:
-  "\<lbrakk> ctxt, None \<turnstile> \<langle>ubody; \<omega>\<rangle> [\<Down>]\<^sub>t v \<rbrakk> \<Longrightarrow>
-   ctxt, None \<turnstile> \<langle>Unfolding p es ubody; \<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "\<lbrakk> red_pure_exps_total ctxt None es \<omega> (Some vs);
+     \<comment> \<open>Change (reconsider this):
+         Even if we don't care about well-definedness, the argument list still needs to type check.\<close>
+     ctxt, None \<turnstile> \<langle>ubody; \<omega>\<rangle> [\<Down>]\<^sub>t v \<rbrakk> \<Longrightarrow>
+   ctxt, None \<turnstile> \<langle>Unfolding pred_id es ubody; \<omega>\<rangle> [\<Down>]\<^sub>t v"
 | RedUnfoldingDefNoPred:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>_def) es \<omega> (Some vs);
-     ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      get_mp_total_full \<omega>_def (pred_id,vs) = 0 \<rbrakk> \<Longrightarrow> \<comment>\<open>insufficient permission\<close>
-   ctxt, (Some \<omega>_def) \<turnstile> \<langle>Unfolding p es ubody ; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+   ctxt, (Some \<omega>_def) \<turnstile> \<langle>Unfolding pred_id es ubody ; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
 | RedUnfoldingDef:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>_def) es \<omega> (Some vs);
      perm = get_mp_total_full \<omega>_def (pred_id,vs);
-     shift_up p vs (perm / Abs_preal 2) (get_nm_total_full \<omega>_def) nm';
+     perm > 0;
+     shift_up pred_id vs (perm / Abs_preal 2) (get_nm_total_full \<omega>_def) nm';
      \<omega>'_def = upd_nm_total_full \<omega>_def nm';
      ctxt, (Some \<omega>'_def) \<turnstile> \<langle>ubody; \<omega>\<rangle> [\<Down>]\<^sub>t v \<rbrakk> \<Longrightarrow>
-   ctxt, (Some \<omega>_def) \<turnstile> \<langle>Unfolding p es ubody ; \<omega>\<rangle> [\<Down>]\<^sub>t v"
+   ctxt, (Some \<omega>_def) \<turnstile> \<langle>Unfolding pred_id es ubody ; \<omega>\<rangle> [\<Down>]\<^sub>t v"
 
 \<comment>\<open>Important: \<^const>\<open>sub_pure_exp_total\<close> should not include the body of an unfolding\<close>
 | RedSubFailure:

@@ -81,6 +81,28 @@ fun nested_mask_multiply_option :: "'a nested_mask option \<Rightarrow> preal \<
 | "nested_mask_multiply_option (Some nm) p = (if p = 0 then None else Some (nested_mask_multiply nm p))"
 
 
+subsection \<open>Nested Mask Shift Operations\<close>
+
+text \<open>\<^term>\<open>shift_up\<close> only "unfolds" the specified predicate by one level.
+      It does not check if the body of the predicate being unfolded is satisfied.\<close>
+
+inductive shift_up :: "predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool" where
+  ShiftAny:
+  "\<lbrakk> nm = NM mh mp fnm;
+     pnm = fnm (pred_id,vs);
+     p = mp (pred_id,vs);
+     q \<le> p;
+     q \<noteq> 0;
+     mp' = mp( (pred_id,vs) := p - q );
+     fnm' = fnm( (pred_id,vs) := nested_mask_multiply_option pnm ((p - q) / p) );
+     nm'_sub = NM mh mp' fnm';
+     Some nm' = nested_mask_merge_option (Some nm'_sub) (nested_mask_multiply_option pnm (q / p)) \<rbrakk> \<Longrightarrow>
+     shift_up pred_id vs q nm nm'"
+
+inductive_cases shift_up_case: "shift_up pred_id vs q nm nm'"
+inductive_simps shift_up_simp: "shift_up pred_id vs q nm nm'"
+
+
 subsection \<open>Mask Subtraction\<close>
 
 fun field_mask_sub :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask" where

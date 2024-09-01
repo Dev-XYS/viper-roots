@@ -127,11 +127,12 @@ next
   case (RedPerm \<omega>_def e \<omega> a f v)
   then show ?case by simp
 next
-  case (RedUnfolding ubody \<omega> v p es)
-  show ?case
-    using RedUnfolding.IH(2) RedUnfolding.prems red_pure_exp_total_red_pure_exps_total.RedUnfolding by fastforce
+  case IH: (RedUnfolding ubody \<omega> v p es)
+  then show ?case
+    using RedUnfolding
+    by (metis (mono_tags, lifting) option.map_disc_iff pure_exp_pred.elims(2) pure_exp_pred_rec.simps(12) sub_pure_exp_total.simps(9) supported_sub_expr_supported)
 next
-  case IH: (RedUnfoldingDefNoPred \<omega>_def es \<omega> vs pred_id pred_decl p ubody)
+  case IH: (RedUnfoldingDefNoPred \<omega>_def es \<omega> vs pred_id ubody)
   then show ?case
     by (metis (mono_tags, lifting) RedUnfoldingDefNoPred Rep_preal_inject get_mp_total_full_multiply mult_eq_0_iff option.simps(9) sub_pure_exp_total.simps(9) supported_sub_expr_supported times_preal.rep_eq zero_preal.rep_eq)
 next
@@ -803,7 +804,7 @@ next
       apply (rule SatImpTrue)
       using IH e_sup A_sup True
        apply metis
-      by (metis A_sup IH.hyps IH.prems(2) SatImp_case True eval_is_deterministic extended_val.inject val.inject(2))
+      by (metis A_sup IH.hyps IH.prems(2) SatImp_case True eval_is_deterministic(1) extended_val.inject val.inject(2))
   next
     case False
     show ?thesis
@@ -829,7 +830,7 @@ next
       apply (rule SatCondTrue)
       using IH e_sup A_sup True
        apply metis
-      by (metis A_sup IH.hyps(1) IH.prems(2) SatCond_case True eval_is_deterministic extended_val.inject val.inject(2))
+      by (metis A_sup IH.hyps(1) IH.prems(2) SatCond_case True eval_is_deterministic(1) extended_val.inject val.inject(2))
   next
     case False
     show ?thesis
@@ -837,7 +838,7 @@ next
       apply (rule SatCondFalse)
       using IH e_sup B_sup False
        apply metis
-      by (metis B_sup False IH.hyps(2) IH.prems(2) SatCond_case eval_is_deterministic extended_val.inject val.inject(2))
+      by (metis B_sup False IH.hyps(2) IH.prems(2) SatCond_case eval_is_deterministic(1) extended_val.inject val.inject(2))
   qed
 next
   case (ImpureAnd A1 A2)

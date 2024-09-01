@@ -2,7 +2,7 @@ section \<open>Semantics for Inhale and Exhale\<close>
 
 theory TotalInhaleExhale
   imports ViperCommon.ViperLang ViperCommon.ValueAndBasicState ViperCommon.Binop ViperCommon.DeBruijn ViperCommon.PredicatesUtil
-          TotalViperState TotalStateUtil TotalResult TotalExpressions TotalExternalConsistency
+          TotalViperState TotalStateUtil TotalResult TotalExternalConsistency
 begin
 
 

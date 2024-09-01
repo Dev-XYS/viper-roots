@@ -2,30 +2,8 @@ section \<open>Core Semantics\<close>
 
 theory TotalFoldUnfold
   imports ViperCommon.ViperLang ViperCommon.ValueAndBasicState ViperCommon.Binop ViperCommon.DeBruijn ViperCommon.PredicatesUtil
-          TotalViperState TotalStateUtil TotalResult TotalExpressions TotalInhaleExhale
+          TotalViperState TotalStateUtil TotalResult TotalInhaleExhale
 begin
-
-
-subsection \<open>Shift Operations\<close>
-
-text \<open>\<^term>\<open>shift_up\<close> only "unfolds" the specified predicate by one level.
-      It does not check if the body of the predicate being unfolded is satisfied.\<close>
-
-inductive shift_up :: "predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool" where
-  ShiftAny:
-  "\<lbrakk> nm = NM mh mp fnm;
-     Some pnm = fnm (pred_id,vs);
-     p = mp (pred_id,vs);
-     q \<le> p;
-     q \<noteq> 0;
-     mp' = mp( (pred_id,vs) := p - q );
-     fnm' = fnm( (pred_id,vs) := if q = p then None else Some (nested_mask_multiply pnm ((p - q) / p)) );
-     nm'_sub = NM mh mp' fnm';
-     nm' = nested_mask_merge nm'_sub (nested_mask_multiply pnm (q / p)) \<rbrakk> \<Longrightarrow>
-     shift_up pred_id vs q nm nm'"
-
-inductive_cases shift_up_case: "shift_up pred_id vs q nm nm'"
-inductive_simps shift_up_simp: "shift_up pred_id vs q nm nm'"
 
 
 subsection \<open>Unfold\<close>
