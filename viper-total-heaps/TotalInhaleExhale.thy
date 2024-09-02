@@ -22,9 +22,9 @@ definition inhale_perm_single_pred :: "'a total_context \<Rightarrow> ('a full_t
   where "inhale_perm_single_pred ctxt R \<omega> lp p_opt =
     { \<omega>'| \<omega>' \<phi>_inh q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
-            consistent_external_wrt_ploc ctxt \<phi>_inh lp q \<and>
+            (q > 0 \<longrightarrow>  consistent_external_wrt_ploc ctxt \<phi>_inh lp q) \<and>
             get_hh_total \<phi>_inh = get_hh_total_full \<omega> \<and>
-            \<omega>' = add_to_nm_loc_total_full (upd_mp_loc_total_full \<omega> lp (get_mp_total_full \<omega> lp + q)) lp (get_nm_total \<phi>_inh) \<and>
+            \<omega>' = (if q = 0 then \<omega> else add_to_nm_loc_total_full (upd_mp_loc_total_full \<omega> lp (get_mp_total_full \<omega> lp + q)) lp (get_nm_total \<phi>_inh)) \<and>
             R \<omega>'
     }"
 

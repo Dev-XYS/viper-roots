@@ -457,7 +457,7 @@ next
           by (simp add: preal_to_real)
         obtain nm' where nm': "shift_up pred_id vs\<^sub>2 (get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs) / Abs_preal 2) (get_nm_total_full \<omega>\<^sub>0\<^sub>2) nm'"
           apply simp
-          using shift_up_exists[of "get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs) / Abs_preal 2" "get_nm_total_full \<omega>\<^sub>0\<^sub>2" pred_id vs pred_id, simplified,
+          using shift_up_exists[of "get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs) / Abs_preal 2" "get_nm_total_full \<omega>\<^sub>0\<^sub>2" pred_id vs, simplified,
                 OF 1[of "get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs)", simplified] 2[OF False[simplified]]]
                 \<open>vs\<^sub>2 = vs\<close>
           by blast
@@ -532,7 +532,7 @@ next
           by (simp add: preal_to_real)
         obtain nm' where nm': "shift_up pred_id vs\<^sub>2 (get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs) / Abs_preal 2) (get_nm_total_full \<omega>\<^sub>0\<^sub>2) nm'"
           apply simp
-          using shift_up_exists[of "get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs) / Abs_preal 2" "get_nm_total_full \<omega>\<^sub>0\<^sub>2" pred_id vs pred_id, simplified,
+          using shift_up_exists[of "get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs) / Abs_preal 2" "get_nm_total_full \<omega>\<^sub>0\<^sub>2" pred_id vs, simplified,
                 OF 1[of "get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs)", simplified] 2[OF False[simplified]]]
                 \<open>vs\<^sub>2 = vs\<close>
           by blast
@@ -873,10 +873,9 @@ proof (induction A arbitrary: \<omega> nm)
      apply fastforce
     by (smt (verit, best) \<open>red_pure_exps_total ctxt (Some \<omega>) [e_r, e_p] \<omega> (Some [VRef r, VPerm p])\<close> list.discI list.inject red_exp_list_normal_elim)
 
-  define W where "W =
-    (if r = Null then {\<omega>}
-     else inhale_perm_single (\<lambda>_. True) \<omega> (the_address r, f)
-           (Some (Abs_preal p)))"
+  define W where "W = (if r = Null
+                       then {\<omega>}
+                       else inhale_perm_single (\<lambda>_. True) \<omega> (the_address r, f) (Some (Abs_preal p)))"
 
   show ?case
     apply standard
@@ -930,14 +929,228 @@ proof (induction A arbitrary: \<omega> nm)
   qed
 
 next
-  case (SatAccWildcard e_r r a f mh mp)
-  then show ?case sorry
+  case IH: (SatAccWildcard e_r r a f mh mp)
+
+  hence e_r_sup: "supported_pred_expr e_r"
+    by auto
+  obtain r_r where "ctxt, Some \<omega> \<turnstile> \<langle>e_r;\<omega>\<rangle> [\<Down>]\<^sub>t r_r"
+    using eval_ok_no_type_error(1) IH(1,9,10) \<omega>\<^sub>0hh e_r_sup
+    by metis
+  moreover have "\<And>res. ctxt, Some \<omega> \<turnstile> \<langle>e_r;\<omega>\<rangle> [\<Down>]\<^sub>t res \<Longrightarrow> res \<noteq> VFailure"
+    using IH.prems(6) RedExpListFailure assertion_framing_state_sub_exps_not_failure
+    by fastforce
+  ultimately have e_r_eval: "ctxt, Some \<omega> \<turnstile> \<langle>e_r;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+    by (metis IH.hyps(1) IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh e_r_sup eval_with_same_store_same_hh(1) extended_val.exhaust)
+
+  define W where "W = inhale_perm_single (\<lambda>_. True) \<omega> (the_address r, f) None"
+
+  have "is_singleton_mh (a,f) (get_mh_nm nm)"
+    using IH.hyps(4) IH.prems(1)
+    by auto
+  have "get_mp_nm nm = zero_mp"
+    using IH.hyps(5) IH.prems(2)
+    by presburger
+  hence "get_fnm_nm nm = (\<lambda>_. None)"
+    using IH(8) SatAll_case
+    by fastforce
+
+  have "add_to_nm_total_full \<omega> nm \<in> W"
+    apply (simp add: W_def inhale_perm_single_def)
+    apply (rule exI[of _ "get_mh_nm nm (a,f)"])
+    apply (intro conjI)
+    using \<open>is_singleton_mh (a, f) (get_mh_nm nm)\<close>
+     apply fastforce
+    apply (rule full_total_state.equality, simp_all)
+    apply (rule total_state.equality, simp_all)
+    apply (rule nested_mask_equality, simp_all; standard)
+      apply (simp_all add: add_masks_def)
+    using IH.hyps(2) \<open>is_singleton_mh (a, f) (get_mh_nm nm)\<close>
+      apply force
+    apply (simp add: \<open>get_mp_nm nm = zero_mp\<close>)
+    by (simp add: \<open>get_fnm_nm nm = (\<lambda>_. None)\<close> pfun_comb_def)
+  hence "W \<noteq> {}"
+    by fast
+
+  show ?case
+    apply (rule InhAccWildcard[where ?W'=W])
+    using e_r_eval
+      apply simp
+    using W_def
+     apply force
+    using IH.hyps(3) THResultNormal \<open>W \<noteq> {}\<close> \<open>add_to_nm_total_full \<omega> nm \<in> W\<close>
+    by auto
+
 next
-  case (SatAccPred e_args v_args e_p p mh mp pred_id)
-  then show ?case sorry
+  case IH: (SatAccPred e_args v_args e_p p mh mp pred_id)
+
+  hence e_args_sup: "list_all supported_pred_expr e_args" and
+        e_p_sup: "supported_pred_expr e_p"
+    by (simp add: list_all_length)+
+  then obtain r_vs r_p where
+    e_args_res: "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> r_vs" and
+    e_p_res: "ctxt, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t r_p"
+    using eval_ok_no_type_error IH(1,2,9,10) \<omega>\<^sub>0hh
+    by (metis (full_types))
+  have e_args_ok: "\<And>res. red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> res \<Longrightarrow> res \<noteq> None" and
+          e_p_ok: "\<And>res. ctxt, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t res \<Longrightarrow> res \<noteq> VFailure"
+     apply (metis IH.prems(6) assertion_framing_state_sub_exps_not_failure red_pure_exps_total_append_failure sub_expressions_atomic.simps(3))
+    by (metis IH.prems(6) RedExpListFailure e_args_res assertion_framing_state_sub_exps_not_failure red_pure_exps_total_append_failure red_pure_exps_total_append_failure_2 split_option_ex sub_expressions_atomic.simps(3) sub_expressions_exp_or_wildcard.simps(1))
+  have e_args_eval: "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args)" and
+          e_p_eval: "ctxt, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+    using IH(1) eval_with_same_store_same_hh(2)[OF IH(1)]
+    apply (metis IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh e_args_sup not_Some_eq e_args_ok e_args_res)
+    by (metis IH(2) IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh e_p_res e_p_ok e_p_sup eval_with_same_store_same_hh(1) extended_val.exhaust)
+
+  define W where "W = inhale_perm_single_pred ctxt (\<lambda>_. True) \<omega> (pred_id,v_args) (Some (Abs_preal p))"
+
+  have "get_mh_nm nm = zero_mh"
+    using IH.hyps(4) IH.prems(1) by auto
+  have "get_mp_nm nm = singleton_mp (pred_id,v_args) (Abs_preal p)"
+    using IH.hyps(5) IH.prems(2) by auto
+  hence "get_mp_nm nm (pred_id,v_args) = Abs_preal p"
+    by simp
+
+  have sat: "sat ctxt \<omega>\<^sub>0 mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
+    using IH
+    by (meson SatAccPred)
+
+  show ?case
+  proof (cases "p = 0")
+    case True
+    hence "get_fnm_nm nm = (\<lambda>_. None)"
+      by (metis IH.hyps(5) IH.prems(2) IH.prems(3) SatAll_case prod.exhaust singleton_mp.simps total_state.select_convs(2) zero_preal_def)
+    have "nm = empty_nm"
+      apply (rule nested_mask_equality; standard, simp_all add: empty_nm_def zero_mask_def)
+      using \<open>get_mh_nm nm = zero_mh\<close> zero_mask_def
+        apply fastforce
+       apply (simp add: True \<open>get_mp_nm nm = singleton_mp (pred_id, v_args) (Abs_preal p)\<close> zero_preal.abs_eq)
+      using \<open>get_fnm_nm nm = (\<lambda>_. None)\<close>
+      by fastforce
+
+    hence "add_to_nm_total_full \<omega> nm = \<omega>"
+      by (simp add: add_empty_nm)
+
+    have "\<omega> \<in> W"
+      apply (simp add: W_def inhale_perm_single_pred_def)
+      apply (rule exI[of _ "\<lparr> get_hh_total = hh, get_nm_total = empty_nm \<rparr>"])
+      apply (intro conjI)
+       apply standard
+       apply simp_all
+      using IH.prems(4)
+       apply auto[1]
+      using True zero_preal_def
+      by presburger
+
+    show ?thesis
+      apply (rule InhAccPred[where ?W'=W])
+      using e_args_eval e_p_eval
+         apply (simp, simp)
+      using W_def
+       apply blast
+      by (metis (full_types) IH.hyps(3) THResultNormal_alt \<open>\<omega> \<in> W\<close> \<open>add_to_nm_total_full \<omega> nm = \<omega>\<close> equals0D)
+  next
+    case False
+    obtain nm_pred where nm_pred: "Some nm_pred = get_fnm_nm nm (pred_id,v_args)" and
+      nm_pred_cons: "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = hh, get_nm_total = nm_pred \<rparr> (pred_id,v_args) (Abs_preal p)"
+      using SatAll_case[OF IH(8), simplified]
+      by (metis False IH.hyps(3) \<open>get_mp_nm nm (pred_id, v_args) = Abs_preal p\<close> linorder_not_less not_Some_eq order_antisym_conv positive_real_preal)
+
+    have "add_to_nm_total_full \<omega> nm \<in> W"
+      apply (simp add: W_def inhale_perm_single_pred_def)
+      apply (rule exI[of _ "\<lparr> get_hh_total = hh, get_nm_total = nm_pred \<rparr>"])
+      apply (intro conjI)
+      using False IH.hyps(3) positive_real_preal
+       apply force
+      apply standard
+      apply (intro conjI)
+      using nm_pred_cons
+        apply force
+      using IH.prems(4)
+       apply auto[1]
+      apply (rule full_total_state.equality, simp_all)
+      apply (rule total_state.equality, simp_all)
+      apply (rule nested_mask_equality, simp_all; standard)
+        apply (simp_all add: add_masks_def)
+        apply (simp add: \<open>get_mh_nm nm = zero_mh\<close>)
+       apply (simp add: \<open>get_mp_nm nm = singleton_mp (pred_id, v_args) (Abs_preal p)\<close>)
+      by (metis (no_types, lifting) IH.prems(3) SatAll_case \<open>get_mp_nm nm = singleton_mp (pred_id, v_args) (Abs_preal p)\<close> combine_options_simps(2) nm_pred old.prod.exhaust pfun_comb_def singleton_mp.elims total_state.select_convs(2))
+    hence "W \<noteq> {}"
+      by blast
+
+    show ?thesis
+      apply (rule InhAccPred[where ?W'=W])
+      using e_args_eval e_p_eval
+         apply simp+
+      using W_def
+       apply force
+      using IH.hyps(3) THResultNormal \<open>W \<noteq> {}\<close> \<open>add_to_nm_total_full \<omega> nm \<in> W\<close>
+      by auto
+  qed
+
 next
-  case (SatAccPredWildcard e_args v_args mh pred_id mp)
-  then show ?case sorry
+  case IH: (SatAccPredWildcard e_args v_args mh pred_id mp)
+
+  hence e_args_sup: "list_all supported_pred_expr e_args"
+    by (simp add: list_all_length)
+  then obtain r_vs where
+    e_args_res: "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> r_vs"
+    using eval_ok_no_type_error(2) IH(1,7,8,10) \<omega>\<^sub>0hh
+    by (metis (no_types, lifting))
+  have e_args_ok: "\<And>res. red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> res \<Longrightarrow> res \<noteq> None"
+    by (metis IH.prems(6) assertion_framing_state_sub_exps_not_failure red_pure_exps_total_append_failure sub_expressions_atomic.simps(3))
+  have e_args_eval: "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args)"
+    using IH(1) eval_with_same_store_same_hh(2)[OF IH(1)]
+    by (metis IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh e_args_sup not_Some_eq e_args_ok e_args_res)
+
+  define W where "W = inhale_perm_single_pred ctxt (\<lambda>_. True) \<omega> (pred_id,v_args) None"
+
+  have "get_mh_nm nm = zero_mh"
+    using IH.hyps(2) IH.prems(1) by auto
+  have "is_singleton_mp (pred_id,v_args) (get_mp_nm nm)"
+    using IH.hyps(3) IH.prems(2) by auto
+  then obtain p where p: "get_mp_nm nm = singleton_mp (pred_id,v_args) p" and "p > 0"
+    by auto
+
+  have sat: "sat ctxt \<omega>\<^sub>0 mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
+    using IH
+    by (meson SatAccPredWildcard)
+
+  obtain nm_pred where nm_pred: "Some nm_pred = get_fnm_nm nm (pred_id,v_args)" and
+    nm_pred_cons: "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = hh, get_nm_total = nm_pred \<rparr> (pred_id,v_args) p"
+    using SatAll_case[OF IH(6), simplified]
+    by (metis p \<open>p > 0\<close> \<open>get_mp_nm nm = singleton_mp (pred_id, v_args) p\<close> option.exhaust_sel preal_not_0_gt_0 singleton_mp.elims)
+
+  have "add_to_nm_total_full \<omega> nm \<in> W"
+    apply (simp add: W_def inhale_perm_single_pred_def)
+    apply (rule exI[of _ "\<lparr> get_hh_total = hh, get_nm_total = nm_pred \<rparr>"])
+    apply (rule exI[of _ p])
+    apply (intro conjI)
+    using \<open>p > 0\<close> IH.hyps(3) positive_real_preal
+     apply force
+    apply standard
+    apply (intro conjI)
+    using nm_pred_cons
+      apply force
+    using IH.prems(4)
+     apply auto[1]
+    apply (rule full_total_state.equality, simp_all)
+    apply (rule total_state.equality, simp_all)
+    apply (rule nested_mask_equality, simp_all; standard)
+      apply (simp_all add: add_masks_def)
+      apply (simp add: \<open>get_mh_nm nm = zero_mh\<close>)
+     apply (simp add: \<open>get_mp_nm nm = singleton_mp (pred_id, v_args) p\<close>)
+    by (metis (no_types, lifting) IH.prems(3) SatAll_case \<open>get_mp_nm nm = singleton_mp (pred_id, v_args) p\<close> combine_options_simps(2) nm_pred old.prod.exhaust pfun_comb_def singleton_mp.elims total_state.select_convs(2))
+  hence "W \<noteq> {}"
+    by blast
+
+  show ?case
+    apply (rule InhAccPredWildcard[where ?W'=W])
+    using e_args_eval
+      apply simp
+    using W_def
+     apply force
+    using IH.hyps(3) THResultNormal \<open>W \<noteq> {}\<close> \<open>add_to_nm_total_full \<omega> nm \<in> W\<close>
+    by auto
 
 next
   case IH: (SatPure e mh mp)

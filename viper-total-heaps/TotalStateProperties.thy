@@ -233,6 +233,18 @@ lemma upd_nm_loc_opt_nm__mp_rel [simp]:
   shows "get_mp_nm (upd_nm_loc_opt_nm nm lp nm') = get_mp_nm nm"
   by (cases nm, fastforce)
 
+lemma add_to_nm_loc_nm__mh_rel [simp]:
+  shows "get_mh_nm (add_to_nm_loc_nm nm lp nm') = get_mh_nm nm"
+  by (cases nm, fastforce)
+
+lemma add_to_nm_loc_nm__mp_rel [simp]:
+  shows "get_mp_nm (add_to_nm_loc_nm nm lp nm') = get_mp_nm nm"
+  by (cases nm, fastforce)
+
+lemma add_to_nm_loc_nm__fnm_rel [simp]:
+  shows "get_fnm_nm (add_to_nm_loc_nm nm lp nm') = (get_fnm_nm nm)( lp := nested_mask_merge_option (get_fnm_nm nm lp) (Some nm') )"
+  by (cases nm, fastforce)
+
 
 subsubsection \<open>Total States\<close>
 
