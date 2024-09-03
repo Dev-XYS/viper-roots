@@ -24,6 +24,7 @@ datatype fun_enum_bpl =
      | FIdenticalOnKnownLocs
      | FIsPredicateField
      | FIsWandField
+     | FPredicateLoc_P
 
 text \<open>\<^typ>\<open>fun_enum_bpl\<close> enumerates the functions required for the encoding\<close>
 
@@ -502,13 +503,54 @@ lemma is_wand_field_fun_interp_single_wf:
   apply (rule fun_interp_single_wf_intro)
   by (clarsimp dest!: all_inversion_type_of_vbpl_val[OF WfTyRepr] deconstruct_list_length_2 lit_inversion_type_of_val split: val.split vbpl_absval.split)
 
+
+subsection \<open>Predicate Locations\<close>
+
+fun predicate_loc_P :: "'a sem_fun_bpl"
+  where "predicate_loc_P ts vs =
+           (case (ts, vs) of
+              ([], [AbsV (ARef r)]) \<Rightarrow> Some (AbsV (AField (PredSnapshotField (''P'', [VRef r]))))
+            | _ \<Rightarrow> None)"
+
+lemma predicate_loc_P_fun_interp_single_wf:
+  assumes WfTyRepr: "wf_ty_repr_bpl T"
+  shows "fun_interp_single_wf
+              (vbpl_absval_ty T)
+              (0, [TConSingle (TRefId T)], TCon (TFieldId T) [TCon ''PredicateType_P'' [], TPrim TBool])
+              predicate_loc_P"
+  apply (rule fun_interp_single_wf_intro)
+proof -
+  fix ts vs
+  assume "length ts = 0"
+     and "list_all closed ts"
+     and "length vs = length [TConSingle (TRefId T)]"
+     and 1: "map (type_of_vbpl_val T) vs = map (instantiate ts) [TConSingle (TRefId T)]"
+  hence "map (type_of_vbpl_val T) vs = [TConSingle (TRefId T)]"
+    by simp
+  then obtain r where "vs = [AbsV (ARef r)]"
+    using ref_inversion_type_of_vbpl_val[OF WfTyRepr]
+    by blast
+  moreover have "ts = []"
+    using \<open>length ts = 0\<close>
+    by blast
+  ultimately have "predicate_loc_P ts vs = Some (AbsV (AField (PredSnapshotField (''P'', [VRef r]))))"
+    by simp
+  show "\<exists>v. predicate_loc_P ts vs = Some v \<and>
+            type_of_vbpl_val T v =
+            instantiate ts (TCon (TFieldId T) [TCon ''PredicateType_P'' [], TPrim TBool])"
+    apply (rule exI[of _ "AbsV (AField (PredSnapshotField (''P'', [VRef r])))"])
+    apply simp
+    by (simp add: \<open>ts = []\<close> \<open>vs = [AbsV (ARef r)]\<close>)
+qed
+
+
 subsection \<open>Global function map\<close>
 
 text \<open>TODO: this is currently not modular. Ideally, different modules would define these interpretations
 independently. Could achieve this by separating different functions.\<close>
 
 fun fun_interp_vpr_bpl_aux :: "ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> 
-                                fun_enum_bpl \<Rightarrow> 'a sem_fun_bpl  \<times> fdecl_ty_bpl"
+                                fun_enum_bpl \<Rightarrow> 'a sem_fun_bpl \<times> fdecl_ty_bpl"
   where
     "fun_interp_vpr_bpl_aux Pr T F FGoodState = 
        (good_state Pr F, (0,[TConSingle (THeapId T), TConSingle (TMaskId T)],(TPrim TBool)))"
@@ -534,6 +576,8 @@ fun fun_interp_vpr_bpl_aux :: "ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<
        (is_predicate_field, (2, [TCon (TFieldId T) [(TVar 0),(TVar 1)]], (TPrim TBool)))"
   | "fun_interp_vpr_bpl_aux Pr T F FIsWandField =
        (is_wand_field, (2, [TCon (TFieldId T) [(TVar 0),(TVar 1)]], (TPrim TBool)))"
+  | "fun_interp_vpr_bpl_aux Pr T F FPredicateLoc_P =
+       (predicate_loc_P, (0, [TConSingle (TRefId T)], TCon (TFieldId T) [TCon ''PredicateType_P'' [], TPrim TBool]))"
 
 fun fun_interp_vpr_bpl :: " ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> 
                                 fun_enum_bpl \<Rightarrow> 'a sem_fun_bpl"

@@ -200,6 +200,7 @@ fun fun_repr_concrete :: fun_repr_bpl
   | "fun_repr_concrete FIdenticalOnKnownLocs = ''IdenticalOnKnownLocations''" 
   | "fun_repr_concrete FIsPredicateField = ''IsPredicateField''"
   | "fun_repr_concrete FIsWandField = ''IsWandField''"
+  | "fun_repr_concrete FPredicateLoc_P = ''P''"
 
 lemma fun_repr_concrete_inj: "inj fun_repr_concrete"
   unfolding inj_def

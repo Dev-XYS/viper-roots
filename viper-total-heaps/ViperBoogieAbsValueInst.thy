@@ -37,7 +37,7 @@ datatype 'a vbpl_absval =
   | AHeap "(ref \<times> 'a vb_field) \<rightharpoonup> ('a vbpl_absval) bpl_val"
   | AMask "(ref \<times> 'a vb_field) \<Rightarrow> real"                      
   | AKnownFoldedMask "(ref \<times> 'a vb_field) \<Rightarrow> bool"         
-  | AFrame  "(('a vbpl_absval) bpl_val) frame_fragment"
+  | AFrame "(('a vbpl_absval) bpl_val) frame_fragment"
   | ADummy tcon_id "bpl_ty list" 
 
 text \<open>The reason for including \<^const>\<open>ADummy\<close> is that the Boogie interface requires that every type 
@@ -219,8 +219,10 @@ qed (auto)
 fun field_ty_fun_opt :: "'a ty_repr_bpl \<Rightarrow> 'a vb_field \<rightharpoonup> (tcon_id \<times> ty list)"
   where 
     "field_ty_fun_opt T (NormalField field_id vty) = map_option (\<lambda>t.(TFieldId T, [TConSingle (TNormalFieldId T), t])) (vpr_to_bpl_ty T vty)"
-  | "field_ty_fun_opt T (PredSnapshotField pred_loc) = 
-       map_option (\<lambda>p. (TFieldId T, [p, TConSingle (TFrameFragmentId T)])) (pred_snap_field_type T (fst pred_loc))"
+(*| "field_ty_fun_opt T (PredSnapshotField pred_loc) =
+       map_option (\<lambda>p. (TFieldId T, [p, TConSingle (TFrameFragmentId T)])) (pred_snap_field_type T (fst pred_loc))" *)
+  | "field_ty_fun_opt T (PredSnapshotField pred_loc) =
+       Some (TFieldId T, [TCon ''PredicateType_P'' [], TPrim TBool])"
   | "field_ty_fun_opt T (PredKnownFoldedField pred_loc) = 
        map_option (\<lambda>p. (TFieldId T, [p, TConSingle (TFrameFragmentId T)])) (pred_knownfolded_field_type T (fst pred_loc))"
   | "field_ty_fun_opt T (DummyField t1 t2) =
@@ -471,7 +473,8 @@ lemma field_ty_fun_two_tids:
   using assms
   apply (rule field_ty_fun_opt.elims)
      apply (metis (mono_tags, lifting) map_option_eq_Some prod.collapse prod.inject)
-    apply (metis (mono_tags, lifting) map_option_eq_Some prod.collapse prod.inject)
+    (* apply (metis (mono_tags, lifting) map_option_eq_Some prod.collapse prod.inject) *)
+    apply force
    apply (metis (mono_tags, lifting) map_option_eq_Some prod.collapse prod.inject)
   by (metis fst_conv option.distinct(1) option.inject)
 

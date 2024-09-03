@@ -150,8 +150,12 @@ fun finterp_eval_concrete_tac del_thms ctxt t =
   | Const (@{const_name FReadMask}, _) =>
      asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps @{thms lift_fun_bpl_def} ctxt)) THEN'
      asm_full_simp_tac (del_simps @{thms fun_upd_apply} (add_simps @{thms ty_repr_basic_def} ctxt))
-  | _ =>      
-     asm_full_simp_tac (del_simps del_thms (add_simps @{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field} ctxt))   
+  | Const (@{const_name FIsPredicateField}, _) =>
+     asm_full_simp_tac (add_simps @{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field} ctxt)
+     (* For some unknown reason, we could not delete those lemmas to prove this case.
+        Todo: Investigate this. *)
+  | _ =>
+     asm_full_simp_tac (del_simps del_thms (add_simps @{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field} ctxt))
 
 fun axiom_tac ctxt fun_interp_inst_def_thm lookup_const_thms lookup_fields_thms del_thms =
   let val axiom_tac_data : axiom_tac_data = { 
