@@ -130,6 +130,11 @@ ML \<open>
        exp_rel_info *
        thm * (* auxiliary variable lookup var ty theorem *)
        thm (* auxiliary variable lookup var from state relation theorem *)
+  | PredicateAccInhHint of
+       exp_wf_rel_info *
+       exp_rel_info *
+       thm * (* auxiliary variable lookup var ty theorem *)
+       thm (* auxiliary variable lookup var from state relation theorem *)
 
   fun inh_no_def_checks_tac ctxt (_: basic_stmt_rel_info) : int -> tactic  =
     resolve_tac ctxt [ @{thm assertion_framing_state_inh_exprs_wf_rel} ] THEN'
@@ -200,28 +205,39 @@ ML \<open>
           (*(Rmsg' "InhField wf rcv" ((exp_wf_rel_non_trivial_tac exp_wf_rel_info exp_rel_info ctxt) |> SOLVED') ctxt) THEN'
           (Rmsg' "InhField wf perm" ((exp_wf_rel_non_trivial_tac exp_wf_rel_info exp_rel_info ctxt) |> SOLVED') ctxt) THEN'*)
           (Rmsg' "ExhField wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'
-          (Rmsg' "InhField unfold current bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'     
+          (Rmsg' "InhField unfold current bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'
           (Rmsg' "InhField 2 propagate" (resolve_tac ctxt @{thms rel_propagate_pre_2}) ctxt) THEN'
             (Rmsg' "InhField 2b red_ast_bpl_relI" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
             (store_temporary_inh_perm_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
-            (prove_perm_non_negative_inh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'  
+            (prove_perm_non_negative_inh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
             (non_null_rcv_tac ctxt info exp_rel_info lookup_aux_var_state_rel_thm) THEN'
             (inhale_rel_field_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info)
     | _ => error("only support FieldAccInhHint")
-  
+
+  fun atomic_inhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) inh_pred_acc_hint =
+    case inh_pred_acc_hint of
+      PredicateAccInhHint (exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm) =>
+        (Rmsg' "InhPred 1" (resolve_tac ctxt @{thms inhale_predicate_acc_rel}) ctxt) THEN'
+          (Rmsg' "InhPred wf args list simp" (simp_only_tac @{thms append_Cons append_Nil} ctxt) ctxt) THEN'
+          (Rmsg' "InhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'
+            (* '2' is the number of the predicate arguments plus one. Needs to be program specific in the future. *)
+          (SUBGOAL (fn (t,_) => raise TERM ("InhPred breakpoint", [t])))
+    | _ => error("only support PredicateAccInhHint")
+
   fun atomic_inhale_rel_inst_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) atomic_inh_hint = 
     case atomic_inh_hint of
       PureExpInhHint (exp_wf_rel_info, exp_rel_info) => 
          (Rmsg' "InhPure exp init" (resolve_tac ctxt @{thms inhale_pure_exp_rel}) ctxt) THEN'
          (Rmsg' "InhPure wf extend" (resolve_tac ctxt [@{thm wf_rel_extend_1_same_rel}]) ctxt) THEN'
          (Rmsg' "InhPure wf" (exp_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt |> SOLVED') ctxt) THEN'
-         (Rmsg' "InhPure progress after wf" (progress_tac ctxt) ctxt) THEN' 
+         (Rmsg' "InhPure progress after wf" (progress_tac ctxt) ctxt) THEN'
          (Rmsg' "InhPure exp rel" (exp_rel_tac exp_rel_info ctxt |> SOLVED') ctxt)
     | FieldAccInhHint _ => 
          (*(Rmsg' "InhField acc propagate" (resolve_tac ctxt @{thms inhale_propagate_post}) ctxt) THEN'*)
          atomic_inhale_field_acc_tac ctxt info no_def_checks_tac_opt atomic_inh_hint
          (*(Rmsg' "InhField acc good state" (progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm info) (#tr_def_thm info)) ctxt)*)
-
+    | PredicateAccInhHint _ =>
+         atomic_inhale_pred_acc_tac ctxt info no_def_checks_tac_opt atomic_inh_hint
 \<close>
 
 

@@ -55,7 +55,7 @@ ML \<open>
       bop_wf_rel_div_mod exp_rel_info ctxt |> SOLVED'
    ]            
  
-  fun exp_wf_rel_non_trivial_tac exp_wf_rel_info exp_rel_info ctxt = 
+  fun exp_wf_rel_non_trivial_tac exp_wf_rel_info exp_rel_info ctxt =
      FIRST_AND_THEN' [
        resolve_tac ctxt [@{thm var_expr_wf_rel}], (* var *)
        resolve_tac ctxt [@{thm lit_expr_wf_rel}], (* lit *)
@@ -144,9 +144,9 @@ ML \<open>
       and otherwise well-definedness checks are omitted in which case the option argument must provide
       a tactic to deal with that case. *)
 
-   fun exps_wf_rel_tac _ exp_wf_rel_info exp_rel_info ctxt NONE k =   
+   fun exps_wf_rel_tac _ exp_wf_rel_info exp_rel_info ctxt NONE k =
        resolve_tac ctxt [@{thm exprs_wf_rel_alt_implies_exprs_wf_rel}] THEN'
-       simp_only_tac @{thms exprs_wf_rel_alt.simps} ctxt THEN'        
+       simp_only_tac @{thms exprs_wf_rel_alt.simps} ctxt THEN'
        exps_wf_rel_aux_tac exp_wf_rel_info exp_rel_info ctxt k
      | exps_wf_rel_tac basic_info _ _ ctxt (SOME no_checks_tac) _ =
        no_checks_tac ctxt basic_info
