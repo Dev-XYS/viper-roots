@@ -101,8 +101,9 @@ inductive red_inhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
    \<rbrakk> \<Longrightarrow>
    red_inhale ctxt R (Imp e A) \<omega> res"
 | InhImpFalse:
-  "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False) \<rbrakk> \<Longrightarrow>
-   red_inhale ctxt R (Imp e A) \<omega> (RNormal \<omega>)"
+  "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
+     res = RNormal \<omega> \<rbrakk> \<Longrightarrow>
+   red_inhale ctxt R (Imp e A) \<omega> res"
 | InhCondAssertTrue:
   "\<lbrakk> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True));
      red_inhale ctxt R A \<omega> res

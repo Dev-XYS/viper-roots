@@ -3036,7 +3036,7 @@ next
   case (InhImpTrue \<omega> e A res)
   then show ?case sorry (* by (auto intro!: red_pure_exp_intros) *)
 next
-  case (InhImpFalse \<omega> e A)
+  case (InhImpFalse \<omega> e res A)
   hence "ctxt, Some \<omega>2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
     by (simp add: red_pure_exp_store_same_on_free_var(1))
   hence "red_inhale ctxt R (Imp e A) \<omega>2 (RNormal \<omega>2)"
@@ -3045,8 +3045,8 @@ next
     apply (rule full_total_state.equality)
     using InhImpFalse
     by auto
-  ultimately show ?case 
-    by simp
+  ultimately show ?case
+    by (simp add: InhImpFalse.hyps(2))
 next
   case (InhCondAssertTrue \<omega> e A res B)
   moreover from this have "red_inhale ctxt R A \<omega>2 (map_result_total (get_store_total_update (\<lambda>_. get_store_total \<omega>2)) res)"

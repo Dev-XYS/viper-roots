@@ -1183,21 +1183,177 @@ next
   qed
 
 next
-  case (SatStar mh mh\<^sub>1 mh\<^sub>2 mp mp\<^sub>1 mp\<^sub>2 A B)
-  then show ?case sorry
+  case IH: (SatStar mh mh\<^sub>1 mh\<^sub>2 mp mp\<^sub>1 mp\<^sub>2 A B)
+
+  hence A_sup: "supported_pred_body A" and B_sup: "supported_pred_body B"
+    by simp+
+
+  obtain fnm where fnm: "fnm = get_fnm_nm nm"
+    by simp
+  obtain fnm\<^sub>1 where fnm\<^sub>1: "\<And>lp. fnm\<^sub>1 lp = nested_mask_multiply_option (fnm lp) (mp\<^sub>1 lp / mp lp)"
+    by simp
+  obtain fnm\<^sub>2 where fnm\<^sub>2: "\<And>lp. fnm\<^sub>2 lp = nested_mask_multiply_option (fnm lp) (mp\<^sub>2 lp / mp lp)"
+    by simp
+  obtain nm\<^sub>1 where nm\<^sub>1: "nm\<^sub>1 = NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1"
+    by simp
+  obtain nm\<^sub>2 where nm\<^sub>2: "nm\<^sub>2 = NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2"
+    by simp
+  have nm\<^sub>1_cons: "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = nm\<^sub>1 \<rparr>"
+    apply (rule SatAll)
+    sorry
+  have nm\<^sub>2_cons: "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = nm\<^sub>2 \<rparr>"
+    apply (rule SatAll)
+    sorry
+
+  have "nested_mask_merge nm\<^sub>1 nm\<^sub>2 = nm"
+    apply (rule nested_mask_equality, simp_all)
+    using IH.hyps(1) IH.prems(1) nm\<^sub>1 nm\<^sub>2 apply auto[1]
+    using IH.hyps(2) IH.prems(2) nm\<^sub>1 nm\<^sub>2 apply auto[1]
+  proof (simp add: nm\<^sub>1 nm\<^sub>2 fnm[symmetric], standard)
+    fix lp
+    show "(fnm\<^sub>1 +\<lparr> nested_mask_merge \<rparr>+ fnm\<^sub>2) lp = fnm lp"
+      apply (cases "fnm lp"; simp)
+       apply (simp add: fnm\<^sub>1 fnm\<^sub>2 pfun_comb_def combine_options_def)
+    proof -
+      fix nm'
+      assume "fnm lp = Some nm'"
+      have "mp lp > 0"
+        using IH(9)
+        by (metis IH.prems(2) SatAll_case \<open>fnm lp = Some nm'\<close> fnm option.distinct(1) pperm_pnone_pgt surj_pair total_state.select_convs(2))
+      have "mp\<^sub>1 lp + mp\<^sub>2 lp = mp lp"
+        using IH(2)
+        by (simp add: add_masks_def)
+      hence "mp\<^sub>1 lp / mp lp + mp\<^sub>2 lp / mp lp = 1"
+        apply (simp add: preal_to_real)
+        by (metis \<open>pos_perm_class.pnone < mp lp\<close> add_divide_distrib add_less_cancel_left add_less_cancel_right divide_self less_numeral_extra(4) less_preal.rep_eq zero_preal.rep_eq)
+      show "(fnm\<^sub>1 +\<lparr> nested_mask_merge \<rparr>+ fnm\<^sub>2) lp = Some nm'"
+        by (metis \<open>fnm lp = Some nm'\<close> \<open>mp\<^sub>1 lp / mp lp + mp\<^sub>2 lp / mp lp = pos_perm_class.pwrite\<close> fnm\<^sub>1 fnm\<^sub>2 nested_mask_merge_option.elims pfun_comb_def nm_multiply_merge_distr nm_multiply_1_opt)
+    qed
+  qed
+
+  define \<omega>\<^sub>A where "\<omega>\<^sub>A = add_to_nm_total_full \<omega> nm\<^sub>1"
+  have 1: "add_to_nm_total_full \<omega>\<^sub>A nm\<^sub>2 = add_to_nm_total_full \<omega> nm"
+    apply (rule full_total_state.equality; simp_all add: IH \<omega>\<^sub>A_def)
+    apply (rule total_state.equality; simp_all add: IH \<omega>\<^sub>A_def)
+    by (metis \<open>nested_mask_merge nm\<^sub>1 nm\<^sub>2 = nm\<close> nm_add_assoc)
+
+  show ?case
+    apply (rule InhStarNormal[where ?\<omega>''=\<omega>\<^sub>A])
+    using IH(5)[of nm\<^sub>1 \<omega>]
+    apply (metis A_sup IH.prems(4) IH.prems(5) IH.prems(6) \<omega>\<^sub>A_def assertion_framing_star get_mh_nm.simps get_mp_nm.simps nm\<^sub>1 nm\<^sub>1_cons)
+    using IH IH(6)[of nm\<^sub>2 \<omega>\<^sub>A, OF _ _ nm\<^sub>2_cons] 1
+    by (metis A_sup B_sup \<omega>\<^sub>A_def assertion_framing_star get_mh_nm.simps get_mp_nm.simps inhale_only_changes_mask nm\<^sub>1 nm\<^sub>1_cons nm\<^sub>2)
 
 next
-  case (SatImpTrue e mh mp A)
-  then show ?case sorry
+  case IH: (SatImpTrue e mh mp A)
+
+  hence e_sup: "supported_pred_expr e" and A_sup: "supported_pred_body A"
+    by simp+
+  obtain res where res: "ctxt, Some \<omega> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t res"
+    by (metis IH.hyps(1) IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh e_sup eval_ok_no_type_error(1))
+
+  show ?case
+  proof (cases res)
+    case (Val v\<^sub>2)
+    hence "v\<^sub>2 = VBool True"
+      using eval_with_same_store_same_hh(1)[OF IH(1) res _ Val e_sup] IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh
+      by presburger
+    show ?thesis
+      apply (rule InhImpTrue)
+      using Val \<open>v\<^sub>2 = VBool True\<close> res
+       apply blast
+      using IH(3)[OF IH(4-8)] A_sup IH.prems(6) Val \<open>v\<^sub>2 = VBool True\<close> assertion_framing_imp res
+      by blast
+  next
+    case VFailure
+    then show ?thesis
+      using IH.prems(6) res assertion_framing_state_def inh_imp_failure by blast
+  qed
+
 next
-  case (SatImpFalse e mh mp A)
-  then show ?case sorry
+  case IH: (SatImpFalse e mh mp A)
+
+  hence e_sup: "supported_pred_expr e" and A_sup: "supported_pred_body A"
+    by simp+
+  obtain res where res: "ctxt, Some \<omega> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t res"
+    by (metis IH.hyps(1) IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh e_sup eval_ok_no_type_error(1))
+
+  have "nm = empty_nm"
+    apply (simp add: empty_nm_def)
+    apply (rule nested_mask_equality, simp_all)
+    using IH.hyps(2) IH.prems(1) zero_mask_def
+      apply fastforce
+    using IH.hyps(3) IH.prems(2) zero_mask_def
+     apply fastforce
+    by (metis IH.hyps(3) IH.prems(2) IH.prems(3) SatAll_case prod.exhaust total_state.select_convs(2) zero_mp.simps)
+
+  show ?case
+  proof (cases res)
+    case (Val v\<^sub>2)
+    hence "v\<^sub>2 = VBool False"
+      using eval_with_same_store_same_hh(1)[OF IH(1) res _ Val e_sup] IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh
+      by presburger
+    show ?thesis
+      apply (rule InhImpFalse)
+      using Val \<open>v\<^sub>2 = VBool False\<close> res
+       apply blast
+      by (simp add: \<open>nm = empty_nm\<close> add_empty_nm)
+  next
+    case VFailure
+    then show ?thesis
+      using IH.prems(6) res assertion_framing_state_def inh_imp_failure by blast
+  qed
+
 next
-  case (SatCondTrue e mh mp A B)
-  then show ?case sorry
+  case IH: (SatCondTrue e mh mp A B)
+
+  hence e_sup: "supported_pred_expr e" and A_sup: "supported_pred_body A" and B_sup: "supported_pred_body B"
+    by simp+
+  obtain res where res: "ctxt, Some \<omega> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t res"
+    by (metis IH.hyps(1) IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh e_sup eval_ok_no_type_error(1))
+
+  show ?case
+  proof (cases res)
+    case (Val v\<^sub>2)
+    hence "v\<^sub>2 = VBool True"
+      using eval_with_same_store_same_hh(1)[OF IH(1) res _ Val e_sup] IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh
+      by presburger
+    show ?thesis
+      apply (rule InhCondAssertTrue)
+      using Val \<open>v\<^sub>2 = VBool True\<close> res
+       apply blast
+      using IH(3)[OF IH(4-8)] A_sup IH.prems(6) Val \<open>v\<^sub>2 = VBool True\<close> assertion_framing_cond_assert_true res
+      by blast
+  next
+    case VFailure
+    then show ?thesis
+      using IH.prems(6) res assertion_framing_state_def inh_cond_assert_failure by blast
+  qed
+
 next
-  case (SatCondFalse e mh mp B A)
-  then show ?case sorry
+  case IH: (SatCondFalse e mh mp B A)
+
+  hence e_sup: "supported_pred_expr e" and A_sup: "supported_pred_body A" and B_sup: "supported_pred_body B"
+    by simp+
+  obtain res where res: "ctxt, Some \<omega> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t res"
+    by (metis IH.hyps(1) IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh e_sup eval_ok_no_type_error(1))
+
+  show ?case
+  proof (cases res)
+    case (Val v\<^sub>2)
+    hence "v\<^sub>2 = VBool False"
+      using eval_with_same_store_same_hh(1)[OF IH(1) res _ Val e_sup] IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh
+      by presburger
+    show ?thesis
+      apply (rule InhCondAssertFalse)
+      using Val \<open>v\<^sub>2 = VBool False\<close> res
+       apply blast
+      by (metis B_sup IH.IH IH.prems(1) IH.prems(2) IH.prems(3) IH.prems(4) IH.prems(5) IH.prems(6) Val \<open>v\<^sub>2 = VBool False\<close> assertion_framing_cond_assert_false res)
+  next
+    case VFailure
+    then show ?thesis
+      using IH.prems(6) res assertion_framing_state_def inh_cond_assert_failure by blast
+  qed
 qed
 
 

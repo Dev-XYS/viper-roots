@@ -1,7 +1,7 @@
 section \<open>Basic State Properties and Instantiations\<close>
 
 theory TotalStateProperties
-  imports TotalStateUtil TotalStateInst
+  imports TotalStateUtil TotalStateInst NestedMaskInst
 begin
 
 
@@ -430,15 +430,6 @@ lemma nm_multiply_back:
       and "get_mp_nm (nested_mask_multiply nm frac) loc = q"
     shows "get_mp_nm nm loc = q / frac"
   by (metis Rep_preal_inverse assms(1) assms(2) divide_preal.rep_eq dual_order.refl linorder_not_less nm_multiply_mp_value nonzero_mult_div_cancel_left times_preal.rep_eq zero_preal.rep_eq)
-
-lemma nm_multiply_twice:
-  fixes f1 f2 :: preal
-  shows "nested_mask_multiply (nested_mask_multiply nm f1) f2 = nested_mask_multiply nm (f1 * f2)"
-  sorry
-
-lemma nm_multiply_1:
-  shows "nested_mask_multiply nm 1 = nm"
-  sorry
 
 lemma nm_multiply_back_nm:
     fixes frac :: preal
