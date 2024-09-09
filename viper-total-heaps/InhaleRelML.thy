@@ -183,6 +183,14 @@ ML \<open>
    (* We add RedLit_case to deal with the case when the permission is a literal *)
    (Rmsg' "Inh Assume Rcv Non-Null - Prove Assume Condition Holds" (fast_force_tac (add_simps @{thms inhale_acc_normal_premise_def} (ctxt addEs @{thms TotalExpressions.RedLit_case}) )) ctxt)
 
+  fun true_implies_true_tac ctxt _ _ _ =
+    (SUBGOAL (fn (t,_) => raise TERM ("InhPred breakpoint", [t]))) THEN'
+    (Rmsg' "Inh Assume True \<Longrightarrow> True - Init 1" (resolve_tac ctxt @{thms rel_propagate_pre_assume}) ctxt) THEN'
+    (Rmsg' "Inh Assume True \<Longrightarrow> True - Init 2" (resolve_tac ctxt @{thms conjI}) ctxt) THEN'
+    (Rmsg' "Inh Assume True \<Longrightarrow> True - Synthesize Assume Condition" (prove_red_expr_bpl_tac ctxt) ctxt) THEN'
+    (* We add RedLit_case to deal with the case when the permission is a literal *)
+    (Rmsg' "Inh Assume True \<Longrightarrow> True - Prove Assume Condition Holds" (fast_force_tac (add_simps @{thms inhale_acc_normal_premise_def} (ctxt addEs @{thms TotalExpressions.RedLit_case}) )) ctxt)
+
   fun inhale_rel_field_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info =
     (Rmsg' "inh field acc upd 0" (resolve_tac ctxt @{thms inhale_rel_field_acc_upd_rel}) ctxt) THEN'
     (Rmsg' "inh field acc upd 1" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
@@ -221,7 +229,13 @@ ML \<open>
           (Rmsg' "InhPred wf args list simp" (simp_only_tac @{thms append_Cons append_Nil} ctxt) ctxt) THEN'
           (Rmsg' "InhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'
             (* '2' is the number of the predicate arguments plus one. Needs to be program specific in the future. *)
-          (SUBGOAL (fn (t,_) => raise TERM ("InhPred breakpoint", [t])))
+          (Rmsg' "InhPred unfold current bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'
+          (Rmsg' "InhPred 2 propagate" (resolve_tac ctxt @{thms rel_propagate_pre_2}) ctxt) THEN'
+            (Rmsg' "InhField 2b red_ast_bpl_relI" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
+            (store_temporary_inh_perm_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
+            (prove_perm_non_negative_inh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
+            (true_implies_true_tac ctxt info exp_rel_info lookup_aux_var_state_rel_thm) THEN'
+            (SUBGOAL (fn (t,_) => raise TERM ("InhPred breakpoint", [t])))
     | _ => error("only support PredicateAccInhHint")
 
   fun atomic_inhale_rel_inst_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) atomic_inh_hint = 
