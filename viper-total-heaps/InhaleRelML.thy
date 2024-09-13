@@ -1,5 +1,5 @@
 theory InhaleRelML
-imports Boogie_Lang.HelperML ExprWfRelML InhaleRel ViperBoogieHelperML
+imports Boogie_Lang.HelperML ExprWfRelML InhaleRel ViperBoogieHelperML PredicateRel
 begin
 
 ML \<open>
@@ -184,7 +184,6 @@ ML \<open>
    (Rmsg' "Inh Assume Rcv Non-Null - Prove Assume Condition Holds" (fast_force_tac (add_simps @{thms inhale_acc_normal_premise_def} (ctxt addEs @{thms TotalExpressions.RedLit_case}) )) ctxt)
 
   fun true_implies_true_tac ctxt _ _ _ =
-    (SUBGOAL (fn (t,_) => raise TERM ("InhPred breakpoint", [t]))) THEN'
     (Rmsg' "Inh Assume True \<Longrightarrow> True - Init 1" (resolve_tac ctxt @{thms rel_propagate_pre_assume}) ctxt) THEN'
     (Rmsg' "Inh Assume True \<Longrightarrow> True - Init 2" (resolve_tac ctxt @{thms conjI}) ctxt) THEN'
     (Rmsg' "Inh Assume True \<Longrightarrow> True - Synthesize Assume Condition" (prove_red_expr_bpl_tac ctxt) ctxt) THEN'
@@ -222,6 +221,36 @@ ML \<open>
             (inhale_rel_field_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info)
     | _ => error("only support FieldAccInhHint")
 
+  fun inst_spec ctrm =
+  let
+    val cty = Thm.ctyp_of_cterm ctrm
+  in
+    Thm.instantiate' [SOME cty] [NONE, SOME ctrm] @{thm spec}
+  end
+
+  fun inhale_rel_pred_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info =
+    (Rmsg' "inh field pred upd 0" (resolve_tac ctxt @{thms inhale_rel_pred_acc_upd_rel}) ctxt) THEN'
+    (Rmsg' "inh field acc upd 1" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd aux var disjoint" (#aux_var_disj_tac info ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd wf ty repr" (resolve_tac ctxt @{thms wf_ty_repr_basic}) ctxt) THEN'
+    (Rmsg' "inh field acc upd def mask and eval mask same" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd ty interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd def mask and eval mask same" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd def mask and eval mask same" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd ty interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc mask update wf concrete" (resolve_tac ctxt [ @{thm mask_update_wf_concrete} OF [#ctxt_wf_thm info, @{thm wf_ty_repr_basic}]]) ctxt) THEN'
+    (Rmsg' "inh field acc mask read wf concrete" (resolve_tac ctxt [ @{thm mask_read_wf_concrete} OF [#ctxt_wf_thm info, @{thm wf_ty_repr_basic}]]) ctxt) THEN'
+    (Rmsg' "inh field acc upd 2" (assm_full_simp_solved_with_thms_tac @{thms update_mask_concrete_def ty_repr_basic_def} ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd 3" (assm_full_simp_solved_with_thms_tac @{thms update_mask_concrete_def read_mask_concrete_def ty_repr_basic_def} ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd rcv rel" ((exp_rel_tac exp_rel_info ctxt) |> SOLVED') ctxt) THEN'
+    (Rmsg' "inh field pred upd 3" (assm_full_simp_solved_with_thms_tac [ simplify ctxt (inst_spec @{cterm FPredicateLoc_P} OF [ simplify (add_simps @{thms ctxt_wf_def fun_interp_vpr_bpl_wf_def} (Simplifier.clear_simpset ctxt)) (#ctxt_wf_thm info) ])  ] ctxt) ctxt) THEN'
+    (* The above line applies (simp add: spec[OF CtxtWf[simplified ctxt_wf_def fun_interp_vpr_bpl_wf_def], of FPredicateLoc_P, simplified]).
+       Needs a better way to formulate this. *)
+    (Rmsg' "inh field acc upd ty interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd 2" (assm_full_simp_solved_with_thms_tac [ (#vpr_prog_def_thm info) ] ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd ty interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd 2" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt)
+
   fun atomic_inhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) inh_pred_acc_hint =
     case inh_pred_acc_hint of
       PredicateAccInhHint (exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm) =>
@@ -235,7 +264,7 @@ ML \<open>
             (store_temporary_inh_perm_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
             (prove_perm_non_negative_inh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
             (true_implies_true_tac ctxt info exp_rel_info lookup_aux_var_state_rel_thm) THEN'
-            (SUBGOAL (fn (t,_) => raise TERM ("InhPred breakpoint", [t])))
+            (inhale_rel_pred_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info)
     | _ => error("only support PredicateAccInhHint")
 
   fun atomic_inhale_rel_inst_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) atomic_inh_hint = 

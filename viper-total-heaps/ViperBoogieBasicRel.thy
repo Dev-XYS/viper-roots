@@ -202,32 +202,34 @@ proof -
     by blast
 qed
 
-definition mask_rel :: "ViperLang.program \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> preal mask \<Rightarrow> 'a bpl_mask_ty \<Rightarrow> bool"
-  where "mask_rel Pr tr_field m mb \<equiv> 
+definition mask_rel :: "ViperLang.program \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> preal mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a bpl_mask_ty \<Rightarrow> bool"
+  where "mask_rel Pr tr_field mh mp mb \<equiv> 
     (\<forall> l field_ty_vpr field_bpl. declared_fields Pr (snd l) = Some field_ty_vpr \<longrightarrow>
                       tr_field (snd l) = Some field_bpl \<longrightarrow>
-                      mb (Address (fst l), NormalField field_bpl field_ty_vpr) = Rep_preal (m l))
+                      mb (Address (fst l), NormalField field_bpl field_ty_vpr) = Rep_preal (mh l))
  \<and>  (\<forall>f t. mb (Null, NormalField f t) = 0)
- \<and>  (\<forall>r f. mb (r,f) \<ge> 0 \<and> (is_bounded_field_bpl f \<longrightarrow> mb (r,f) \<le> 1))" 
+ \<and>  (\<forall>r f. mb (r,f) \<ge> 0 \<and> (is_bounded_field_bpl f \<longrightarrow> mb (r,f) \<le> 1))
+ \<and>  (\<forall>ploc. Rep_preal (mp ploc) = mb (Null, PredSnapshotField ploc))"
 
 lemma mask_rel_intro:
   assumes "\<And>l field_ty_vpr field_bpl. 
              declared_fields Pr (snd l) = Some field_ty_vpr \<Longrightarrow>
              tr_field (snd l) = Some field_bpl \<Longrightarrow> 
-             mb (Address (fst l), NormalField field_bpl field_ty_vpr) = Rep_preal (m l)" and
-          "\<And> f t. mb (Null, NormalField f t) = 0" and
-          "\<And>r f. mb (r,f) \<ge> 0 \<and> (is_bounded_field_bpl f \<longrightarrow> mb (r,f) \<le> 1)"
-  shows "mask_rel Pr tr_field m mb"
+             mb (Address (fst l), NormalField field_bpl field_ty_vpr) = Rep_preal (mh l)" and
+          "\<And>f t. mb (Null, NormalField f t) = 0" and
+          "\<And>r f. mb (r,f) \<ge> 0 \<and> (is_bounded_field_bpl f \<longrightarrow> mb (r,f) \<le> 1)" and
+          "\<And>ploc. Rep_preal (mp ploc) = mb (Null, PredSnapshotField ploc)"
+  shows "mask_rel Pr tr_field mh mp mb"
   using assms
   unfolding mask_rel_def 
   by blast
 
 lemma mask_rel_elim:
-  assumes "mask_rel Pr tr_field m mb" and
+  assumes "mask_rel Pr tr_field mh mp mb" and
           "(\<And>l field_ty_vpr field_bpl. 
                 declared_fields Pr (snd l) = Some field_ty_vpr \<Longrightarrow>
                 tr_field (snd l) = Some field_bpl \<Longrightarrow> 
-                mb (Address (fst l), NormalField field_bpl field_ty_vpr) = Rep_preal (m l)) \<Longrightarrow> 
+                mb (Address (fst l), NormalField field_bpl field_ty_vpr) = Rep_preal (mh l)) \<Longrightarrow> 
                 P"
         shows P
   using assms
@@ -363,7 +365,7 @@ definition mask_var_rel :: "ViperLang.program \<Rightarrow>  var_context \<Right
                  lookup_var_ty \<Lambda> mvar = Some (TConSingle (TMaskId TyRep)) \<and> 
              \<comment>\<open>Since all Boogie masks \<^term>\<open>mb\<close> have the correct type, we don't add a typing constraint 
                (in contrast to Boogie heaps).\<close>                 
-                       mask_rel Pr FieldTr (get_mh_total_full \<omega>) mb)"
+                       mask_rel Pr FieldTr (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb)"
 
 lemma heap_var_rel_stable:
   assumes "heap_var_rel Pr \<Lambda> TyRep FieldTr hvar \<omega> ns" and
@@ -377,6 +379,7 @@ lemma heap_var_rel_stable:
 lemma mask_var_rel_stable:
   assumes "mask_var_rel Pr \<Lambda> TyRep FieldTr mvar \<omega>' ns"
           "get_mh_total_full \<omega> = get_mh_total_full \<omega>'"
+          "get_mp_total_full \<omega> = get_mp_total_full \<omega>'"
           "lookup_var \<Lambda> ns mvar = lookup_var \<Lambda> ns' mvar"
         shows "mask_var_rel Pr \<Lambda> TyRep FieldTr mvar \<omega> ns'"
   using assms
@@ -387,13 +390,13 @@ abbreviation zero_mask_bpl :: "ref \<times> 'a vb_field \<Rightarrow> real"
   where "zero_mask_bpl \<equiv> \<lambda> _. 0"
 
 lemma zero_mask_rel:
-  shows "mask_rel Pr F zero_mask zero_mask_bpl"
+  shows "mask_rel Pr F zero_mask zero_mask zero_mask_bpl"
   unfolding  mask_rel_def
   by (auto intro: if_SomeI simp: zero_preal.rep_eq zero_mask_def)
 
 lemma zero_mask_rel_2:
   assumes "is_empty_total_full \<omega>"
-  shows "mask_rel Pr F (get_mh_total_full \<omega>) zero_mask_bpl"
+  shows "mask_rel Pr F (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) zero_mask_bpl"
   using assms
   unfolding is_empty_total_full_def is_empty_total_def empty_nm_def
   by (simp add: zero_mask_rel)
@@ -1281,7 +1284,7 @@ lemma state_rel_obtain_mask:
   obtains mb 
   where "lookup_var (var_context ctxt) ns (mask_var Tr) = Some (AbsV (AMask mb))" and
         "lookup_var_ty (var_context ctxt) (mask_var Tr) = Some (TConSingle (TMaskId TyRep))" and
-        "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) mb"
+        "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb"
   using state_rel0_mask_var_rel[OF state_rel_state_rel0[OF StateRel]]
   unfolding mask_var_rel_def
   by blast
@@ -1897,16 +1900,16 @@ lemma state_rel0_heap_update:
     have "mask_var_rel Pr \<Lambda> TyRep (field_translation Tr) (mask_var Tr) \<omega>' ns'"      
       apply (rule mask_var_rel_stable[OF state_rel0_mask_var_rel[OF StateRel]])
       using \<open>\<omega>' = _\<close>
-       apply simp
+       apply (simp, simp)
       using OnlyHeapAffected Disj
-      by force      
+      by force
     thus "mask_var_rel Pr \<Lambda> TyRep (field_translation Tr') (mask_var Tr') \<omega>' ns'"
       by (simp add: \<open>Tr' = _\<close>)
   next
     have "mask_var_rel Pr \<Lambda> TyRep (field_translation Tr) (mask_var_def Tr) \<omega>def' ns'"
           apply (rule mask_var_rel_stable[OF state_rel0_mask_var_def_rel[OF StateRel]])
       using \<open>\<omega>def' = _\<close>
-       apply simp
+       apply (simp, simp)
       using mask_var_disjoint[OF StateRel] OnlyHeapAffected Disj
       by force
     thus "mask_var_rel Pr \<Lambda> TyRep (field_translation Tr') (mask_var_def Tr') \<omega>def' ns'"
@@ -2571,25 +2574,25 @@ lemma state_rel_mask_update_2b:
 lemma state_rel_mask_update_3:
   assumes StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" and 
           WellDefSame: "mask_var Tr = mask_var_def Tr \<and> \<omega>def = \<omega>" and
-          MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) m'" and
+          MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) m'" and
           Eq: "mvar = mask_var Tr"
-           "\<Lambda> = (var_context ctxt)" and
-        TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep"
+          "\<Lambda> = (var_context ctxt)" and
+          TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep"
         shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> (update_var \<Lambda> ns mvar (AbsV (AMask m')))" 
-                (is "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ?ns'")
+          (is "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ?ns'")
   apply (rule state_rel_mask_update_2b[OF StateRel WellDefSame])
-   apply (metis update_var_other Eq )
-  apply (unfold mask_var_rel_def)
-  apply (rule exI[where ?x=m'])
+       apply (metis update_var_other Eq )
+      apply (unfold mask_var_rel_def)
+      apply (rule exI[where ?x=m'])
   using MaskRel Eq
-  apply (meson StateRel state_rel_obtain_mask update_var_same)
-  apply (simp add: Eq)
+      apply (meson StateRel state_rel_obtain_mask update_var_same)
+     apply (simp add: Eq)
   using StateRel
-     apply (metis assms(4) global_state_update_local global_state_update_other)
+     apply (metis global_state_update_local global_state_update_other)
     apply (simp add: update_var_old_global_same)
   using state_rel0_state_well_typed[OF state_rel_state_rel0[OF StateRel]]
   unfolding state_well_typed_def
-  apply (simp add: update_var_binder_same)
+   apply (simp add: update_var_binder_same)
   by (simp add: TypeInterp)
 
 lemma state_rel_mask_update_4:
@@ -2655,7 +2658,7 @@ next
 next
   let ?mb'="mask_bpl_upd_normal_field mb (Address addr) f_bpl ty_vpr (Rep_preal p)"
 
-  have MaskRel0:"mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) mb"
+  have MaskRel0:"mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb"
     using LookupMask state_rel0_mask_var_rel[OF state_rel_state_rel0[OF StateRel]]
     unfolding mask_var_rel_def
     by auto
@@ -2665,7 +2668,7 @@ next
     unfolding field_rel_def
     by simp
 
-  have "mask_rel Pr (field_translation Tr) (get_mh_total_full ?\<omega>') ?mb'"
+  have "mask_rel Pr (field_translation Tr) (get_mh_total_full ?\<omega>') (get_mp_total_full ?\<omega>') ?mb'"
     unfolding mask_rel_def
    
   proof (intro conjI, (rule allI | rule impI)+)
@@ -2724,12 +2727,17 @@ next
           by auto
       qed
     qed
+  next
+    show "\<forall>ploc. Rep_preal (get_mp_total_full ?\<omega>' ploc) =
+                 mask_bpl_upd_normal_field mb (Address addr) f_bpl ty_vpr (Rep_preal p) (Null, PredSnapshotField ploc)"
+      sorry
   qed
 
   thus "mask_var_rel Pr (var_context ctxt) TyRep (field_translation Tr) (mask_var Tr) ?\<omega>' ?ns'"
     using state_rel0_mask_var_rel[OF state_rel_state_rel0[OF StateRel]]
     unfolding mask_var_rel_def
-    using \<open>\<Lambda> = _\<close> update_var_same \<open>p_bpl = _\<close> by blast
+    using \<open>\<Lambda> = _\<close> update_var_same \<open>p_bpl = _\<close>
+    by blast
 next
   show "\<And>x. map_of (snd (var_context ctxt)) x \<noteq> None \<Longrightarrow>
          global_state ?ns' x = global_state ns x"

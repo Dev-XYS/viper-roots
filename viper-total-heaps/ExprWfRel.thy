@@ -1332,7 +1332,7 @@ proof (rule wf_rel_intro)
     by (fastforce intro: red_expr_red_exprs.intros)
 
   obtain m_bpl where RedMaskBpl: "red_expr_bpl ctxt e_m_bpl ns (AbsV (AMask m_bpl))" and
-                 MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>def) m_bpl"
+                 MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>def) (get_mp_total_full \<omega>def) m_bpl"
     using \<open>e_m_bpl = _\<close> state_rel0_mask_var_def_rel[OF StateRel0[OF R]]
     unfolding state_rel_def state_rel0_def mask_var_rel_def 
     by (auto intro!: Semantics.RedVar)
@@ -1469,7 +1469,7 @@ proof (rule wf_rel_intro)
     by (fastforce intro: red_expr_red_exprs.intros)
 
   obtain m_bpl where RedMaskBpl: "red_expr_bpl ctxt e_m_bpl ns (AbsV (AMask m_bpl))" and
-                 MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>def) m_bpl"
+                 MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>def) (get_mp_total_full \<omega>def) m_bpl"
     using \<open>e_m_bpl = _\<close> state_rel0_mask_var_def_rel[OF StateRel0[OF R]]
     unfolding state_rel_def state_rel0_def mask_var_rel_def 
     by (auto intro: red_expr_red_exprs.intros)

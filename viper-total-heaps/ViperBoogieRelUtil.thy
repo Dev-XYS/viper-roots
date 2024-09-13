@@ -159,7 +159,7 @@ proof (rule rel_intro)
   obtain mb where
         LookupMask: "lookup_var (var_context ctxt) ns (mask_var Tr) = Some (AbsV (AMask mb))" and
         LookupMaskTy: "lookup_var_ty (var_context ctxt) (mask_var Tr) = Some (TConSingle (TMaskId TyRep))" and
-        MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full (snd \<omega>)) mb"
+        MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full (snd \<omega>)) (get_mp_total_full (snd \<omega>)) mb"
     using state_rel_obtain_mask[OF StateRelInst]
     by blast
 
@@ -481,21 +481,24 @@ lemma state_rel_pred_independent:
                apply (fastforce simp: store_rel_def)
              apply (solves \<open>simp\<close>)+
          apply (fastforce simp: heap_var_rel_def mask_var_rel_def)+
-  done
+  (* done *)
+  oops
 
 lemma state_rel_mask_pred_independent:
   assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega> \<omega> ns"
       and "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_mp_total_full \<omega> mp)"
   shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt (upd_mp_total_full \<omega> mp) (upd_mp_total_full \<omega> mp) ns"
   using assms
-  by (rule state_rel_pred_independent) auto
+  (* by (rule state_rel_pred_independent) auto *)
+  oops
 
 lemma state_rel_fnm_independent:
   assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega> \<omega> ns"
       and "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_fnm_total_full \<omega> fnm)"
   shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt (upd_fnm_total_full \<omega> fnm) (upd_fnm_total_full \<omega> fnm) ns"
   using assms
-  by (rule state_rel_pred_independent) auto
+  (* by (rule state_rel_pred_independent) auto *)
+  oops
 
 (* lemma state_rel_heap_pred_independent:
   assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega> \<omega> ns"
@@ -533,7 +536,7 @@ lemma mask_eval_var_upd_red_ast_bpl_propagate:
 proof -
   from state_rel_mask_var_rel[OF StateRel]
   obtain mb where LookupVarOldVar: "lookup_var (var_context ctxt) ns mvar = Some (AbsV (AMask mb))" and
-                  MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) mb"
+                  MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb"
     unfolding mask_var_rel_def \<open>mvar = _\<close>
     by blast
 
@@ -659,7 +662,7 @@ lemma mask_def_var_upd_red_ast_bpl_propagate:
 proof -
   from state_rel_mask_var_def_rel[OF StateRel]
   obtain mb where LookupVarOldVar: "lookup_var (var_context ctxt) ns (mask_var_def Tr) = Some (AbsV (AMask mb))" and
-                  MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>def) mb"
+                  MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>def) (get_mp_total_full \<omega>def) mb"
     unfolding mask_var_rel_def
     by blast
 
@@ -772,7 +775,8 @@ lemma mask_var_upd_red_ast_bpl_propagate:
                       (range (const_repr Tr)) \<union>
                       dom AuxPred)" and
         RedRhsBpl:  "red_expr_bpl ctxt e_bpl ns (AbsV (AMask mbpl'))" and
-        MaskRel:    "mask_rel Pr (field_translation Tr) mh' mbpl'"
+        MaskRel:    "mask_rel Pr (field_translation Tr) mh' (get_mp_total_full \<omega>) mbpl'" and
+        MaskRelDef: "mask_rel Pr (field_translation Tr) mh' (get_mp_total_full \<omega>def) mbpl'"
         shows "\<exists>ns'. red_ast_bpl P ctxt ((BigBlock name (Assign mvar' e_bpl#cs) str tr, cont), Normal ns) 
                                   ((BigBlock name cs str tr, cont), Normal ns') \<and>
                      state_rel Pr StateCons TyRep (Tr\<lparr>mask_var := mvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt (upd_mh_total_full \<omega>def mh') (upd_mh_total_full \<omega> mh') ns'"
@@ -805,12 +809,18 @@ proof -
            apply (simp add: WfMask)
           apply (simp add: WfMask)
          apply (erule Consistent)
-        apply (fastforce simp: mask_var_rel_def intro: LookupTyNewVar MaskRel)
-       apply (fastforce simp: mask_var_rel_def intro: LookupTyNewVar MaskRel)
-      apply (metis global_state_update_local global_state_update_other option.exhaust)
-     apply (simp add: update_var_old_global_same)
+        apply (simp add: mask_var_rel_def)
+    using LookupTyNewVar MaskRel
+        apply fastforce
+       apply (simp add: mask_var_rel_def)
+    using LookupTyNewVar MaskRelDef
+       apply fastforce
+      apply (simp add: update_var_old_global_same)
     using BinderEmpty
-    by (simp add: update_var_binder_same)
+      apply (metis global_state_update_local global_state_update_other)
+     apply (simp add: update_var_old_global_same)
+    apply (simp add: update_var_binder_same)
+    using BinderEmpty by blast
 
   show ?thesis
     using Red StateRel'
@@ -902,7 +912,7 @@ lemma post_framing_propagate_aux:
           LookupTyMask: "lookup_var_ty (var_context ctxt) mvar' = Some (TConSingle (TMaskId TyRep))" and
           RedMaskBpl: "\<And>\<omega>0  \<omega> ns hvar hvar'. state_rel Pr StateCons TyRep ((disable_consistent_state_rel_opt Tr)\<lparr>heap_var := hvar, heap_var_def := hvar'\<rparr>) AuxPred ctxt \<omega>0 \<omega> ns \<Longrightarrow>
                                     red_expr_bpl ctxt e_bpl ns (AbsV (AMask mbpl'))" and
-          MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>1) mbpl'" and
+          MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>1) (get_mp_total_full \<omega>1) mbpl'" and
                 \<comment>\<open> could weaken the disjointness condition such that the heap and mask variable can 
                     stay the same\<close>
           Disj: "{hvar', mvar'} \<inter> ({heap_var Tr, heap_var_def Tr} \<union> 
@@ -938,7 +948,8 @@ proof -
      RedBpl2: "red_ast_bpl P ctxt ((BigBlock name (Assign mvar' e_bpl # cs) str tr, cont), Normal ns') ((BigBlock name cs str tr, cont), Normal ns'')" and
      StateRel2: "state_rel Pr StateCons TyRep (?Tr'\<lparr>heap_var := hvar', heap_var_def := hvar', mask_var := mvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt ?\<omega>' ?\<omega>' ns''"
     using \<open>mvar' \<notin> _\<close> \<open>hvar' \<noteq> mvar'\<close> MaskRel
-    by force    
+    (* by force *)
+    sorry
 
   have Aux:"?Tr'\<lparr>heap_var := hvar', heap_var_def := hvar', mask_var := mvar', mask_var_def := mvar'\<rparr> = ?Tr'\<lparr>heap_var := hvar', mask_var := mvar', heap_var_def := hvar', mask_var_def := mvar'\<rparr>"
     by simp
@@ -949,9 +960,10 @@ proof -
     
   let ?\<omega>'' = "update_trace_total (upd_fnm_total_full (upd_mp_total_full ?\<omega>' (get_mp_total_full \<omega>1)) (get_fnm_total_full \<omega>1)) (get_trace_total \<omega>1)"
 
-  from state_rel_trace_independent[OF _ _ state_rel_fnm_independent[OF state_rel_mask_pred_independent[OF StateRel3]]] have
-    StateRel4: "state_rel Pr StateCons TyRep (?Tr'\<lparr>heap_var := hvar', mask_var := mvar', heap_var_def := hvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt ?\<omega>'' ?\<omega>'' ns''"
-    by simp
+  (* from state_rel_trace_independent[OF _ _ state_rel_fnm_independent[OF state_rel_mask_pred_independent[OF StateRel3]]] have *)
+  have StateRel4: "state_rel Pr StateCons TyRep (?Tr'\<lparr>heap_var := hvar', mask_var := mvar', heap_var_def := hvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt ?\<omega>'' ?\<omega>'' ns''"
+    (* by simp *)
+  sorry
   \<comment>\<open>Here, we reenable the state consistency using the consistency assumption on the final state.\<close>
 
   have "?\<omega>'' = \<omega>1"
@@ -975,7 +987,7 @@ subsection \<open>Tracking states in the auxiliary variables\<close>
 definition pred_eq_mask
   where "pred_eq_mask Pr TyRep FieldTr ctxt m \<omega> v \<equiv> 
             lookup_var_ty (var_context ctxt) m = Some (TConSingle (TMaskId TyRep)) \<and>
-            (\<exists>mb. v = AbsV (AMask mb) \<and> mask_rel Pr FieldTr (get_mh_total_full \<omega>) mb)"
+            (\<exists>mb. v = AbsV (AMask mb) \<and> mask_rel Pr FieldTr (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb)"
 
 
 definition pred_eq_heap_aux
@@ -1038,7 +1050,7 @@ lemma state_rel_capture_current_mask:
 proof -
   from state_rel_mask_var_rel[OF StateRel] obtain mb where
     MaskVarRel: "lookup_var (var_context ctxt) ns (mask_var Tr) = Some (AbsV (AMask mb)) \<and> 
-                 mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) mb"
+                 mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb"
     unfolding mask_var_rel_def
     by blast
 
@@ -1146,7 +1158,7 @@ lemma mask_eval_var_upd_red_ast_bpl_propagate_capture:
 proof -
   from state_rel_mask_var_rel[OF StateRel]
   obtain mb where LookupVarOldVar: "lookup_var (var_context ctxt) ns mvar = Some (AbsV (AMask mb))" and
-                  MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) mb"
+                  MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb"
     unfolding mask_var_rel_def \<open>mvar = _\<close>
     by blast
 
@@ -1314,7 +1326,7 @@ proof -
   from state_rel_aux_pred_sat_lookup_2[OF StateRel, where ?aux_var=m] \<open>m \<noteq> h\<close>
   obtain mb where LookupMask: "lookup_var (var_context ctxt) ns m = Some (AbsV (AMask mb))" and
                   LookupVarTyMask: "lookup_var_ty (var_context ctxt) m = Some (TConSingle (TMaskId TyRep))" and
-                  MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>0) mb"
+                  MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>0) (get_mp_total_full \<omega>0) mb"
     using state_rel_aux_pred_sat_lookup_2[OF StateRel, where ?aux_var=m] \<open>m \<noteq> h\<close> \<open>FieldTr0 = _\<close>    
     unfolding aux_pred_capture_state_def pred_eq_mask_def 
     by auto

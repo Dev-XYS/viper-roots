@@ -123,13 +123,13 @@ fun good_state :: "ViperLang.program \<Rightarrow> (field_ident \<rightharpoonup
                                  \<comment>\<open>TODO: predicates \<longrightarrow> need state consistency\<close>
                                  wf_mask_simple (get_mh_total_full \<omega>) \<and>
                                  heap_rel Pr F (get_hh_total_full \<omega>) h \<and> 
-                                 mask_rel Pr F (get_mh_total_full \<omega>) m))
+                                 mask_rel Pr F (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) m))
         | _ \<Rightarrow> None)"
 
 lemma good_state_Some_true:
   assumes "wf_mask_simple (get_mh_total_full (\<omega> :: 'a full_total_state))" and 
           "heap_rel Pr F (get_hh_total_full \<omega>) hb" and
-          "mask_rel Pr F (get_mh_total_full \<omega>) mb"
+          "mask_rel Pr F (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb"
   shows "good_state Pr F [] [AbsV (AHeap hb), AbsV (AMask mb)] = Some (BoolV True)"
   using assms
   apply simp
@@ -543,6 +543,12 @@ proof -
     by (simp add: \<open>ts = []\<close> \<open>vs = [AbsV (ARef r)]\<close>)
 qed
 
+lemma predicate_loc_P_list_same:
+  shows "lift_fun_bpl (vbpl_absval_ty T) (0, [TConSingle (TRefId T)], TCon (TFieldId T) [TCon ''PredicateType_P'' [], TPrim TBool]) predicate_loc_P = predicate_loc_P"
+  apply standard+
+  apply (simp add: lift_fun_bpl_def)
+  oops
+
 
 subsection \<open>Global function map\<close>
 
@@ -657,7 +663,7 @@ proof  -
 
   from StateRel obtain mb where
        MLookup:"lookup_var (var_context ctxt) ns m = Some (AbsV (AMask mb))" and                
-       Mrel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) mb"
+       Mrel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb"
     unfolding state_rel_def state_rel0_def heap_var_rel_def mask_var_rel_def
     using Meq
     by blast

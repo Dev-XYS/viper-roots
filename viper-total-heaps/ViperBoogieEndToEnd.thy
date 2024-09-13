@@ -1569,7 +1569,7 @@ proof -
         using GlobalsLocalsDisj and MaskTy
         by (metis (no_types, opaque_lifting) lookup_var_decl_global_2 lookup_var_ty_def lookup_vdecls_ty_def lookup_vdecls_ty_map_of option.inject)
     next    
-      show "mask_rel (program_total ctxt_vpr) (field_translation Tr) (get_mh_total_full \<omega>) zero_mask_bpl"
+      show "mask_rel (program_total ctxt_vpr) (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) zero_mask_bpl"
         using \<open>is_empty_total_full \<omega>\<close>
         unfolding mask_rel_def is_empty_total_full_def is_empty_total_def zero_mask_def empty_nm_def
         by (simp add: zero_preal.rep_eq)

@@ -41,8 +41,8 @@ fun upd_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow
 fun upd_nm_loc_opt_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option \<Rightarrow> 'a nested_mask"
   where "upd_nm_loc_opt_nm (NM mh mp fnm) lp nm = NM mh mp (fnm( lp := nm ))"
 
-fun add_to_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
-  where "add_to_mp_loc_nm (NM mh mp fnm) lp p = NM mh (mp( lp := mp lp + p )) fnm"
+fun inc_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
+  where "inc_mp_loc_nm (NM mh mp fnm) lp p = NM mh (mp( lp := mp lp + p )) fnm"
 
 fun add_to_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
   where "add_to_nm_loc_nm (NM mh mp fnm) loc nm = NM mh mp (fnm( loc := nested_mask_merge_option (fnm loc) (Some nm) ))"
@@ -110,11 +110,11 @@ fun upd_nm_loc_opt_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predic
 fun add_to_nm_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) total_state_scheme"
   where "add_to_nm_total \<phi> nm = \<phi>\<lparr> get_nm_total := nested_mask_merge (get_nm_total \<phi>) nm \<rparr>"
 
-fun add_to_mp_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
-  where "add_to_mp_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := add_to_mp_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
-
 fun add_to_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) total_state_scheme"
   where "add_to_nm_loc_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := add_to_nm_loc_nm (get_nm_total \<phi>) lp nm \<rparr>"
+
+fun inc_mp_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "inc_mp_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := inc_mp_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
 
 fun rm_from_mp_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
   where "rm_from_mp_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := rm_from_mp_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
@@ -195,6 +195,10 @@ fun add_to_nm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a n
 fun add_to_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) full_total_state_scheme"
   where "add_to_nm_loc_total_full \<omega> lp nm =
         \<omega>\<lparr> get_total_full := add_to_nm_loc_total (get_total_full \<omega>) lp nm \<rparr>"
+
+fun inc_mp_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "inc_mp_loc_total_full \<omega> lp p =
+        \<omega>\<lparr> get_total_full := inc_mp_loc_total (get_total_full \<omega>) lp p \<rparr>"
 
 fun mult_nm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
   where "mult_nm_total_full \<omega> p = upd_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) p)"

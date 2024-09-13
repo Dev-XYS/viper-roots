@@ -706,7 +706,7 @@ proof -
 
   from state_rel_mask_var_rel[OF StateRel] obtain mb
     where LookupMaskVar: "lookup_var (var_context ctxt) ns (mask_var Tr) = Some (AbsV (AMask mb))" and
-          MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) mb"
+          MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb"
     unfolding mask_var_rel_def
     by auto
 

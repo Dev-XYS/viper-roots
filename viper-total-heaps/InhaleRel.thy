@@ -230,6 +230,7 @@ next
         red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and> R \<omega> ns \<and> False)"
     apply (cases)
     using ExpRel Invariant exp_rel_vpr_bplD val_rel_vpr_bpl.simps(2) apply fastforce
+     apply fastforce
     by (metis direct_sub_expressions_assertion.simps(2) list.inject red_exp_list_failure_elim)
 qed
 
@@ -594,7 +595,7 @@ next
 next
   fix \<omega> ns
   assume StateRel: "state_rel_def_same Pr StateCons TyRep Tr (AuxPred(temp_perm \<mapsto> pred_eq (RealV p))) ctxt \<omega> ns"
-  thus "state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega> ns"    
+  thus "state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega> ns"
     using \<open>temp_perm \<notin> _\<close> state_rel_aux_pred_remove[OF StateRel]
     by (metis fun_upd_None_if_notin_dom map_le_imp_upd_le upd_None_map_le)
 next
@@ -659,7 +660,8 @@ qed
 subsection \<open>Predicates\<close>
 
 definition inhale_pred_normal_premise
-  where "inhale_pred_normal_premise ctxt StateCons pred_id e_args e_p vs p \<omega> \<omega>' \<equiv>
+  where "inhale_pred_normal_premise ctxt StateCons pred_id ty_args e_args e_p vs p \<omega> \<omega>' \<equiv>
+       vals_well_typed (absval_interp_total ctxt) vs ty_args \<and>
        red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some vs) \<and>
        ctxt, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and>
        p \<ge> 0 \<and>
@@ -674,7 +676,7 @@ lemma inhale_predicate_acc_rel:
                          (\<lambda> \<omega>. (ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VPerm p)) \<and> p < 0))
                          P ctxt \<gamma>2 \<gamma>3"
       and  UpdInhRel: "\<And>vs p. rel_general (R' p) R \<comment>\<open>Here, the simulation needs to revert back to R\<close>
-                         (inhale_pred_normal_premise ctxt_vpr StateCons pred_id e_args e_p vs p)
+                         (inhale_pred_normal_premise ctxt_vpr StateCons pred_id tys_args e_args e_p vs p)
                          (\<lambda> \<omega>. False) P ctxt \<gamma>3 \<gamma>'" 
     shows "inhale_rel R Q ctxt_vpr StateCons P ctxt (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<gamma> \<gamma>'"
   sorry

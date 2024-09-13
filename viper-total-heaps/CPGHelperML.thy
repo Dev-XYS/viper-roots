@@ -128,7 +128,8 @@ fun rewrite_rel_general_tac ctxt =
       var_context_vpr_tac: (Proof.context -> int -> tactic),
       field_rel_single_tac : (Proof.context -> int -> tactic),
       aux_var_disj_tac: (Proof.context -> int -> tactic),
-      type_interp_econtext: thm  
+      type_interp_econtext: thm,
+      vpr_prog_def_thm: thm
   }
 
 
