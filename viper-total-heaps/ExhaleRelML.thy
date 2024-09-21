@@ -3,17 +3,17 @@ imports Boogie_Lang.HelperML ExprWfRelML ExhaleRel ViperBoogieHelperML CPGHelper
 begin
 
 ML \<open>
-  val Rmsg' = run_and_print_if_fail_2_tac' 
+  val Rmsg' = run_and_print_if_fail_2_tac'
 
   datatype 'a exhale_rel_hint = 
-    AtomicExhHint of 'a 
+    AtomicExhHint of 'a
   | StarExhHint of ( ('a exhale_rel_hint) * ('a exhale_rel_hint))
-  | ImpExhHint of 
-       exp_wf_rel_info *       
+  | ImpExhHint of
+       exp_wf_rel_info *
        exp_rel_info *
        ('a exhale_rel_hint)
-  | CondExhHint of 
-       exp_wf_rel_info *       
+  | CondExhHint of
+       exp_wf_rel_info *
        exp_rel_info *
        ('a exhale_rel_hint) * (* then-branch hint *)
        ('a exhale_rel_hint)   (* else-branch hint *)
@@ -42,7 +42,7 @@ ML \<open>
      init_tac: basic_stmt_rel_info -> (Proof.context -> int -> tactic) -> Proof.context -> int -> tactic,
      (* tactic applied after on the resetting state subgoal *)
      reset_state_tac: basic_stmt_rel_info -> Proof.context -> int -> tactic,
-     exhale_rel_hint: 'a exhale_rel_hint 
+     exhale_rel_hint: 'a exhale_rel_hint
   }
 
   type 'a atomic_exhale_rel_tac = (Proof.context -> basic_stmt_rel_info -> (Proof.context -> basic_stmt_rel_info -> int -> tactic) option -> 'a -> int -> tactic)
@@ -59,7 +59,7 @@ ML \<open>
 
   fun exhale_rel_aux_tac ctxt (info: 'a exhale_rel_info) (hint: 'a exhale_rel_hint) =
     case hint of
-      StarExhHint (left_hint, right_hint) => 
+      StarExhHint (left_hint, right_hint) =>
         (Rmsg' "ExhaleRel Star" (resolve_tac ctxt [@{thm exhale_rel_star_2}]) ctxt) THEN'
         (Rmsg' "ExhaleRel Star exhale rel inv" (resolve_tac ctxt [#is_exh_rel_inv_thm info]) ctxt) THEN' 
         (Rmsg' "ExhaleRel Star inv constraint on left assertion" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
@@ -123,12 +123,18 @@ ML \<open>
 
 ML \<open>
 
-  datatype atomic_exhale_rel_hint = 
-    PureExpExhHint of 
+  datatype atomic_exhale_rel_hint =
+    PureExpExhHint of
        exp_wf_rel_info *
-       exp_rel_info 
+       exp_rel_info
   | FieldAccExhHint of
-       exp_wf_rel_info * 
+       exp_wf_rel_info *
+       exp_rel_info *
+       thm * (* auxiliary variable lookup var ty theorem *)
+       thm *  (* auxiliary variable lookup var from state relation theorem *)
+       thm (* expression relation permission access theorem *)
+  | PredAccExhHint of
+       exp_wf_rel_info *
        exp_rel_info *
        thm * (* auxiliary variable lookup var ty theorem *)
        thm *  (* auxiliary variable lookup var from state relation theorem *)
@@ -148,6 +154,14 @@ ML \<open>
          exp_rel_info 
          lookup_aux_var_ty_thm
          (fn ctxt => (resolve_tac ctxt @{thms exhale_field_acc_rel_assms_perm_eval}) THEN' blast_tac ctxt)  
+
+  fun store_temporary_perm_pred_exh_tac ctxt (info: basic_stmt_rel_info) exp_rel_info lookup_aux_var_ty_thm =
+    store_temporary_perm_tac 
+         ctxt 
+         info 
+         exp_rel_info 
+         lookup_aux_var_ty_thm
+         (fn ctxt => (resolve_tac ctxt @{thms exhale_pred_acc_rel_assms_perm_eval}) THEN' blast_tac ctxt)
  
   fun prove_perm_non_negative_exh_tac ctxt (info: basic_stmt_rel_info) lookup_aux_var_state_rel_thm =
       (Rmsg' "Exh Prove Perm Nonnegative 1" (resolve_tac ctxt @{thms rel_propagate_pre_assert_2}) ctxt) THEN'
@@ -157,11 +171,20 @@ ML \<open>
       (Rmsg' "Exh Prove Perm Nonnegative - Boogie Expression Reduction" (prove_red_expr_bpl_tac ctxt) ctxt) THEN'
       (Rmsg' "Exh Prove Perm Nonnegative - Success Condition" 
              (assm_full_simp_solved_with_thms_tac @{thms exhale_field_acc_rel_perm_success_def} ctxt) ctxt)
+ 
+  fun prove_perm_non_negative_pred_exh_tac ctxt (info: basic_stmt_rel_info) lookup_aux_var_state_rel_thm =
+      (Rmsg' "Exh Prove Perm Nonnegative 1" (resolve_tac ctxt @{thms rel_propagate_pre_assert_2}) ctxt) THEN'
+      (Rmsg' "Exh Prove Perm Nonnegative - Introduce Facts"
+              (EVERY' [intro_fact_lookup_no_perm_const_tac ctxt (#tr_def_thm info),
+              intro_fact_lookup_aux_var_tac ctxt lookup_aux_var_state_rel_thm]) ctxt) THEN'
+      (Rmsg' "Exh Prove Perm Nonnegative - Boogie Expression Reduction" (prove_red_expr_bpl_tac ctxt) ctxt) THEN'
+      (Rmsg' "Exh Prove Perm Nonnegative - Success Condition"
+             (assm_full_simp_solved_with_thms_tac @{thms exhale_pred_acc_rel_perm_success_def} ctxt) ctxt)
 
   fun prove_sufficient_perm_tac ctxt (info: basic_stmt_rel_info) exp_rel_info lookup_aux_var_state_rel_thm exp_rel_perm_access_thm =
     (Rmsg' "Exh Prove Sufficient Perm 1" (resolve_tac ctxt @{thms rel_general_cond_2}) ctxt) THEN' 
       (* if condition *)
-      (Rmsg' "Exh Prove Sufficient Perm - Introduce Facts Cond" 
+      (Rmsg' "Exh Prove Sufficient Perm - Introduce Facts Cond"
             (EVERY' [intro_fact_lookup_no_perm_const_tac ctxt (#tr_def_thm info),
             intro_fact_lookup_aux_var_tac ctxt lookup_aux_var_state_rel_thm]) ctxt) THEN'
       (Rmsg' "Exh Prove Sufficient Perm - Boogie Expression Reduction" (prove_red_expr_bpl_tac ctxt) ctxt) THEN'
@@ -171,14 +194,15 @@ ML \<open>
       (* apply post propagation here, since will need to progress from empty block to the continuation *)
       (Rmsg' "Exh Prove Sufficient Perm - Propagate Post" (resolve_tac ctxt @{thms rel_propagate_post_2}) ctxt) THEN'
         (Rmsg' "Exh Prove Sufficient Perm - Propagate Pre Assert" (resolve_tac ctxt @{thms rel_propagate_pre_assert_2}) ctxt) THEN'
-          (Rmsg' "Exh Prove Sufficient Perm - Introduce Facts Assert" 
+          (Rmsg' "Exh Prove Sufficient Perm - Introduce Facts Assert"
                 (EVERY' [ intro_fact_lookup_aux_var_tac ctxt lookup_aux_var_state_rel_thm,
-                         intro_fact_mask_lookup_reduction ctxt info exp_rel_info exp_rel_perm_access_thm
-                                                          (fn ctxt => resolve_tac ctxt @{thms exhale_field_acc_rel_assms_ref_eval} THEN'
-                                                                      fastforce_tac ctxt [])
+                          intro_fact_mask_lookup_reduction ctxt info exp_rel_info exp_rel_perm_access_thm
+                                                           (fn ctxt => resolve_tac ctxt @{thms exhale_field_acc_rel_assms_ref_eval} THEN'
+                                                                       fastforce_tac ctxt [])
                         ]) ctxt) THEN'
+          (SUBGOAL (fn (t,_) => raise TERM ("SuffPerm breakpoint", [t]))) THEN'
           (Rmsg' "Exh Prove Sufficient Perm - Red Assert" (prove_red_expr_bpl_tac ctxt |> SOLVED') ctxt) THEN'
-          (Rmsg' "Exh Prove Sufficient Perm - Success Condition" 
+          (Rmsg' "Exh Prove Sufficient Perm - Success Condition"
                       (simp_only_tac @{thms exhale_field_acc_rel_perm_success_def} ctxt THEN'
                        fastforce_tac ctxt @{thms of_rat_less_eq}) ctxt) THEN'
           (Rmsg' "Exh Prove Sufficient Perm - Finish Then Branch"
@@ -197,7 +221,48 @@ ML \<open>
                        resolve_tac ctxt @{thms rel_general_success_refl},
                        simp_only_tac @{thms exhale_field_acc_rel_perm_success_def} ctxt,
                        fastforce_tac ctxt @{thms prat_non_negative},
-                       assm_full_simp_solved_tac ctxt]) ctxt) 
+                       assm_full_simp_solved_tac ctxt]) ctxt)
+
+  fun prove_sufficient_perm_pred_tac ctxt (info: basic_stmt_rel_info) exp_rel_info lookup_aux_var_state_rel_thm exp_rel_perm_access_thm =
+    (Rmsg' "Exh Prove Sufficient Perm 1" (resolve_tac ctxt @{thms rel_general_cond_2}) ctxt) THEN' 
+      (* if condition *)
+      (Rmsg' "Exh Prove Sufficient Perm - Introduce Facts Cond"
+            (EVERY' [intro_fact_lookup_no_perm_const_tac ctxt (#tr_def_thm info),
+            intro_fact_lookup_aux_var_tac ctxt lookup_aux_var_state_rel_thm]) ctxt) THEN'
+      (Rmsg' "Exh Prove Sufficient Perm - Boogie Expression Reduction" (prove_red_expr_bpl_tac ctxt) ctxt) THEN'
+      (* then branch *)
+      (Rmsg' "Exh Prove Sufficient Perm - Simplify Continuation" (simplify_continuation ctxt) ctxt) THEN'
+      (Rmsg' "Exh Prove Sufficient Perm - Unfold and Progress Big Blocks" (rewrite_rel_general_tac ctxt) ctxt) THEN'
+      (* apply post propagation here, since will need to progress from empty block to the continuation *)
+      (Rmsg' "Exh Prove Sufficient Perm - Propagate Post" (resolve_tac ctxt @{thms rel_propagate_post_2}) ctxt) THEN'
+        (Rmsg' "Exh Prove Sufficient Perm - Propagate Pre Assert" (resolve_tac ctxt @{thms rel_propagate_pre_assert_2}) ctxt) THEN'
+          (Rmsg' "Exh Prove Sufficient Perm - Introduce Facts Assert"
+                (EVERY' [ intro_fact_lookup_aux_var_tac ctxt lookup_aux_var_state_rel_thm,
+                          intro_fact_mask_lookup_reduction ctxt info exp_rel_info exp_rel_perm_access_thm
+                                                           (fn ctxt => resolve_tac ctxt @{thms exhale_field_acc_rel_assms_ref_eval} THEN'
+                                                                       fastforce_tac ctxt [])
+                        ]) ctxt) THEN'
+          (Rmsg' "Exh Prove Sufficient Perm - Red Assert" (prove_red_expr_bpl_tac ctxt |> SOLVED') ctxt) THEN'
+          (Rmsg' "Exh Prove Sufficient Perm - Success Condition"
+                      (simp_only_tac @{thms exhale_field_acc_rel_perm_success_def} ctxt THEN'
+                       fastforce_tac ctxt @{thms of_rat_less_eq}) ctxt) THEN'
+          (Rmsg' "Exh Prove Sufficient Perm - Finish Then Branch"
+                     (resolve_tac ctxt @{thms rel_general_success_refl} THEN'
+                      simp_only_tac @{thms exhale_field_acc_rel_perm_success_def exhale_field_acc_rel_assms_def} ctxt THEN'
+                      (* We add RedLit_case to deal with the case when the permission is a literal *)
+                      fast_force_tac_with_elims_simps ctxt @{thms TotalExpressions.RedLit_case} @{thms of_rat_less_eq} THEN'
+                      assm_full_simp_solved_tac ctxt) ctxt) THEN'
+       (Rmsg' "Exh Prove Sufficient Perm - Progress from then-branch" (progress_red_bpl_rel_tac ctxt) ctxt) THEN'
+
+       (* else branch *)
+       (Rmsg' "Exh Prove Sufficient Perm - Else Branch"
+              (EVERY' [simplify_continuation ctxt,
+                       resolve_tac ctxt @{thms rel_propagate_pre_2_only_state_rel},
+                       progress_red_bpl_rel_tac ctxt,
+                       resolve_tac ctxt @{thms rel_general_success_refl},
+                       simp_only_tac @{thms exhale_field_acc_rel_perm_success_def} ctxt,
+                       fastforce_tac ctxt @{thms prat_non_negative},
+                       assm_full_simp_solved_tac ctxt]) ctxt)
 
   fun upd_exhale_field_acc_tac ctxt (info: basic_stmt_rel_info) exp_rel_info =    
     (Rmsg' "UpdExhField Init Progress" (rewrite_rel_general_tac ctxt) ctxt) THEN'
@@ -230,6 +295,22 @@ ML \<open>
           (prove_sufficient_perm_tac ctxt info exp_rel_info lookup_aux_var_state_rel_thm exp_rel_perm_access_thm) THEN'
           (upd_exhale_field_acc_tac ctxt info exp_rel_info)
     | _ => error("only support FieldAccExhHint")
+
+  (* This tactic is not used (and not verified) at the moment. The exhale in unfold uses a different one. *)
+  fun atomic_exhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) exh_pred_acc_hint =
+    case exh_pred_acc_hint of
+      PredAccExhHint (exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm, exp_rel_perm_access_thm) =>
+        (Rmsg' "ExhPred 1" (resolve_tac ctxt @{thms exhale_rel_pred_acc}) ctxt) THEN'
+          (Rmsg' "ExhPred wf args list simp" (simp_only_tac @{thms append_Cons append_Nil} ctxt) ctxt) THEN'
+          (Rmsg' "ExhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'   
+          (Rmsg' "ExhPred unfold current bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'     
+          (Rmsg' "ExhPred 2 propagate" (resolve_tac ctxt @{thms rel_propagate_pre_2}) ctxt) THEN'
+          (Rmsg' "ExhPred 3 propagate" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
+          (store_temporary_perm_pred_exh_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
+          (prove_perm_non_negative_pred_exh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
+          (prove_sufficient_perm_tac ctxt info exp_rel_info lookup_aux_var_state_rel_thm exp_rel_perm_access_thm) THEN'
+          (upd_exhale_field_acc_tac ctxt info exp_rel_info)
+    | _ => error("only support PredAccExhHint")
   
   fun atomic_exhale_rel_inst_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) atomic_exh_hint = 
     case atomic_exh_hint of
@@ -241,6 +322,8 @@ ML \<open>
          (Rmsg' "ExhPure exp rel" (exp_rel_tac exp_rel_info ctxt |> SOLVED') ctxt)
     | FieldAccExhHint _ => 
          atomic_exhale_field_acc_tac ctxt info no_def_checks_tac_opt atomic_exh_hint
+    | PredAccExhHint _ =>
+         atomic_exhale_pred_acc_tac ctxt info no_def_checks_tac_opt atomic_exh_hint
 
 \<close>
 

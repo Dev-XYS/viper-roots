@@ -264,8 +264,8 @@ lemma mult_rm_nm_loc_total__nm_rel [simp]:
   shows "get_nm_total (mult_rm_nm_loc_total \<phi> lp f) = mult_rm_nm_loc_nm (get_nm_total \<phi>) lp f"
   by simp
 
-lemma rm_from_mp_loc_total__nm_rel [simp]:
-  shows "get_nm_total (rm_from_mp_loc_total \<phi> lp p) = rm_from_mp_loc_nm (get_nm_total \<phi>) lp p"
+lemma dec_mp_loc_total__nm_rel [simp]:
+  shows "get_nm_total (dec_mp_loc_total \<phi> lp p) = dec_mp_loc_nm (get_nm_total \<phi>) lp p"
   by simp
 
 
@@ -733,18 +733,18 @@ proof -
     by simp
 qed
 
-(*
 lemma full_total_state_greater_only_mask_changed:
   assumes "\<omega> \<succeq> \<omega>'"
   shows "get_store_total \<omega> = get_store_total \<omega>' \<and>
          get_trace_total \<omega> = get_trace_total \<omega>' \<and>
-         get_h_total_full \<omega> = get_h_total_full \<omega>' \<and>
+         get_hh_total_full \<omega> = get_hh_total_full \<omega>' \<and>
          full_total_state.more \<omega> = full_total_state.more \<omega>'"
   using assms
   unfolding greater_def
   unfolding plus_full_total_state_ext_def defined_def plus_total_state_ext_def
   by (force split: if_split if_split_asm)
 
+(*
 lemma succ_total_stateI:
   assumes "get_mh_total \<phi> \<succeq> get_mh_total \<phi>'"  (is "?mh \<succeq> ?mh'")
       and "get_mp_total \<phi> \<succeq> get_mp_total \<phi>'"  (is "?mp \<succeq> ?mp'")
@@ -806,6 +806,7 @@ proof -
   thus ?thesis
     by (auto simp add: greater_def)
 qed
+*)
 
 lemma greater_full_total_state_total_state:
   assumes "\<omega> \<succeq> \<omega>'"
@@ -818,6 +819,8 @@ lemma greater_full_total_state_total_state:
 lemma total_state_greater_mask:
   assumes "\<phi> \<succeq> \<phi>'"
   shows "get_mh_total \<phi> \<succeq> get_mh_total \<phi>' \<and> get_mp_total \<phi> \<succeq> get_mp_total \<phi>'"
+  sorry
+(*
 proof -
 
   from assms obtain \<phi>a where "\<phi>' \<oplus> \<phi>a = Some \<phi>"
@@ -834,6 +837,7 @@ proof -
     unfolding greater_def
     by metis
 qed
+*)
 
 lemma full_total_state_greater_mask:
   assumes "\<omega> \<succeq> \<omega>'"
@@ -843,6 +847,8 @@ lemma full_total_state_greater_mask:
 
 lemma total_state_greater_equiv:
   shows "(\<omega> :: 'a total_state) \<succeq> \<omega>' \<longleftrightarrow> \<omega> \<ge> \<omega>'"
+  sorry
+(*
 proof
   assume "\<omega> \<succeq> \<omega>'"
 
@@ -1013,7 +1019,7 @@ qed
 
 end
 
-(*
+
 instantiation full_total_state_ext :: (type,type) pcm_with_core
 begin
 
@@ -1023,7 +1029,7 @@ text \<open>In the following, we do not take the core of the trace, because the 
 definition core_full_total_state_ext :: "('a,'b) full_total_state_ext \<Rightarrow> ('a, 'b) full_total_state_ext"
   where "core_full_total_state_ext \<omega> =
             \<omega> \<lparr> get_total_full := |get_total_full \<omega>| \<rparr>"
-instance proof
+instance sorry (* proof
   fix a b c x y :: "('a,'b) full_total_state_ext"
 
   let ?at = "get_total_full a"
@@ -1109,6 +1115,7 @@ instance proof
       by (metis Some_Some_ifD \<open>?A\<close> \<open>?B\<close> full_total_state.surjective plus_full_total_state_ext_def)
   qed
 qed
+*)
 
 end
 
@@ -1136,11 +1143,12 @@ lemma full_total_state_defined_core_same_2:
   unfolding defined_def
   by fast
 
-
+(*
 lemma minus_total_state:
   assumes "\<phi> \<succeq> \<phi>'"
   shows "\<phi> \<ominus> \<phi>' = \<phi> \<lparr> get_mh_total := get_mh_total \<phi> - get_mh_total \<phi>',
                       get_mp_total := get_mp_total \<phi> - get_mp_total \<phi>' \<rparr>" (is "_ = ?\<Delta>")
+  sorry
 proof -
   from assms minus_exists obtain \<phi>m
     where PlusSome: "Some \<phi> = \<phi>' \<oplus> \<phi>m" and "\<phi>m \<succeq> |\<phi>|"
@@ -1173,11 +1181,12 @@ proof -
     using \<open>\<phi>m = \<phi> \<ominus> \<phi>'\<close>
     by argo
 qed
+*)
 
 lemma minus_full_total_state_only_mask_different:
   shows "get_store_total (\<omega> \<ominus> \<omega>') = get_store_total \<omega> \<and>
          get_trace_total (\<omega> \<ominus> \<omega>') = get_trace_total \<omega> \<and>
-         get_h_total_full (\<omega> \<ominus> \<omega>') = get_h_total_full \<omega>"
+         get_hh_total_full (\<omega> \<ominus> \<omega>') = get_hh_total_full \<omega>"
   using full_total_state_greater_only_mask_changed minus_default minus_smaller
   by metis
 
@@ -1186,12 +1195,14 @@ lemma minus_full_total_state_only_mask_different_2:
   shows
     "get_store_total \<omega>_inh = get_store_total \<omega> \<and>
      get_trace_total \<omega>_inh = get_trace_total \<omega> \<and>
-     get_h_total_full \<omega>_inh = get_h_total_full \<omega>"
+     get_hh_total_full \<omega>_inh = get_hh_total_full \<omega>"
   by (metis assms full_total_state_greater_only_mask_changed greater_def minus_bigger minus_full_total_state_only_mask_different)
 
 lemma minus_full_total_state:
   assumes "\<omega> \<succeq> \<omega>'"
   shows "\<omega> \<ominus> \<omega>' = \<omega> \<lparr> get_total_full := get_total_full \<omega> \<ominus> get_total_full \<omega>' \<rparr>" (is "_ = ?\<Delta>")
+  sorry
+(*
 proof -
   from assms minus_exists obtain \<omega>m
     where PlusSome: "\<omega>' \<oplus> \<omega>m = Some \<omega>" and "\<omega>m \<succeq> |\<omega>|"
@@ -1228,11 +1239,14 @@ proof -
     using \<open>\<omega>m = \<omega> \<ominus> \<omega>'\<close>
     by argo
 qed
+*)
 
 lemma minus_full_total_state_mask:
   assumes "\<omega> \<succeq> \<omega>'"
   shows "get_mh_total_full (\<omega> \<ominus> \<omega>') = get_mh_total_full \<omega> - get_mh_total_full \<omega>' \<and>
          get_mp_total_full (\<omega> \<ominus> \<omega>') = get_mp_total_full \<omega> - get_mp_total_full \<omega>'"
+  sorry
+(*
 proof -
   from minus_full_total_state[OF assms]
   have "get_total_full (\<omega> \<ominus> \<omega>') = get_total_full \<omega> \<ominus> get_total_full \<omega>'" (is "_ = ?\<phi> \<ominus> ?\<phi>'")
@@ -1242,6 +1256,7 @@ proof -
   using greater_full_total_state_total_state[OF assms, THEN minus_total_state]
   by simp
 qed
+*)
 
 subsection \<open>Monotonicity relationship\<close>
 
@@ -1256,7 +1271,6 @@ lemma mono_prop_downward_ord_implies_mono_prop_downward:
   using assms full_total_state_succ_implies_gte
   unfolding mono_prop_downward_ord_def mono_prop_downward_def
   by blast
-*)
 
 subsection \<open>valid mask (TODO: move to ViperLang?)\<close>
 

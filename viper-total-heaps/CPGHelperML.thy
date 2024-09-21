@@ -161,7 +161,8 @@ fun prove_red_expr_bpl_tac ctxt =
         (
           (prove_red_expr_bpl_tac ctxt |> SOLVED') (* e1 *) THEN' 
           (prove_red_expr_bpl_tac ctxt |> SOLVED') (* e2 *) THEN'
-          (force_tac_with_simps ctxt [] |> SOLVED')           (* binop_eval *)
+          (* (force_tac_with_simps ctxt [] |> SOLVED')           (* binop_eval *) *)
+          assm_full_simp_solved_tac ctxt  (* After adding predicates, force does not work (don't know why), simp works *)
         ),
      fn i => fn st =>
        (i,st) |->

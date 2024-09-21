@@ -27,4 +27,20 @@ lemma nm_add_assoc:
   sorry
 
 
+subsection \<open>\<^typ>\<open>'a nested_mask\<close> is a monoid\<close>
+
+(* instantiation nested_mask :: (type) monoid_add
+begin
+
+instance
+  sorry
+
+end *)
+
+
+subsection \<open>\<^typ>\<open>'a nested_mask\<close> forms a semimodule over \<^typ>\<open>preal\<close>\<close>
+
+class semimodule
+
+
 end

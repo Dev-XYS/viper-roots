@@ -11,25 +11,25 @@ text\<open> Points to think about:
 type_synonym 'a stmt_config = "(stmt + unit) \<times> 'a result_total"
 
 definition stmt_rel :: "('a full_total_state \<Rightarrow> ('a vbpl_absval) nstate \<Rightarrow> bool) \<Rightarrow>
-                               ('a full_total_state \<Rightarrow> ('a vbpl_absval) nstate \<Rightarrow> bool) \<Rightarrow> 
-                                'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 
+                               ('a full_total_state \<Rightarrow> ('a vbpl_absval) nstate \<Rightarrow> bool) \<Rightarrow>
+                                'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow>
                                 type_context \<Rightarrow> ast \<Rightarrow> 'a econtext_bpl \<Rightarrow>
                                 ViperLang.stmt \<Rightarrow> (Ast.bigblock \<times> cont) \<Rightarrow> (Ast.bigblock \<times> cont) \<Rightarrow> bool"
   where 
     "stmt_rel R R' ctxt_vpr StateCons \<Lambda> P ctxt stmt_vpr \<gamma> \<gamma>' \<equiv>
-       rel_general R R' 
+       rel_general R R'
          (\<lambda> \<omega> \<omega>'. red_stmt_total ctxt_vpr StateCons \<Lambda> stmt_vpr \<omega> (RNormal \<omega>'))
          (\<lambda> \<omega>. red_stmt_total ctxt_vpr StateCons \<Lambda> stmt_vpr \<omega> RFailure)
          P ctxt \<gamma> \<gamma>'"
  
 lemma stmt_rel_intro[case_names base step]:
   assumes 
-  "\<And>\<omega> ns \<omega>'. 
-          R \<omega> ns \<Longrightarrow> 
+  "\<And>\<omega> ns \<omega>'.
+          R \<omega> ns \<Longrightarrow>
           red_stmt_total ctxt_vpr StateCons \<Lambda> stmt_vpr \<omega> (RNormal \<omega>') \<Longrightarrow>
           \<exists>ns'. (red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>' ns')" and
   "\<And>\<omega> ns.
-          R \<omega> ns \<Longrightarrow> 
+          R \<omega> ns \<Longrightarrow>
           red_stmt_total ctxt_vpr StateCons \<Lambda> stmt_vpr \<omega> RFailure \<Longrightarrow>
           \<exists>c'. snd c' = Failure \<and> red_ast_bpl P ctxt (\<gamma>, Normal ns) c'"
   shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda> P ctxt stmt_vpr \<gamma> \<gamma>'"
@@ -39,8 +39,8 @@ lemma stmt_rel_intro[case_names base step]:
 
 lemma stmt_rel_intro_2:
   assumes 
-  "\<And>\<omega> ns res. 
-          R \<omega> ns \<Longrightarrow> 
+  "\<And>\<omega> ns res.
+          R \<omega> ns \<Longrightarrow>
           red_stmt_total ctxt_vpr StateCons \<Lambda> stmt_vpr \<omega> res \<Longrightarrow>
           rel_vpr_aux R' P ctxt \<gamma> \<gamma>' ns res"
 shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda> P ctxt stmt_vpr \<gamma> \<gamma>'"
