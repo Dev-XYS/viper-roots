@@ -617,9 +617,9 @@ lemma exhale_mh_diff:
   shows "field_mask_sub (get_mh_total_full \<omega>)
                         (get_mh_total_full (exhale_pred \<omega> ploc p)) =
          zero_mh"
-  apply (simp add: exhale_pred_def Let_def)
+  apply (simp add: exhale_pred_def)
   using same_mh_diff
-  by auto
+  by (smt (verit, ccfv_threshold) dec_mp_loc_nm.elims get_mh_nm.simps get_mh_total.simps get_mh_total_full.simps mult_rm_nm_loc_nm.elims)
 
 lemma exhale_mp_diff:
   assumes "p \<le> get_mp_total_full \<omega> ploc"
@@ -627,14 +627,15 @@ lemma exhale_mp_diff:
                             (get_mp_total_full (exhale_pred \<omega> ploc p)) =
          singleton_mp ploc p"
 proof -
-  have 1: "get_mp_total_full (exhale_pred \<omega> ploc p) = get_mp_total_full (upd_mp_loc_total_full \<omega> ploc (get_mp_total_full \<omega> ploc - p))"
-    by (metis exhale_pred_def mult_nm_loc_total_full_mp_eq)
+  have 1: "get_mp_total_full (exhale_pred \<omega> ploc p) = get_mp_total_full (dec_mp_loc_total_full \<omega> ploc p)"
+    apply (simp add: exhale_pred_def)
+    by (smt (verit, best) dec_mp_loc_nm.elims get_mp_nm.simps mult_rm_nm_loc_nm.elims)
   have 2: "get_mp_total_full \<omega> ploc - (get_mp_total_full \<omega> ploc - p) = p"
     using assms minus_preal_gte by auto
   show ?thesis
     apply (simp add: 1 exhale_pred_def Let_def)
     using 2 minus_preal.abs_eq zero_preal.abs_eq
-    by fastforce
+    by (smt (verit) assms dec_mp_loc_nm.elims get_mp_nm.simps get_mp_total.elims get_mp_total_full.simps mp_upd_loc_diff mult_rm_nm_loc_nm.elims mult_rm_nm_loc_total__nm_rel psub_smaller)
 qed
 
 \<comment> \<open>already proved elsewhere, but need adjustment\<close>
@@ -812,6 +813,31 @@ next
   then show ?case
     by blast
 qed
+
+
+subsection \<open>Inhale Properties\<close>
+
+lemma inhale_with_stronger_state_consistency_failure:
+  assumes "red_inhale ctxt StateCons A \<omega> RFailure"
+      and "\<And>\<omega>. StateCons' \<omega> \<Longrightarrow> StateCons \<omega>"
+    shows "red_inhale ctxt StateCons' A \<omega> RFailure"
+  sorry
+
+lemma inhale_with_more_variables:
+  assumes "red_inhale ctxt StateCons A \<omega>\<^sub>1 (RNormal \<omega>\<^sub>1')"
+      and "\<And>x v. get_store_total \<omega>\<^sub>1 x = Some v \<Longrightarrow> get_store_total \<omega>\<^sub>2 x = Some v"
+      and "get_trace_total \<omega>\<^sub>1 = get_trace_total \<omega>\<^sub>2"
+      and "get_total_full \<omega>\<^sub>1 = get_total_full \<omega>\<^sub>2"
+      and "\<omega>\<^sub>2' = \<omega>\<^sub>1'\<lparr> get_store_total := get_store_total \<omega>\<^sub>2 \<rparr>"
+    shows "red_inhale ctxt StateCons A \<omega>\<^sub>2 (RNormal \<omega>\<^sub>2')"
+  sorry
+
+lemma inhale_with_mono_state_consistency:
+  assumes "red_inhale ctxt (\<lambda>_. True) A \<omega> (RNormal \<omega>')"
+      and "mono_prop_downward StateCons"
+      and "StateCons \<omega>'"
+    shows "red_inhale ctxt StateCons A \<omega> (RNormal \<omega>')"
+  sorry
 
 
 subsection \<open>External Consistent State \<Longrightarrow> Inhaled State\<close>
@@ -1391,7 +1417,7 @@ lemma inhale_simulates_unfold:
       and PredBody: "ViperLang.predicate_decl.body pdecl = Some pbody"
       and SupPred: "supported_pred_body pbody" \<comment> \<open>change name\<close>
       and SelfFraming: "\<And>q. assertion_self_framing_store ctxt (\<lambda>_. True) (syntactic_mult q pbody) (nth_option vs)"
-      and "\<phi>\<^sub>d = rm_from_mp_loc_total (mult_rm_nm_loc_total \<phi> (pid,vs) p) (pid,vs) p"
+      and "\<phi>\<^sub>d = dec_mp_loc_total (mult_rm_nm_loc_total \<phi> (pid,vs) p) (pid,vs) p"
     shows "red_inhale ctxt (\<lambda>_. True) (syntactic_mult (Rep_preal p) pbody)
                       \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr>
              (RNormal \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>' \<rparr>)"

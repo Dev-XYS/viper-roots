@@ -33,7 +33,7 @@ inductive fold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarr
      \<omega>' = \<lparr> get_store_total = get_store_total \<omega>,
             get_trace_total = get_trace_total \<omega>,
             get_total_full = add_to_nm_loc_total
-              (add_to_mp_loc_total (get_total_full \<omega>1) (pred_id, vs) q)
+              (inc_mp_loc_total (get_total_full \<omega>1) (pred_id, vs) q)
               (pred_id,vs) nm_exh
               \<comment> \<open>The code is a bit messy here. What we describe is first increasing the permission mask by q, and then merging the nested mask with the exhaled nested mask.\<close>
           \<rparr>

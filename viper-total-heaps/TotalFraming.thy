@@ -5,6 +5,19 @@ theory TotalFraming
 begin
 
 
+subsection \<open>Well-typed list (Todo: move to a proper place)\<close>
+
+definition vals_well_typed :: "('a \<Rightarrow> abs_type) \<Rightarrow> ('a val) list \<Rightarrow> vtyp list \<Rightarrow> bool"
+  where "vals_well_typed A vs ts \<equiv> map (get_type A) vs = ts"
+
+lemma vals_well_typed_same_lengthD:
+  assumes "vals_well_typed A vs ts"
+  shows "length vs = length ts"
+  using assms
+  unfolding vals_well_typed_def
+  by auto
+
+
 text \<open>We have two definitions of self-framing at the moment. We need to prove their equivalance eventually.\<close>
 
 
@@ -69,6 +82,11 @@ lemma assertion_framing_cond_assert_false:
   using assms
   unfolding assertion_framing_state_def
   by (auto intro: InhCondAssertFalse)
+
+definition assertion_self_framing :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> assertion \<Rightarrow> vtyp list \<Rightarrow> bool"
+  where
+    "assertion_self_framing ctxt StateCons A tys \<equiv> \<forall>vs p. vals_well_typed (absval_interp_total ctxt) vs tys \<longrightarrow>
+       assertion_self_framing_store ctxt StateCons (syntactic_mult p A) (nth_option vs)"
 
 
 subsection \<open>Self-Framing Predicate Definition Based on \<^const>\<open>sat\<close>\<close>

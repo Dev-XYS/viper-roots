@@ -130,8 +130,7 @@ fun exh_if_total :: "bool \<Rightarrow> 'a full_total_state \<Rightarrow> 'a res
 | "exh_if_total True \<omega> = RNormal \<omega>"
 
 definition exhale_pred :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a full_total_state" where
-  "exhale_pred \<omega> ploc p = (let perm = get_mp_total_full \<omega> ploc in
-     mult_nm_loc_total_full (upd_mp_loc_total_full \<omega> ploc (perm - p)) ploc ((perm - p) / perm))"
+  "exhale_pred \<omega> ploc p = dec_mp_loc_total_full (mult_rm_nm_loc_total_full \<omega> ploc p) ploc p"
 
 inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool"
   for ctxt :: "'a total_context" and R :: "'a full_total_state \<Rightarrow> bool" and \<omega>0 :: "'a full_total_state" where

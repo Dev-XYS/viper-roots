@@ -9,16 +9,6 @@ begin
 
 subsection \<open>General Auxiliary Definitions\<close>
 
-definition vals_well_typed :: "('a \<Rightarrow> abs_type) \<Rightarrow> ('a val) list \<Rightarrow> vtyp list \<Rightarrow> bool"
-  where "vals_well_typed A vs ts \<equiv> map (get_type A) vs = ts"
-
-lemma vals_well_typed_same_lengthD:
-  assumes "vals_well_typed A vs ts"
-  shows "length vs = length ts"
-  using assms
-  unfolding vals_well_typed_def
-  by auto
-
 lemma exh_if_total_normal:
   assumes "exh_if_total b \<omega> = RNormal \<omega>'"
   shows b
@@ -243,6 +233,7 @@ always has at least one failure transition. This is in-sync with the Carbon impl
 | RedUnfold:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
      ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p);
+     v_p \<ge> 0;
      unfold_rel ctxt pred_id v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>';
      \<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr>
    \<rbrakk> \<Longrightarrow>
@@ -337,6 +328,7 @@ inductive_cases RedAssertNormal_case: "red_stmt_total ctxt R \<Lambda> (Assert A
 inductive_cases RedAssertFailure_case: "red_stmt_total ctxt R \<Lambda> (Assert A) \<omega> RFailure"
 inductive_cases RedScope_case: "red_stmt_total ctxt R \<Lambda> (Scope \<tau> scopeBody) \<omega> res_unshift"
 inductive_cases RedUnfold_case: "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
+inductive_cases RedUnfoldFailure_case: "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> RFailure"
 inductive_cases RedFold_case: "red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
 inductive_cases RedFieldAssign_case: "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal (upd_hh_loc_total_full \<omega> (addr,f) v))"
 

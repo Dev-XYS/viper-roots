@@ -210,6 +210,9 @@ fun mult_nm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> preal 
 fun mult_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
   where "mult_nm_loc_total_full \<omega> lp p = upd_nm_loc_opt_total_full \<omega> lp (nested_mask_multiply_option (get_nm_loc_total_full \<omega> lp) p)"
 
+fun mult_rm_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "mult_rm_nm_loc_total_full \<omega> lp p = \<omega>\<lparr> get_total_full := mult_rm_nm_loc_total (get_total_full \<omega>) lp p \<rparr>"
+
 
 subsection \<open>Empty States\<close>
 
