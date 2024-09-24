@@ -1,8 +1,7 @@
 section \<open>Helper lemmas, instantiations, definitions for the total state\<close>
 
 theory TotalStateUtil
-  imports ViperCommon.SepAlgebra ViperCommon.DeBruijn
-          TotalViperUtil TotalViperState TotalMaskUtil
+  imports ViperCommon.SepAlgebra ViperCommon.DeBruijn TotalViperUtil NestedMaskInst
 begin
 
 
@@ -48,13 +47,13 @@ fun dec_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow
   where "dec_mp_loc_nm (NM mh mp fnm) lp p = NM mh (mp( lp := mp lp - p )) fnm"
 
 fun add_to_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
-  where "add_to_nm_loc_nm (NM mh mp fnm) loc nm = NM mh mp (fnm( loc := nested_mask_merge_option (fnm loc) (Some nm) ))"
+  where "add_to_nm_loc_nm (NM mh mp fnm) loc nm = NM mh mp (fnm( loc := fnm loc + Some nm ))"
 
 fun mult_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
-  where "mult_nm_loc_nm (NM mh mp fnm) lp p = NM mh mp (fnm( lp := nested_mask_multiply_option (fnm lp) p ))"
+  where "mult_nm_loc_nm (NM mh mp fnm) lp p = NM mh mp (fnm( lp := p *\<^sub>s fnm lp ))"
 
 fun mult_rm_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
-  where "mult_rm_nm_loc_nm (NM mh mp fnm) lp p = NM mh mp (fnm( lp := if mp lp = p then None else nested_mask_multiply_option (fnm lp) ((mp lp - p) / mp lp)))"
+  where "mult_rm_nm_loc_nm (NM mh mp fnm) lp p = NM mh mp (fnm( lp := if mp lp = p then None else ((mp lp - p) / mp lp) *\<^sub>s fnm lp) )"
 
 
 subsection \<open>Total State Getters and Setters\<close>
@@ -120,7 +119,7 @@ fun dec_mp_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_
   where "dec_mp_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := dec_mp_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
 
 fun mult_nm_total :: "('a, 'b) total_state_scheme \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
-  where "mult_nm_total \<phi> p = \<phi>\<lparr> get_nm_total := nested_mask_multiply (get_nm_total \<phi>) p \<rparr>"
+  where "mult_nm_total \<phi> p = \<phi>\<lparr> get_nm_total := p *\<^sub>s get_nm_total \<phi> \<rparr>"
 
 fun mult_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
   where "mult_nm_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := mult_nm_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
@@ -205,10 +204,10 @@ fun dec_mp_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a 
         \<omega>\<lparr> get_total_full := dec_mp_loc_total (get_total_full \<omega>) lp p \<rparr>"
 
 fun mult_nm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
-  where "mult_nm_total_full \<omega> p = upd_nm_total_full \<omega> (nested_mask_multiply (get_nm_total_full \<omega>) p)"
+  where "mult_nm_total_full \<omega> p = \<omega>\<lparr> get_total_full := mult_nm_total (get_total_full \<omega>) p \<rparr>"
 
 fun mult_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
-  where "mult_nm_loc_total_full \<omega> lp p = upd_nm_loc_opt_total_full \<omega> lp (nested_mask_multiply_option (get_nm_loc_total_full \<omega> lp) p)"
+  where "mult_nm_loc_total_full \<omega> lp p = \<omega>\<lparr> get_total_full := mult_nm_loc_total (get_total_full \<omega>) lp p \<rparr>"
 
 fun mult_rm_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
   where "mult_rm_nm_loc_total_full \<omega> lp p = \<omega>\<lparr> get_total_full := mult_rm_nm_loc_total (get_total_full \<omega>) lp p \<rparr>"
@@ -252,10 +251,30 @@ subsection \<open>Full Total State Split\<close>
 fun proportional_split :: "'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> bool" where
   "proportional_split \<omega> \<omega>\<^sub>1 \<omega>\<^sub>2 = ((\<forall>l. get_mh_total_full \<omega>\<^sub>1 l + get_mh_total_full \<omega>\<^sub>2 l = get_mh_total_full \<omega> l) \<and>
     (\<forall>pl. get_mp_total_full \<omega>\<^sub>1 pl + get_mp_total_full \<omega>\<^sub>2 pl = get_mp_total_full \<omega> pl \<and>
-      get_nm_loc_total_full \<omega>\<^sub>1 pl = nested_mask_multiply_option (get_nm_loc_total_full \<omega> pl)
-        (get_mp_total_full \<omega>\<^sub>1 pl / get_mp_total_full \<omega> pl) \<and>
-      get_nm_loc_total_full \<omega>\<^sub>2 pl = nested_mask_multiply_option (get_nm_loc_total_full \<omega> pl)
-        (get_mp_total_full \<omega>\<^sub>2 pl / get_mp_total_full \<omega> pl)))"
+      get_nm_loc_total_full \<omega>\<^sub>1 pl = (get_mp_total_full \<omega>\<^sub>1 pl / get_mp_total_full \<omega> pl) *\<^sub>s (get_nm_loc_total_full \<omega> pl) \<and>
+      get_nm_loc_total_full \<omega>\<^sub>2 pl = (get_mp_total_full \<omega>\<^sub>2 pl / get_mp_total_full \<omega> pl) *\<^sub>s (get_nm_loc_total_full \<omega> pl)))"
+
+
+subsection \<open>Nested Mask Shift Operations\<close>
+
+text \<open>\<^term>\<open>shift_up\<close> only "unfolds" the specified predicate by one level.
+      It does not check if the body of the predicate being unfolded is satisfied.\<close>
+
+inductive shift_up :: "predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool" where
+  ShiftAny:
+  "\<lbrakk> nm = NM mh mp fnm;
+     pnm = fnm (pred_id,vs);
+     p = mp (pred_id,vs);
+     q \<le> p;
+     q \<noteq> 0;
+     mp' = mp( (pred_id,vs) := p - q );
+     fnm' = fnm( (pred_id,vs) := ((p - q) / p) *\<^sub>s pnm );
+     nm'_sub = NM mh mp' fnm';
+     Some nm' = Some nm'_sub + (q / p) *\<^sub>s pnm \<rbrakk> \<Longrightarrow>
+     shift_up pred_id vs q nm nm'"
+
+inductive_cases shift_up_case: "shift_up pred_id vs q nm nm'"
+inductive_simps shift_up_simp: "shift_up pred_id vs q nm nm'"
 
 
 end

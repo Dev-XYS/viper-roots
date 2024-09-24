@@ -1,7 +1,7 @@
 section \<open>Total State Instantiations\<close>
 
 theory TotalStateInst
-  imports HOL.Groups TotalStateUtil
+  imports HOL.Groups TotalStateUtil NestedMaskInst
 begin
 
 
@@ -10,20 +10,6 @@ subsection \<open>Order Instantiation\<close>
 lemma zero_mask_less_eq_mask: "zero_mask \<le> m"
   unfolding zero_mask_def le_fun_def
   by (simp add: all_pos)
-
-instantiation nested_mask :: (type) order
-begin
-
-definition less_eq_nested_mask :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool"
-  where "nm1 \<le> nm2 \<equiv> nested_mask_le nm1 nm2"
-
-definition less_nested_mask :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool"
-  where "nm1 < nm2 \<equiv> nested_mask_le nm1 nm2 \<and> nm1 \<noteq> nm2"
-
-instance
-  sorry
-
-end
 
 
 instantiation total_state_ext :: (type,type) order
@@ -272,17 +258,17 @@ lemma update_mh_loc_nm_mono:
   assumes "nm1 \<le> nm2" and "p1 \<le> p2"
   shows "upd_mh_loc_nm nm1 l p1 \<le> upd_mh_loc_nm nm2 l p2"
   apply (cases nm1, cases nm2)
-  unfolding less_eq_nested_mask_def
-  apply simp
-  by (smt (verit, ccfv_SIG) assms(1) assms(2) fun_upd_apply le_funD le_funI less_eq_nested_mask_def nested_mask_le.elims(2) nested_mask_le_opt.simps(3))
+  apply (simp add: less_eq_nested_mask_def)
+  using assms(1)[simplified less_eq_nested_mask_def]
+  by (simp add: assms(2) le_funD le_funI)
 
 lemma update_mp_loc_nm_mono:
   assumes "nm1 \<le> nm2" and "p1 \<le> p2"
   shows "upd_mp_loc_nm nm1 lp p1 \<le> upd_mp_loc_nm nm2 lp p2"
   apply (cases nm1, cases nm2)
-  unfolding less_eq_nested_mask_def
-  apply simp
-  by (smt (verit, ccfv_SIG) assms(1) assms(2) fun_upd_apply le_funD le_funI less_eq_nested_mask_def nested_mask_le.elims(2) nested_mask_le_opt.simps(3))
+  apply (simp add: less_eq_nested_mask_def)
+  using assms(1)[simplified less_eq_nested_mask_def]
+  by (simp add: assms(2) le_funD le_funI)
 
 lemma update_mh_loc_total_mono:
   assumes "\<phi>1 \<le> \<phi>2" and "p1 \<le> p2"
@@ -344,41 +330,14 @@ lemma plus_masks_defined: "(m1 :: ('a, preal) abstract_mask) ## m2"
   by (simp add: SepAlgebra.plus_preal_def compatible_funI plus_fun_def)
 
 
-(*
-instantiation nested_mask :: (type) pcm
-begin
-
-definition plus_nested_mask :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask option"
-  where "nm1 \<oplus> nm2 = Some (nested_mask_merge nm1 nm2)"
-
-instance
-  sorry
-
-end
-*)
-
-instantiation nested_mask :: (type) ab_semigroup_add
-begin
-
-definition plus_nested_mask :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
-  where "plus_nested_mask = nested_mask_merge"
-
-instance
-  sorry
-
-end
-
-
 instantiation total_state_ext :: (type,type) pcm
 begin
 
 definition plus_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a,'b) total_state_ext \<Rightarrow> ('a,'b) total_state_ext option"
-  where "plus_total_state_ext \<phi>1 \<phi>2 =
-              (let (mh1, mp1, mh2, mp2) = (get_mh_total \<phi>1, get_mp_total \<phi>1, get_mh_total \<phi>2, get_mp_total \<phi>2) in
-                   if get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and>
-                      total_state.more \<phi>1 = total_state.more \<phi>2
-                   then Some (\<phi>1\<lparr> get_nm_total := get_nm_total \<phi>1 + get_nm_total \<phi>2 \<rparr>)
-                   else None)"
+  where "plus_total_state_ext \<phi>1 \<phi>2 \<equiv>
+           if get_hh_total \<phi>1 = get_hh_total \<phi>2 \<and> total_state.more \<phi>1 = total_state.more \<phi>2
+           then Some (\<phi>1\<lparr> get_nm_total := get_nm_total \<phi>1 + get_nm_total \<phi>2 \<rparr>)
+           else None"
 
 instance proof
   fix a b ab c bc :: "('a,'b) total_state_ext"
@@ -441,6 +400,8 @@ instance proof
   by (clarsimp split: if_split if_split_asm)
 
   show "a \<oplus> b = Some c \<Longrightarrow> Some c = c \<oplus> c \<Longrightarrow> Some a = a \<oplus> a"
+    sorry  \<comment> \<open>Is positivity ever used?\<close>
+  (*
   proof -
     assume A: "a \<oplus> b = Some c" and B: "Some c = c \<oplus> c"
 
@@ -458,8 +419,7 @@ instance proof
 
     from B have *: "?mh_c \<oplus> ?mh_c = Some ?mh_c \<and> ?mp_c \<oplus> ?mp_c = Some ?mp_c"
       unfolding plus_total_state_ext_def
-      sorry
-    (* proof (clarsimp simp: MEqCC split: if_split if_split_asm)
+    proof (clarsimp simp: MEqCC split: if_split if_split_asm)
       assume "c = c\<lparr>get_mh_total := mh_cc, get_mp_total := mp_cc\<rparr>"
       have "get_mh_total c = mh_cc"
         apply (subst \<open>c = _\<close>)
@@ -469,12 +429,11 @@ instance proof
         by simp
       ultimately show "mh_cc = get_mh_total c \<and> mp_cc = get_mp_total c"
         by simp
-    qed *)
+    qed
 
     moreover from * A have "?mh_a \<oplus> ?mh_b = Some ?mh_c \<and> ?mp_a \<oplus> ?mp_b = Some ?mp_c"
       unfolding plus_total_state_ext_def
-      sorry
-      (* by (clarsimp simp: MEqAB split: if_split if_split_asm) *)
+      by (clarsimp simp: MEqAB split: if_split if_split_asm)
 
     ultimately have "?mh_a \<oplus> ?mh_a = Some ?mh_a \<and> ?mp_a \<oplus> ?mp_a = Some ?mp_a"
       using positivity
@@ -482,9 +441,9 @@ instance proof
 
     thus ?thesis
       unfolding plus_total_state_ext_def
-      sorry
-      (* by (clarsimp simp: MEqAB MEqBC split: if_split if_split_asm) *)
+      by (clarsimp simp: MEqAB MEqBC split: if_split if_split_asm)
   qed
+  *)
 qed
 
 end

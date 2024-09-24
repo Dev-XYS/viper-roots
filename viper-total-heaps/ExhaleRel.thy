@@ -161,8 +161,7 @@ next
     by (rule plus_full_total_state_zero_mask) simp_all
 next
   show "\<omega> \<succeq> \<omega>"
-    sorry
-    (* by (simp add: succ_refl) *)
+    by (simp add: succ_refl)
 qed
 
 

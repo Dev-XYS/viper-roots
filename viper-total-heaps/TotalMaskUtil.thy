@@ -16,14 +16,6 @@ lemma wf_nested_mask_rel: "wf nested_mask_rel"
   apply (rule nested_mask.induct)
   by blast
 
-abbreviation nested_mask_opt_rel :: "('a nested_mask option \<times> 'a nested_mask option) set"
-  where "nested_mask_opt_rel \<equiv>
-    { (Some nm, Some (NM mh mp fnm)) | nm mh mp fnm ploc. nm \<in> set_option (fnm ploc) } \<union>
-    { (None, Some nm) | nm. True } "
-
-lemma wf_nested_mask_opt_rel: "wf nested_mask_opt_rel"
-  sorry
-
 
 subsection \<open>Mask Merge\<close>
 
@@ -45,15 +37,13 @@ termination
    apply blast
   by auto
 
-fun nested_mask_merge_option :: "'a nested_mask option \<Rightarrow> 'a nested_mask option \<Rightarrow> 'a nested_mask option" where
-  "nested_mask_merge_option nm\<^sub>1 nm\<^sub>2 = combine_options nested_mask_merge nm\<^sub>1 nm\<^sub>2"
 
 text \<open>Defining \<^const>\<open>nested_mask_merge\<close> directly using \<^term>\<open>(nm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ nm\<^sub>2)\<close> but not sure how to do the termination proof in that case.
       So, we instead show the equivalence separately in a lemma and replace the rewrite rule in the simpset with the lemma.\<close>
 
 declare nested_mask_merge.simps [simp del]
 
-lemma nested_mask_merge_combine_options[simp]:
+lemma nested_mask_merge_combine_options [simp]:
   "nested_mask_merge (NM mh\<^sub>1 mp\<^sub>1 nm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 nm\<^sub>2) = (NM (add_masks mh\<^sub>1 mh\<^sub>2) (add_masks mp\<^sub>1 mp\<^sub>2) (nm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ nm\<^sub>2))"
   unfolding pfun_comb_def combine_options_def
   by (simp add: nested_mask_merge.simps)
@@ -61,46 +51,20 @@ lemma nested_mask_merge_combine_options[simp]:
 
 subsection \<open>Mask Multiplication\<close>
 
-fun field_mask_multiply :: "field_mask \<Rightarrow> preal \<Rightarrow> field_mask" where
-  "field_mask_multiply mh p = ((*) p) \<circ> mh"
+fun field_mask_multiply :: "preal \<Rightarrow> field_mask \<Rightarrow> field_mask" where
+  "field_mask_multiply p mh = ((*) p) \<circ> mh"
 
-fun predicate_mask_multiply :: "'a predicate_mask \<Rightarrow> preal \<Rightarrow> 'a predicate_mask" where
-  "predicate_mask_multiply mp p = ((*) p) \<circ> mp"
+fun predicate_mask_multiply :: "preal \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a predicate_mask" where
+  "predicate_mask_multiply p mp = ((*) p) \<circ> mp"
 
-function (sequential) nested_mask_multiply :: "'a nested_mask \<Rightarrow> preal \<Rightarrow> 'a nested_mask" where
-  "nested_mask_multiply (NM mh mp fnm) p = NM (field_mask_multiply mh p) (predicate_mask_multiply mp p) ((map_option (\<lambda>nm. nested_mask_multiply nm p)) \<circ> fnm)"
+function (sequential) nested_mask_multiply :: "preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
+  "nested_mask_multiply p (NM mh mp fnm) = NM (field_mask_multiply p mh) (predicate_mask_multiply p mp) ((map_option (\<lambda>nm. nested_mask_multiply p nm)) \<circ> fnm)"
   by (pat_completeness) auto
 termination
-  apply (relation "nested_mask_rel <*lex*> {}")
+  apply (relation "{} <*lex*> nested_mask_rel")
   using wf_nested_mask_rel
    apply blast
   by fastforce
-
-fun nested_mask_multiply_option :: "'a nested_mask option \<Rightarrow> preal \<Rightarrow> 'a nested_mask option" where
-  "nested_mask_multiply_option None _ = None"
-| "nested_mask_multiply_option (Some nm) p = (if p = 0 then None else Some (nested_mask_multiply nm p))"
-
-
-subsection \<open>Nested Mask Shift Operations\<close>
-
-text \<open>\<^term>\<open>shift_up\<close> only "unfolds" the specified predicate by one level.
-      It does not check if the body of the predicate being unfolded is satisfied.\<close>
-
-inductive shift_up :: "predicate_ident \<Rightarrow> ('a val list) \<Rightarrow> preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool" where
-  ShiftAny:
-  "\<lbrakk> nm = NM mh mp fnm;
-     pnm = fnm (pred_id,vs);
-     p = mp (pred_id,vs);
-     q \<le> p;
-     q \<noteq> 0;
-     mp' = mp( (pred_id,vs) := p - q );
-     fnm' = fnm( (pred_id,vs) := nested_mask_multiply_option pnm ((p - q) / p) );
-     nm'_sub = NM mh mp' fnm';
-     Some nm' = nested_mask_merge_option (Some nm'_sub) (nested_mask_multiply_option pnm (q / p)) \<rbrakk> \<Longrightarrow>
-     shift_up pred_id vs q nm nm'"
-
-inductive_cases shift_up_case: "shift_up pred_id vs q nm nm'"
-inductive_simps shift_up_simp: "shift_up pred_id vs q nm nm'"
 
 
 subsection \<open>Mask Subtraction\<close>
@@ -132,29 +96,11 @@ fun mp_split :: "'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow>
 
 subsection \<open>Mask Ordering\<close>
 
-function (sequential) nested_mask_le_opt :: "'a nested_mask option \<Rightarrow> 'a nested_mask option \<Rightarrow> bool" where
-  "nested_mask_le_opt None _ = True"
-| "nested_mask_le_opt _ None = False"
-| "nested_mask_le_opt (Some (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1)) (Some (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2)) =
-     (mh\<^sub>1 \<le> mh\<^sub>2 \<and> mp\<^sub>1 \<le> mp\<^sub>2 \<and> (\<forall>lp. nested_mask_le_opt (fnm\<^sub>1 lp) (fnm\<^sub>2 lp)))"
-  by (pat_completeness) auto
-termination
-  apply (relation "nested_mask_opt_rel <*lex*> {}")
-  using wf_nested_mask_opt_rel
-   apply blast
-  by auto
-
 fun nested_mask_le :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool" where
-  "nested_mask_le nm1 nm2 = nested_mask_le_opt (Some nm1) (Some nm2)"
+  "nested_mask_le (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) = (mh\<^sub>1 \<le> mh\<^sub>2 \<and> mp\<^sub>1 \<le> mp\<^sub>2)"
 
 
 subsection \<open>Constant Masks\<close>
-
-fun zero_mh :: "field_mask" where
-  "zero_mh _ = 0"
-
-fun zero_mp :: "'a predicate_mask" where
-  "zero_mp _ = 0"
 
 fun singleton_mh :: "heap_loc \<Rightarrow> preal \<Rightarrow> field_mask" where
   "singleton_mh loc p l = (if l = loc then p else 0)"

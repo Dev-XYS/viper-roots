@@ -564,6 +564,13 @@ instance sorry
 
 end
 
+instantiation preal :: comm_semiring_1_cancel
+begin
+
+instance sorry
+
+end
+
 (* instantiation preal :: topological_ab_group_add
 begin
 
