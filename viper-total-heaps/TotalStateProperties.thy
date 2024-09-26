@@ -85,7 +85,7 @@ subsection \<open>Empty States\<close>
 
 lemma is_empty_total_wf_mask: "is_empty_total_full \<omega> \<Longrightarrow> wf_mask_simple (get_mh_total_full \<omega>)"
   unfolding is_empty_total_full_def is_empty_total_def
-  by (simp add: wf_zero_mask empty_nm_def)
+  by (simp add: wf_zero_mask zero_nested_mask_def)
 
 lemma is_empty_total_less_eq:
   assumes "is_empty_total \<phi>" and
@@ -120,7 +120,7 @@ definition empty_full_total_state :: "'a store \<Rightarrow> 'a total_trace \<Ri
   where "empty_full_total_state \<sigma> t hh =
    \<lparr> get_store_total = \<sigma>, 
      get_trace_total = t, 
-     get_total_full = \<lparr> get_hh_total = hh, get_nm_total = empty_nm \<rparr> 
+     get_total_full = \<lparr> get_hh_total = hh, get_nm_total = 0 \<rparr> 
    \<rparr>"
 
 lemma get_store_empty_full_total_state [simp]: "get_store_total (empty_full_total_state \<sigma> t hh) = \<sigma>"
@@ -245,6 +245,14 @@ lemma inc_mp_loc_nm__fnm_rel [simp]:
   shows "get_fnm_nm (inc_mp_loc_nm nm lp p) = get_fnm_nm nm"
   by (cases nm, fastforce)
 
+lemma dec_mp_loc_nm__mh_rel [simp]:
+  shows "get_mh_nm (dec_mp_loc_nm nm lp p) = get_mh_nm nm"
+  by (cases nm, fastforce)
+
+lemma dec_mp_loc_nm__mp_rel [simp]:
+  shows "get_mp_nm (dec_mp_loc_nm nm lp p) = (get_mp_nm nm)( lp := get_mp_nm nm lp - p )"
+  by (cases nm, fastforce)
+
 lemma add_to_nm_loc_nm__mh_rel [simp]:
   shows "get_mh_nm (add_to_nm_loc_nm nm lp nm') = get_mh_nm nm"
   by (cases nm, fastforce)
@@ -263,6 +271,14 @@ lemma mult_nm_loc_nm__mh_rel [simp]:
 
 lemma mult_nm_loc_nm__mp_rel [simp]:
   shows "get_mp_nm (mult_nm_loc_nm nm lp p) = get_mp_nm nm"
+  by (cases nm, fastforce)
+
+lemma mult_rm_nm_loc_nm__mh_rel [simp]:
+  shows "get_mh_nm (mult_rm_nm_loc_nm nm lp p) = get_mh_nm nm"
+  by (cases nm, fastforce)
+
+lemma mult_rm_nm_loc_nm__mp_rel [simp]:
+  shows "get_mp_nm (mult_rm_nm_loc_nm nm lp p) = get_mp_nm nm"
   by (cases nm, fastforce)
 
 
@@ -312,36 +328,27 @@ subsection \<open>Lemmas on Mask Diff\<close>
 
 lemma mh_upd_loc_diff:
   assumes "p \<le> mh l"
-  shows "field_mask_sub mh (mh( l := p )) = singleton_mh l (mh l - p)"
-proof
-  fix x
-  show "field_mask_sub mh (mh( l := p )) x = singleton_mh l (mh l - p) x"
-    by (cases "x = l"; simp add: minus_preal.abs_eq zero_preal.abs_eq)
-qed
+  shows "mh - (mh( l := p )) = singleton_mh l (mh l - p)"
+  by (standard, simp)
 
 lemma mp_upd_loc_diff:
   assumes "p \<le> mp lp"
-  shows "predicate_mask_sub mp (mp( lp := p )) = singleton_mp lp (mp lp - p)"
-proof
-  fix x
-  show "predicate_mask_sub mp (mp( lp := p )) x = singleton_mp lp (mp lp - p) x"
-    by (cases "x = lp"; simp add: minus_preal.abs_eq zero_preal.abs_eq)
-qed
+  shows "mp - (mp( lp := p )) = singleton_mp lp (mp lp - p)"
+  by (standard, simp)
 
 lemma same_mh_diff:
-  shows "field_mask_sub (get_mh_total_full \<omega>) (get_mh_total_full \<omega>) = zero_mask"
+  shows "get_mh_total_full \<omega> - get_mh_total_full \<omega> = zero_mask"
   apply standard
   by (simp add: zero_mask_def)
 
 lemma same_mp_diff:
-  shows "predicate_mask_sub (get_mp_total_full \<omega>) (get_mp_total_full \<omega>) = zero_mask"
+  shows "get_mp_total_full \<omega> - get_mp_total_full \<omega> = zero_mask"
   apply standard
   by (simp add: zero_mask_def)
 
 lemma dec_mh_mh_diff:
   assumes "p < get_mh_total_full \<omega> loc"
-  shows "field_mask_sub (get_mh_total_full \<omega>)
-                        (get_mh_total_full (upd_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
+  shows "get_mh_total_full \<omega> - get_mh_total_full (upd_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p)) =
          singleton_mh loc p"
 proof -
   have "get_mh_total_full \<omega> loc - (get_mh_total_full \<omega> loc - p) = p"
@@ -353,8 +360,7 @@ proof -
 qed
 
 lemma dec_mh_mp_diff:
-  shows "predicate_mask_sub (get_mp_total_full \<omega>)
-                            (get_mp_total_full (upd_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p))) =
+  shows "get_mp_total_full \<omega> - get_mp_total_full (upd_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p)) =
          zero_mask"
   apply simp
   using same_mp_diff
@@ -599,17 +605,6 @@ proof -
 qed
 
 
-subsection \<open>Empty States Properties\<close>
-
-lemma add_empty_nm:
-  shows "nested_mask_merge nm empty_nm = nm"
-  apply (simp add: empty_nm_def; cases nm; simp add: pfun_comb_def; standard+)
-   apply (simp add: add_masks_def)
-   apply (simp add: zero_mask_def)
-  apply (standard+, simp add: add_masks_def zero_mask_def)
-  by (standard, simp add: pfun_comb_def)
-
-
 subsection \<open>Shifting stores\<close>
 
 fun shift_and_add_state_total :: "'a full_total_state \<Rightarrow> 'a val \<Rightarrow> 'a full_total_state"
@@ -694,25 +689,17 @@ lemma plus_Some_full_total_state_total_state:
 
 lemma plus_total_state_zero_mask:
   assumes "get_hh_total \<phi> = get_hh_total \<phi>' \<and> total_state.more \<phi> = total_state.more \<phi>'" and
-          "get_nm_total \<phi>' = empty_nm"
+          "get_nm_total \<phi>' = 0"
     shows "\<phi>' \<oplus> \<phi> = Some \<phi>"
   using assms
   unfolding plus_total_state_ext_def
-  apply simp
-  apply (rule total_state.equality)
-    apply simp_all
-  apply (rule nested_mask_equality)
-  apply simp_all
-    apply (metis add.commute add_empty_nm get_mh_nm__plus plus_nested_mask_def)
-  apply (metis add.commute add_empty_nm get_mp_nm__plus plus_nested_mask_def)
-  by (metis add.commute add_empty_nm get_fnm_nm__plus plus_nested_mask_def)
-
+  by simp
 
 lemma plus_full_total_state_zero_mask:
   assumes "get_store_total \<omega> = get_store_total \<omega>' \<and> get_trace_total \<omega> = get_trace_total \<omega>' \<and>
            get_hh_total_full \<omega> = get_hh_total_full \<omega>' \<and>
            full_total_state.more \<omega> = full_total_state.more \<omega>'" and
-          "get_nm_total_full \<omega>' = empty_nm"
+          "get_nm_total_full \<omega>' = 0"
         shows "\<omega>' \<oplus> \<omega> = Some \<omega>"
 proof -
   have "get_total_full \<omega>' \<oplus> get_total_full \<omega> = Some (get_total_full \<omega>)"
@@ -939,28 +926,24 @@ instantiation total_state_ext :: (type,type) pcm_with_core
 begin
 
 definition core_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a, 'b) total_state_ext"
-  where "core_total_state_ext \<phi> = (upd_nm_total \<phi> empty_nm)"
+  where "core_total_state_ext \<phi> = (upd_nm_total \<phi> 0)"
 
 instance proof
   fix a b c x y :: "('a,'b) total_state_ext"
 
   show "Some x = x \<oplus> |x|"
     unfolding core_total_state_ext_def plus_total_state_ext_def
-    apply simp
-    using plus_mask_zero_mask_neutral
-    by (simp add: add_empty_nm plus_nested_mask_def)
+    by simp
 
   show "Some |x| = |x| \<oplus> |x|"
     unfolding core_total_state_ext_def plus_total_state_ext_def
-    apply simp
-    using plus_mask_zero_mask_neutral
-    by (simp add: add_empty_nm plus_nested_mask_def)
+    by simp
 
   show "Some x = x \<oplus> c \<Longrightarrow> \<exists>r. Some |x| = c \<oplus> r" (is "?lhs \<Longrightarrow> ?rhs")
   proof -
     assume ?lhs
 
-    have "get_nm_total c = empty_nm" \<comment> \<open>Todo: This is actually incorrect. \<open>c\<close> might be something equivalent to \<open>empty_nm\<close>.\<close>
+    have "get_nm_total c = 0" \<comment> \<open>Todo: This is actually incorrect. \<open>c\<close> might be something equivalent to \<open>empty_nm\<close>.\<close>
       sorry
 
     thus ?thesis

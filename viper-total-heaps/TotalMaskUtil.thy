@@ -69,14 +69,8 @@ termination
 
 subsection \<open>Mask Subtraction\<close>
 
-fun field_mask_sub :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask" where
-  "field_mask_sub nm\<^sub>1 nm\<^sub>2 l = nm\<^sub>1 l - nm\<^sub>2 l"
-
-fun predicate_mask_sub :: "'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a predicate_mask" where
-  "predicate_mask_sub nm\<^sub>1 nm\<^sub>2 l = nm\<^sub>1 l - nm\<^sub>2 l"
-
 function (sequential) nested_mask_subtract :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
-  "nested_mask_subtract (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) = NM (field_mask_sub mh\<^sub>1 mh\<^sub>2) (predicate_mask_sub mp\<^sub>1 mp\<^sub>2) (fnm\<^sub>1 +\<lparr>nested_mask_subtract\<rparr>+ fnm\<^sub>2)"
+  "nested_mask_subtract (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) = NM (mh\<^sub>1 - mh\<^sub>2) (mp\<^sub>1 - mp\<^sub>2) (fnm\<^sub>1 +\<lparr>nested_mask_subtract\<rparr>+ fnm\<^sub>2)"
   by (pat_completeness) auto
 termination
   apply (relation "nested_mask_rel <*lex*> {}")
@@ -113,9 +107,6 @@ fun is_singleton_mh :: "heap_loc \<Rightarrow> field_mask \<Rightarrow> bool" wh
 
 fun is_singleton_mp :: "'a predicate_loc \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
   "is_singleton_mp ploc mp = (\<exists>p > 0. mp = singleton_mp ploc p)"
-
-definition empty_nm :: "'a nested_mask"
-  where "empty_nm \<equiv> NM zero_mask zero_mask Map.empty"
 
 
 end

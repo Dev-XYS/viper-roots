@@ -53,7 +53,7 @@ fun mult_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarro
   where "mult_nm_loc_nm (NM mh mp fnm) lp p = NM mh mp (fnm( lp := p *\<^sub>s fnm lp ))"
 
 fun mult_rm_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
-  where "mult_rm_nm_loc_nm (NM mh mp fnm) lp p = NM mh mp (fnm( lp := if mp lp = p then None else ((mp lp - p) / mp lp) *\<^sub>s fnm lp) )"
+  where "mult_rm_nm_loc_nm (NM mh mp fnm) lp p = NM mh mp (fnm( lp := ((mp lp - p) / mp lp) *\<^sub>s fnm lp) )"
 
 
 subsection \<open>Total State Getters and Setters\<close>
@@ -107,7 +107,7 @@ fun upd_nm_loc_opt_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predic
   where "upd_nm_loc_opt_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := upd_nm_loc_opt_nm (get_nm_total \<phi>) lp nm \<rparr>"
 
 fun add_to_nm_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) total_state_scheme"
-  where "add_to_nm_total \<phi> nm = \<phi>\<lparr> get_nm_total := nested_mask_merge (get_nm_total \<phi>) nm \<rparr>"
+  where "add_to_nm_total \<phi> nm = \<phi>\<lparr> get_nm_total := get_nm_total \<phi> + nm \<rparr>"
 
 fun add_to_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) total_state_scheme"
   where "add_to_nm_loc_total \<phi> lp nm = \<phi>\<lparr> get_nm_total := add_to_nm_loc_nm (get_nm_total \<phi>) lp nm \<rparr>"
@@ -216,7 +216,7 @@ fun mult_rm_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow>
 subsection \<open>Empty States\<close>
 
 definition is_empty_total :: "('a,'b) total_state_scheme \<Rightarrow> bool"
-  where "is_empty_total \<phi> \<equiv> get_nm_total \<phi> = empty_nm"
+  where "is_empty_total \<phi> \<equiv> get_nm_total \<phi> = 0"
 
 definition is_empty_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> bool"
   where "is_empty_total_full \<omega> \<equiv> is_empty_total (get_total_full \<omega>)"

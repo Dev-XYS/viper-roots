@@ -398,7 +398,7 @@ lemma zero_mask_rel_2:
   assumes "is_empty_total_full \<omega>"
   shows "mask_rel Pr F (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) zero_mask_bpl"
   using assms
-  unfolding is_empty_total_full_def is_empty_total_def empty_nm_def
+  unfolding is_empty_total_full_def is_empty_total_def zero_nested_mask_def
   by (simp add: zero_mask_rel)
 
 fun boogie_const_val :: "boogie_const => ('a vbpl_val)"

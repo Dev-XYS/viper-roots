@@ -169,7 +169,7 @@ proof (induct rule: consistent_external_wrt_ploc_consistent_external.inducts)
            get_hh_total_full (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = upd_hh_loc_total \<phi> loc v\<rparr>) l"
       by simp
     show "sat ctxt
-            \<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = upd_hh_loc_total \<phi> loc v\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>
+            \<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = upd_hh_loc_total \<phi> loc v\<lparr> get_nm_total := 0 \<rparr> \<rparr>
             (get_mh_total (upd_hh_loc_total \<phi> loc v))
             (get_mp_total (upd_hh_loc_total \<phi> loc v))
             (syntactic_mult (Rep_preal p) pred_body)"
@@ -334,7 +334,7 @@ proof -
           "sat ctxt
                \<lparr> get_store_total = nth_option v_args,
                  get_trace_total = \<lambda>x. None,
-                 get_total_full = \<phi>_exh\<lparr>get_nm_total := empty_nm \<rparr> \<rparr>
+                 get_total_full = \<phi>_exh\<lparr>get_nm_total := 0 \<rparr> \<rparr>
                (get_mh_nm nm') (get_mp_nm nm') (syntactic_mult (Rep_preal q) pred_body)"
           using exhale_diff_sat[of ctxt \<omega>0 R \<omega>0 "(syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)" _ \<omega>1,
                                 OF \<omega>0_consistent exhale _ sup_mult]

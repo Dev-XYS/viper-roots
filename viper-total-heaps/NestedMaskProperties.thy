@@ -463,12 +463,6 @@ lemma nm_loc_sum_add_to_sub:
   by (metis add_to_nm_loc_nm.simps assms(1) assms(2) nm_loc_sum.elims(2) nm_loc_sum_option.elims(1) option_fold.simps(1))
  *)
 
-\<comment> \<open>Sum of the empty mask\<close>
-
-lemma empty_nm_0:
-  shows "nm_loc_sum loc empty_nm 0"
-  oops
-
 
 \<comment> \<open>Sum does not depend on predicate mask\<close>
 

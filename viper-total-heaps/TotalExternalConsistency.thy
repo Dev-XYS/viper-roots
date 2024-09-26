@@ -18,8 +18,8 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
      ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      a = the_address r;
      p \<ge> 0;
-     if r = Null then p = 0 \<and> mh = zero_mh else mh = singleton_mh (a,f) (Abs_preal p);
-     mp = zero_mp
+     if r = Null then p = 0 \<and> mh = zero_mask else mh = singleton_mh (a,f) (Abs_preal p);
+     mp = zero_mask
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Atomic (Acc e_r f (PureExp e_p)))"
 
@@ -31,7 +31,7 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
      If \<^prop>\<open>mh (a,f) \<noteq> 0\<close> does not hold, then the exhale fails and the value of q is irrelevant. \<close>
      r \<noteq> Null;
      is_singleton_mh (a,f) mh;
-     mp = zero_mp
+     mp = zero_mask
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Atomic (Acc e_r f Wildcard))"
 
@@ -40,22 +40,22 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
   "\<lbrakk> red_pure_exps_total ctxt None e_args \<omega> (Some v_args);
      ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      p \<ge> 0;
-     mh = zero_mh;
+     mh = zero_mask;
      mp = singleton_mp (pred_id,v_args) (Abs_preal p)
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
 
 | SatAccPredWildcard:
   "\<lbrakk> red_pure_exps_total ctxt None e_args \<omega> (Some v_args);
-     mh = zero_mh;
+     mh = zero_mask;
      is_singleton_mp (pred_id,v_args) mp
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
 
 | SatPure:
   "\<lbrakk> ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
-     mh = zero_mh;
-     mp = zero_mp
+     mh = zero_mask;
+     mp = zero_mask
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Atomic (Pure e))"
 
@@ -76,8 +76,8 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
    sat ctxt \<omega> mh mp (Imp e A)"
 | SatImpFalse:
   "\<lbrakk> ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
-     mh = zero_mh;
-     mp = zero_mp
+     mh = zero_mask;
+     mp = zero_mask
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Imp e A)"
 
@@ -118,7 +118,7 @@ inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a tot
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
      sat ctxt
-         \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>
+         \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
          (get_mh_total \<phi>) (get_mp_total \<phi>)
          (syntactic_mult (Rep_preal p) pred_body);
      consistent_external ctxt \<phi>;

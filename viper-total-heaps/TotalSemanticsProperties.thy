@@ -23,7 +23,7 @@ lemma eval_with_None:
 lemma eval_with_no_nm:
   assumes "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
       and "no_perm_pure_exp e"
-    shows "ctxt, \<omega>_def \<turnstile> \<langle>e; upd_nm_total_full \<omega> empty_nm\<rangle> [\<Down>]\<^sub>t Val v"
+    shows "ctxt, \<omega>_def \<turnstile> \<langle>e; upd_nm_total_full \<omega> 0\<rangle> [\<Down>]\<^sub>t Val v"
   sorry
 
 lemma eval_with_no_trace:
@@ -600,7 +600,7 @@ lemma eval_exhale_sat_helper:
       and "no_old_pure_exp e"
     shows "ctxt, None \<turnstile> \<langle>e; \<lparr> get_store_total = get_store_total \<omega>,
                               get_trace_total = \<lambda>x. None,
-                              get_total_full = get_total_full \<omega>\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>\<rangle>
+                              get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>\<rangle>
            [\<Down>]\<^sub>t Val v"
   sorry
 
@@ -609,33 +609,29 @@ lemma eval_multi_exhale_sat_helper:
   shows "red_pure_exps_total ctxt None es
            \<lparr> get_store_total = get_store_total \<omega>,
              get_trace_total = \<lambda>x. None,
-             get_total_full = get_total_full \<omega>\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>
+             get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
          (Some vs)"
   sorry
 
 lemma exhale_mh_diff:
-  shows "field_mask_sub (get_mh_total_full \<omega>)
-                        (get_mh_total_full (exhale_pred \<omega> ploc p)) =
-         zero_mh"
+  shows "get_mh_total_full \<omega> - get_mh_total_full (exhale_pred \<omega> ploc p) = zero_mask"
   apply (simp add: exhale_pred_def)
-  using same_mh_diff
-  by (smt (verit, ccfv_threshold) dec_mp_loc_nm.elims get_mh_nm.simps get_mh_total.simps get_mh_total_full.simps mult_rm_nm_loc_nm.elims)
+  apply standard
+  unfolding zero_mask_def
+  by simp
 
 lemma exhale_mp_diff:
   assumes "p \<le> get_mp_total_full \<omega> ploc"
-  shows "predicate_mask_sub (get_mp_total_full \<omega>)
-                            (get_mp_total_full (exhale_pred \<omega> ploc p)) =
-         singleton_mp ploc p"
+  shows "get_mp_total_full \<omega> - get_mp_total_full (exhale_pred \<omega> ploc p) = singleton_mp ploc p"
 proof -
   have 1: "get_mp_total_full (exhale_pred \<omega> ploc p) = get_mp_total_full (dec_mp_loc_total_full \<omega> ploc p)"
-    apply (simp add: exhale_pred_def)
-    by (smt (verit, best) dec_mp_loc_nm.elims get_mp_nm.simps mult_rm_nm_loc_nm.elims)
+    by (simp add: exhale_pred_def)
   have 2: "get_mp_total_full \<omega> ploc - (get_mp_total_full \<omega> ploc - p) = p"
     using assms minus_preal_gte by auto
   show ?thesis
     apply (simp add: 1 exhale_pred_def Let_def)
-    using 2 minus_preal.abs_eq zero_preal.abs_eq
-    by (smt (verit) assms dec_mp_loc_nm.elims get_mp_nm.simps get_mp_total.elims get_mp_total_full.simps mp_upd_loc_diff mult_rm_nm_loc_nm.elims mult_rm_nm_loc_total__nm_rel psub_smaller)
+    using 2 minus_preal.abs_eq zero_preal.abs_eq assms psub_smaller
+    by auto
 qed
 
 \<comment> \<open>already proved elsewhere, but need adjustment\<close>
@@ -648,9 +644,7 @@ lemma exhale_smaller:
 lemma mh_sub_twice:
   assumes "\<And>x. mh0 x \<ge> mh1 x"
       and "\<And>x. mh1 x \<ge> mh2 x"
-    shows "mh_split (field_mask_sub mh0 mh2)
-                    (field_mask_sub mh0 mh1)
-                    (field_mask_sub mh1 mh2)"
+    shows "mh_split (mh0 - mh2) (mh0 - mh1) (mh1 - mh2)"
   apply simp
   apply standard
   apply (simp add: add_masks_def preal_to_real)
@@ -660,9 +654,7 @@ lemma mh_sub_twice:
 lemma mp_sub_twice:
   assumes "\<And>x. mp0 x \<ge> mp1 x"
       and "\<And>x. mp1 x \<ge> mp2 x"
-    shows "mp_split (predicate_mask_sub mp0 mp2)
-                    (predicate_mask_sub mp0 mp1)
-                    (predicate_mask_sub mp1 mp2)"
+    shows "mp_split (mp0 - mp2) (mp0 - mp1) (mp1 - mp2)"
   apply simp
   apply standard
   apply (simp add: add_masks_def preal_to_real)
@@ -678,9 +670,9 @@ lemma exhale_diff_sat:
       and "supported_pred_body A"
     shows "sat ctxt (\<lparr> get_store_total = get_store_total \<omega>,
                        get_trace_total = Map.empty,
-                       get_total_full = get_total_full \<omega>\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>)
-               (field_mask_sub (get_mh_total_full \<omega>) (get_mh_total_full \<omega>'))
-               (predicate_mask_sub (get_mp_total_full \<omega>) (get_mp_total_full \<omega>'))
+                       get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>)
+               (get_mh_total_full \<omega> - get_mh_total_full \<omega>')
+               (get_mp_total_full \<omega> - get_mp_total_full \<omega>')
                A"
   using assms(2,3,4)
 proof (induction arbitrary: \<omega>')
@@ -762,26 +754,26 @@ next
   case IH: (ExhStarNormal A \<omega> \<omega>_int B res)
   show ?case
   proof
-    define mh\<^sub>A where "mh\<^sub>A = field_mask_sub (get_mh_total_full \<omega>) (get_mh_total_full \<omega>_int)"
-    define mp\<^sub>A where "mp\<^sub>A = predicate_mask_sub (get_mp_total_full \<omega>) (get_mp_total_full \<omega>_int)"
-    define mh\<^sub>B where "mh\<^sub>B = field_mask_sub (get_mh_total_full \<omega>_int) (get_mh_total_full \<omega>')"
-    define mp\<^sub>B where "mp\<^sub>B = predicate_mask_sub (get_mp_total_full \<omega>_int) (get_mp_total_full \<omega>')"
-    show "mh_split (field_mask_sub (get_mh_total_full \<omega>) (get_mh_total_full \<omega>')) mh\<^sub>A mh\<^sub>B"
+    define mh\<^sub>A where "mh\<^sub>A = get_mh_total_full \<omega> - get_mh_total_full \<omega>_int"
+    define mp\<^sub>A where "mp\<^sub>A = get_mp_total_full \<omega> - get_mp_total_full \<omega>_int"
+    define mh\<^sub>B where "mh\<^sub>B = get_mh_total_full \<omega>_int - get_mh_total_full \<omega>'"
+    define mp\<^sub>B where "mp\<^sub>B = get_mp_total_full \<omega>_int - get_mp_total_full \<omega>'"
+    show "mh_split (get_mh_total_full \<omega> - get_mh_total_full \<omega>') mh\<^sub>A mh\<^sub>B"
       by (metis IH.hyps(1) IH.hyps(2) IH.prems(1) exhale_smaller(1) mh\<^sub>A_def mh\<^sub>B_def mh_sub_twice)
-    show "mp_split (predicate_mask_sub (get_mp_total_full \<omega>) (get_mp_total_full \<omega>')) mp\<^sub>A mp\<^sub>B"
+    show "mp_split (get_mp_total_full \<omega> - get_mp_total_full \<omega>') mp\<^sub>A mp\<^sub>B"
       by (metis IH.hyps(1) IH.hyps(2) IH.prems(1) exhale_smaller(2) mp\<^sub>A_def mp\<^sub>B_def mp_sub_twice)
     show "sat ctxt \<lparr> get_store_total = get_store_total \<omega>,
                      get_trace_total = \<lambda>x. None,
-                     get_total_full = get_total_full \<omega>\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>
-              (field_mask_sub (get_mh_total_full \<omega>) (get_mh_total_full \<omega>_int))
-              (predicate_mask_sub (get_mp_total_full \<omega>) (get_mp_total_full \<omega>_int))
+                     get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
+              (get_mh_total_full \<omega> - get_mh_total_full \<omega>_int)
+              (get_mp_total_full \<omega> - get_mp_total_full \<omega>_int)
               A"
       using IH.IH(1) IH.prems(2) by fastforce
     show "sat ctxt \<lparr> get_store_total = get_store_total \<omega>,
                      get_trace_total = \<lambda>x. None,
-                     get_total_full = get_total_full \<omega>\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>
-              (field_mask_sub (get_mh_total_full \<omega>_int) (get_mh_total_full \<omega>'))
-              (predicate_mask_sub (get_mp_total_full \<omega>_int) (get_mp_total_full \<omega>'))
+                     get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
+              (get_mh_total_full \<omega>_int - get_mh_total_full \<omega>')
+              (get_mp_total_full \<omega>_int - get_mp_total_full \<omega>')
               B"
       by (smt (verit) IH.IH(2) IH.hyps(1) IH.prems(1) IH.prems(2) assert_pred.elims(2) assert_pred_rec.simps(4) exhale_only_changes_total_state_aux get_hh_total_full.elims old.unit.exhaust total_state.surjective total_state.update_convs(2))
   qed
@@ -913,27 +905,24 @@ proof (induction A arbitrary: \<omega> nm)
       by presburger
     from True W_def have "W = {\<omega>}"
       by auto
-    have "nm = empty_nm"
+    have "nm = 0"
       apply (rule nested_mask_equality)
-        apply (simp_all add: empty_nm_def)
+        apply (simp_all add: zero_nested_mask_def)
       using IH.hyps(5) IH.prems(1) True
         apply auto[1]
       using IH.hyps(6) IH.prems(2)
         apply auto[1]
       using zero_mask_def
-        apply fastforce
-      using IH.hyps(6) IH.prems(2) zero_mask_def
-       apply fastforce
-      by (metis IH.hyps(6) IH.prems(2) IH.prems(3) SatAll_case prod.exhaust total_state.select_convs(2) zero_mp.simps)
+      by (metis IH.hyps(6) IH.prems(2) IH.prems(3) SatAll_case prod.exhaust total_state.select_convs(2))
     show "th_result_rel (0 \<le> p) (W \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null)) W (RNormal (add_to_nm_total_full \<omega> nm))"
       apply (simp add: \<open>p = 0\<close> \<open>W = {\<omega>}\<close> True th_result_rel.simps)
-      by (simp add: \<open>nm = empty_nm\<close> add_empty_nm)
+      by (simp add: zero_nested_mask_def[symmetric] \<open>nm = 0\<close>)
   next
     case False
     have mh: "get_mh_nm nm = singleton_mh (a, f) (Abs_preal p)"
       using False IH.hyps(5) IH.prems(1) by presburger
     have fnm: "get_fnm_nm nm = (\<lambda>_. None)"
-      by (metis IH.hyps(6) IH.prems(2) IH.prems(3) SatAll_case surj_pair total_state.select_convs(2) zero_mp.simps)
+      by (metis IH.hyps(6) IH.prems(2) IH.prems(3) SatAll_case surj_pair total_state.select_convs(2) zero_mask_def)
     show "th_result_rel (0 \<le> p) (W \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null)) W (RNormal (add_to_nm_total_full \<omega> nm))"
       apply (simp add: IH(4) W_def inhale_perm_single_def False)
       apply (rule THResultNormal)
@@ -948,10 +937,9 @@ proof (induction A arbitrary: \<omega> nm)
         apply standard
         apply simp
         apply (simp add: IH.hyps(3) add_masks_def)
-       apply (metis IH.hyps(6) IH.prems(2) add_masks_self_zero_mask add_masks_zero_mask mp_split.elims(3) mp_split_zero)
+       apply (metis IH.hyps(6) IH.prems(2) add_masks_zero_mask)
       apply (simp add: fnm)
-      apply (metis add_empty_nm empty_nm_def get_fnm_nm.simps get_fnm_nm__merge)
-      done
+      by (metis add.right_neutral get_fnm_nm.simps get_fnm_nm__plus zero_nested_mask_def)
   qed
 
 next
@@ -973,12 +961,12 @@ next
   have "is_singleton_mh (a,f) (get_mh_nm nm)"
     using IH.hyps(4) IH.prems(1)
     by auto
-  have "get_mp_nm nm = zero_mp"
+  have "get_mp_nm nm = zero_mask"
     using IH.hyps(5) IH.prems(2)
     by presburger
   hence "get_fnm_nm nm = (\<lambda>_. None)"
     using IH(8) SatAll_case
-    by fastforce
+    by (metis surj_pair total_state.select_convs(2) zero_mask_def)
 
   have "add_to_nm_total_full \<omega> nm \<in> W"
     apply (simp add: W_def inhale_perm_single_def)
@@ -992,7 +980,8 @@ next
       apply (simp_all add: add_masks_def)
     using IH.hyps(2) \<open>is_singleton_mh (a, f) (get_mh_nm nm)\<close>
       apply force
-    apply (simp add: \<open>get_mp_nm nm = zero_mp\<close>)
+     apply (simp add: \<open>get_mp_nm nm = zero_mask\<close>)
+     apply (simp add: zero_mask_def)
     by (simp add: \<open>get_fnm_nm nm = (\<lambda>_. None)\<close> pfun_comb_def)
   hence "W \<noteq> {}"
     by fast
@@ -1029,7 +1018,7 @@ next
 
   define W where "W = inhale_perm_single_pred ctxt (\<lambda>_. True) \<omega> (pred_id,v_args) (Some (Abs_preal p))"
 
-  have "get_mh_nm nm = zero_mh"
+  have "get_mh_nm nm = zero_mask"
     using IH.hyps(4) IH.prems(1) by auto
   have "get_mp_nm nm = singleton_mp (pred_id,v_args) (Abs_preal p)"
     using IH.hyps(5) IH.prems(2) by auto
@@ -1045,20 +1034,20 @@ next
     case True
     hence "get_fnm_nm nm = (\<lambda>_. None)"
       by (metis IH.hyps(5) IH.prems(2) IH.prems(3) SatAll_case prod.exhaust singleton_mp.simps total_state.select_convs(2) zero_preal_def)
-    have "nm = empty_nm"
-      apply (rule nested_mask_equality; standard, simp_all add: empty_nm_def zero_mask_def)
-      using \<open>get_mh_nm nm = zero_mh\<close> zero_mask_def
+    have "nm = 0"
+      apply (rule nested_mask_equality; standard, simp_all add: zero_nested_mask_def zero_mask_def)
+      using \<open>get_mh_nm nm = zero_mask\<close> zero_mask_def
         apply fastforce
        apply (simp add: True \<open>get_mp_nm nm = singleton_mp (pred_id, v_args) (Abs_preal p)\<close> zero_preal.abs_eq)
       using \<open>get_fnm_nm nm = (\<lambda>_. None)\<close>
       by fastforce
 
-    hence "add_to_nm_total_full \<omega> nm = \<omega>"
-      by (simp add: add_empty_nm)
+    have "add_to_nm_total_full \<omega> nm = \<omega>"
+      by (simp add: zero_nested_mask_def[symmetric] \<open>nm = 0\<close>)
 
     have "\<omega> \<in> W"
       apply (simp add: W_def inhale_perm_single_pred_def)
-      apply (rule exI[of _ "\<lparr> get_hh_total = hh, get_nm_total = empty_nm \<rparr>"])
+      apply (rule exI[of _ "\<lparr> get_hh_total = hh, get_nm_total = 0 \<rparr>"])
       apply (intro conjI)
        apply standard
        apply simp_all
@@ -1097,9 +1086,12 @@ next
       apply (rule total_state.equality, simp_all)
       apply (rule nested_mask_equality, simp_all; standard)
         apply (simp_all add: add_masks_def)
-        apply (simp add: \<open>get_mh_nm nm = zero_mh\<close>)
+        apply (simp add: \<open>get_mh_nm nm = zero_mask\<close>)
+        apply (simp add: zero_mask_def)
        apply (simp add: \<open>get_mp_nm nm = singleton_mp (pred_id, v_args) (Abs_preal p)\<close>)
-      by (metis (no_types, lifting) IH.prems(3) SatAll_case \<open>get_mp_nm nm = singleton_mp (pred_id, v_args) (Abs_preal p)\<close> combine_options_simps(2) nm_pred old.prod.exhaust pfun_comb_def singleton_mp.elims total_state.select_convs(2))
+      apply (simp add: pfun_comb_def)
+      by (metis IH.hyps(5) IH.prems(2) IH.prems(3) SatAll_case combine_options_simps(2) nm_pred old.prod.exhaust plus_option_def singleton_mp.elims total_state.select_convs(2))
+
     hence "W \<noteq> {}"
       by blast
 
@@ -1130,7 +1122,7 @@ next
 
   define W where "W = inhale_perm_single_pred ctxt (\<lambda>_. True) \<omega> (pred_id,v_args) None"
 
-  have "get_mh_nm nm = zero_mh"
+  have "get_mh_nm nm = zero_mask"
     using IH.hyps(2) IH.prems(1) by auto
   have "is_singleton_mp (pred_id,v_args) (get_mp_nm nm)"
     using IH.hyps(3) IH.prems(2) by auto
@@ -1163,9 +1155,10 @@ next
     apply (rule total_state.equality, simp_all)
     apply (rule nested_mask_equality, simp_all; standard)
       apply (simp_all add: add_masks_def)
-      apply (simp add: \<open>get_mh_nm nm = zero_mh\<close>)
-     apply (simp add: \<open>get_mp_nm nm = singleton_mp (pred_id, v_args) p\<close>)
-    by (metis (no_types, lifting) IH.prems(3) SatAll_case \<open>get_mp_nm nm = singleton_mp (pred_id, v_args) p\<close> combine_options_simps(2) nm_pred old.prod.exhaust pfun_comb_def singleton_mp.elims total_state.select_convs(2))
+      apply (simp add: \<open>get_mh_nm nm = zero_mask\<close>)
+      apply (simp add: \<open>get_mp_nm nm = singleton_mp (pred_id, v_args) p\<close> zero_mask_def)
+     apply (simp add: p)
+    by (metis (mono_tags, lifting) IH.prems(3) SatAll_case combine_options_simps(2) nm_pred old.prod.exhaust p pfun_comb_def plus_option_def singleton_mp.elims total_state.select_convs(2))
   hence "W \<noteq> {}"
     by blast
 
@@ -1191,15 +1184,14 @@ next
       using eval_with_same_store_same_hh(1)[OF IH(1)] IH(10) IH(7) IH(8) \<omega>\<^sub>0hh \<omega>_eval \<open>supported_pred_expr e\<close>
       apply simp
       by presburger
-    have "nm = empty_nm"
+    have "nm = 0"
       apply (rule nested_mask_equality)
-        apply (metis IH.hyps(2) IH.prems(1) all_pos empty_nm_def get_mh_nm.simps le_fun_def order_antisym_conv zero_mask_less_eq_mask zero_mh.simps)
-       apply (metis IH.hyps(3) IH.prems(2) add_masks_self_zero_mask empty_nm_def get_mp_nm.simps mp_split.elims(3) mp_split_zero)
-      apply (simp add: empty_nm_def)
-      by (metis IH(3) IH(6) IH.prems(2) SatAll_case surj_pair total_state.select_convs(2) zero_mp.elims)
+        apply (metis IH.hyps(2) IH.prems(1) zero_nested_mask_def get_mh_nm.simps)
+       apply (metis IH.hyps(3) IH.prems(2) zero_nested_mask_def get_mp_nm.simps)
+      apply (simp add: zero_nested_mask_def)
+      by (metis IH.hyps(3) IH.prems(2) IH.prems(3) SatAll_case surj_pair total_state.select_convs(2) zero_mask_def)
     hence "add_to_nm_total_full \<omega> nm = \<omega>"
-      apply simp
-      by (simp add: add_empty_nm)
+      by (simp add: zero_nested_mask_def[symmetric])
     then show ?thesis
       by (metis Val \<omega>_eval \<open>v = VBool True\<close> inh_pure_normal)
   next
@@ -1216,9 +1208,9 @@ next
 
   obtain fnm where fnm: "fnm = get_fnm_nm nm"
     by simp
-  obtain fnm\<^sub>1 where fnm\<^sub>1: "\<And>lp. fnm\<^sub>1 lp = nested_mask_multiply_option (fnm lp) (mp\<^sub>1 lp / mp lp)"
+  obtain fnm\<^sub>1 where fnm\<^sub>1: "\<And>lp. fnm\<^sub>1 lp = (mp\<^sub>1 lp / mp lp) *\<^sub>s (fnm lp)"
     by simp
-  obtain fnm\<^sub>2 where fnm\<^sub>2: "\<And>lp. fnm\<^sub>2 lp = nested_mask_multiply_option (fnm lp) (mp\<^sub>2 lp / mp lp)"
+  obtain fnm\<^sub>2 where fnm\<^sub>2: "\<And>lp. fnm\<^sub>2 lp = (mp\<^sub>2 lp / mp lp) *\<^sub>s (fnm lp)"
     by simp
   obtain nm\<^sub>1 where nm\<^sub>1: "nm\<^sub>1 = NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1"
     by simp
@@ -1231,15 +1223,15 @@ next
     apply (rule SatAll)
     sorry
 
-  have "nested_mask_merge nm\<^sub>1 nm\<^sub>2 = nm"
+  have "nm\<^sub>1 + nm\<^sub>2 = nm"
     apply (rule nested_mask_equality, simp_all)
     using IH.hyps(1) IH.prems(1) nm\<^sub>1 nm\<^sub>2 apply auto[1]
     using IH.hyps(2) IH.prems(2) nm\<^sub>1 nm\<^sub>2 apply auto[1]
   proof (simp add: nm\<^sub>1 nm\<^sub>2 fnm[symmetric], standard)
     fix lp
-    show "(fnm\<^sub>1 +\<lparr> nested_mask_merge \<rparr>+ fnm\<^sub>2) lp = fnm lp"
+    show "(fnm\<^sub>1 +\<lparr> (+) \<rparr>+ fnm\<^sub>2) lp = fnm lp"
       apply (cases "fnm lp"; simp)
-       apply (simp add: fnm\<^sub>1 fnm\<^sub>2 pfun_comb_def combine_options_def)
+      apply (simp add: fnm\<^sub>1 fnm\<^sub>2 pfun_comb_def scale_option_def)
     proof -
       fix nm'
       assume "fnm lp = Some nm'"
@@ -1252,8 +1244,8 @@ next
       hence "mp\<^sub>1 lp / mp lp + mp\<^sub>2 lp / mp lp = 1"
         apply (simp add: preal_to_real)
         by (metis \<open>pos_perm_class.pnone < mp lp\<close> add_divide_distrib add_less_cancel_left add_less_cancel_right divide_self less_numeral_extra(4) less_preal.rep_eq zero_preal.rep_eq)
-      show "(fnm\<^sub>1 +\<lparr> nested_mask_merge \<rparr>+ fnm\<^sub>2) lp = Some nm'"
-        by (metis \<open>fnm lp = Some nm'\<close> \<open>mp\<^sub>1 lp / mp lp + mp\<^sub>2 lp / mp lp = pos_perm_class.pwrite\<close> fnm\<^sub>1 fnm\<^sub>2 nested_mask_merge_option.elims pfun_comb_def nm_multiply_merge_distr nm_multiply_1_opt)
+      show "(fnm\<^sub>1 +\<lparr> (+) \<rparr>+ fnm\<^sub>2) lp = Some nm'"
+        by (metis \<open>fnm lp = Some nm'\<close> \<open>mp\<^sub>1 lp / mp lp + mp\<^sub>2 lp / mp lp = pos_perm_class.pwrite\<close> fnm\<^sub>1 fnm\<^sub>2 pfun_comb_def plus_option_def preal_semimodule_class.scale_one scale_add_left)
     qed
   qed
 
@@ -1261,7 +1253,8 @@ next
   have 1: "add_to_nm_total_full \<omega>\<^sub>A nm\<^sub>2 = add_to_nm_total_full \<omega> nm"
     apply (rule full_total_state.equality; simp_all add: IH \<omega>\<^sub>A_def)
     apply (rule total_state.equality; simp_all add: IH \<omega>\<^sub>A_def)
-    by (metis \<open>nested_mask_merge nm\<^sub>1 nm\<^sub>2 = nm\<close> nm_add_assoc)
+    using \<open>nm\<^sub>1 + nm\<^sub>2 = nm\<close> ab_semigroup_add_class.add_ac(1)
+    by blast
 
   show ?case
     apply (rule InhStarNormal[where ?\<omega>''=\<omega>\<^sub>A])
@@ -1304,14 +1297,14 @@ next
   obtain res where res: "ctxt, Some \<omega> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t res"
     by (metis IH.hyps(1) IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh e_sup eval_ok_no_type_error(1))
 
-  have "nm = empty_nm"
-    apply (simp add: empty_nm_def)
+  have "nm = 0"
+    apply (simp add: zero_nested_mask_def)
     apply (rule nested_mask_equality, simp_all)
     using IH.hyps(2) IH.prems(1) zero_mask_def
       apply fastforce
     using IH.hyps(3) IH.prems(2) zero_mask_def
      apply fastforce
-    by (metis IH.hyps(3) IH.prems(2) IH.prems(3) SatAll_case prod.exhaust total_state.select_convs(2) zero_mp.simps)
+    by (metis IH.hyps(3) IH.prems(2) IH.prems(3) SatAll_case prod.exhaust total_state.select_convs(2) zero_mask_def)
 
   show ?case
   proof (cases res)
@@ -1323,7 +1316,7 @@ next
       apply (rule InhImpFalse)
       using Val \<open>v\<^sub>2 = VBool False\<close> res
        apply blast
-      by (simp add: \<open>nm = empty_nm\<close> add_empty_nm)
+      by (simp add: \<open>nm = 0\<close>)
   next
     case VFailure
     then show ?thesis
@@ -1395,7 +1388,7 @@ lemma extcons_state_can_be_inhaled:
 proof -
   have "sat ctxt \<lparr> get_store_total = nth_option vs,
                    get_trace_total = Map.empty,
-                   get_total_full = \<lparr> get_hh_total = hh, get_nm_total = empty_nm \<rparr> \<rparr>
+                   get_total_full = \<lparr> get_hh_total = hh, get_nm_total = 0 \<rparr> \<rparr>
             (get_mh_nm nm) (get_mp_nm nm)
             (syntactic_mult (Rep_preal p) pbody)" and
     "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = nm \<rparr>"
@@ -1437,23 +1430,23 @@ proof -
     "p \<le> pp" and
     "p \<noteq> 0" and
     mp': "mp' = mp( (pid,vs) := pp - p )" and
-    fnm': "fnm' = fnm( (pid,vs) := nested_mask_multiply_option pnm' ((pp - p) / pp) )" and
+    fnm': "fnm' = fnm( (pid,vs) := ((pp - p) / pp) *\<^sub>s pnm' )" and
     nm\<^sub>d: "nm\<^sub>d = NM mh mp' fnm'" and
-    nm': "Some nm' = nested_mask_merge_option (Some nm\<^sub>d) (nested_mask_multiply_option pnm' (p / pp))"
+    nm': "Some nm' = Some nm\<^sub>d + (p / pp) *\<^sub>s pnm'"
     by (blast elim: shift_up.cases)
 
   then obtain pnm where "Some pnm = pnm'"
-    by (metis ExtCons SatAll_case \<open>get_nm_total \<phi> = nm\<close> all_pos get_fnm_nm.simps get_mp_nm.simps nested_mask_multiply_option.elims order_antisym)
+    by (metis ExtCons SatAll_case \<open>get_nm_total \<phi> = nm\<close> all_pos get_fnm_nm.simps get_mp_nm.simps option.exhaust_sel order_antisym)
   hence "Some pnm = fnm (pid, vs)"
     by (simp add: \<open>pnm' = fnm (pid, vs)\<close>)
   have "\<not> p / pp = pos_perm_class.pnone"
     using \<open>p \<le> pp\<close> \<open>p \<noteq> pos_perm_class.pnone\<close> divide_preal.rep_eq preal_not_0_gt_0 preal_to_real(10) zero_preal.rep_eq
     by auto
-  hence nm'_direct: "nm' = nested_mask_merge nm\<^sub>d (nested_mask_multiply pnm (p / pp))"
+  hence nm'_direct: "nm' = nm\<^sub>d  + (p / pp) *\<^sub>s pnm"
     using nm'
-    by (simp add: combine_options_def \<open>Some pnm = pnm'\<close>[symmetric])
+    by (metis \<open>Some pnm = pnm'\<close> combine_options_simps(3) option.inject option.map(2) plus_option_def scale_option_def)
 
-  define nm\<^sub>s where "nm\<^sub>s = nested_mask_multiply pnm (p / pp)"
+  define nm\<^sub>s where "nm\<^sub>s = (p / pp) *\<^sub>s pnm"
 
   \<comment> \<open>The shifted part is external consistent w.r.t. the predicate.\<close>
   have pnm_cons: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := pnm \<rparr>) (pid,vs) pp"
@@ -1482,9 +1475,12 @@ proof -
     apply (simp add: mp' \<open>pp = mp (pid,vs)\<close> \<open>fnm (pid,vs) = Some pnm\<close>)
     apply (rule nested_mask_equality)
       apply simp_all
-      apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(7))+
-    using PosReal.field_divide_inverse \<open>fnm (pid, vs) = Some pnm\<close> \<open>pnm' = fnm (pid, vs)\<close> minus_preal.abs_eq zero_preal_def
-    by force
+      apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(7))
+     apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(7))
+    apply (simp add: assms(7) \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close>)
+    apply standard
+    using \<open>pnm' = fnm (pid, vs)\<close>
+    by auto+
 
   have 1: "add_to_nm_total_full
           \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr> nm\<^sub>s =

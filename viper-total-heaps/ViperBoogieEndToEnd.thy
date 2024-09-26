@@ -790,11 +790,11 @@ proof (rule allI | rule impI)+
                   by simp
               qed
 
-              let ?\<phi> = "get_total_full \<omega>body \<lparr> get_nm_total := empty_nm \<rparr>"
+              let ?\<phi> = "get_total_full \<omega>body \<lparr> get_nm_total := 0 \<rparr>"
 
-              show "assertion_framing_state ctxt_vpr StateCons (method_decl.post mdecl) (upd_nm_total_full \<omega>body empty_nm)"
+              show "assertion_framing_state ctxt_vpr StateCons (method_decl.post mdecl) (upd_nm_total_full \<omega>body 0)"
               proof (rule vpr_postcondition_framed_assertion_framing_state[OF PostFramedStoreBody])
-                show "upd_nm_total_full \<omega>body empty_nm = 
+                show "upd_nm_total_full \<omega>body 0 = 
                      \<lparr>get_store_total = get_store_total (\<omega>\<lparr>get_store_total := get_store_total \<omega>body\<rparr>), get_trace_total = get_trace_total \<omega>body, 
                                                            get_total_full = ?\<phi>\<rparr>"
                   by auto
@@ -805,7 +805,7 @@ proof (rule allI | rule impI)+
                   by simp
               next
                 show "valid_heap_mask (get_mh_total ?\<phi>)"
-                  by (simp add: empty_nm_def wf_zero_mask)
+                  by (simp add: zero_nested_mask_def wf_zero_mask)
               next
                 show "get_trace_total \<omega>body old_label = Some (get_total_full (\<omega>pre\<lparr>get_store_total := get_store_total \<omega>body\<rparr>))"
                   using red_stmt_preserves_labels RedBodyVpr \<comment>\<open>Use that body does not overwrite the old label\<close>
@@ -1571,7 +1571,7 @@ proof -
     next    
       show "mask_rel (program_total ctxt_vpr) (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) zero_mask_bpl"
         using \<open>is_empty_total_full \<omega>\<close>
-        unfolding mask_rel_def is_empty_total_full_def is_empty_total_def zero_mask_def empty_nm_def
+        unfolding mask_rel_def is_empty_total_full_def is_empty_total_def zero_mask_def zero_nested_mask_def
         by (simp add: zero_preal.rep_eq)
     qed
   

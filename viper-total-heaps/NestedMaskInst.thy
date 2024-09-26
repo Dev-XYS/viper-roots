@@ -12,7 +12,7 @@ instantiation nested_mask :: (type) comm_monoid_add
 begin
 
 definition zero_nested_mask :: "'a nested_mask" where
-  "zero_nested_mask \<equiv> empty_nm"
+  "zero_nested_mask \<equiv> NM zero_mask zero_mask Map.empty"
 
 definition plus_nested_mask :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
   "plus_nested_mask \<equiv> nested_mask_merge"

@@ -18,7 +18,7 @@ lemma supported_sub_expr_supported:
   by (induct e; simp add: list_all_length)
 
 lemma update_mp_loc_total_preserves_hh:
-  shows "get_hh_total (update_mp_loc_total \<phi> ploc mp) = get_hh_total \<phi>"
+  shows "get_hh_total (upd_mp_loc_total \<phi> ploc mp) = get_hh_total \<phi>"
   sorry
 
 lemma add_to_nm_loc_total_preserves_hh:
@@ -26,11 +26,11 @@ lemma add_to_nm_loc_total_preserves_hh:
   sorry
 
 lemma nm_subtract_mh:
-  shows "get_mh_nm (nested_mask_subtract nm\<^sub>1 nm\<^sub>2) = field_mask_sub (get_mh_nm nm\<^sub>1) (get_mh_nm nm\<^sub>2)"
+  shows "get_mh_nm (nested_mask_subtract nm\<^sub>1 nm\<^sub>2) = get_mh_nm nm\<^sub>1 - get_mh_nm nm\<^sub>2"
   by (metis get_fnm_nm.cases get_mh_nm.simps nested_mask_subtract.simps)
 
 lemma nm_subtract_mp:
-  shows "get_mp_nm (nested_mask_subtract nm\<^sub>1 nm\<^sub>2) = predicate_mask_sub (get_mp_nm nm\<^sub>1) (get_mp_nm nm\<^sub>2)"
+  shows "get_mp_nm (nested_mask_subtract nm\<^sub>1 nm\<^sub>2) = get_mp_nm nm\<^sub>1 - get_mp_nm nm\<^sub>2"
   by (metis get_fnm_nm.cases get_mp_nm.simps nested_mask_subtract.simps)
 
 
@@ -253,12 +253,12 @@ qed *)
 
 lemma sat_Acc_mp_zero:
   assumes "sat ctxt \<omega> mh mp (Atomic (Acc e_r f perm))"
-  shows "mp = zero_mp"
+  shows "mp = zero_mask"
   using SatAtomic_case assms by blast
 
 lemma sat_AccPred_mh_zero:
   assumes "sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args perm))"
-  shows "mh = zero_mh"
+  shows "mh = zero_mask"
   using SatAtomic_case assms by blast
 
 lemma sat_Imp_True_or_False:
@@ -274,7 +274,7 @@ lemma sat_Cond_True_or_False:
 lemma sat_Imp_False_only_zero:
   assumes "sat ctxt \<omega> mh mp (Imp e A)"
       and "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
-    shows "mh = zero_mh" and "mp = zero_mp"
+    shows "mh = zero_mask" and "mp = zero_mask"
    apply (rule SatImp_case)
      apply auto
   using assms(1) apply blast
@@ -562,15 +562,15 @@ lemma fractionability_SatAcc:
     assumes "p > 0"
       and "supported_pred_expr e_r"
       and "supported_pred_expr e_p"
-      and "sat ctxt \<omega> mh zero_mp (Atomic (Acc e_r f (PureExp e_p)))"
-    shows "sat ctxt \<omega> (field_mask_multiply mh p) zero_mp (syntactic_mult (Rep_preal p) (Atomic (Acc e_r f (PureExp e_p))))"
+      and "sat ctxt \<omega> mh zero_mask (Atomic (Acc e_r f (PureExp e_p)))"
+    shows "sat ctxt \<omega> (field_mask_multiply p mh) zero_mask (syntactic_mult (Rep_preal p) (Atomic (Acc e_r f (PureExp e_p))))"
 proof -
   from assms(4) obtain v_r v_p a where
     v_r_eval: "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)" and
     v_p_eval: "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
     a_eval: "a = the_address v_r" and
     v_p_pos: "v_p \<ge> 0" and
-    mh_sing: "if v_r = Null then v_p = 0 \<and> mh = zero_mh else mh = singleton_mh (a,f) (Abs_preal v_p)"
+    mh_sing: "if v_r = Null then v_p = 0 \<and> mh = zero_mask else mh = singleton_mh (a,f) (Abs_preal v_p)"
     using SatAcc_case by meson
   show ?thesis
     apply (simp only: syntactic_mult.simps real_mult_permexpr.simps)
@@ -602,12 +602,13 @@ proof -
     show "0 \<le> Rep_preal p * v_p"
       by (simp add: prat_non_negative v_p_pos)
   next
-    show "if v_r = Null then Rep_preal p * v_p = 0 \<and> field_mask_multiply mh p = zero_mh else field_mask_multiply mh p = singleton_mh (the_address v_r, f) (Abs_preal (Rep_preal p * v_p))"
+    show "if v_r = Null then Rep_preal p * v_p = 0 \<and> field_mask_multiply p mh = zero_mask else field_mask_multiply p mh = singleton_mh (the_address v_r, f) (Abs_preal (Rep_preal p * v_p))"
       apply simp
       apply (rule conjI)
-      using mh_sing
+      using mh_sing zero_mh_multiply
        apply force
       by (metis Rep_preal_inverse a_eval eq_onp_same_args mh_sing prat_non_negative singleton_mh_multiply times_preal.abs_eq v_p_pos)
+
   qed
 qed
 
@@ -615,8 +616,8 @@ lemma fractionability_SatAcc_Wildcard:
   fixes p :: preal
   assumes "p > 0"
       and "supported_pred_expr e_r"
-      and "sat ctxt \<omega> mh zero_mp (Atomic (Acc e_r f Wildcard))"
-    shows "sat ctxt \<omega> (field_mask_multiply mh p) zero_mp (syntactic_mult (Rep_preal p) (Atomic (Acc e_r f Wildcard)))"
+      and "sat ctxt \<omega> mh zero_mask (Atomic (Acc e_r f Wildcard))"
+    shows "sat ctxt \<omega> (field_mask_multiply p mp) zero_mask (syntactic_mult (Rep_preal p) (Atomic (Acc e_r f Wildcard)))"
 proof -
   from assms(3) obtain v_r a where
     v_r_eval: "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)" and
@@ -640,10 +641,10 @@ proof -
   next
     show "v_r \<noteq> Null" using v_r_non_null by auto
   next
-    show "is_singleton_mh (the_address v_r, f) (field_mask_multiply mh p)"
+    show "is_singleton_mh (the_address v_r, f) (field_mask_multiply p mp)"
       apply simp
       using mh_sing
-      by (metis a_eval assms(1) is_singleton_mh.simps less_preal.rep_eq mult_eq_0_iff pperm_pnone_pgt singleton_mh_multiply times_preal.rep_eq zero_preal.rep_eq)
+      sorry
   qed
 qed
 
@@ -652,8 +653,8 @@ lemma fractionability_SatAccPred:
   assumes "p > 0"
       and "list_all supported_pred_expr e_args"
       and "supported_pred_expr e_p"
-      and "sat ctxt \<omega> zero_mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
-    shows "sat ctxt \<omega> zero_mh (predicate_mask_multiply mp p) (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args (PureExp e_p))))"
+      and "sat ctxt \<omega> zero_mask mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
+    shows "sat ctxt \<omega> zero_mask (predicate_mask_multiply p mp) (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args (PureExp e_p))))"
 proof -
   from assms(4) obtain v_args v_p where
     v_args_eval: "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)" and
@@ -689,7 +690,7 @@ proof -
     show "0 \<le> Rep_preal p * v_p"
       by (simp add: prat_non_negative v_p_pos)
   next
-    show "predicate_mask_multiply mp p = singleton_mp (pred_id, v_args) (Abs_preal (Rep_preal p * v_p))"
+    show "predicate_mask_multiply p mp = singleton_mp (pred_id, v_args) (Abs_preal (Rep_preal p * v_p))"
       apply simp
       apply standard
       by (metis Rep_preal_inverse eq_onp_same_args mp_sing prat_non_negative singleton_mp_multiply times_preal.abs_eq v_p_pos)
@@ -700,8 +701,8 @@ lemma fractionability_SatAccPred_Wildcard:
   fixes p :: preal
   assumes "p > 0"
       and "list_all supported_pred_expr e_args"
-      and "sat ctxt \<omega> zero_mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
-    shows "sat ctxt \<omega> zero_mh (predicate_mask_multiply mp p) (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args Wildcard)))"
+      and "sat ctxt \<omega> zero_mask mp (Atomic (AccPredicate pred_id e_args Wildcard))"
+    shows "sat ctxt \<omega> zero_mask (predicate_mask_multiply p mp) (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args Wildcard)))"
 proof -
   from assms(3) obtain v_args where
     v_args_eval: "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)" and
@@ -732,7 +733,7 @@ lemma fractionability:
   assumes "p > 0"
       and "supported_pred_body A"
       and "sat ctxt \<omega> mh mp A"
-    shows "sat ctxt \<omega> (field_mask_multiply mh p) (predicate_mask_multiply mp p) (syntactic_mult (Rep_preal p) A)"
+    shows "sat ctxt \<omega> (field_mask_multiply p mh) (predicate_mask_multiply p mp) (syntactic_mult (Rep_preal p) A)"
   using assms(2) assms(3)
 proof (induct A arbitrary: mh mp)
   case IH: (Atomic x)
@@ -740,8 +741,8 @@ proof (induct A arbitrary: mh mp)
   proof (cases x)
     case (Pure e)
     hence e_eval: "ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" and
-          mh_zero: "mh = zero_mh" and
-          mp_zero: "mp = zero_mp"
+          mh_zero: "mh = zero_mask" and
+          mp_zero: "mp = zero_mask"
       using IH.prems(2) SatAtomic_case by blast+
     show ?thesis
       apply (simp del: mult_nm_total_full.simps field_mask_multiply.simps add: Pure)
@@ -750,29 +751,30 @@ proof (induct A arbitrary: mh mp)
       from e_eval show "ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
         by blast
     next
-      from mh_zero show "field_mask_multiply mh p = zero_mh"
+      from mh_zero show "field_mask_multiply p mh = zero_mask"
         using zero_mh_multiply by auto
     next
-      from mp_zero show "(\<lambda>a. p * (mp a)) = zero_mp"
-        using Rep_preal_inject times_preal.rep_eq zero_preal.rep_eq by fastforce
+      from mp_zero show "(\<lambda>a. p * (mp a)) = zero_mask"
+        unfolding zero_mask_def
+        by simp
     qed
   next
     case (Acc e_r f perm)
-    then have "mp = zero_mp"
+    then have "mp = zero_mask"
       using IH sat_Acc_mp_zero by fastforce
     show ?thesis
     proof (cases perm)
       case (PureExp e_p)
       then show ?thesis using fractionability_SatAcc
-        by (metis Acc IH.prems(1) IH.prems(2) \<open>mp = zero_mp\<close> assert_pred.elims(2) assert_pred_rec.simps(1) assms(1) atomic_assert_pred.elims(2) atomic_assert_pred_rec.simps(3) zero_mp_multiply)
+        by (metis Acc IH.prems(1) IH.prems(2) \<open>mp = zero_mask\<close> assert_pred.elims(2) assert_pred_rec.simps(1) assms(1) atomic_assert_pred.elims(2) atomic_assert_pred_rec.simps(3) zero_mp_multiply)
     next
       case Wildcard
       then show ?thesis using fractionability_SatAcc_Wildcard
-        by (metis Acc IH.prems(1) IH.prems(2) \<open>mp = zero_mp\<close> assert_pred.elims(2) assert_pred_rec.simps(1) assms(1) atomic_assert_pred.elims(2) atomic_assert_pred_rec.simps(2) zero_mp_multiply)
+        by (metis Acc IH.prems(1) IH.prems(2) \<open>mp = zero_mask\<close> assert_pred.elims(2) assert_pred_rec.simps(1) assms(1) atomic_assert_pred.elims(2) atomic_assert_pred_rec.simps(2) zero_mp_multiply)
     qed
   next
     case (AccPredicate pred_id e_args perm)
-    then have "mh = zero_mh"
+    then have "mh = zero_mask"
       using IH sat_AccPred_mh_zero by blast
     have "list_all no_perm_pure_exp e_args" and "list_all no_old_pure_exp e_args"
       using AccPredicate IH.prems(1) IH.prems(2) SatAtomic_case assert_pred.elims(2) by fastforce+
@@ -782,11 +784,11 @@ proof (induct A arbitrary: mh mp)
     proof (cases perm)
       case (PureExp e_p)
       then show ?thesis using fractionability_SatAccPred
-        by (metis (no_types, lifting) AccPredicate IH.prems(1) IH.prems(2) \<open>list_all supported_pred_expr e_args\<close> \<open>mh = zero_mh\<close> assert_pred.elims(2) assert_pred_rec.simps(1) assms(1) atomic_assert_pred.elims(2) atomic_assert_pred_rec.simps(5) zero_mh_multiply)
+        by (metis (no_types, lifting) AccPredicate IH.prems(1) IH.prems(2) \<open>list_all supported_pred_expr e_args\<close> \<open>mh = zero_mask\<close> assert_pred.elims(2) assert_pred_rec.simps(1) assms(1) atomic_assert_pred.elims(2) atomic_assert_pred_rec.simps(5) zero_mh_multiply)
     next
       case Wildcard
       then show ?thesis using fractionability_SatAccPred_Wildcard
-        by (metis (no_types, lifting) AccPredicate IH.prems(2) \<open>list_all supported_pred_expr e_args\<close> \<open>mh = zero_mh\<close> assms(1) zero_mh_multiply)
+        by (metis (no_types, lifting) AccPredicate IH.prems(2) \<open>list_all supported_pred_expr e_args\<close> \<open>mh = zero_mask\<close> assms(1) zero_mh_multiply)
     qed
   qed
 next
@@ -883,8 +885,8 @@ lemma fractionabilityI:
   assumes "p > 0"
       and "supported_pred_body A"
       and "sat ctxt \<omega> mh mp A"
-      and "mh' = field_mask_multiply mh p"
-      and "mp' = predicate_mask_multiply mp p"
+      and "mh' = field_mask_multiply p mh"
+      and "mp' = predicate_mask_multiply p mp"
     shows "sat ctxt \<omega> mh' mp' (syntactic_mult (Rep_preal p) A)"
   using assms fractionability by blast
 
@@ -892,7 +894,7 @@ lemma fractionability_inv:
     fixes p :: preal
   assumes "p > 0"
       and "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal p) A)"
-    shows "sat ctxt \<omega> (field_mask_multiply mh (1/p)) (predicate_mask_multiply mp (1/p)) A"
+    shows "sat ctxt \<omega> (field_mask_multiply (1/p) mh) (predicate_mask_multiply (1/p) mp) A"
   sorry
 
 (* lemma fractionability_1:
@@ -905,10 +907,10 @@ lemma fractionability_pq:
   assumes "p > 0" and "q > 0"
       and "supported_pred_body A"
       and "sat ctxt \<omega> mh mp (syntactic_mult (Rep_preal p) A)"
-    shows "sat ctxt \<omega> (field_mask_multiply mh q) (predicate_mask_multiply mp q) (syntactic_mult (Rep_preal (q * p)) A)"
+    shows "sat ctxt \<omega> (field_mask_multiply q mh) (predicate_mask_multiply q mp) (syntactic_mult (Rep_preal (q * p)) A)"
 proof -
-  define mh\<^sub>0 where mh\<^sub>0: "mh\<^sub>0 = field_mask_multiply mh (1/p)"
-  define mp\<^sub>0 where mp\<^sub>0: "mp\<^sub>0 = predicate_mask_multiply mp (1/p)"
+  define mh\<^sub>0 where mh\<^sub>0: "mh\<^sub>0 = field_mask_multiply (1/p) mh"
+  define mp\<^sub>0 where mp\<^sub>0: "mp\<^sub>0 = predicate_mask_multiply (1/p) mp"
   show ?thesis
     apply (rule fractionabilityI)
     using assms(1) assms(2) less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq apply force
@@ -918,12 +920,12 @@ proof -
       using assms(1) assms(4) fractionability_inv mh\<^sub>0 mp\<^sub>0
       by blast
   next
-    show "field_mask_multiply mh q = field_mask_multiply mh\<^sub>0 (q*p)"
+    show "field_mask_multiply q mh = field_mask_multiply (q*p) mh\<^sub>0"
       apply (simp add: mh\<^sub>0)
       apply standard
       by (metis (no_types, lifting) PosReal.field_divide_inverse PosReal.field_inverse assms(1) comp_apply lambda_one linorder_neq_iff mult.assoc mult.left_commute)
   next
-    show "predicate_mask_multiply mp q = predicate_mask_multiply mp\<^sub>0 (q*p)"
+    show "predicate_mask_multiply q mp = predicate_mask_multiply (q*p) mp\<^sub>0"
       apply (simp add: mp\<^sub>0)
       apply standard
       by (metis (no_types, lifting) PosReal.field_divide_inverse PosReal.field_inverse assms(1) comp_apply lambda_one linorder_neq_iff mult.assoc mult.left_commute)
@@ -932,10 +934,6 @@ qed
 
 
 \<comment> \<open>A fraction of a consistent total state is external consistent.\<close>
-
-lemma empty_nm_multiply:
-  shows "empty_nm = nested_mask_multiply empty_nm p"
-  sorry
 
 lemma fraction_consistent_external:
   fixes frac :: preal
@@ -964,9 +962,9 @@ next
   proof (standard, simp del: get_nm_loc_total.simps)
     have "\<And>loc. ((get_mp_nm (get_nm_total \<phi>) loc) = 0) = (get_nm_loc_nm (get_nm_total \<phi>) loc = None)"
       by (metis IH.hyps TotalStateUtil.get_nm_loc_total.elims eq_fst_iff get_fnm_nm.elims get_fnm_total.simps get_mp_total.simps get_nm_loc_nm.simps)
-    hence "\<And>loc. ((get_mp_nm (get_nm_total \<phi>) loc) = 0) = (get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) loc = None)"
+    hence "\<And>loc. ((get_mp_nm (get_nm_total \<phi>) loc) = 0) = (get_nm_loc_nm (frac *\<^sub>s get_nm_total \<phi>) loc = None)"
       using nm_multiply_none assms by blast
-    thus "\<And>pred_id vs. (frac * (get_mp_nm (get_nm_total \<phi>) (pred_id,vs)) = PosReal.pnone) = (get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) (pred_id,vs) = None)"
+    thus "\<And>pred_id vs. (frac * (get_mp_nm (get_nm_total \<phi>) (pred_id,vs)) = 0) = (get_nm_loc_nm (frac *\<^sub>s get_nm_total \<phi>) (pred_id,vs) = None)"
       by (smt (verit) Rep_preal_inverse assms less_preal.rep_eq mult_eq_0_iff times_preal.rep_eq zero_preal.rep_eq)
   next
     fix pred_id vs q nm'
@@ -974,26 +972,27 @@ next
        and nm': "Some nm' = TotalStateUtil.get_nm_loc_total (mult_nm_total \<phi> frac) (pred_id, vs)"
     hence "get_mp_total \<phi> (pred_id,vs) = q / frac" using nm_multiply_back
       by (metis assms get_mp_total.simps mult_nm_total.elims total_state.simps(2) total_state.surjective total_state.update_convs(2))
-    moreover from nm' have nm'_frac: "Some nm' = get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) (pred_id,vs)"
+    moreover from nm' have nm'_frac: "Some nm' = get_nm_loc_nm (frac *\<^sub>s get_nm_total \<phi>) (pred_id,vs)"
       using get_nm_loc_total_multiply by auto
-    have "Some (nested_mask_multiply nm' (1 / frac)) = get_nm_loc_total \<phi> (pred_id,vs)"
+    have "Some ((1 / frac) *\<^sub>s nm') = get_nm_loc_total \<phi> (pred_id,vs)"
     proof simp
       from nm'_frac obtain nm where "Some nm = get_nm_loc_total \<phi> (pred_id,vs)"
         by (metis TotalStateUtil.get_nm_loc_total.simps assms get_fnm_nm.elims get_fnm_total.simps get_nm_loc_nm.simps nm_multiply_none not_None_eq)
-      moreover hence "get_nm_loc_nm (nested_mask_multiply (get_nm_total \<phi>) frac) (pred_id,vs) = Some (nested_mask_multiply nm frac)"
+      moreover hence "get_nm_loc_nm (frac *\<^sub>s get_nm_total \<phi>) (pred_id,vs) = Some (frac *\<^sub>s nm)"
         by (metis TotalStateUtil.get_nm_loc_total.elims get_fnm_nm.cases get_fnm_nm.simps get_fnm_total.simps get_nm_loc_nm.simps get_nm_loc_nm_multiply option.simps(9))
-      ultimately show "Some (nested_mask_multiply nm' (1 / frac)) = get_fnm_nm (get_nm_total \<phi>) (pred_id, vs)"
-        using assms nm'_frac nm_multiply_back_nm by force
+      ultimately show "Some ((1 / frac) *\<^sub>s nm') = get_fnm_nm (get_nm_total \<phi>) (pred_id, vs)"
+        using assms nm'_frac
+        by (simp add: PosReal.field_divide_inverse PosReal.field_inverse preal_semimodule_class.scale_one preal_semimodule_class.scale_scale)
     qed
     moreover note IH(3)
     ultimately have "consistent_external_wrt_ploc ctxt
-                       (\<phi>\<lparr> get_nm_total := nested_mask_multiply (get_nm_total (\<phi>\<lparr> get_nm_total := (nested_mask_multiply nm' (1 / frac)) \<rparr>)) frac \<rparr>)
+                       (\<phi>\<lparr> get_nm_total := frac *\<^sub>s (get_nm_total (\<phi>\<lparr> get_nm_total := ((1 / frac) *\<^sub>s nm') \<rparr>)) \<rparr>)
                        (pred_id,vs) q"
       using perm by force
-    moreover have "\<phi>\<lparr> get_nm_total := nested_mask_multiply (get_nm_total (\<phi>\<lparr> get_nm_total := (nested_mask_multiply nm' (1 / frac)) \<rparr>)) frac \<rparr>
-                   = \<phi>\<lparr> get_nm_total := nm' \<rparr>"
-      by (metis assms mult.commute nm_multiply_back_nm nm_multiply_twice total_state_update_nm_read)
-    ultimately show "consistent_external_wrt_ploc ctxt
+    moreover have "\<phi>\<lparr> get_nm_total := frac *\<^sub>s (get_nm_total (\<phi>\<lparr> get_nm_total := ((1 / frac) *\<^sub>s nm') \<rparr>)) \<rparr>
+                 = \<phi>\<lparr> get_nm_total := nm' \<rparr>"
+      by (metis \<open>Some ((pos_perm_class.pwrite / frac) *\<^sub>s nm') = get_nm_loc_total \<phi> (pred_id, vs)\<close> get_fnm_nm.simps get_fnm_total.simps get_mh_nm.cases get_nm_loc_nm.simps get_nm_loc_nm_multiply get_nm_loc_total.elims nm'_frac option.map(2) option.sel total_state_update_nm_read)
+      ultimately show "consistent_external_wrt_ploc ctxt
                        (mult_nm_total \<phi> frac\<lparr>get_nm_total := nm'\<rparr>)
                        (pred_id,vs) q"
       by fastforce
