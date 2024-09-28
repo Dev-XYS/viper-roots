@@ -200,7 +200,6 @@ ML \<open>
                                                            (fn ctxt => resolve_tac ctxt @{thms exhale_field_acc_rel_assms_ref_eval} THEN'
                                                                        fastforce_tac ctxt [])
                         ]) ctxt) THEN'
-          (SUBGOAL (fn (t,_) => raise TERM ("SuffPerm breakpoint", [t]))) THEN'
           (Rmsg' "Exh Prove Sufficient Perm - Red Assert" (prove_red_expr_bpl_tac ctxt |> SOLVED') ctxt) THEN'
           (Rmsg' "Exh Prove Sufficient Perm - Success Condition"
                       (simp_only_tac @{thms exhale_field_acc_rel_perm_success_def} ctxt THEN'
