@@ -37,7 +37,7 @@ fun nm_loc_sum_option :: "heap_loc \<Rightarrow> 'a nested_mask option \<Rightar
 lemma nm_loc_sum_add:
   assumes "nm_loc_sum loc nm\<^sub>1 p"
       and "nm_loc_sum loc nm\<^sub>2 q"
-    shows "nm_loc_sum loc (nested_mask_merge nm\<^sub>1 nm\<^sub>2) (p + q)"
+    shows "nm_loc_sum loc (nm\<^sub>1 + nm\<^sub>2) (p + q)"
   using assms
 proof (induct arbitrary: p q rule: nested_mask_merge.induct[of _ nm\<^sub>1 nm\<^sub>2])
   case IH: (1 mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1 mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2)
@@ -51,10 +51,10 @@ proof (induct arbitrary: p q rule: nested_mask_merge.induct[of _ nm\<^sub>1 nm\<
     from IH(3) obtain pf\<^sub>2 where pf\<^sub>2: "pf\<^sub>2 has_sumA (q - mh\<^sub>2 loc) \<and>
       (\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf\<^sub>2 ploc)) (pf\<^sub>2 ploc = 0) (fnm\<^sub>2 ploc))"
       by (metis nm_loc_sum.simps)
-    define pf where "pf = (pf\<^sub>1 +\<lbrakk>(+)\<rbrakk>+ pf\<^sub>2)"
+    define pf where "pf = (\<lambda>x. pf\<^sub>1 x + pf\<^sub>2 x)"
     hence has_sum: "pf has_sumA ((p - mh\<^sub>1 loc) + (q - mh\<^sub>2 loc))"
-      using has_sum_add[of pf\<^sub>1 "UNIV" "p - mh\<^sub>1 loc" pf\<^sub>2 "q - mh\<^sub>2 loc"] fun_comb_def
-      by (metis (no_types, lifting) pf\<^sub>1 pf\<^sub>2 has_sum_cong pf_def)
+      using has_sum_add[of pf\<^sub>1 "UNIV" "p - mh\<^sub>1 loc" pf\<^sub>2 "q - mh\<^sub>2 loc"] pf\<^sub>1 pf\<^sub>2
+      by blast
     define fnm where "fnm = (fnm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ fnm\<^sub>2)"
     have all_sub: "\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf ploc)) (pf ploc = 0) (fnm ploc)"
     proof
@@ -68,13 +68,13 @@ proof (induct arbitrary: p q rule: nested_mask_merge.induct[of _ nm\<^sub>1 nm\<
           show ?thesis
             apply (simp del: nm_loc_sum.simps add: fnm_def pfun_comb_def combine_options_def option_fold_def)
             apply (simp del: nm_loc_sum.simps add: c1N c2N)
-            by (metis (full_types) add_0 c1N c2N fun_comb_def option_fold.simps(2) pf\<^sub>1 pf\<^sub>2 pf_def)
+            by (metis (full_types) add_0 c1N c2N option_fold.simps(2) pf\<^sub>1 pf\<^sub>2 pf_def)
         next
           case c2S: (Some a)
           show ?thesis
             apply (simp del: nm_loc_sum.simps add: fnm_def pfun_comb_def combine_options_def option_fold_def)
             apply (simp del: nm_loc_sum.simps add: c1N c2S)
-            by (metis (mono_tags, lifting) add_0 c1N c2S fun_comb_def option_fold.simps(1) option_fold.simps(2) pf\<^sub>1 pf\<^sub>2 pf_def)
+            by (metis (mono_tags, lifting) add_0 c1N c2S option_fold.simps(1) option_fold.simps(2) pf\<^sub>1 pf\<^sub>2 pf_def)
         qed
       next
         case c1S: (Some a)
@@ -84,26 +84,26 @@ proof (induct arbitrary: p q rule: nested_mask_merge.induct[of _ nm\<^sub>1 nm\<
           show ?thesis
             apply (simp del: nm_loc_sum.simps add: fnm_def pfun_comb_def combine_options_def option_fold_def)
             apply (simp del: nm_loc_sum.simps add: c1S c2N)
-            by (metis (mono_tags, lifting) add.right_neutral c1S c2N fun_comb_def option_fold.simps(1) option_fold.simps(2) pf\<^sub>1 pf\<^sub>2 pf_def)
+            by (metis (mono_tags, lifting) add.right_neutral c1S c2N option_fold.simps(1) option_fold.simps(2) pf\<^sub>1 pf\<^sub>2 pf_def)
         next
           case c2S: (Some a)
           show ?thesis
             apply (simp del: nm_loc_sum.simps add: fnm_def pfun_comb_def combine_options_def option_fold_def)
             apply (simp del: nm_loc_sum.simps add: c1S c2S)
-            by (metis (mono_tags, lifting) IH.hyps c1S c2S fun_comb_def option_fold.simps(1) pf\<^sub>1 pf\<^sub>2 pf_def)
+            by (metis IH.hyps c1S c2S is_none_simps(2) option.sel option_fold.simps(1) pf\<^sub>1 pf\<^sub>2 pf_def plus_nested_mask_def range_eqI)
         qed
       qed
     qed
-    define mh where "mh = field_mask_merge mh\<^sub>1 mh\<^sub>2"
-    define mp where "mp = predicate_mask_merge mp\<^sub>1 mp\<^sub>2"
+    define mh where "mh = add_masks mh\<^sub>1 mh\<^sub>2"
+    define mp where "mp = add_masks mp\<^sub>1 mp\<^sub>2"
     have "mh loc \<le> p + q"
-      by (simp add: PosReal.padd_mono \<open>mh\<^sub>1 loc \<le> p\<close> \<open>mh\<^sub>2 loc \<le> q\<close> fun_comb_def mh_def)
+      by (simp add: PosReal.padd_mono \<open>mh\<^sub>1 loc \<le> p\<close> \<open>mh\<^sub>2 loc \<le> q\<close> add_masks_def mh_def)
     moreover from has_sum all_sub have
       "\<exists>pf. pf has_sumA ((p - mh\<^sub>1 loc) + (q - mh\<^sub>2 loc)) \<and>
             (\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf ploc)) (pf ploc = 0) (fnm ploc))"
       by metis
     moreover have "mh loc = mh\<^sub>1 loc + mh\<^sub>2 loc"
-      by (simp add: fun_comb_def mh_def)
+      by (simp add: add_masks_def mh_def)
     have "p + q \<ge> mh\<^sub>1 loc + mh\<^sub>2 loc"
       using PosReal.padd_mono \<open>mh\<^sub>1 loc \<le> p\<close> \<open>mh\<^sub>2 loc \<le> q\<close> by presburger
     moreover hence "(p - mh\<^sub>1 loc) + (q - mh\<^sub>2 loc) = (p + q) - (mh\<^sub>1 loc + mh\<^sub>2 loc)"
@@ -111,8 +111,8 @@ proof (induct arbitrary: p q rule: nested_mask_merge.induct[of _ nm\<^sub>1 nm\<
       by fastforce
     moreover have "nested_mask_merge (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) = NM mh mp fnm"
       by (simp add: fnm_def mh_def mp_def)
-    ultimately show "nm_loc_sum loc (nested_mask_merge (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2)) (p + q)"
-      by (simp add: \<open>mh loc = PosReal.padd (mh\<^sub>1 loc) (mh\<^sub>2 loc)\<close>)
+    ultimately show "nm_loc_sum loc ((NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) + (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2)) (p + q)"
+      by (simp add: \<open>mh loc = PosReal.padd (mh\<^sub>1 loc) (mh\<^sub>2 loc)\<close> plus_nested_mask_def)
   qed
 qed
 
@@ -121,31 +121,29 @@ qed
 
 lemma nm_loc_sum_mult:
     fixes frac :: preal
-  assumes "frac > 0"
-      and "nm_loc_sum loc nm p"
-    shows "nm_loc_sum loc (nested_mask_multiply nm frac) (p * frac)"
-  using assms(2)
-proof (induct arbitrary: p rule: nested_mask_multiply.induct[of _ nm p])
-  case IH: (1 mh mp fnm p)
-  define mh' where "mh' = field_mask_multiply mh frac"
-  define mp' where "mp' = predicate_mask_multiply mp frac"
-  define fnm' where "fnm' = (map_option (\<lambda>nm. nested_mask_multiply nm frac)) \<circ> fnm"
+  assumes "nm_loc_sum loc nm p"
+    shows "nm_loc_sum loc (frac *\<^sub>s nm) (p * frac)"
+  using assms(1)
+proof (induct arbitrary: p rule: nested_mask_multiply.induct[of _ p nm])
+  case IH: (1 p mh mp fnm)
+  define mh' where "mh' = mul_mask frac mh"
+  define mp' where "mp' = mul_mask frac mp"
+  define fnm' where "fnm' = (map_option (\<lambda>nm. frac *\<^sub>s nm)) \<circ> fnm"
   have "mh' loc \<le> p * frac"
     apply (simp add: mh'_def)
-    using IH(2)
-    by (simp add: less_eq_preal.rep_eq mult.commute mult_left_mono prat_non_negative times_preal.rep_eq)
+    by (smt (verit) IH.prems PosReal.pmult_comm add.commute comp_apply distrib_left greater_minus_plus mul_mask_def nm_loc_sum.simps pos_perm_class.sum_larger)
   from IH(2) obtain pf where pf: "pf has_sumA (p - mh loc) \<and>
       (\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf ploc)) (pf ploc = 0) (fnm ploc))"
     using nm_loc_sum.simps by blast
   define pf' where "pf' = ((*) frac) \<circ> pf"
   moreover have "frac * p - mh' loc = frac * p - frac * mh loc"
-    by (simp add: mh'_def)
+    by (simp add: mh'_def mul_mask_def)
   moreover hence "frac * p - mh' loc = frac * (p - mh loc)"
-    by (smt (verit, ccfv_threshold) IH.prems PosReal.pmult_comm Rep_preal_inverse \<open>mh' loc \<le> PosReal.pmult p frac\<close> comp_apply field_mask_multiply.simps mh'_def minus_preal.rep_eq nm_loc_sum.simps right_diff_distrib times_preal.rep_eq)
+    by (smt (verit, ccfv_threshold) IH.prems PosReal.pmult_comm Rep_preal_inverse \<open>mh' loc \<le> PosReal.pmult p frac\<close> comp_apply mh'_def minus_preal.rep_eq nm_loc_sum.simps right_diff_distrib times_preal.rep_eq mul_mask_def)
   ultimately have "pf' has_sumA (frac * p - mh' loc)"
     using has_sum_cmult_right[of pf "UNIV" "p - mh loc" frac] pf pf'_def
     by (metis (no_types, lifting) comp_apply has_sum_cong)
-  moreover have "(\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf' ploc)) (pf' ploc = 0) (fnm' ploc))"
+  have "(\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf' ploc)) (pf' ploc = 0) (fnm' ploc))"
   proof
     fix ploc
     show "option_fold (\<lambda>m. nm_loc_sum loc m (pf' ploc)) (pf' ploc = PosReal.pnone) (fnm' ploc)"
@@ -155,7 +153,7 @@ proof (induct arbitrary: p rule: nested_mask_multiply.induct[of _ nm p])
         by (metis (mono_tags, lifting) comp_apply fnm'_def mult_zero_right option.simps(8) option_fold.simps(2) pf pf'_def)
     next
       case (Some nm)
-      hence "fnm' ploc = Some (nested_mask_multiply nm frac)"
+      hence "fnm' ploc = Some (frac *\<^sub>s nm)"
         using fnm'_def by simp
       then show ?thesis
         apply simp
@@ -163,8 +161,11 @@ proof (induct arbitrary: p rule: nested_mask_multiply.induct[of _ nm p])
         by (metis Some comp_apply mult.commute option_fold.simps(1) pf pf'_def rangeI)
     qed
   qed
-  ultimately show ?case
-    using PosReal.pmult_comm \<open>mh' loc \<le> PosReal.pmult p frac\<close> fnm'_def mh'_def by auto
+  show ?case
+    unfolding scale_nested_mask_def
+    apply simp
+    using PosReal.pmult_comm \<open>mh' loc \<le> PosReal.pmult p frac\<close> fnm'_def mh'_def mul_mask_def
+    by (smt (verit) \<open>\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf' ploc)) (pf' ploc = pos_perm_class.pnone) (fnm' ploc)\<close> \<open>pf' has_sumA frac * p - mh' loc\<close> comp_apply option_fold_cong scale_nested_mask_def)
 qed
 
 
@@ -257,59 +258,6 @@ proof -
   thus ?thesis
     by (metis f'_def has_sumA_nonneg_ge_one_real less_eq_preal.rep_eq prat_non_negative)
 qed
-
-
-\<comment> \<open>Lemmas on SUP\<close>
-
-(* lemma SUP_including_one:
-    fixes f :: "'a \<Rightarrow> real"
-  assumes "SUP F\<in>{F. finite F \<and> F \<subseteq> D}. (sum f F) = S"
-      and "a \<in> D"
-      and "\<And>x. x \<in> D \<Longrightarrow> f x \<ge> 0"
-    shows "SUP F\<in>{F. finite F \<and> F \<subseteq> D \<and> a \<in> F}. (sum f F) = S"
-proof -
-  from assms(1) have "SUP F\<in>{F. finite F \<and> F \<subseteq> D}. (sum f F) =
-                      CONST Sup ((\<lambda>F. sum f F) ` {F. finite F \<and> F \<subseteq> D})"
-  from assms(1) have "S = (LEAST z. \<forall>F. finite F \<and> F \<subseteq> D \<longrightarrow> sum f F \<le> z)" *)
-
-
-\<comment> \<open>\<^const>\<open>has_sumA\<close>: sum excluding one\<close>
-
-(* lemma has_sum_nonneg_exclude_one_real':
-    fixes f :: "'a \<Rightarrow> real"
-  assumes "(f has_sum S) (A - {a})"
-      and "a \<in> A"
-    shows "(f( a := 0 ) has_sum S) A"
-  sorry
-
-
-lemma has_sumA_nonneg_exclude_one_real:
-    fixes f :: "'a \<Rightarrow> real"
-  assumes "f has_sumA S"
-      and "\<And>x. f x \<ge> 0"
-    shows "f( a := 0 ) has_sumA (S - f a)"
-proof -
-  have "f has_sumA (SUP F\<in>{F. finite F \<and> F \<subseteq> domain f}. (sum f F))"
-    by (metis (no_types, lifting) Collect_cong assms(1) assms(2) has_sum_imp_summable has_sum_nonneg_SUPREMUM_real)
-  have "\<And>F. finite F \<Longrightarrow> F \<subseteq> domain f \<Longrightarrow> a \<in> F \<Longrightarrow> sum f F = sum (f( a := 0 )) F + f a"
-  proof -
-    fix F
-    assume "finite F" and "F \<subseteq> domain f" and "a \<in> F"
-    hence "sum f F - f a = sum f (F - {a})" using sum_diff1[of F f a]
-      by presburger
-    moreover have "sum (f(a := 0)) F = (f(a := 0)) a + sum (f(a := 0)) (F - {a})"
-      by (meson \<open>a \<in> F\<close> \<open>finite F\<close> sum.remove)
-    moreover hence "sum (f(a := 0)) F = sum f (F - {a})" by auto
-    ultimately show "sum f F = sum (f(a := 0)) F + f a"
-      by linarith
-  qed
-  have "\<And>F. finite F \<and> F \<subseteq> domain f \<Longrightarrow> \<exists>F'. finite F' \<and> F' \<subseteq> domain f \<and> a \<in> F' \<and> sum f F' \<ge> sum f F"
-    sorry
-  have "(SUP F\<in>{F. finite F \<and> F \<subseteq> domain f \<and> a \<in> F}. (sum f F)) =
-        (SUP F\<in>{F. finite F \<and> F \<subseteq> domain f}. (sum f F))" sorry
-  have "f has_sumA (SUP F\<in>{F. finite F \<and> F \<subseteq> domain f \<and> a \<in> F}. (sum f F))" sorry
-  show ?thesis sorry
-qed *)
 
 
 lemma has_sumA_nonneg_change_one_preal:
@@ -436,17 +384,20 @@ qed
 lemma nm_loc_sum_add_to_sub':
   assumes "nm_loc_sum loc (NM mh mp fnm) p"
       and "nm_loc_sum_option loc nm' q"
-    shows "nm_loc_sum loc (NM mh mp' (fnm( ploc := nested_mask_merge_option (fnm ploc) nm' ))) (p + q)"
+    shows "nm_loc_sum loc (NM mh mp' (fnm( ploc := fnm ploc + nm' ))) (p + q)"
 proof -
   obtain s_sub where "option_fold (\<lambda>nm. nm_loc_sum loc nm s_sub) (s_sub = 0) (fnm ploc)"
     using assms(1) nm_loc_sum.simps by blast
   moreover have "s_sub \<le> p"
     by (metis assms(1) calculation nm_loc_sum_option.elims(1) nm_loc_sum_sub_le)
-  moreover have "option_fold (\<lambda>nm. nm_loc_sum loc nm (s_sub + q)) (s_sub + q = 0) (nested_mask_merge_option (fnm ploc) nm')"
+  moreover have "option_fold (\<lambda>nm. nm_loc_sum loc nm (s_sub + q)) (s_sub + q = 0) (fnm ploc + nm')"
     apply (cases "fnm ploc"; cases nm'; simp)
-    using assms(2) calculation(1) apply force+
-    by (metis assms(2) calculation(1) nm_loc_sum_add nm_loc_sum_option.elims(2) option_fold.simps(1))
-  ultimately have "nm_loc_sum loc (NM mh mp' (fnm( ploc := nested_mask_merge_option (fnm ploc) nm' ))) (p - s_sub + (s_sub + q))"
+    using assms(2) calculation(1)
+       apply (simp add: plus_option_def)
+      apply (metis (mono_tags) add_0 assms(2) calculation(1) nm_loc_sum_option.elims(2) option_fold.simps(2) zero_option_def)
+     apply (metis (mono_tags) add.right_neutral assms(2) calculation(1) nm_loc_sum_option.simps option_fold.simps(2) zero_option_def)
+    by (metis assms(2) calculation(1) combine_options_simps(3) nm_loc_sum_add nm_loc_sum_option.elims(2) option_fold.simps(1) plus_option_def)
+  ultimately have "nm_loc_sum loc (NM mh mp' (fnm( ploc := fnm ploc + nm' ))) (p - s_sub + (s_sub + q))"
     using assms(1) nm_loc_sum_change_sum by blast
   thus ?thesis
     by (metis \<open>s_sub \<le> p\<close> greater_minus_plus group_cancel.add1)
@@ -458,10 +409,6 @@ lemma nm_loc_sum_add_to_sub:
     shows "nm_loc_sum loc (add_to_nm_loc_nm nm ploc nm') (s + s')"
   using assms nm_loc_sum_add_to_sub'[where nm'="Some nm'"]
   by (cases nm) (auto simp del: nm_loc_sum.simps)
-
-  (* using nm_loc_sum_add_to_sub'
-  by (metis add_to_nm_loc_nm.simps assms(1) assms(2) nm_loc_sum.elims(2) nm_loc_sum_option.elims(1) option_fold.simps(1))
- *)
 
 
 \<comment> \<open>Sum does not depend on predicate mask\<close>
@@ -478,8 +425,8 @@ lemma nested_mask_sub_add:
   assumes "nm_diff = nested_mask_subtract nm1 nm2"
       and "\<And>x. get_mh_nm nm1 x \<ge> get_mh_nm nm2 x"
       and "\<And>x. get_mp_nm nm1 x \<ge> get_mp_nm nm2 x"
-      and "\<And>x. \<exists>frac. get_nm_loc_nm nm2 x = nested_mask_multiply_option (get_nm_loc_nm nm1 x) frac"
-    shows "nested_mask_merge nm2 nm_diff = nm1"
+      and "\<And>x. \<exists>frac. get_nm_loc_nm nm2 x = frac *\<^sub>s get_nm_loc_nm nm1 x"
+    shows "nm2 + nm_diff = nm1"
   sorry
 
 

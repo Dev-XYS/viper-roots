@@ -61,6 +61,8 @@ permission ('p::pos_perm) masks. \<^typ>\<open>('b, 'p::pos_perm) abstract_mask\
 definition zero_mask :: "('b, 'p::pos_perm) abstract_mask" where "zero_mask hl = pnone"
 definition add_masks :: "('b, 'p::pos_perm) abstract_mask \<Rightarrow> ('b, 'p::pos_perm) abstract_mask \<Rightarrow> ('b, 'p::pos_perm) abstract_mask" where
   "add_masks \<pi>1 \<pi>2 hl = (\<pi>1 hl + \<pi>2 hl)"
+definition mul_mask :: "'p::pos_perm \<Rightarrow> ('b, 'p::pos_perm) abstract_mask \<Rightarrow> ('b, 'p::pos_perm) abstract_mask" where
+  "mul_mask p \<pi> = ((*) p) \<circ> \<pi>"
 
 lemma padd_pos:
   assumes "p \<noteq> pnone"

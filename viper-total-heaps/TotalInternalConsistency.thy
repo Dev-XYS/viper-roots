@@ -1,5 +1,5 @@
 theory TotalInternalConsistency
-  imports TotalSemantics TotalSemanticsProperties NestedMaskProperties
+  imports NestedMaskProperties TotalFoldUnfold
 begin
 
 
@@ -101,22 +101,22 @@ proof -
     "q \<le> p" and
     "q \<noteq> 0" and
     "mp' = mp( (pred_id,vs) := p - q )" and
-    fnm': "fnm' = fnm( (pred_id,vs) := nested_mask_multiply_option pnm_opt ((p - q) / p) )" and
+    fnm': "fnm' = fnm( (pred_id,vs) := ((p - q) / p) *\<^sub>s pnm_opt )" and
     nm_sub: "nm'_sub = NM mh mp' fnm'" and
-    nm': "Some nm' = nested_mask_merge_option (Some nm'_sub) (nested_mask_multiply_option pnm_opt (q / p))"
+    nm': "Some nm' = Some nm'_sub + (q / p) *\<^sub>s pnm_opt"
     by (blast elim: shift_up.cases)
   show ?thesis
   proof (cases pnm_opt)
     case None
     then show ?thesis
-      by (metis assms(2) combine_options_simps(2) fnm' fun_upd_idem_iff nested_mask_merge_option.simps nested_mask_multiply_option.simps(1) nm nm' nm_loc_sum_mp_irrelevant nm_sub option.sel pnm_opt)
+      by (metis assms(2) fnm' fun_upd_triv group_cancel.rule0 nm nm' nm_loc_sum_mp_irrelevant nm_sub option.map(1) option.sel pnm_opt scale_option_def zero_option_def)
   next
     case (Some pnm)
-    have "fnm' (pred_id,vs) = None \<longleftrightarrow> q = p"
+    (* have "fnm' (pred_id,vs) = None \<longleftrightarrow> q = p"
       apply (cases "q = p")
-      using PosReal.field_divide_inverse Some fnm' minus_preal.abs_eq zero_preal_def
+      using PosReal.field_divide_inverse Some fnm' minus_preal.abs_eq zero_preal_def 
        apply fastforce
-      by (metis Some \<open>q \<le> p\<close> comm_monoid_add_class.add_0 divide_eq_0_iff divide_preal.rep_eq fnm' fun_upd_def greater_minus_plus less_eq_preal.rep_eq linorder_not_le nested_mask_multiply_option.simps(2) not_None_eq preal_not_0_gt_0 zero_preal.rep_eq)
+      by (metis Some \<open>q \<le> p\<close> comm_monoid_add_class.add_0 divide_eq_0_iff divide_preal.rep_eq fnm' fun_upd_def greater_minus_plus less_eq_preal.rep_eq linorder_not_le nested_mask_multiply_option.simps(2) not_None_eq preal_not_0_gt_0 zero_preal.rep_eq) *)
     from assms(2) obtain pf where
       pf: "pf has_sumA (s - mh loc) \<and>
            (\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf ploc)) (pf ploc = 0) (fnm ploc))"
@@ -132,8 +132,10 @@ proof -
     from pnm_sum have "option_fold (\<lambda>nm. nm_loc_sum loc nm (ps * ((p - q) / p))) (ps * ((p - q) / p) = 0) (fnm' (pred_id,vs))"
       apply (cases "fnm' (pred_id,vs)")
        apply simp_all
-       apply (metis Rep_preal_inverse \<open>fnm' (pred_id, vs) = None \<longleftrightarrow> q = p\<close> cancel_comm_monoid_add_class.diff_cancel div_0 divide_preal.rep_eq minus_preal.rep_eq mult_not_zero zero_preal.rep_eq)
-      by (metis Some fnm' fun_upd_same is_none_simps(1) is_none_simps(2) nested_mask_multiply_option.simps(2) nm_loc_sum_mult option.sel preal_not_0_gt_0)
+       apply (simp add: Some fnm' scale_option_def)
+      apply (simp add: fnm' Some scale_option_def)
+      using nm_loc_sum_mult
+      by blast
     moreover have "option_fold (\<lambda>nm. nm_loc_sum loc nm ps) (ps = 0) (fnm (pred_id,vs))"
       by (metis option_fold.simps(1) pnm_opt Some pnm_sum)
     moreover have "fnm' = fnm( (pred_id, vs) := fnm' (pred_id, vs) )"
@@ -143,27 +145,17 @@ proof -
       by argo
   
     \<comment> \<open>sum of q/p of pnm\<close>
-    have pnm_frac_sum: "nm_loc_sum loc (nested_mask_multiply pnm (q / p)) (ps * (q / p))"
-      by (metis Rep_preal_inverse \<open>q \<le> p\<close> \<open>q \<noteq> pos_perm_class.pnone\<close> divide_eq_0_iff divide_preal.rep_eq leD nm_loc_sum_mult pnm_sum preal_not_0_gt_0 zero_preal.rep_eq)
+    have pnm_frac_sum: "nm_loc_sum loc ((q / p) *\<^sub>s pnm) (ps * (q / p))"
+      using nm_loc_sum_mult pnm_sum
+      by blast
   
     \<comment> \<open>sum of nm'\<close>
     have "s - ps + ps * ((p - q) / p) + ps * (q / p) = s"
-    proof -
-      have "s - ps + ps * ((p - q) / p) + ps * (q / p) = s - ps + (ps * ((p - q) / p) + ps * (q / p))"
-        using add.assoc by auto
-      moreover have "ps * ((p - q) / p) + ps * (q / p) = ps * ((p - q) / p + q / p)"
-        by (simp add: distrib_left)
-      moreover have "(p - q) / p + q / p = (p - q + q) / p"
-        by (simp add: PosReal.field_divide_inverse distrib_right)
-      moreover have "(p - q + q) / p = 1"
-        by (metis Rep_preal_inverse \<open>q \<le> p\<close> \<open>q \<noteq> pos_perm_class.pnone\<close> diff_add_cancel div_self divide_preal.rep_eq less_eq_preal.rep_eq minus_preal.rep_eq one_preal.rep_eq order_antisym plus_preal.rep_eq prat_non_negative zero_preal.rep_eq)
-      moreover have "s - ps + ps = s"
-        using greater_minus_plus \<open>ps \<le> s\<close> by auto
-      ultimately show ?thesis
-        by auto
-    qed
+      by (metis PosReal.field_divide_inverse PosReal.field_inverse \<open>ps \<le> s\<close> \<open>q \<le> p\<close> \<open>q \<noteq> pos_perm_class.pnone\<close> add.assoc add_cancel_right_left distrib_left greater_minus_plus mult.commute mult.right_neutral padd_pos)
+
     thus "nm_loc_sum loc nm' s"
-      by (metis (no_types, lifting) Some add.right_neutral combine_options_simps(2) combine_options_simps(3) mult_not_zero nested_mask_merge_option.simps nested_mask_multiply_option.simps(2) nm' nm_loc_sum_add nm_sub_sum option.sel pnm_frac_sum)
+      using pnm_frac_sum nm_sub_sum nm'[simplified scale_option_def Some]
+      by (metis combine_options_simps(3) nm_loc_sum_add option.sel option.simps(9) plus_option_def)
   qed
 qed
 
@@ -175,6 +167,12 @@ lemma shift_up_preserves_internal_consistency:
       and "consistent_internal nm"
     shows "consistent_internal nm'"
   by (meson assms(1) assms(2) consistent_internal_def shift_up_preserves_loc_sum)
+
+lemma unfold_preserves_internal_consistency:
+  assumes "unfold_rel ctxt pid vs q \<phi> \<phi>'"
+      and "consistent_internal (get_nm_total \<phi>)"
+    shows "consistent_internal (get_nm_total \<phi>')"
+  by (meson assms(1) assms(2) shift_up_preserves_internal_consistency unfold_rel.simps)
 
 
 subsubsection \<open>Fold preserves internal consistency\<close>
@@ -209,7 +207,7 @@ proof -
   hence "nm_loc_sum loc nm0 s"
     using assms(2) by blast
 
-  have "nm0 = nested_mask_merge nm1 nm_exh"
+  have "nm0 = nm1 + nm_exh"
     using exhale_fraction[OF exh] nested_mask_sub_add[OF nm_sub] exhale_smaller[OF exh]
     apply simp
     by (metis TotalStateUtil.get_nm_total_full.simps get_fnm_nm.elims get_nm_loc_nm.simps nm0_def nm1_def)
@@ -236,6 +234,27 @@ lemma fold_rel_preserves_internal_consistency:
       and "consistent_internal (get_nm_total_full \<omega>)"
     shows "consistent_internal (get_nm_total_full \<omega>')"
   by (metis assms(1) assms(2) consistent_internal_def fold_rel_preserves_loc_sum)
+
+
+subsection \<open>Internal Consistency on Total States\<close>
+
+definition consistent_internal_total where
+  "consistent_internal_total \<phi> \<equiv> consistent_internal (get_nm_total \<phi>)"
+
+lemma unfold_preserves_internal_consistency_total:
+  assumes "unfold_rel ctxt pid vs q \<phi> \<phi>'"
+      and "consistent_internal_total \<phi>"
+    shows "consistent_internal_total \<phi>'"
+  using unfold_preserves_internal_consistency assms(1) assms(2) consistent_internal_total_def
+  by blast
+
+
+subsection \<open>Internal Consistency on Full Total States\<close>
+
+definition consistent_internal_total_full where
+  "consistent_internal_total_full \<omega> \<equiv>
+     consistent_internal_total (get_total_full \<omega>) \<and>
+     (\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> consistent_internal_total \<phi>)"
 
 
 end

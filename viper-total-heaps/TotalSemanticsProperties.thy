@@ -1,7 +1,7 @@
 section \<open>Key Properties of THSem\<close>
 
 theory TotalSemanticsProperties
-  imports TotalSemProperties TotalExtConsProps
+  imports TotalSemProperties TotalExtConsProps TotalConsistencyInst
 begin
 
 
@@ -582,16 +582,6 @@ next
 qed
 
 
-subsection \<open>Exhale Properties\<close>
-
-lemma exhale_fraction:
-  assumes "red_exhale ctxt R \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
-  shows "get_nm_loc_total_full \<omega>' ploc =
-         nested_mask_multiply_option (get_nm_loc_total_full \<omega> ploc)
-                                     (get_mp_total_full \<omega>' ploc / get_mp_total_full \<omega> ploc)"
-  sorry
-
-
 \<comment> \<open>Helper lemmas\<close>
 
 lemma eval_exhale_sat_helper:
@@ -633,13 +623,6 @@ proof -
     using 2 minus_preal.abs_eq zero_preal.abs_eq assms psub_smaller
     by auto
 qed
-
-\<comment> \<open>already proved elsewhere, but need adjustment\<close>
-lemma exhale_smaller:
-  assumes "red_exhale ctxt R \<omega>_def A \<omega> (RNormal \<omega>')"
-    shows "\<And>x. get_mh_total_full \<omega> x \<ge> get_mh_total_full \<omega>' x"
-      and "\<And>x. get_mp_total_full \<omega> x \<ge> get_mp_total_full \<omega>' x"
-  sorry
 
 lemma mh_sub_twice:
   assumes "\<And>x. mh0 x \<ge> mh1 x"
@@ -870,9 +853,10 @@ lemma extcons_state_can_be_inhaled_assertion:
       and SameStore: "get_store_total \<omega> = get_store_total \<omega>\<^sub>0"
       and Framed: "assertion_framing_state ctxt (\<lambda>_. True) A \<omega>"
       and SupPred: "supported_pred_body A"
+      and FinalMaskWf: "wf_mask_simple (get_mh_total_full (add_to_nm_total_full \<omega> nm))" \<comment> \<open>Should not be here. A workaround.\<close>
     shows "red_inhale ctxt (\<lambda>_. True) A \<omega> (RNormal (add_to_nm_total_full \<omega> nm))"
 
-  using Sat mh_nm mp_nm ExtCons \<omega>hh SameStore Framed SupPred
+  using Sat mh_nm mp_nm ExtCons \<omega>hh SameStore Framed SupPred FinalMaskWf
 proof (induction A arbitrary: \<omega> nm)
 
   case IH: (SatAcc e_r r e_p p a mh f mp)
@@ -923,8 +907,11 @@ proof (induction A arbitrary: \<omega> nm)
       using False IH.hyps(5) IH.prems(1) by presburger
     have fnm: "get_fnm_nm nm = (\<lambda>_. None)"
       by (metis IH.hyps(6) IH.prems(2) IH.prems(3) SatAll_case surj_pair total_state.select_convs(2) zero_mask_def)
+    have mask_wf: "get_mh_total_full \<omega> (the_address r, f) + Abs_preal p \<le> 1"
+      using spec[OF IH(14)[simplified wf_mask_simple_def]]
+      sorry
     show "th_result_rel (0 \<le> p) (W \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null)) W (RNormal (add_to_nm_total_full \<omega> nm))"
-      apply (simp add: IH(4) W_def inhale_perm_single_def False)
+      apply (simp add: IH(4) W_def inhale_perm_single_def False mask_wf[simplified])
       apply (rule THResultNormal)
       apply (rule singleton_set_helper)
       apply (rule full_total_state.equality)
@@ -973,7 +960,8 @@ next
     apply (rule exI[of _ "get_mh_nm nm (a,f)"])
     apply (intro conjI)
     using \<open>is_singleton_mh (a, f) (get_mh_nm nm)\<close>
-     apply fastforce
+      apply fastforce
+    subgoal sorry
     apply (rule full_total_state.equality, simp_all)
     apply (rule total_state.equality, simp_all)
     apply (rule nested_mask_equality, simp_all; standard)
@@ -1256,12 +1244,15 @@ next
     using \<open>nm\<^sub>1 + nm\<^sub>2 = nm\<close> ab_semigroup_add_class.add_ac(1)
     by blast
 
+  have A_mask_wf: "valid_heap_mask (get_mh_total_full (add_to_nm_total_full \<omega> nm\<^sub>1))"
+    sorry
+
   show ?case
     apply (rule InhStarNormal[where ?\<omega>''=\<omega>\<^sub>A])
     using IH(5)[of nm\<^sub>1 \<omega>]
-    apply (metis A_sup IH.prems(4) IH.prems(5) IH.prems(6) \<omega>\<^sub>A_def assertion_framing_star get_mh_nm.simps get_mp_nm.simps nm\<^sub>1 nm\<^sub>1_cons)
-    using IH IH(6)[of nm\<^sub>2 \<omega>\<^sub>A, OF _ _ nm\<^sub>2_cons] 1
-    by (metis A_sup B_sup \<omega>\<^sub>A_def assertion_framing_star get_mh_nm.simps get_mp_nm.simps inhale_only_changes_mask nm\<^sub>1 nm\<^sub>1_cons nm\<^sub>2)
+    apply (metis A_sup IH.prems(4) IH.prems(5) IH.prems(6) \<omega>\<^sub>A_def assertion_framing_star get_mh_nm.simps get_mp_nm.simps nm\<^sub>1 nm\<^sub>1_cons A_mask_wf)
+    using IH(6)[of nm\<^sub>2 \<omega>\<^sub>A, OF _ _ nm\<^sub>2_cons] 1
+    by (metis A_mask_wf A_sup B_sup IH.IH(1) IH.prems(4) IH.prems(5) IH.prems(6) IH.prems(8) \<omega>\<^sub>A_def assertion_framing_star get_mh_nm.simps get_mp_nm.simps inhale_only_changes_mask nm\<^sub>1 nm\<^sub>1_cons nm\<^sub>2)
 
 next
   case IH: (SatImpTrue e mh mp A)
@@ -1281,7 +1272,7 @@ next
       apply (rule InhImpTrue)
       using Val \<open>v\<^sub>2 = VBool True\<close> res
        apply blast
-      using IH(3)[OF IH(4-8)] A_sup IH.prems(6) Val \<open>v\<^sub>2 = VBool True\<close> assertion_framing_imp res
+      using IH(3)[OF IH(4-8)] A_sup IH.prems(6) Val \<open>v\<^sub>2 = VBool True\<close> assertion_framing_imp res IH.prems(8)
       by blast
   next
     case VFailure
@@ -1341,7 +1332,7 @@ next
       apply (rule InhCondAssertTrue)
       using Val \<open>v\<^sub>2 = VBool True\<close> res
        apply blast
-      using IH(3)[OF IH(4-8)] A_sup IH.prems(6) Val \<open>v\<^sub>2 = VBool True\<close> assertion_framing_cond_assert_true res
+      using IH(3)[OF IH(4-8)] A_sup IH.prems(6) Val \<open>v\<^sub>2 = VBool True\<close> assertion_framing_cond_assert_true res IH.prems(8)
       by blast
   next
     case VFailure
@@ -1367,7 +1358,7 @@ next
       apply (rule InhCondAssertFalse)
       using Val \<open>v\<^sub>2 = VBool False\<close> res
        apply blast
-      by (metis B_sup IH.IH IH.prems(1) IH.prems(2) IH.prems(3) IH.prems(4) IH.prems(5) IH.prems(6) Val \<open>v\<^sub>2 = VBool False\<close> assertion_framing_cond_assert_false res)
+      by (metis B_sup IH.IH IH.prems(1) IH.prems(2) IH.prems(3) IH.prems(4) IH.prems(5) IH.prems(6) IH.prems(8) Val \<open>v\<^sub>2 = VBool False\<close> assertion_framing_cond_assert_false res)
   next
     case VFailure
     then show ?thesis
@@ -1384,6 +1375,7 @@ lemma extcons_state_can_be_inhaled:
       and ExtCons: "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = hh, get_nm_total = nm \<rparr> (pid,vs) p"
       and \<omega>hh: "get_hh_total_full \<omega> = hh"
       and \<omega>Store: "get_store_total \<omega> = nth_option vs"
+      and FinalMaskWf: "wf_mask_simple (get_mh_total_full (add_to_nm_total_full \<omega> nm))" \<comment> \<open>Should not be here. A workaround.\<close>
     shows "red_inhale ctxt (\<lambda>_. True) (syntactic_mult (Rep_preal p) pbody) \<omega> (RNormal (add_to_nm_total_full \<omega> nm))"
 proof -
   have "sat ctxt \<lparr> get_store_total = nth_option vs,
@@ -1397,7 +1389,7 @@ proof -
     using SelfFraming by auto
   ultimately show ?thesis
     using \<omega>Store \<omega>hh extcons_state_can_be_inhaled_assertion
-    by (metis SupPred full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps syntactic_mult_supported total_state.select_convs(1))
+    by (metis SupPred full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps syntactic_mult_supported total_state.select_convs(1) FinalMaskWf)
 qed
 
 
@@ -1406,6 +1398,7 @@ subsection \<open>Inhale Simulates Unfold\<close>
 lemma inhale_simulates_unfold:
   assumes Unfold: "unfold_rel ctxt pid vs p \<phi> \<phi>'"
       and ExtCons: "consistent_external ctxt \<phi>"
+      and IntCons: "consistent_internal_total \<phi>"
       and PredDecl: "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
       and PredBody: "ViperLang.predicate_decl.body pdecl = Some pbody"
       and SupPred: "supported_pred_body pbody" \<comment> \<open>change name\<close>
@@ -1475,9 +1468,9 @@ proof -
     apply (simp add: mp' \<open>pp = mp (pid,vs)\<close> \<open>fnm (pid,vs) = Some pnm\<close>)
     apply (rule nested_mask_equality)
       apply simp_all
-      apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(7))
-     apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(7))
-    apply (simp add: assms(7) \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close>)
+      apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(8))
+     apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(8))
+    apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(8))
     apply standard
     using \<open>pnm' = fnm (pid, vs)\<close>
     by auto+
@@ -1488,7 +1481,7 @@ proof -
     apply simp
     apply (rule total_state.equality)
       apply (simp add: \<open>get_hh_total \<phi>' = get_hh_total \<phi>\<close> assms(5))
-      apply (simp add: assms(7))
+      apply (simp add: assms(8))
      apply (rule nested_mask_equality)
        apply simp_all
     by (simp add: \<open>get_nm_total \<phi>' = nm'\<close> \<open>get_nm_total \<phi>\<^sub>d = nm\<^sub>d\<close> nm'_direct nm\<^sub>s_def)+
@@ -1503,8 +1496,9 @@ proof -
     using \<open>get_hh_total \<phi>' = get_hh_total \<phi>\<close> by auto
 
   show ?thesis
-    using extcons_state_can_be_inhaled[OF PredDecl PredBody SupPred Framed ShiftExtCons] 1 2 assms(7)
-    by auto
+    using extcons_state_can_be_inhaled[OF PredDecl PredBody SupPred Framed ShiftExtCons, simplified 1] 2 assms(7,8)
+          unfold_preserves_internal_consistency_total[OF Unfold IntCons]
+    by (metis dec_mp_loc_total.elims full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps get_mh_total_full.elims intcons_implies_valid_heap_mask mult_rm_nm_loc_total.simps total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
 qed
 
 

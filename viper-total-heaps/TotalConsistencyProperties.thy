@@ -25,116 +25,125 @@ proof -
     \<phi>'_nm: "get_nm_total \<phi>' = nm'" and
     hh_unchanged: "get_hh_total \<phi>' = get_hh_total \<phi>"
     using assms(2) unfold_rel.simps by blast
-  then obtain mh mp fnm pnm p mp' fnm' nm'_sub where
+  then obtain mh mp fnm pnm_opt p mp' fnm' nm'_sub where
     nm_decomp: "nm = NM mh mp fnm" and
-    pnm: "Some pnm = fnm (pred_id,vs)" and
+    pnm: "pnm_opt = fnm (pred_id,vs)" and
     p: "p = mp (pred_id,vs)" and
     "Abs_preal v_p \<le> p" and
     "Abs_preal v_p \<noteq> 0" and
     mp': "mp' = mp( (pred_id,vs) := p - Abs_preal v_p )" and
-    fnm': "fnm' = fnm( (pred_id,vs) := if Abs_preal v_p = p then None else Some (nested_mask_multiply pnm ((p - Abs_preal v_p) / p)) )" and
+    fnm': "fnm' = fnm( (pred_id,vs) := ((p - Abs_preal v_p) / p) *\<^sub>s pnm_opt )" and
     nm'_sub: "nm'_sub = NM mh mp' fnm'" and
-    nm': "nm' = nested_mask_merge nm'_sub (nested_mask_multiply pnm (Abs_preal v_p / p))"
+    nm': "Some nm' = Some nm'_sub + (Abs_preal v_p / p) *\<^sub>s pnm_opt"
     by (auto elim: shift_up_case)
 
-  have "Abs_preal v_p \<noteq> p \<Longrightarrow> consistent_external ctxt (\<phi>\<lparr> get_nm_total := nested_mask_multiply pnm ((p - Abs_preal v_p) / p) \<rparr>)"
-  proof -
-    assume "Abs_preal v_p \<noteq> p"
-    hence "Abs_preal v_p > 0"
-      using \<open>Abs_preal v_p \<noteq> 0\<close> preal_not_0_gt_0 by blast
-    have "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := pnm \<rparr>) (pred_id,vs) p"
-      using assms(1) nm nm_decomp pnm p SatAll_case by fastforce
-    hence "consistent_external ctxt (\<phi>\<lparr> get_nm_total := pnm \<rparr>)"
-      using SatStep_case by blast
-    moreover have "(p - Abs_preal v_p) / p > 0" \<comment> \<open>Simple lemma but hard to prove\<close>
+  show ?thesis
+  proof (cases pnm_opt)
+    case None
+    then show ?thesis
+      by (metis SatAll_case \<open>\<And>thesis. (\<And>mh mp fnm pnm_opt p mp' fnm' nm'_sub. \<lbrakk>nm = NM mh mp fnm; pnm_opt = fnm (pred_id, vs); p = mp (pred_id, vs); Abs_preal v_p \<le> p; Abs_preal v_p \<noteq> pos_perm_class.pnone; mp' = mp((pred_id, vs) := p - Abs_preal v_p); fnm' = fnm ((pred_id, vs) := ((p - Abs_preal v_p) / p) *\<^sub>s pnm_opt); nm'_sub = NM mh mp' fnm'; Some nm' = Some nm'_sub + (Abs_preal v_p / p) *\<^sub>s pnm_opt\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close> assms(1) get_fnm_nm.simps get_mp_nm.simps leD nm nm_decomp pnm pperm_pnone_pgt)
+  next
+    case (Some pnm)
+    have "Abs_preal v_p \<noteq> p \<Longrightarrow> consistent_external ctxt (\<phi>\<lparr> get_nm_total := ((p - Abs_preal v_p) / p) *\<^sub>s pnm \<rparr>)"
     proof -
-      have "p - Abs_preal v_p > 0"
-        by (metis \<open>Abs_preal v_p \<le> p\<close> \<open>Abs_preal v_p \<noteq> p\<close> add_0 greater_minus_plus pperm_pnone_pgt)
-      thus ?thesis
-        using \<open>pos_perm_class.pnone < Abs_preal v_p\<close> divide_preal.rep_eq less_preal.rep_eq minus_preal.rep_eq preal_not_0_gt_0 zero_preal.rep_eq by fastforce
+      assume "Abs_preal v_p \<noteq> p"
+      hence "Abs_preal v_p > 0"
+        using \<open>Abs_preal v_p \<noteq> 0\<close> preal_not_0_gt_0 by blast
+      have "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := pnm \<rparr>) (pred_id,vs) p"
+        using assms(1) nm nm_decomp pnm p SatAll_case Some
+        by fastforce
+      hence "consistent_external ctxt (\<phi>\<lparr> get_nm_total := pnm \<rparr>)"
+        using SatStep_case by blast
+      moreover have "(p - Abs_preal v_p) / p > 0" \<comment> \<open>Simple lemma but hard to prove\<close>
+      proof -
+        have "p - Abs_preal v_p > 0"
+          by (metis \<open>Abs_preal v_p \<le> p\<close> \<open>Abs_preal v_p \<noteq> p\<close> add_0 greater_minus_plus pperm_pnone_pgt)
+        thus ?thesis
+          using \<open>pos_perm_class.pnone < Abs_preal v_p\<close> divide_preal.rep_eq less_preal.rep_eq minus_preal.rep_eq preal_not_0_gt_0 zero_preal.rep_eq by fastforce
+      qed
+      moreover have *: "\<phi>\<lparr> get_nm_total := ((p - Abs_preal v_p) / p) *\<^sub>s pnm \<rparr>
+                        = mult_nm_total (\<phi>\<lparr> get_nm_total := pnm \<rparr>) ((p - Abs_preal v_p) / p)"
+        by simp
+      ultimately show ?thesis
+        using fraction_consistent_external(2)[of "(p - Abs_preal v_p) / p" ctxt "\<phi>\<lparr> get_nm_total := pnm \<rparr>"]
+        by presburger
     qed
-    moreover have *: "\<phi>\<lparr> get_nm_total := nested_mask_multiply pnm ((p - Abs_preal v_p) / p) \<rparr>
-                 = mult_nm_total (\<phi>\<lparr> get_nm_total := pnm \<rparr>) ((p - Abs_preal v_p) / p)"
-      by simp
-    ultimately show ?thesis
-      using fraction_consistent_external(2)[of "(p - Abs_preal v_p) / p" ctxt "\<phi>\<lparr> get_nm_total := pnm \<rparr>"]
-      by presburger
-  qed
-
-  have nm'_sub_consistent: "consistent_external ctxt (\<phi>\<lparr> get_nm_total := nm'_sub \<rparr>)"
-    apply (rule SatAll)
-     apply simp
-  proof -
-    have *: "\<And>pred_id vs. (get_mp_nm nm (pred_id, vs) = 0) = (get_fnm_nm nm (pred_id, vs) = None)"
-      by (metis SatAll_case assms(1) nm)
-    show "\<And>pred_id vs. (get_mp_nm nm'_sub (pred_id, vs) = 0) = (get_fnm_nm nm'_sub (pred_id, vs) = None)"
+  
+    have nm'_sub_consistent: "consistent_external ctxt (\<phi>\<lparr> get_nm_total := nm'_sub \<rparr>)"
+      apply (rule SatAll)
+       apply simp
     proof -
-      fix pred_id vs
-      have "(mp' (pred_id,vs) = 0) = (fnm' (pred_id,vs) = None)"
-        apply (cases "Abs_preal v_p = p")
-        using * fnm' minus_preal.abs_eq mp' nm_decomp zero_preal_def apply auto[1]
-        using * \<open>Abs_preal v_p \<le> p\<close> fnm' greater_minus_plus mp' nm_decomp by fastforce
-      thus "(get_mp_nm nm'_sub (pred_id, vs) = 0) = (get_fnm_nm nm'_sub (pred_id, vs) = None)"
-        by (simp add: nm'_sub)
-    qed
-    show "\<And>pred_id vs q nm'.
-             get_mp_total (\<phi>\<lparr>get_nm_total := nm'_sub\<rparr>) (pred_id, vs) = q \<Longrightarrow>
-             Some nm' = TotalStateUtil.get_nm_loc_total (\<phi>\<lparr>get_nm_total := nm'_sub\<rparr>) (pred_id, vs) \<Longrightarrow>
-             consistent_external_wrt_ploc ctxt (\<phi>\<lparr>get_nm_total := nm'_sub, get_nm_total := nm'\<rparr>) (pred_id, vs) q"
-    proof -
-      fix pred_id' vs' q nm''
-      assume pred_perm: "get_mp_total (\<phi>\<lparr>get_nm_total := nm'_sub\<rparr>) (pred_id', vs') = q" and
-             nm'': "Some nm'' = TotalStateUtil.get_nm_loc_total (\<phi>\<lparr>get_nm_total := nm'_sub\<rparr>) (pred_id', vs')"
-      show "consistent_external_wrt_ploc ctxt (\<phi>\<lparr>get_nm_total := nm'_sub, get_nm_total := nm''\<rparr>) (pred_id', vs') q"
-      proof (cases "(pred_id',vs') = (pred_id,vs)")
-        case True
-        hence [simp]: "nm'' = nested_mask_multiply pnm ((p - Abs_preal v_p) / p)"
-          by (smt (verit) TotalStateUtil.get_nm_loc_total.simps fnm' fun_upd_same get_fnm_nm.simps get_fnm_total.simps nm'' nm'_sub option.distinct(1) option.inject total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
-        hence "p > Abs_preal v_p"
-          using True \<open>Abs_preal v_p \<le> p\<close> fnm' nm'' nm'_sub order_le_imp_less_or_eq by fastforce
-        moreover have "0 < (p - Abs_preal v_p) / p"
-        proof -
-          have "p - Abs_preal v_p > 0"
-            by (metis \<open>Abs_preal v_p \<le> p\<close> add_0 calculation greater_minus_plus order_less_irrefl pperm_pnone_pgt)
-          thus ?thesis
-            by (metis Rep_preal_inverse \<open>Abs_preal v_p \<le> p\<close> divide_eq_0_iff divide_preal.rep_eq leD pperm_pnone_pgt psub_smaller zero_preal.rep_eq)
+      have *: "\<And>pred_id vs. (get_mp_nm nm (pred_id, vs) = 0) = (get_fnm_nm nm (pred_id, vs) = None)"
+        by (metis SatAll_case assms(1) nm)
+      show "\<And>pred_id vs. (get_mp_nm nm'_sub (pred_id, vs) = 0) = (get_fnm_nm nm'_sub (pred_id, vs) = None)"
+      proof -
+        fix pred_id vs
+        have "(mp' (pred_id,vs) = 0) = (fnm' (pred_id,vs) = None)"
+          apply (cases "Abs_preal v_p = p")
+          using * fnm' minus_preal.abs_eq mp' nm_decomp zero_preal_def apply auto[1]
+          using * \<open>Abs_preal v_p \<le> p\<close> fnm' greater_minus_plus mp' nm_decomp
+        thus "(get_mp_nm nm'_sub (pred_id, vs) = 0) = (get_fnm_nm nm'_sub (pred_id, vs) = None)"
+          by (simp add: nm'_sub)
+      qed
+      show "\<And>pred_id vs q nm'.
+               get_mp_total (\<phi>\<lparr>get_nm_total := nm'_sub\<rparr>) (pred_id, vs) = q \<Longrightarrow>
+               Some nm' = TotalStateUtil.get_nm_loc_total (\<phi>\<lparr>get_nm_total := nm'_sub\<rparr>) (pred_id, vs) \<Longrightarrow>
+               consistent_external_wrt_ploc ctxt (\<phi>\<lparr>get_nm_total := nm'_sub, get_nm_total := nm'\<rparr>) (pred_id, vs) q"
+      proof -
+        fix pred_id' vs' q nm''
+        assume pred_perm: "get_mp_total (\<phi>\<lparr>get_nm_total := nm'_sub\<rparr>) (pred_id', vs') = q" and
+               nm'': "Some nm'' = TotalStateUtil.get_nm_loc_total (\<phi>\<lparr>get_nm_total := nm'_sub\<rparr>) (pred_id', vs')"
+        show "consistent_external_wrt_ploc ctxt (\<phi>\<lparr>get_nm_total := nm'_sub, get_nm_total := nm''\<rparr>) (pred_id', vs') q"
+        proof (cases "(pred_id',vs') = (pred_id,vs)")
+          case True
+          hence [simp]: "nm'' = nested_mask_multiply pnm ((p - Abs_preal v_p) / p)"
+            by (smt (verit) TotalStateUtil.get_nm_loc_total.simps fnm' fun_upd_same get_fnm_nm.simps get_fnm_total.simps nm'' nm'_sub option.distinct(1) option.inject total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
+          hence "p > Abs_preal v_p"
+            using True \<open>Abs_preal v_p \<le> p\<close> fnm' nm'' nm'_sub order_le_imp_less_or_eq by fastforce
+          moreover have "0 < (p - Abs_preal v_p) / p"
+          proof -
+            have "p - Abs_preal v_p > 0"
+              by (metis \<open>Abs_preal v_p \<le> p\<close> add_0 calculation greater_minus_plus order_less_irrefl pperm_pnone_pgt)
+            thus ?thesis
+              by (metis Rep_preal_inverse \<open>Abs_preal v_p \<le> p\<close> divide_eq_0_iff divide_preal.rep_eq leD pperm_pnone_pgt psub_smaller zero_preal.rep_eq)
+          qed
+          moreover from True have [simp]: "q = p - Abs_preal v_p"
+            using mp' nm'_sub pred_perm by force
+          moreover have pnm_consistent: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := pnm \<rparr>) (pred_id, vs) p"
+            using SatAll_case assms(1) nm nm_decomp p pnm by fastforce
+          moreover have "(p - Abs_preal v_p) / p * p = p - Abs_preal v_p"
+            by (metis * Rep_preal_inverse divide_preal.rep_eq get_fnm_nm.simps get_mp_nm.simps nm_decomp nonzero_eq_divide_eq option.distinct(1) p pnm times_preal.rep_eq zero_preal.abs_eq)
+          ultimately show ?thesis
+            using pnm_consistent
+                  fraction_consistent_external(1)[of "(p - Abs_preal v_p) / p" ctxt "\<phi>\<lparr>get_nm_total := pnm\<rparr>" pred_id vs p]
+            by (simp add: True)
+        next
+          case False
+          then show ?thesis
+            using SatAll_case nm'' pred_perm assms(1) fnm' mp' nm nm'_sub nm_decomp total_state.select_convs(2) by fastforce
         qed
-        moreover from True have [simp]: "q = p - Abs_preal v_p"
-          using mp' nm'_sub pred_perm by force
-        moreover have pnm_consistent: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := pnm \<rparr>) (pred_id, vs) p"
-          using SatAll_case assms(1) nm nm_decomp p pnm by fastforce
-        moreover have "(p - Abs_preal v_p) / p * p = p - Abs_preal v_p"
-          by (metis * Rep_preal_inverse divide_preal.rep_eq get_fnm_nm.simps get_mp_nm.simps nm_decomp nonzero_eq_divide_eq option.distinct(1) p pnm times_preal.rep_eq zero_preal.abs_eq)
-        ultimately show ?thesis
-          using pnm_consistent
-                fraction_consistent_external(1)[of "(p - Abs_preal v_p) / p" ctxt "\<phi>\<lparr>get_nm_total := pnm\<rparr>" pred_id vs p]
-          by (simp add: True)
-      next
-        case False
-        then show ?thesis
-          using SatAll_case nm'' pred_perm assms(1) fnm' mp' nm nm'_sub nm_decomp total_state.select_convs(2) by fastforce
       qed
     qed
+  
+    \<comment> \<open>The shifted part\<close>
+    have shift_consistent: "consistent_external ctxt (\<phi>\<lparr> get_nm_total := nested_mask_multiply pnm (Abs_preal v_p / p) \<rparr>)"
+    proof -
+      have "consistent_external ctxt (\<phi>\<lparr> get_nm_total := pnm \<rparr>)"
+        by (metis TotalStateUtil.get_nm_loc_total.simps assms(1) consistent_external.cases consistent_external_wrt_ploc.cases get_fnm_nm.simps get_fnm_total.simps nm nm_decomp pnm)
+      moreover have "Abs_preal v_p / p > 0"
+        by (metis Rep_preal_inverse \<open>Abs_preal v_p \<le> p\<close> \<open>Abs_preal v_p \<noteq> pos_perm_class.pnone\<close> divide_eq_0_iff divide_preal.rep_eq leD preal_not_0_gt_0 zero_preal.rep_eq)
+      ultimately show ?thesis
+        using fraction_consistent_external(2)[of "Abs_preal v_p / p" ctxt "\<phi>\<lparr> get_nm_total := pnm \<rparr>"]
+        by simp
+    qed
+  
+    \<comment> \<open>Use combinability\<close>
+    have "\<phi>' = \<phi>\<lparr> get_nm_total := nested_mask_merge nm'_sub (nested_mask_multiply pnm (Abs_preal v_p / p)) \<rparr>"
+      using \<phi>'_nm hh_unchanged nm' by force
+    show ?thesis
+      using nm'_sub_consistent
+      by (metis (full_types) shift_consistent \<phi>'_nm hh_unchanged nm' old.unit.exhaust sum_consistent_external total_state.surjective total_state.update_convs(2))
   qed
-
-  \<comment> \<open>The shifted part\<close>
-  have shift_consistent: "consistent_external ctxt (\<phi>\<lparr> get_nm_total := nested_mask_multiply pnm (Abs_preal v_p / p) \<rparr>)"
-  proof -
-    have "consistent_external ctxt (\<phi>\<lparr> get_nm_total := pnm \<rparr>)"
-      by (metis TotalStateUtil.get_nm_loc_total.simps assms(1) consistent_external.cases consistent_external_wrt_ploc.cases get_fnm_nm.simps get_fnm_total.simps nm nm_decomp pnm)
-    moreover have "Abs_preal v_p / p > 0"
-      by (metis Rep_preal_inverse \<open>Abs_preal v_p \<le> p\<close> \<open>Abs_preal v_p \<noteq> pos_perm_class.pnone\<close> divide_eq_0_iff divide_preal.rep_eq leD preal_not_0_gt_0 zero_preal.rep_eq)
-    ultimately show ?thesis
-      using fraction_consistent_external(2)[of "Abs_preal v_p / p" ctxt "\<phi>\<lparr> get_nm_total := pnm \<rparr>"]
-      by simp
-  qed
-
-  \<comment> \<open>Use combinability\<close>
-  have "\<phi>' = \<phi>\<lparr> get_nm_total := nested_mask_merge nm'_sub (nested_mask_multiply pnm (Abs_preal v_p / p)) \<rparr>"
-    using \<phi>'_nm hh_unchanged nm' by force
-  show ?thesis
-    using nm'_sub_consistent
-    by (metis (full_types) shift_consistent \<phi>'_nm hh_unchanged nm' old.unit.exhaust sum_consistent_external total_state.surjective total_state.update_convs(2))
 qed
 
 

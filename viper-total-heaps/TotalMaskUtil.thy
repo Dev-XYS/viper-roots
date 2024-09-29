@@ -19,46 +19,23 @@ lemma wf_nested_mask_rel: "wf nested_mask_rel"
 
 subsection \<open>Mask Merge\<close>
 
-fun field_mask_merge :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask" where
-  "field_mask_merge mh\<^sub>1 mh\<^sub>2 = add_masks mh\<^sub>1 mh\<^sub>2"
-
-fun predicate_mask_merge :: "'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a predicate_mask" where
-  "predicate_mask_merge mp\<^sub>1 mp\<^sub>2 = add_masks mp\<^sub>1 mp\<^sub>2"
-
 function (sequential) nested_mask_merge :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
   "nested_mask_merge (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) =
-                (NM (field_mask_merge mh\<^sub>1 mh\<^sub>2) (predicate_mask_merge mp\<^sub>1 mp\<^sub>2)
-                (\<lambda>p. (case (fnm\<^sub>1 p) of None \<Rightarrow> (fnm\<^sub>2 p) | Some nm\<^sub>1 \<Rightarrow> (case (fnm\<^sub>2 p) of None \<Rightarrow> Some nm\<^sub>1 | Some nm\<^sub>2 \<Rightarrow> Some (nested_mask_merge nm\<^sub>1 nm\<^sub>2))))) "
+     NM (add_masks mh\<^sub>1 mh\<^sub>2) (add_masks mp\<^sub>1 mp\<^sub>2) (fnm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ fnm\<^sub>2)"
   by (pat_completeness) auto
 termination
    \<comment>\<open>"nested_mask_rel <*lex*> {}" would be sufficient here, since the first argument becomes smaller always\<close>
   apply (relation "nested_mask_rel <*lex*> nested_mask_rel")
   using wf_nested_mask_rel
    apply blast
-  by auto
-
-
-text \<open>Defining \<^const>\<open>nested_mask_merge\<close> directly using \<^term>\<open>(nm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ nm\<^sub>2)\<close> but not sure how to do the termination proof in that case.
-      So, we instead show the equivalence separately in a lemma and replace the rewrite rule in the simpset with the lemma.\<close>
-
-declare nested_mask_merge.simps [simp del]
-
-lemma nested_mask_merge_combine_options [simp]:
-  "nested_mask_merge (NM mh\<^sub>1 mp\<^sub>1 nm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 nm\<^sub>2) = (NM (add_masks mh\<^sub>1 mh\<^sub>2) (add_masks mp\<^sub>1 mp\<^sub>2) (nm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ nm\<^sub>2))"
-  unfolding pfun_comb_def combine_options_def
-  by (simp add: nested_mask_merge.simps)
+  using Option.is_none_def
+  by fastforce
 
 
 subsection \<open>Mask Multiplication\<close>
 
-fun field_mask_multiply :: "preal \<Rightarrow> field_mask \<Rightarrow> field_mask" where
-  "field_mask_multiply p mh = ((*) p) \<circ> mh"
-
-fun predicate_mask_multiply :: "preal \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a predicate_mask" where
-  "predicate_mask_multiply p mp = ((*) p) \<circ> mp"
-
 function (sequential) nested_mask_multiply :: "preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
-  "nested_mask_multiply p (NM mh mp fnm) = NM (field_mask_multiply p mh) (predicate_mask_multiply p mp) ((map_option (\<lambda>nm. nested_mask_multiply p nm)) \<circ> fnm)"
+  "nested_mask_multiply p (NM mh mp fnm) = NM (mul_mask p mh) (mul_mask p mp) ((map_option (\<lambda>nm. nested_mask_multiply p nm)) \<circ> fnm)"
   by (pat_completeness) auto
 termination
   apply (relation "{} <*lex*> nested_mask_rel")
@@ -76,7 +53,8 @@ termination
   apply (relation "nested_mask_rel <*lex*> {}")
   using wf_nested_mask_rel
    apply blast
-  using Option.is_none_def by fastforce
+  using Option.is_none_def
+  by fastforce
 
 
 subsection \<open>Mask Split\<close>
@@ -107,6 +85,19 @@ fun is_singleton_mh :: "heap_loc \<Rightarrow> field_mask \<Rightarrow> bool" wh
 
 fun is_singleton_mp :: "'a predicate_loc \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
   "is_singleton_mp ploc mp = (\<exists>p > 0. mp = singleton_mp ploc p)"
+
+
+subsection \<open>Zero Equivalent Nested Mask\<close>
+
+function (sequential) nested_mask_zero_equiv :: "'a nested_mask \<Rightarrow> bool" where
+  "nested_mask_zero_equiv (NM mh mp fnm) = ((mh = zero_mask) \<and> (mp = zero_mask) \<and>
+     (\<forall>lp nm'. fnm lp = Some nm' \<longrightarrow> nested_mask_zero_equiv nm'))"
+  by (pat_completeness) auto
+termination
+  apply (relation "nested_mask_rel")
+  using wf_nested_mask_rel
+   apply blast
+  by fastforce
 
 
 end

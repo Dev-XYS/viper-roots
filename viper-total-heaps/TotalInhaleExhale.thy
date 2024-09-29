@@ -12,8 +12,8 @@ definition inhale_perm_single :: "('a full_total_state \<Rightarrow> bool) \<Rig
   where "inhale_perm_single R \<omega> lh p_opt =
     { \<omega>'| \<omega>' q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
-            \<comment> \<open>get_mh_total_full \<omega> lh + q \<le> 1 \<and>\<close>  \<comment> \<open>There can be at most 1 field permission\<close>
-            \<comment> \<open>Should be removed? Included in internal consistency.\<close>
+            get_mh_total_full \<omega> lh + q \<le> 1 \<and>  \<comment> \<open>There can be at most 1 field permission\<close>
+            \<comment> \<open>Included in internal consistency, but keeping it for backward compatibility.\<close>
             \<omega>' = upd_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + q) \<and>
             R \<omega>'
     }"
@@ -222,6 +222,22 @@ inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
      red_pure_exps_total ctxt (Some \<omega>0) (direct_sub_expressions_assertion A) \<omega> None
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt R \<omega>0 A \<omega> RFailure"
+
+
+subsection \<open>Exhale Properties (Todo: put in separate file?)\<close>
+
+lemma exhale_fraction:
+  assumes "red_exhale ctxt R \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
+  shows "get_nm_loc_total_full \<omega>' ploc =
+         (get_mp_total_full \<omega>' ploc / get_mp_total_full \<omega> ploc) *\<^sub>s get_nm_loc_total_full \<omega> ploc"
+  sorry
+
+\<comment> \<open>already proved elsewhere, but need adjustment\<close>
+lemma exhale_smaller:
+  assumes "red_exhale ctxt R \<omega>_def A \<omega> (RNormal \<omega>')"
+    shows "\<And>x. get_mh_total_full \<omega> x \<ge> get_mh_total_full \<omega>' x"
+      and "\<And>x. get_mp_total_full \<omega> x \<ge> get_mp_total_full \<omega>' x"
+  sorry
 
 
 end

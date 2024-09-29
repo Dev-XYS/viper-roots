@@ -2077,8 +2077,8 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
     proof -
       let ?\<omega>0_rets_empty = "\<lparr> get_store_total = shift_and_add_list_alt Map.empty (v_args@v_rets), 
                     get_trace_total = [old_label \<mapsto> get_total_full \<omega>], 
-                    get_total_full = (get_total_full \<omega>)\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>"
-      let ?\<omega>0_empty = "?\<omega>0\<lparr> get_total_full := (get_total_full \<omega>)\<lparr> get_nm_total := empty_nm \<rparr> \<rparr>"
+                    get_total_full = (get_total_full \<omega>)\<lparr> get_nm_total := 0 \<rparr> \<rparr>"
+      let ?\<omega>0_empty = "?\<omega>0\<lparr> get_total_full := (get_total_full \<omega>)\<lparr> get_nm_total := 0 \<rparr> \<rparr>"
   
       have "assertion_framing_state ctxt_vpr StateCons (method_decl.pre mdecl) ?\<omega>0_rets_empty"
         unfolding assertion_framing_state_def
