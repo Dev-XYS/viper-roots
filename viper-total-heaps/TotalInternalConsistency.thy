@@ -101,7 +101,7 @@ proof -
     "q \<le> p" and
     "q \<noteq> 0" and
     "mp' = mp( (pred_id,vs) := p - q )" and
-    fnm': "fnm' = fnm( (pred_id,vs) := ((p - q) / p) *\<^sub>s pnm_opt )" and
+    fnm': "fnm' = fnm( (pred_id,vs) := if p = q then None else ((p - q) / p) *\<^sub>s pnm_opt )" and
     nm_sub: "nm'_sub = NM mh mp' fnm'" and
     nm': "Some nm' = Some nm'_sub + (q / p) *\<^sub>s pnm_opt"
     by (blast elim: shift_up.cases)
@@ -109,7 +109,7 @@ proof -
   proof (cases pnm_opt)
     case None
     then show ?thesis
-      by (metis assms(2) fnm' fun_upd_triv group_cancel.rule0 nm nm' nm_loc_sum_mp_irrelevant nm_sub option.map(1) option.sel pnm_opt scale_option_def zero_option_def)
+      by (smt (verit, ccfv_threshold) \<open>\<And>thesis. (\<And>mh mp fnm pnm_opt p mp' fnm' nm'_sub. \<lbrakk>nm = NM mh mp fnm; pnm_opt = fnm (pred_id, vs); p = mp (pred_id, vs); q \<le> p; q \<noteq> pos_perm_class.pnone; mp' = mp((pred_id, vs) := p - q); fnm' = fnm ((pred_id, vs) := if p = q then None else ((p - q) / p) *\<^sub>s pnm_opt); nm'_sub = NM mh mp' fnm'; Some nm' = Some nm'_sub + (q / p) *\<^sub>s pnm_opt\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close> assms(2) fun_upd_triv get_fnm_nm.simps group_cancel.rule0 nm nm_loc_sum_mp_irrelevant option.map(1) option.sel pnm_opt scale_option_def zero_option_def)
   next
     case (Some pnm)
     (* have "fnm' (pred_id,vs) = None \<longleftrightarrow> q = p"
@@ -133,9 +133,10 @@ proof -
       apply (cases "fnm' (pred_id,vs)")
        apply simp_all
        apply (simp add: Some fnm' scale_option_def)
+       apply (metis None_eq_map_option_iff PosReal.field_divide_inverse Some cancel_comm_monoid_add_class.diff_cancel lambda_zero mult_zero_right option.distinct(1) scale_option_def)
       apply (simp add: fnm' Some scale_option_def)
       using nm_loc_sum_mult
-      by blast
+      by (metis Some option.distinct(1) option.sel option.simps(9) scale_option_def)
     moreover have "option_fold (\<lambda>nm. nm_loc_sum loc nm ps) (ps = 0) (fnm (pred_id,vs))"
       by (metis option_fold.simps(1) pnm_opt Some pnm_sum)
     moreover have "fnm' = fnm( (pred_id, vs) := fnm' (pred_id, vs) )"

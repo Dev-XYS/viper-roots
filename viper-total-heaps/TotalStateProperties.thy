@@ -590,7 +590,7 @@ proof -
     by auto
   obtain mp' fnm' nm'_sub where
     6: "mp' = mp( (pid,vs) := p - q )" and
-    7: "fnm' = fnm( (pid,vs) := ((p - q) / p) *\<^sub>s pnm )" and
+    7: "fnm' = fnm( (pid,vs) := if p = q then None else ((p - q) / p) *\<^sub>s pnm )" and
     8: "nm'_sub = NM mh mp' fnm'"
     by auto
   have

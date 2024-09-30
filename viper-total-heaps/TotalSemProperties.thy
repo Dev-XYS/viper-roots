@@ -2337,14 +2337,15 @@ next
   case (ExhSubExpFailure A \<omega>)
   then show ?case by simp \<comment>\<open>contradiction\<close>
 qed
+*)
 
 subsection \<open>Reduction of statements\<close>
 
 lemma fold_rel_normal_only_changes_mask:
-  assumes "fold_rel ctxt R pred_id vs q \<omega> (RNormal \<omega>')"
+  assumes "fold_rel ctxt pred_id vs q \<omega> (RNormal \<omega>')"
   shows "get_store_total \<omega>' = get_store_total \<omega> \<and>
          get_trace_total \<omega>' = get_trace_total \<omega> \<and>
-         get_h_total_full \<omega>' = get_h_total_full \<omega>"
+         get_hh_total_full \<omega>' = get_hh_total_full \<omega>"
   using assms
 proof cases
   case (FoldRelNormal pred_decl pred_body \<omega>'' m)  
@@ -2353,7 +2354,6 @@ proof cases
     unfolding \<open>\<omega>' = _\<close>
     by fastforce    
 qed
-*)
 
 lemma red_stmt_preserves_well_typed_store:
   assumes "red_stmt_total ctxt_vpr StateCons \<Lambda> stmt \<omega> res"
@@ -2412,15 +2412,13 @@ next
 next
   case (RedFold \<omega> e_args v_args e_p v_p pred_id res \<Lambda>)
   then show ?case
-    sorry
-    (* using fold_rel_normal_only_changes_mask
-    by metis *)
+    using fold_rel_normal_only_changes_mask
+    by metis
 next
   case (RedFoldWildcard \<omega> e_args v_args pred_id p res \<Lambda>)
   then show ?case
-    sorry
-    (* using fold_rel_normal_only_changes_mask
-    by metis *)
+    using fold_rel_normal_only_changes_mask
+    by metis
 next
   case (RedScope v \<tau> \<Lambda> scopeBody \<omega> res res_unshift)
   from this obtain \<omega>s where "res = RNormal \<omega>s"
@@ -2507,14 +2505,12 @@ next
     by fastforce
 next
   case (RedFold \<omega> e_args v_args e_p v_p pred_id res \<Lambda>)
-  then show ?case 
-    sorry
-    (* by (auto elim: FoldRelNormalCase) *)
+  then show ?case
+    by (auto elim: FoldRelNormal_case)
 next
   case (RedFoldWildcard \<omega> e_args v_args pred_id p res \<Lambda>)
-  then show ?case 
-    sorry
-    (* by (auto elim: FoldRelNormalCase) *)
+  then show ?case
+    by (auto elim: FoldRelNormal_case)
 next
   case (RedScope v \<tau> \<Lambda> scopeBody \<omega> res res_unshift)
   then show ?case 
@@ -2563,8 +2559,7 @@ next
     by (metis result_total.exhaust)
   ultimately have "res = map_result_total (reset_state_after_call ys v_rets \<omega>) (RNormal \<omega>Post)"
     using RedMethodCall
-    sorry
-    (* by blast *)
+    by blast
   thus ?case
     unfolding reset_state_after_call_def
     using \<open>x \<notin> modif (MethodCall ys m es)\<close> \<open>res = RNormal \<omega>'\<close>
@@ -2583,13 +2578,11 @@ next
 next
   case (RedFold \<omega> e_args v_args e_p v_p pred_id res \<Lambda>)
   then show ?case
-    sorry
-    (* by (auto elim: FoldRelNormalCase) *)
+    by (auto elim: FoldRelNormal_case)
 next
   case (RedFoldWildcard \<omega> e_args v_args pred_id p res \<Lambda>)
   then show ?case
-    sorry
-    (* by (auto elim: FoldRelNormalCase) *)
+    by (auto elim: FoldRelNormal_case)
 next
   case (RedScope v \<tau> \<Lambda> scopeBody \<omega> res res_unshift)
   from this obtain \<omega>Body where "res = RNormal \<omega>Body"
@@ -2674,9 +2667,8 @@ lemma inhale_perm_single_Some_non_empty_preserve:
 proof -
   have SufficientPerm: "1 \<ge> (get_mh_total_full \<omega> lh + p)"
     using InhPermSingle1
-    unfolding inhale_perm_single_def \<comment> \<open>Todo: state consistency\<close>
-    (* by fastforce *)
-    sorry
+    unfolding inhale_perm_single_def
+    by fastforce
 
   let ?\<omega>0 = "(upd_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + p))"
   have "?\<omega>0 \<in> inhale_perm_single R \<omega> lh (Some p)"
@@ -2958,9 +2950,7 @@ proof (induction arbitrary: \<omega>2 rule: red_inhale.inducts)
               from \<open>\<omega>Elem \<in> _\<close>
               have "1 \<ge> get_mh_total_full \<omega> (a, f) + Abs_preal p"
                 unfolding \<open>W' = _\<close> inhale_perm_single_def \<open>r = _\<close>
-                (* by simp *)
-                  \<comment> \<open>Todo: state consistency\<close>
-                sorry
+                by simp
               thus ?thesis
                 using InhAcc
                 by simp

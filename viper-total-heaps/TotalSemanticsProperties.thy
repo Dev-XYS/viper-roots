@@ -1423,7 +1423,7 @@ proof -
     "p \<le> pp" and
     "p \<noteq> 0" and
     mp': "mp' = mp( (pid,vs) := pp - p )" and
-    fnm': "fnm' = fnm( (pid,vs) := ((pp - p) / pp) *\<^sub>s pnm' )" and
+    fnm': "fnm' = fnm( (pid,vs) := if pp = p then None else ((pp - p) / pp) *\<^sub>s pnm' )" and
     nm\<^sub>d: "nm\<^sub>d = NM mh mp' fnm'" and
     nm': "Some nm' = Some nm\<^sub>d + (p / pp) *\<^sub>s pnm'"
     by (blast elim: shift_up.cases)
@@ -1464,16 +1464,20 @@ proof -
     using \<open>Some pnm = fnm (pid, vs)\<close>
     by force
   have "get_nm_total \<phi>\<^sub>d = nm\<^sub>d"
-    apply (simp add: assms(5) nm\<^sub>d \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> fnm' \<open>pp = mp (pid,vs)\<close>)
-    apply (simp add: mp' \<open>pp = mp (pid,vs)\<close> \<open>fnm (pid,vs) = Some pnm\<close>)
+    apply (simp add: nm\<^sub>d \<open>\<phi>\<^sub>d = _\<close>)
     apply (rule nested_mask_equality)
       apply simp_all
       apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(8))
      apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(8))
+    using \<open>pp = mp (pid, vs)\<close> mp'
+     apply fastforce
     apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(8))
     apply standard
     using \<open>pnm' = fnm (pid, vs)\<close>
-    by auto+
+    using \<open>pp = mp (pid, vs)\<close> fnm'
+     apply presburger
+    using \<open>pnm' = fnm (pid, vs)\<close> \<open>pp = mp (pid, vs)\<close> fnm'
+    by presburger
 
   have 1: "add_to_nm_total_full
           \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr> nm\<^sub>s =

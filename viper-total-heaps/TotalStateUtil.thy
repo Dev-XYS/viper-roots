@@ -53,7 +53,7 @@ fun mult_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarro
   where "mult_nm_loc_nm (NM mh mp fnm) lp p = NM mh mp (fnm( lp := p *\<^sub>s fnm lp ))"
 
 fun mult_rm_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
-  where "mult_rm_nm_loc_nm (NM mh mp fnm) lp p = NM mh mp (fnm( lp := ((mp lp - p) / mp lp) *\<^sub>s fnm lp) )"
+  where "mult_rm_nm_loc_nm (NM mh mp fnm) lp p = NM mh mp (fnm( lp := if mp lp = p then None else ((mp lp - p) / mp lp) *\<^sub>s fnm lp) )"
 
 
 subsection \<open>Total State Getters and Setters\<close>
@@ -268,7 +268,7 @@ inductive shift_up :: "predicate_ident \<Rightarrow> ('a val list) \<Rightarrow>
      q \<le> p;
      q \<noteq> 0;
      mp' = mp( (pred_id,vs) := p - q );
-     fnm' = fnm( (pred_id,vs) := ((p - q) / p) *\<^sub>s pnm );
+     fnm' = fnm( (pred_id,vs) := if p = q then None else ((p - q) / p) *\<^sub>s pnm );
      nm'_sub = NM mh mp' fnm';
      Some nm' = Some nm'_sub + (q / p) *\<^sub>s pnm \<rbrakk> \<Longrightarrow>
      shift_up pred_id vs q nm nm'"
