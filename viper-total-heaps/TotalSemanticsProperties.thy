@@ -20,18 +20,6 @@ lemma eval_with_None:
     shows "ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
   sorry
 
-lemma eval_with_no_nm:
-  assumes "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
-      and "no_perm_pure_exp e"
-    shows "ctxt, \<omega>_def \<turnstile> \<langle>e; upd_nm_total_full \<omega> 0\<rangle> [\<Down>]\<^sub>t Val v"
-  sorry
-
-lemma eval_with_no_trace:
-  assumes "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
-      and "no_old_pure_exp e"
-    shows "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<lparr> get_trace_total := Map.empty \<rparr>\<rangle> [\<Down>]\<^sub>t Val v"
-  sorry
-
 lemma eval_with_same_store_same_hh:
   shows "ctxt, \<omega>_def\<^sub>1 \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t r\<^sub>1 \<Longrightarrow>
          ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t r\<^sub>2 \<Longrightarrow>
@@ -817,26 +805,6 @@ lemma inhale_with_mono_state_consistency:
 
 subsection \<open>External Consistent State \<Longrightarrow> Inhaled State\<close>
 
-lemma eval_framed_state_helper:
-  assumes "es = direct_sub_expressions_assertion A"
-      and "red_pure_exps_total ctxt None es \<omega>\<^sub>0 (Some vs)"
-      and "assertion_framing_state ctxt (\<lambda>_. True) A \<omega>"
-      and "supported_pred_body A"
-    shows "red_pure_exps_total ctxt (Some \<omega>) es \<omega> (Some vs)"
-  sorry
-
-lemma red_pure_exps_totalI_helper:
-  assumes "length es = length vs"
-      and "\<And>i. 0 \<le> i \<Longrightarrow> i < length es \<Longrightarrow> ctxt, \<omega>_def \<turnstile> \<langle>es ! i; \<omega>\<rangle> [\<Down>]\<^sub>t Val (vs ! i)"
-    shows "red_pure_exps_total ctxt \<omega>_def es \<omega> (Some vs)"
-  sorry
-
-lemma red_pure_exps_totalE_helper:
-  assumes "length es = length vs"
-      and "red_pure_exps_total ctxt \<omega>_def es \<omega> (Some vs)"
-    shows "\<And>i. 0 \<le> i \<Longrightarrow> i < length es \<Longrightarrow> ctxt, \<omega>_def \<turnstile> \<langle>es ! i; \<omega>\<rangle> [\<Down>]\<^sub>t Val (vs ! i)"
-  sorry
-
 lemma singleton_set_helper:
   assumes "a = b"
     shows "a \<in> {b}"
@@ -863,17 +831,22 @@ proof (induction A arbitrary: \<omega> nm)
   hence "supported_pred_expr e_r" and "supported_pred_expr e_p"
     by simp+
 
-  have "red_pure_exps_total ctxt None [e_r, e_p] \<omega>\<^sub>0 (Some [VRef r, VPerm p])"
-    by (metis (no_types, lifting) IH.hyps(1) IH.hyps(2) add.right_neutral add_Suc_right less_Suc0 less_Suc_eq list.size(3) list.size(4) nth_Cons_0 nth_Cons_Suc red_pure_exps_totalI_helper)
-  hence "red_pure_exps_total ctxt (Some \<omega>) [e_r, e_p] \<omega> (Some [VRef r, VPerm p])"
-    using IH(1,2,12,13) eval_framed_state_helper
-    by (metis direct_sub_expressions_assertion.simps(1) sub_expressions_atomic.simps(2) sub_expressions_exp_or_wildcard.simps(1))
+  obtain r_r where "ctxt, Some \<omega> \<turnstile> \<langle>e_r;\<omega>\<rangle> [\<Down>]\<^sub>t r_r"
+    by (metis IH.hyps(1) IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh \<open>supported_pred_expr e_r\<close> eval_ok_no_type_error(1))
+  obtain r_p where "ctxt, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t r_p"
+    by (metis IH.hyps(2) IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh \<open>supported_pred_expr e_p\<close> eval_ok_no_type_error(1))
 
-  have eval_e_r: "ctxt, Some \<omega> \<turnstile> \<langle>e_r;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
-       eval_e_p: "ctxt, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
-    using \<open>red_pure_exps_total ctxt (Some \<omega>) [e_r, e_p] \<omega> (Some [VRef r, VPerm p])\<close> red_exp_list_normal_elim
-     apply fastforce
-    by (smt (verit, best) \<open>red_pure_exps_total ctxt (Some \<omega>) [e_r, e_p] \<omega> (Some [VRef r, VPerm p])\<close> list.discI list.inject red_exp_list_normal_elim)
+  have "\<And>res. ctxt, Some \<omega> \<turnstile> \<langle>e_r;\<omega>\<rangle> [\<Down>]\<^sub>t res \<Longrightarrow> res \<noteq> VFailure"
+    using IH.prems(6) RedExpListFailure assertion_framing_state_sub_exps_not_failure
+    by fastforce
+  hence eval_e_r: "ctxt, Some \<omega> \<turnstile> \<langle>e_r;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+    by (metis IH.hyps(1) IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh \<open>ctxt, Some \<omega> \<turnstile> \<langle>e_r;\<omega>\<rangle> [\<Down>]\<^sub>t r_r\<close> \<open>supported_pred_expr e_r\<close> eval_with_same_store_same_hh(1) extended_val.exhaust_sel)
+
+  have "\<And>res. ctxt, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t res \<Longrightarrow> res \<noteq> VFailure"
+    using IH.prems(6) RedExpListCons RedExpListFailure assertion_framing_state_sub_exps_not_failure eval_e_r
+    by fastforce
+  hence eval_e_p: "ctxt, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+    by (metis IH(2) IH.prems(4) IH.prems(5) \<omega>\<^sub>0hh \<open>\<And>thesis. (\<And>r_p. ctxt, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t r_p \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close> \<open>supported_pred_expr e_p\<close> eval_with_same_store_same_hh(1) extended_val.exhaust)
 
   define W where "W = (if r = Null
                        then {\<omega>}
@@ -908,8 +881,8 @@ proof (induction A arbitrary: \<omega> nm)
     have fnm: "get_fnm_nm nm = (\<lambda>_. None)"
       by (metis IH.hyps(6) IH.prems(2) IH.prems(3) SatAll_case surj_pair total_state.select_convs(2) zero_mask_def)
     have mask_wf: "get_mh_total_full \<omega> (the_address r, f) + Abs_preal p \<le> 1"
-      using spec[OF IH(14)[simplified wf_mask_simple_def]]
-      sorry
+      using spec[OF IH(14)[simplified wf_mask_simple_def], simplified, simplified add_masks_def]
+      by (metis IH.hyps(3) get_mh_total.simps get_mh_total_full.simps mh singleton_mh.elims)
     show "th_result_rel (0 \<le> p) (W \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null)) W (RNormal (add_to_nm_total_full \<omega> nm))"
       apply (simp add: IH(4) W_def inhale_perm_single_def False mask_wf[simplified])
       apply (rule THResultNormal)
@@ -961,7 +934,8 @@ next
     apply (intro conjI)
     using \<open>is_singleton_mh (a, f) (get_mh_nm nm)\<close>
       apply fastforce
-    subgoal sorry
+    using spec[OF IH(13)[simplified wf_mask_simple_def], simplified, simplified add_masks_def] IH.hyps(2)
+     apply auto[1]
     apply (rule full_total_state.equality, simp_all)
     apply (rule total_state.equality, simp_all)
     apply (rule nested_mask_equality, simp_all; standard)
@@ -1401,7 +1375,7 @@ lemma inhale_simulates_unfold:
       and IntCons: "consistent_internal_total \<phi>"
       and PredDecl: "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
       and PredBody: "ViperLang.predicate_decl.body pdecl = Some pbody"
-      and SupPred: "supported_pred_body pbody" \<comment> \<open>change name\<close>
+      and CtxtWfPred: "ctxt_wf_pred ctxt"
       and SelfFraming: "\<And>q. assertion_self_framing_store ctxt (\<lambda>_. True) (syntactic_mult q pbody) (nth_option vs)"
       and "\<phi>\<^sub>d = dec_mp_loc_total (mult_rm_nm_loc_total \<phi> (pid,vs) p) (pid,vs) p"
     shows "red_inhale ctxt (\<lambda>_. True) (syntactic_mult (Rep_preal p) pbody)
@@ -1457,7 +1431,7 @@ proof -
     by simp
   ultimately have
     ShiftExtCons: "consistent_external_wrt_ploc ctxt \<lparr>get_hh_total = get_hh_total \<phi>, get_nm_total = nm\<^sub>s\<rparr> (pid, vs) p"
-    using fraction_consistent_external(1)[of "p / pp", OF _ pnm_cons] nm\<^sub>s_def
+    using fraction_consistent_external(1)[of "p / pp", OF _ CtxtWfPred pnm_cons] nm\<^sub>s_def
     by (metis mult_nm_total.elims total_state.ext_inject total_state.surjective total_state.update_convs(2))
 
   have "fnm (pid,vs) = Some pnm"
@@ -1500,9 +1474,10 @@ proof -
     using \<open>get_hh_total \<phi>' = get_hh_total \<phi>\<close> by auto
 
   show ?thesis
-    using extcons_state_can_be_inhaled[OF PredDecl PredBody SupPred Framed ShiftExtCons, simplified 1] 2 assms(7,8)
+    using extcons_state_can_be_inhaled[OF PredDecl PredBody _ Framed ShiftExtCons, simplified 1] 2 assms(7,8)
           unfold_preserves_internal_consistency_total[OF Unfold IntCons]
-    by (metis dec_mp_loc_total.elims full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps get_mh_total_full.elims intcons_implies_valid_heap_mask mult_rm_nm_loc_total.simps total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
+          CtxtWfPred ctxt_wf_pred_def
+    by (metis (no_types, lifting) PredBody PredDecl dec_mp_loc_total.elims full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps get_mh_total_full.elims intcons_implies_valid_heap_mask mult_rm_nm_loc_total.simps total_state.ext_inject total_state.surjective total_state.update_convs(2))
 qed
 
 

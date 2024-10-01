@@ -17,14 +17,6 @@ lemma supported_sub_expr_supported:
   using assms
   by (induct e; simp add: list_all_length)
 
-lemma update_mp_loc_total_preserves_hh:
-  shows "get_hh_total (upd_mp_loc_total \<phi> ploc mp) = get_hh_total \<phi>"
-  sorry
-
-lemma add_to_nm_loc_total_preserves_hh:
-  shows "get_hh_total (add_to_nm_loc_total \<phi> ploc nm) = get_hh_total \<phi>"
-  sorry
-
 lemma nm_subtract_mh:
   shows "get_mh_nm (nested_mask_subtract nm\<^sub>1 nm\<^sub>2) = get_mh_nm nm\<^sub>1 - get_mh_nm nm\<^sub>2"
   by (metis get_fnm_nm.cases get_mh_nm.simps nested_mask_subtract.simps)
@@ -137,16 +129,30 @@ next
     by (metis (mono_tags, lifting) RedUnfoldingDefNoPred Rep_preal_inject get_mp_total_full_multiply mult_eq_0_iff option.simps(9) sub_pure_exp_total.simps(9) supported_sub_expr_supported times_preal.rep_eq zero_preal.rep_eq)
 next
   case IH: (RedUnfoldingDef \<omega>_def es \<omega> vs perm p nm' \<omega>'_def ubody v)
-  hence es_sup: "list_all supported_pred_expr es"
-    by (metis sub_pure_exp_total.simps(9) supported_sub_expr_supported)
+  hence es_sup: "list_all supported_pred_expr es" and
+        body_sup: "supported_pred_expr ubody"
+     apply (metis sub_pure_exp_total.simps(9) supported_sub_expr_supported)
+    using IH.prems
+    by auto
+  have nm_unfold:
+    "shift_up p vs
+     (get_mp_total_full (mult_nm_total_full \<omega>_def frac) (p, vs) / Abs_preal 2)
+     (get_nm_total_full (mult_nm_total_full \<omega>_def frac)) (frac *\<^sub>s nm')"
+    using shift_up_frac[OF assms(1) IH(7), simplified IH(5)]
+    apply (simp add: mul_mask_def)
+    by (simp add: PosReal.field_divide_inverse mult.assoc)
   show ?case
     apply (simp del: mult_nm_total_full.simps)
-    apply (rule red_pure_exp_total_red_pure_exps_total.RedUnfoldingDef)
-    using IH es_sup apply simp
-       defer 1
-    defer 1
-    using IH apply (simp, simp)
-    sorry \<comment> \<open>depends on the semantics of unfolding\<close>
+    apply (rule RedUnfoldingDef)
+    using IH es_sup
+         apply simp
+        apply blast
+       apply (metis IH.hyps(1) IH.hyps(2) assms get_mp_total_full_multiply less_preal.rep_eq mult_eq_0_iff pperm_pnone_pgt times_preal.rep_eq zero_preal.rep_eq)
+    using nm_unfold
+      apply blast
+     apply simp
+    using IH(4)[OF body_sup, simplified IH(8), simplified] nm_unfold
+    by auto
 next
   case IH: (RedSubFailure e' \<omega>_def \<omega>)
   show ?case
@@ -664,6 +670,7 @@ qed
 lemma fraction_consistent_external:
   fixes frac :: preal
   assumes "0 < frac"
+      and "ctxt_wf_pred ctxt"
     shows "consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p \<Longrightarrow>
            consistent_external_wrt_ploc ctxt (mult_nm_total \<phi> frac) (pred_id,vs) (frac * p)"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
@@ -677,11 +684,14 @@ proof (induction rule: consistent_external_wrt_ploc_consistent_external.inducts)
     using IH.hyps(2) assms less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq apply auto[1]
     apply simp
     apply (rule fractionability_pq)
-    using IH.hyps(2) apply blast
+    using IH.hyps(2)
+       apply blast
       apply (simp add: assms)
      defer 1
-    using IH.IH(2) apply fastforce
-    sorry \<comment> \<open>supported_pred_body\<close>
+    using IH.IH(2)
+     apply fastforce
+    using IH.IH(1) IH.hyps(1) assms(2) ctxt_wf_pred_def
+    by blast
 next
   case IH: (SatAll \<phi>)
   show ?case
@@ -698,13 +708,13 @@ next
     assume perm: "get_mp_total (mult_nm_total \<phi> frac) (pred_id, vs) = q"
        and nm': "Some nm' = TotalStateUtil.get_nm_loc_total (mult_nm_total \<phi> frac) (pred_id, vs)"
     hence "get_mp_total \<phi> (pred_id,vs) = q / frac" using nm_multiply_back
-      by (metis assms get_mp_total.simps mult_nm_total.elims total_state.simps(2) total_state.surjective total_state.update_convs(2))
+      by (metis assms(1) get_mp_total.simps mult_nm_total.elims total_state.simps(2) total_state.surjective total_state.update_convs(2))
     moreover from nm' have nm'_frac: "Some nm' = get_nm_loc_nm (frac *\<^sub>s get_nm_total \<phi>) (pred_id,vs)"
       using get_nm_loc_total_multiply by auto
     have "Some ((1 / frac) *\<^sub>s nm') = get_nm_loc_total \<phi> (pred_id,vs)"
     proof simp
       from nm'_frac obtain nm where "Some nm = get_nm_loc_total \<phi> (pred_id,vs)"
-        by (metis TotalStateUtil.get_nm_loc_total.simps assms get_fnm_nm.elims get_fnm_total.simps get_nm_loc_nm.simps nm_multiply_none not_None_eq)
+        by (metis TotalStateUtil.get_nm_loc_total.simps assms(1) get_fnm_nm.elims get_fnm_total.simps get_nm_loc_nm.simps nm_multiply_none not_None_eq)
       moreover hence "get_nm_loc_nm (frac *\<^sub>s get_nm_total \<phi>) (pred_id,vs) = Some (frac *\<^sub>s nm)"
         by (metis TotalStateUtil.get_nm_loc_total.elims get_fnm_nm.cases get_fnm_nm.simps get_fnm_total.simps get_nm_loc_nm.simps get_nm_loc_nm_multiply option.simps(9))
       ultimately show "Some ((1 / frac) *\<^sub>s nm') = get_fnm_nm (get_nm_total \<phi>) (pred_id, vs)"

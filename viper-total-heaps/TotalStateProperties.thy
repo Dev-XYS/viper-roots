@@ -607,6 +607,20 @@ proof -
     by blast
 qed
 
+lemma shift_up_exists_obtain:
+  assumes "q \<le> get_mp_nm nm (pid,vs)"
+      and "q \<noteq> 0"
+  obtains nm' where "shift_up pid vs q nm nm'"
+  using assms(1) assms(2) shift_up_exists
+  by blast
+
+lemma shift_up_frac:
+    fixes frac :: preal
+  assumes "frac > 0"
+      and "shift_up pid vs q nm nm'"
+    shows "shift_up pid vs (frac * q) (frac *\<^sub>s nm) (frac *\<^sub>s nm')"
+  sorry
+
 
 subsection \<open>Shifting stores\<close>
 

@@ -144,4 +144,14 @@ inductive_cases SatAll_case: "consistent_external ctxt \<phi>"
     "\<not> P n \<Longrightarrow> P (Suc n) is also not accepted as a valid inductive definition. \<close>
 
 
+subsection \<open>Well-formed Viper Context (Predicates)\<close>
+
+definition ctxt_wf_pred where
+  "ctxt_wf_pred ctxt \<equiv>
+     \<forall>pred_id pred_decl pred_body.
+        ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl \<longrightarrow>
+        ViperLang.predicate_decl.body pred_decl = Some pred_body \<longrightarrow>
+        supported_pred_body pred_body"
+
+
 end

@@ -246,7 +246,8 @@ lemma field_assignment_preserves_external_consistency':
               pred_self_framing ctxt pred_decl"
     shows "consistent_external ctxt (upd_hh_loc_total \<phi> loc v)"
 proof -
-  have zero_perm: "\<And>ploc nm. get_nm_loc_total \<phi> ploc = Some nm \<Longrightarrow> nm_loc_sum loc nm 0" sorry
+  have zero_perm: "\<And>ploc nm. get_nm_loc_total \<phi> ploc = Some nm \<Longrightarrow> nm_loc_sum loc nm 0"
+    by (metis assms(2) assms(3) get_fnm_total.simps get_mh_total.elims get_nm_loc_total.simps mh_1_sub_0)
   show ?thesis
     apply standard
     using assms(1) SatAll_case[of ctxt \<phi>]

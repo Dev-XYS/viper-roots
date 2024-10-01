@@ -3,86 +3,6 @@ theory TotalInternalConsistency
 begin
 
 
-(*
-subsection \<open>Old Internal Consistency\<close>
-
-\<comment> \<open>Old internal consistency definition\<close>
-
-inductive total_heap_consistent_unfold_n :: "'a nested_mask \<Rightarrow> nat \<Rightarrow> bool"
-  where
-  Zero:
-  "\<lbrakk> valid_heap_mask (get_mh_nm nm)
-   \<rbrakk> \<Longrightarrow>
-   total_heap_consistent_unfold_n nm 0"
-| UnfoldStep:
-  "\<lbrakk> \<And> pred_id vs q nm'. q \<le> get_mp_nm nm (pred_id,vs) \<Longrightarrow> q > 0 \<Longrightarrow>
-         shift_up pred_id vs q nm nm' \<Longrightarrow>
-         total_heap_consistent_unfold_n nm' n
-   \<rbrakk> \<Longrightarrow>
-   total_heap_consistent_unfold_n nm (Suc n)"
-
-inductive_cases UnfoldStep_cases: "total_heap_consistent_unfold_n nm (Suc n)"
-
-definition total_heap_consistent :: "'a total_state \<Rightarrow> bool" where
-  "total_heap_consistent \<phi> \<equiv> \<forall> n. total_heap_consistent_unfold_n (get_nm_total \<phi>) n"
-
-
-\<comment> \<open>Local variable assignment preserves internal state consistency.\<close>
-
-lemma var_assignment_preserves_internal_consistency:
-  assumes "get_total_full \<omega> = \<phi>"
-      and "total_heap_consistent \<phi>"
-      and "red_stmt_total ctxt R \<Lambda> (LocalAssign x e) \<omega> (RNormal \<omega>')"
-      and "get_total_full \<omega>' = \<phi>'"
-    shows "total_heap_consistent \<phi>'"
-proof -
-  obtain v where "\<omega>' = update_var_total \<omega> x v" using assms(3) red_stmt_total.simps by blast
-  hence "\<phi> = \<phi>'" using assms(1,4) by force
-  thus ?thesis using assms(2) by auto
-qed
-
-
-\<comment> \<open>Unfold statement preserves internal state consistency.\<close>
-
-lemma unfold_preserves_internal_consistency:
-  assumes "get_total_full \<omega> = \<phi>"
-      and "total_heap_consistent \<phi>"
-      and "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
-      and "get_total_full \<omega>' = \<phi>'"
-    shows "total_heap_consistent \<phi>'"
-proof -
-  obtain vs p where
-    vs: "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some vs)" and
-    p: "ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)" and
-    result: "unfold_rel ctxt pred_id vs (Abs_preal p) (get_total_full \<omega>) \<phi>'" and
-    \<omega>': "\<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr>"
-    using assms(3) RedUnfold_case
-    by (metis assms(4) full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3))
-  show "total_heap_consistent \<phi>'"
-    sorry
-qed
-
-
-\<comment> \<open>Field assignment preserves internal state consistency.\<close>
-
-lemma field_assignment_preserves_internal_consistency:
-  assumes "get_total_full \<omega> = \<phi>"
-      and "total_heap_consistent \<phi>"
-      and "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal \<omega>')"
-      and "get_total_full \<omega>' = \<phi>'"
-    shows "total_heap_consistent \<phi>'"
-proof -
-  obtain addr v where "ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address addr))" and
-    "\<omega>' = update_hh_loc_total_full \<omega> (addr,f) v"
-    using assms(3) red_stmt_total.simps by blast (* This is quite slow. Any better method? *)
-  hence "get_nm_total \<phi> = get_nm_total \<phi>'"
-    using assms(1,4) by force
-  thus ?thesis using assms(2)
-    by (simp add: total_heap_consistent_def)
-qed
-*)
-
-
 subsection \<open>New Internal Consistency\<close>
 
 definition consistent_internal :: "'a nested_mask \<Rightarrow> bool" where
@@ -112,11 +32,6 @@ proof -
       by (smt (verit, ccfv_threshold) \<open>\<And>thesis. (\<And>mh mp fnm pnm_opt p mp' fnm' nm'_sub. \<lbrakk>nm = NM mh mp fnm; pnm_opt = fnm (pred_id, vs); p = mp (pred_id, vs); q \<le> p; q \<noteq> pos_perm_class.pnone; mp' = mp((pred_id, vs) := p - q); fnm' = fnm ((pred_id, vs) := if p = q then None else ((p - q) / p) *\<^sub>s pnm_opt); nm'_sub = NM mh mp' fnm'; Some nm' = Some nm'_sub + (q / p) *\<^sub>s pnm_opt\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close> assms(2) fun_upd_triv get_fnm_nm.simps group_cancel.rule0 nm nm_loc_sum_mp_irrelevant option.map(1) option.sel pnm_opt scale_option_def zero_option_def)
   next
     case (Some pnm)
-    (* have "fnm' (pred_id,vs) = None \<longleftrightarrow> q = p"
-      apply (cases "q = p")
-      using PosReal.field_divide_inverse Some fnm' minus_preal.abs_eq zero_preal_def 
-       apply fastforce
-      by (metis Some \<open>q \<le> p\<close> comm_monoid_add_class.add_0 divide_eq_0_iff divide_preal.rep_eq fnm' fun_upd_def greater_minus_plus less_eq_preal.rep_eq linorder_not_le nested_mask_multiply_option.simps(2) not_None_eq preal_not_0_gt_0 zero_preal.rep_eq) *)
     from assms(2) obtain pf where
       pf: "pf has_sumA (s - mh loc) \<and>
            (\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf ploc)) (pf ploc = 0) (fnm ploc))"
@@ -235,6 +150,16 @@ lemma fold_rel_preserves_internal_consistency:
       and "consistent_internal (get_nm_total_full \<omega>)"
     shows "consistent_internal (get_nm_total_full \<omega>')"
   by (metis assms(1) assms(2) consistent_internal_def fold_rel_preserves_loc_sum)
+
+
+subsection \<open>Full permission in direct mask\<close>
+
+lemma mh_1_sub_0:
+  assumes "consistent_internal nm"
+      and "get_mh_nm nm loc = 1"
+      and "get_fnm_nm nm ploc = Some nm'"
+    shows "nm_loc_sum loc nm' 0"
+  sorry
 
 
 subsection \<open>Internal Consistency on Total States\<close>
