@@ -332,11 +332,16 @@ proof (rule allI | rule impI)+
           ZeroMaskConst
     by fastforce
 
-  have "StateCons \<omega>1"
+  have cons_both:
+    "StateCons \<omega>1 \<and>
+       consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>1)"
+    apply (intro conjI)
     using WfConsistency[simplified wf_total_consistency_def] IsEmpty
-    by blast
+     apply blast
+    using empty_consistent_external
+    by (metis IsEmpty is_empty_total_def is_empty_total_full_def total_state.cases total_state.select_convs(2))
 
-  from post_framing_propagate_aux[OF R1 WfTyRep TypeInterp StoreSame _ \<open>StateCons \<omega>1\<close> _ LookupDeclHeap LookupTyMask * zero_mask_rel_2 Disj \<open>hvar' \<noteq> _\<close>]
+  from post_framing_propagate_aux[OF R1 WfTyRep TypeInterp StoreSame _ cons_both _ LookupDeclHeap LookupTyMask * zero_mask_rel_2 Disj \<open>hvar' \<noteq> _\<close>]
        HeapWellTy \<open>Pr = _\<close> \<open>domain_type TyRep = _\<close>
        IsEmpty obtain ns2 where
     "red_ast_bpl proc_body_bpl ctxt
@@ -1438,7 +1443,7 @@ lemma init_state_in_state_relation:
           "is_empty_total_full \<omega>" and
           ViperHeapWellTy: "total_heap_well_typed ((program_total ctxt_vpr)) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)" and
           WfMask: "wf_mask_simple (get_mh_total_full \<omega>)" and
-          Consistent: "StateCons \<omega>" and
+          Consistent: "StateCons \<omega> \<and> consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>)" and
          TyInterp: "type_interp ctxt = vbpl_absval_ty T" and
           DomainTy:  "domain_type T = absval_interp_total ctxt_vpr" and
           "ns = \<lparr> old_global_state = initial_global_state T (fst (var_context ctxt)) (program_total ctxt_vpr) Tr \<omega>,

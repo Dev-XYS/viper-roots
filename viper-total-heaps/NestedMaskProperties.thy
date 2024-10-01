@@ -444,4 +444,19 @@ lemma sum_0_implies_sub_zero:
   sorry
 
 
+subsection \<open>Sum of a smaller state\<close>
+
+lemma nm_loc_sum_smaller:
+  assumes "nm_loc_sum loc nm s"
+      and "nm' \<le> nm"
+    shows "\<exists>s'. nm_loc_sum loc nm' s"
+  sorry
+
+lemma nm_sum_is_bigger:
+  fixes nm1 nm2 nm :: "'a nested_mask"
+  assumes "nm = nm1 + nm2"
+  shows "nm1 \<le> nm"
+  sorry
+
+
 end

@@ -5,19 +5,6 @@ theory TotalFraming
 begin
 
 
-subsection \<open>Well-typed list (Todo: move to a proper place)\<close>
-
-definition vals_well_typed :: "('a \<Rightarrow> abs_type) \<Rightarrow> ('a val) list \<Rightarrow> vtyp list \<Rightarrow> bool"
-  where "vals_well_typed A vs ts \<equiv> map (get_type A) vs = ts"
-
-lemma vals_well_typed_same_lengthD:
-  assumes "vals_well_typed A vs ts"
-  shows "length vs = length ts"
-  using assms
-  unfolding vals_well_typed_def
-  by auto
-
-
 text \<open>We have two definitions of self-framing at the moment. We need to prove their equivalance eventually.\<close>
 
 

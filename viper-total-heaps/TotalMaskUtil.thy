@@ -57,6 +57,19 @@ termination
   by fastforce
 
 
+subsection \<open>Mask Ordering\<close>
+
+function (sequential) nested_mask_le :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool" where
+  "nested_mask_le (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) = (mh\<^sub>1 \<le> mh\<^sub>2 \<and> mp\<^sub>1 \<le> mp\<^sub>2 \<and>
+     (\<forall>lp. fnm\<^sub>1 lp = None \<or> (\<forall>nm'\<^sub>1 nm'\<^sub>2. fnm\<^sub>1 lp = Some nm'\<^sub>1 \<longrightarrow> fnm\<^sub>2 lp = Some nm'\<^sub>2 \<longrightarrow> nested_mask_le nm'\<^sub>1 nm'\<^sub>2)))"
+  by (pat_completeness) auto
+termination
+  apply (relation "nested_mask_rel <*lex*> {}")
+  using wf_nested_mask_rel
+   apply blast
+  by auto
+
+
 subsection \<open>Mask Split\<close>
 
 fun mh_split :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask \<Rightarrow> bool" where
@@ -64,12 +77,6 @@ fun mh_split :: "field_mask \<Rightarrow> field_mask \<Rightarrow> field_mask \<
 
 fun mp_split :: "'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
   "mp_split mp mp\<^sub>1 mp\<^sub>2 = (mp = add_masks mp\<^sub>1 mp\<^sub>2)"
-
-
-subsection \<open>Mask Ordering\<close>
-
-fun nested_mask_le :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool" where
-  "nested_mask_le (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) = (mh\<^sub>1 \<le> mh\<^sub>2 \<and> mp\<^sub>1 \<le> mp\<^sub>2)"
 
 
 subsection \<open>Constant Masks\<close>

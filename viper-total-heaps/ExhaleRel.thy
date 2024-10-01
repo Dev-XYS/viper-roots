@@ -932,14 +932,18 @@ next
   fix \<omega>0_\<omega>def \<omega>0_\<omega>def' ns a
   assume "R \<omega>0_\<omega>def ns" and
          Aux: "fst \<omega>0_\<omega>def = fst \<omega>0_\<omega>def' \<and> exhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def')" and
-         "r = Address a"
+         "r = Address a" and
+         ConsOn: "consistent_state_rel_opt (state_rel_opt Tr)"
 
-  from exhale_normal_result_smaller[OF exhale_acc_normal_red_exhale[OF conjunct2[OF Aux]]] and
-       state_rel_consistent[OF StateRel[OF \<open>R _ _\<close>]] 
-  show "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (snd \<omega>0_\<omega>def')"
+  show "StateCons (snd \<omega>0_\<omega>def') \<and>
+          consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (snd \<omega>0_\<omega>def'))"
+    apply (intro conjI)
+    using exhale_normal_result_smaller[OF exhale_acc_normal_red_exhale[OF conjunct2[OF Aux]]] and
+          state_rel_consistent[OF StateRel[OF \<open>R _ _\<close>]]
+          wf_total_consistency_trace_mono_downwardD[OF WfConsistency] mono_prop_downwardD 
+          ConsOn
+     apply blast
     sorry
-    (* using wf_total_consistency_trace_mono_downwardD[OF WfConsistency] mono_prop_downwardD 
-    by blast *)
 qed (auto)
 
 subsection \<open>Pure expression rule\<close>

@@ -202,7 +202,8 @@ subsection \<open>Variable assignment relation\<close>
 
 lemma var_assign_rel:
   assumes WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
-      and Consistent: "StateConsEnabled \<Longrightarrow> (\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>)"
+      and Consistent: "StateConsEnabled \<Longrightarrow> (\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and>
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>))"
       and VprTy: "\<Lambda>_vpr x_vpr = Some ty"
       and TyRelWf: "type_interp_rel_wf (absval_interp_total ctxt_vpr) (type_interp ctxt) Trep"
       and EmptyRtype: "rtype_interp ctxt = []"
@@ -214,7 +215,8 @@ lemma var_assign_rel:
       and RAssign:  "\<And> \<omega> ns v . R \<omega> ns \<Longrightarrow>
                            get_type (absval_interp_total ctxt_vpr) v = ty \<Longrightarrow>
                            type_of_val (type_interp ctxt) (val_rel_vpr_bpl v) = ty_bpl \<Longrightarrow>   
-                           (StateConsEnabled \<Longrightarrow> StateCons (update_var_total \<omega> x_vpr v)) \<Longrightarrow>                       
+                           (StateConsEnabled \<Longrightarrow> StateCons (update_var_total \<omega> x_vpr v) \<and>
+                              consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (update_var_total \<omega> x_vpr v))) \<Longrightarrow>                       
                            R (update_var_total \<omega> x_vpr v) (update_var (var_context ctxt) ns x_bpl (val_rel_vpr_bpl v))"
       and ExpRel: "exp_rel_vpr_bpl (rel_ext_eq R) ctxt_vpr ctxt e_vpr e_bpl"
           
@@ -262,11 +264,13 @@ proof (cases rule: stmt_rel_intro)
       using RedEBpl
       by auto
 
-    moreover have "?R_ext \<omega>' \<omega>' ?ns''" 
+    moreover have "?R_ext \<omega>' \<omega>' ?ns''"
     proof -
-      have "StateConsEnabled \<Longrightarrow> StateCons (update_var_total \<omega> x_vpr v)"
-        using RedVpr Consistent WfConsistency \<open>R \<omega> ns\<close> \<open>\<omega>' = _\<close> total_consistency_red_stmt_preserve 
-        by blast
+      have "StateConsEnabled \<Longrightarrow> StateCons (update_var_total \<omega> x_vpr v) \<and>
+              consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (update_var_total \<omega> x_vpr v))"
+        using RedVpr Consistent WfConsistency \<open>R \<omega> ns\<close> \<open>\<omega>' = _\<close> total_consistency_red_stmt_preserve
+              extcons_preserved_by_red_stmt
+        by fastforce
       thus ?thesis
       apply (subst \<open>\<omega>' = _\<close>)+
       using RAssign R' vTyVpr ValBplTy 
@@ -322,10 +326,11 @@ next
     by (rule ExpWfRel)
 next
   fix \<omega> ns v
-  assume "R \<omega> ns" 
+  assume "R \<omega> ns"
      and "get_type (absval_interp_total ctxt_vpr) v = ty"
      and TypeOfValBpl: "type_of_val (type_interp ctxt) (val_rel_vpr_bpl v) = ty_bpl"
-     and ConsistentUpdState: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (update_var_total \<omega> x_vpr v)"
+     and ConsistentUpdState: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (update_var_total \<omega> x_vpr v) \<and>
+           consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (\<lambda>_. undefined))  (get_total_full (update_var_total \<omega> x_vpr v))"
 
   note StateRelInst = \<open>R \<omega> ns\<close>[simplified StateRel]
 
@@ -337,7 +342,8 @@ next
 next
   fix \<omega> ns
   assume "R \<omega> ns"
-  thus "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega>"
+  thus "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega> \<and>
+          consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None)  (\<lambda>_. undefined)) (get_total_full \<omega>)"
     using StateRel state_rel_consistent
     by blast
 qed (insert assms, simp_all)
@@ -346,7 +352,8 @@ subsection \<open>Field assignment relation\<close>
 
 lemma field_assign_rel:
   assumes WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
-      and Consistent: "StateConsEnabled \<Longrightarrow> (\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>)"
+      and Consistent: "StateConsEnabled \<Longrightarrow> (\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and>
+                         consistent_external ctxt_vpr (get_total_full \<omega>))"
       and HeapUpdWf: "heap_update_wf TyRep ctxt heap_upd_bpl"
       and DomainTypeEq: "domain_type TyRep = absval_interp_total ctxt_vpr"
       and "type_interp ctxt = vbpl_absval_ty TyRep"
@@ -363,7 +370,8 @@ lemma field_assign_rel:
       \<comment>\<open>Key field assignment property for R\<close>
       and RFieldAssign:  "\<And> \<omega> ns hb addr v . R \<omega> ns \<Longrightarrow>
                      get_type (domain_type TyRep) v = \<tau>_vpr \<Longrightarrow>
-                     (StateConsEnabled \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega> (addr,f_vpr) v)) \<Longrightarrow>
+                     (StateConsEnabled \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega> (addr,f_vpr) v) \<and>
+                        consistent_external ctxt_vpr (get_total_full (upd_hh_loc_total_full \<omega> (addr,f_vpr) v))) \<Longrightarrow>
                      (\<exists>hb f_bpl_val. 
                        lookup_var_ty (var_context ctxt) h_bpl = Some (TConSingle (THeapId TyRep)) \<and>
                        lookup_var (var_context ctxt) ns h_bpl = Some (AbsV (AHeap hb)) \<and>
@@ -411,9 +419,12 @@ proof (rule stmt_rel_intro)
            \<open>domain_type _ = _\<close>
      by simp
 
-   moreover from RedStmt have "StateConsEnabled \<Longrightarrow> StateCons \<omega>'"
+   moreover from RedStmt have
+     "StateConsEnabled \<Longrightarrow> StateCons \<omega>' \<and>
+        consistent_external ctxt_vpr (get_total_full \<omega>')"
      using total_consistency_red_stmt_preserve[OF WfConsistency] Consistent[OF _ \<open>R \<omega> ns\<close>]
-     by simp
+           extcons_preserved_by_red_stmt[OF _ RedStmt]
+     by blast
 
    moreover from RedFieldAssign DomainTypeEq have "get_type (domain_type TyRep) v = \<tau>_vpr"
      using DeclaredFieldsSome
@@ -432,8 +443,7 @@ proof (rule stmt_rel_intro)
                    (AbsV (AHeap (hb( (Address addr,f_bpl_val) \<mapsto> (val_rel_vpr_bpl v) ))))
              )" (is "R _ ?ns_upd")
      using RFieldAssign[OF \<open>R \<omega> ns3\<close>] \<open>\<omega>' = _\<close>
-     sorry
-     (* by metis *)
+     by metis
 
    from RcvRel have RedRcvBpl: "red_expr_bpl ctxt rcv_bpl ns3 (AbsV (ARef (Address addr)))"
      using \<open>?Rext \<omega> \<omega> ns3\<close>  RedFieldAssign exp_rel_vpr_bpl_elim
@@ -520,6 +530,7 @@ qed
 
 text \<open>Version of generic field assignment relation rule where state relation is instantiated\<close>
 
+declare [[goals_limit = 20]]
 lemma field_assign_rel_inst:
   assumes WfTyRep: "wf_ty_repr_bpl TyRep"
       and WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
@@ -538,6 +549,8 @@ lemma field_assign_rel_inst:
       and RcvRel: "exp_rel_vpr_bpl (rel_ext_eq R) ctxt_vpr ctxt rcv_vpr rcv_bpl"
       and FieldRelSingle: "field_rel_single (program_total ctxt_vpr) TyRep Tr f_vpr (Lang.Var f_bpl) \<tau>_bpl"
       and RhsRel: "exp_rel_vpr_bpl (rel_ext_eq R) ctxt_vpr ctxt rhs_vpr rhs_bpl"
+      and CtxtInterp: "fun_interp_total ctxt_vpr = (\<lambda>_. None) \<and>
+                       absval_interp_total ctxt_vpr = (\<lambda>_. undefined)" \<comment> \<open>We only support empty interpretation.\<close>
     shows "stmt_rel R R ctxt_vpr StateCons \<Lambda>_vpr P ctxt (ViperLang.FieldAssign rcv_vpr f_vpr rhs_vpr) 
             \<gamma> (BigBlock name cs str tr, cont)"
 proof (rule field_assign_rel[OF WfConsistency, where ?\<tau>_vpr = "the (declared_fields (program_total ctxt_vpr) f_vpr)"])
@@ -555,7 +568,8 @@ proof (rule field_assign_rel[OF WfConsistency, where ?\<tau>_vpr = "the (declare
   fix \<omega> ns hb addr v
   assume "R \<omega> ns"
      and NewValVprTy: "get_type (domain_type TyRep) v = ?\<tau>_vpr"
-     and ConsistentUpdState: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega> (addr,f_vpr) v)"
+     and ConsistentUpdState: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega> (addr,f_vpr) v) \<and>
+           consistent_external ctxt_vpr (get_total_full (upd_hh_loc_total_full \<omega> (addr,f_vpr) v))"
 
   from \<open>R \<omega> ns\<close> have StateRelInst: "state_rel_def_same (program_total ctxt_vpr) StateCons TyRep Tr AuxPred ctxt \<omega> ns"
     by (simp add: RStateRel)
@@ -563,9 +577,18 @@ proof (rule field_assign_rel[OF WfConsistency, where ?\<tau>_vpr = "the (declare
   let ?\<omega>' = "(upd_hh_loc_total_full \<omega> (addr,f_vpr) v)"
   let ?ns' = "\<lambda>f_bpl_val. (update_var (var_context ctxt) ns (heap_var Tr) 
                                (AbsV (AHeap (hb( (Address addr,f_bpl_val) \<mapsto> (val_rel_vpr_bpl v) ))))
-                         )"      
+                         )"
 
-  from state_rel_heap_update_2_ext[OF WfTyRep StateRelInst _ ConsistentUpdState ConsistentUpdState  FieldLookup FieldTranslation TyTranslation NewValVprTy]
+  have "ctxt_vpr = total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (\<lambda>_. undefined)"
+    apply (rule total_context.equality)
+    by (simp_all add: total_context.defs CtxtInterp)
+  hence ConsistentUpdState':
+    "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega> (addr,f_vpr) v) \<and>
+       consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_hh_loc_total_full \<omega> (addr,f_vpr) v))"
+    using ConsistentUpdState
+    by force
+
+  from state_rel_heap_update_2_ext[OF WfTyRep StateRelInst _ ConsistentUpdState' ConsistentUpdState' FieldLookup FieldTranslation TyTranslation NewValVprTy]
   obtain hb f_bpl_val where
     "lookup_var (var_context ctxt) ns (heap_var Tr) = Some (AbsV (AHeap hb))"
     "lookup_var (var_context ctxt) ns f_bpl = Some (AbsV (AField f_bpl_val))"
@@ -593,9 +616,15 @@ proof (rule field_assign_rel[OF WfConsistency, where ?\<tau>_vpr = "the (declare
 next
   fix \<omega> ns
   assume "R \<omega> ns"
-  thus "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega>"
+
+  moreover have "ctxt_vpr = total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (\<lambda>_. undefined)"
+    apply (rule total_context.equality)
+    by (simp_all add: total_context.defs CtxtInterp)
+
+  ultimately show "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega> \<and>
+          consistent_external ctxt_vpr (get_total_full \<omega>)"
     using RStateRel state_rel_consistent
-    by blast
+    by fastforce
 qed (insert assms, simp_all)
 
 subsection \<open>Inhale statement relation\<close>
@@ -811,7 +840,8 @@ lemma exhale_stmt_rel_finish:
           WellDefSame: "heap_var Tr = heap_var_def Tr \<and> mask_var Tr = mask_var_def Tr" and 
           "id_on_known_locs_name = FunMap FIdenticalOnKnownLocs" and
           TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and
-          "StateCons \<omega>'" and
+          "StateCons \<omega>' \<and>
+             consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>')" and
           "\<omega>' \<in> havoc_locs_state ctxt_vpr \<omega> ({loc. get_mh_total_full (\<omega>0 ) loc > 0 \<and> get_mh_total_full \<omega> loc = 0})" and
           "hvar = heap_var Tr" and
           "mvar = mask_var Tr" and
@@ -1238,7 +1268,8 @@ proof (rule state_rel_store_update[OF StateRel])
       by blast
   qed
 next
-  show "consistent_state_rel_opt (state_rel_opt (Tr\<lparr>var_translation := f'\<rparr>)) \<Longrightarrow> StateCons \<omega>"
+  show "consistent_state_rel_opt (state_rel_opt (Tr\<lparr>var_translation := f'\<rparr>)) \<Longrightarrow> StateCons \<omega> \<and>
+          consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>)"
     using state_rel_consistent StateRel
     by fastforce
 next
@@ -2936,6 +2967,9 @@ lemma scoped_var_stmt_rel:
       and LookupDeclNewVarBpl: "lookup_var_decl (var_context ctxt) x_bpl = Some (\<tau>_bpl, None)"
       and VprToBplTy: "vpr_to_bpl_ty TyRep \<tau>_vpr = Some \<tau>_bpl"
       and "var_tr' = shift_and_add (var_translation Tr) x_bpl"
+      and CtxtProg: "program_total ctxt_vpr = Pr"
+      and CtxtInterp: "fun_interp_total ctxt_vpr = (\<lambda>_. None) \<and>
+                       absval_interp_total ctxt_vpr = (\<lambda>_. undefined)" \<comment> \<open>We only support empty interpretation.\<close>
       and StmtRelBody:
           "stmt_rel (state_rel_def_same Pr StateCons TyRep (Tr\<lparr> var_translation := var_tr' \<rparr>) AuxPred ctxt) 
                     (state_rel_def_same Pr StateCons TyRep (Tr\<lparr> var_translation := var_tr' \<rparr>) AuxPred ctxt) 
@@ -3006,7 +3040,9 @@ proof (rule stmt_rel_intro_2)
         by fast       
     qed (insert DisjBpl, auto)
 
-    show "consistent_state_rel_opt (state_rel_opt (Tr\<lparr>var_translation := var_tr'\<rparr>)) \<Longrightarrow> StateCons (shift_and_add_state_total \<omega> v)"
+    show "consistent_state_rel_opt (state_rel_opt (Tr\<lparr>var_translation := var_tr'\<rparr>)) \<Longrightarrow>
+            StateCons (shift_and_add_state_total \<omega> v) \<and>
+            consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (shift_and_add_state_total \<omega> v))"
       using WfConsistency state_rel_consistent[OF StateRelImp[OF \<open>R \<omega> ns'\<close>]]
       unfolding wf_total_consistency_def
       by simp
@@ -3071,16 +3107,20 @@ proof (rule stmt_rel_intro_2)
           by simp
       qed
 
-      show "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega>'" (is "?ConsOpt \<Longrightarrow> _")
+      show "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega>' \<and>
+              consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>')" (is "?ConsOpt \<Longrightarrow> _")
       proof -
         assume ?ConsOpt
         hence "StateCons \<omega>"
           using state_rel_consistent[OF StateRel_ns']
           by simp
-        thus ?thesis
-          using WfConsistency RedStmtVpr \<open>res = RNormal \<omega>'\<close>
+        moreover have "ctxt_vpr = total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)"
+          apply (rule total_context.equality)
+          by (simp_all add: total_context.defs CtxtInterp CtxtProg)
+        ultimately show ?thesis
+          using WfConsistency RedStmtVpr \<open>res = RNormal \<omega>'\<close> extcons_preserved_by_red_stmt[OF _ RedStmtVpr[simplified \<open>res = RNormal \<omega>'\<close>]]
           unfolding wf_total_consistency_def
-          by blast
+          by (metis StateRel_ns' \<open>consistent_state_rel_opt (state_rel_opt Tr)\<close> state_rel_consistent)
       qed
 
       show "binder_state ns_body = Map.empty"
@@ -3136,6 +3176,9 @@ lemma scoped_var_stmt_rel_simplify_tr:
  \<comment>\<open>The purpose of the following premise is to allow for simplification of the translation record term.
     This avoids unnecessary updates in the term (such as consescutive var_translation updates)\<close>
       and "Tr' = (Tr\<lparr> var_translation := shift_and_add (var_translation Tr) x_bpl \<rparr>)"
+      and CtxtProg: "program_total ctxt_vpr = Pr"
+      and CtxtInterp: "fun_interp_total ctxt_vpr = (\<lambda>_. None) \<and>
+                       absval_interp_total ctxt_vpr = (\<lambda>_. undefined)" \<comment> \<open>We only support empty interpretation.\<close>
       and StmtRelBody:
           "stmt_rel (state_rel_def_same Pr StateCons TyRep Tr' AuxPred ctxt) 
                     (state_rel_def_same Pr StateCons TyRep Tr' AuxPred ctxt) 

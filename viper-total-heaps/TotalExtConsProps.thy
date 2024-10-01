@@ -679,7 +679,7 @@ proof (induction rule: consistent_external_wrt_ploc_consistent_external.inducts)
   case IH: (SatStep pred_id pred_decl pred_body vs \<phi> p)
   show ?case
     apply (rule SatStep)
-        defer 3
+        defer 4
     using IH apply blast+
     using IH.hyps(2) assms less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq apply auto[1]
     apply simp
@@ -688,7 +688,7 @@ proof (induction rule: consistent_external_wrt_ploc_consistent_external.inducts)
        apply blast
       apply (simp add: assms)
      defer 1
-    using IH.IH(2)
+    using IH.IH(3)
      apply fastforce
     using IH.IH(1) IH.hyps(1) assms(2) ctxt_wf_pred_def
     by blast
@@ -744,6 +744,13 @@ lemma sum_consistent_external:
   assumes "consistent_external ctxt (\<lparr> get_hh_total = hh, get_nm_total = nm\<^sub>1 \<rparr>)"
       and "consistent_external ctxt (\<lparr> get_hh_total = hh, get_nm_total = nm\<^sub>2 \<rparr>)"
     shows "consistent_external ctxt (\<lparr> get_hh_total = hh, get_nm_total = nm\<^sub>1 + nm\<^sub>2 \<rparr>)"
+  sorry
+
+
+subsection \<open>Empty States\<close>
+
+lemma empty_consistent_external:
+  shows "consistent_external ctxt (\<lparr> get_hh_total = hh, get_nm_total = 0 \<rparr>)"
   sorry
 
 

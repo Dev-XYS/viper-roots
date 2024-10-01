@@ -277,4 +277,11 @@ inductive_cases shift_up_case: "shift_up pred_id vs q nm nm'"
 inductive_simps shift_up_simp: "shift_up pred_id vs q nm nm'"
 
 
+lemma shift_up_perm_sufficient:
+  assumes "shift_up pid vs q nm nm'"
+  shows "q \<le> get_mp_nm nm (pid,vs)"
+  using assms
+  by (auto elim: shift_up_case)
+
+
 end

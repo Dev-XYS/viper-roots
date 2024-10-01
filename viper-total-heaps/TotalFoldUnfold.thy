@@ -19,6 +19,11 @@ inductive unfold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Righta
    \<rbrakk> \<Longrightarrow>
    unfold_rel ctxt pred_id vs p \<phi> \<phi>'"
 
+lemma unfold_rel_perm_sufficient:
+  assumes "unfold_rel ctxt pid vs p \<phi> \<phi>'"
+  shows "p \<le> get_mp_total \<phi> (pid,vs)"
+  by (metis assms get_mp_total.elims shift_up_perm_sufficient unfold_rel.simps)
+
 
 subsection \<open>Fold\<close>
 

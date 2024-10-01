@@ -89,6 +89,9 @@ proof -
      apply simp
     by (meson \<omega>')
 
+  have \<omega>'_extcons: "consistent_external ctxt_vpr (get_total_full \<omega>')"
+    sorry
+
   obtain mb where
     LookupMask: "lookup_var (var_context ctxt) ns (mask_var Tr) = Some (AbsV (AMask mb))" and
     LookupMaskTy: "lookup_var_ty (var_context ctxt) (mask_var Tr) = Some (TConSingle (TMaskId TyRep))" and
@@ -184,8 +187,9 @@ proof -
     apply (simp only: state_rel0_def, intro conjI)
     using state_rel_wf_mask_simple[OF InitRel] \<omega>'
                     apply (simp, simp)
-    using \<omega>'
+    using \<omega>' \<omega>'_extcons
                   apply fastforce
+    subgoal sorry
                  apply (simp add: TyInterp)
                 apply (rule store_rel_stable[where ?\<omega>=\<omega> and ?ns=ns])
     using InitRel state_rel_store_rel
@@ -249,16 +253,33 @@ qed
 
 subsection \<open>Unfold\<close>
 
+lemma extcons_pred_well_typed:
+  assumes "consistent_external ctxt \<phi>"
+      and "get_mp_total \<phi> (pid,vs) > 0"
+      and "ViperLang.predicates (program_total ctxt) pid = Some pred_decl"
+      and "ViperLang.predicate_decl.args pred_decl = ty_args"
+    shows "vals_well_typed (absval_interp_total ctxt) vs ty_args"
+proof -
+  obtain \<phi>' where "consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) (get_mp_total \<phi> (pid,vs))"
+    using SatAll_case[OF assms(1)]
+    by (metis assms(2) get_mp_total.simps option.exhaust preal_not_0_gt_0)
+  thus ?thesis
+    by (metis SatStep_case assms(3) assms(4) option.sel)
+qed
+  
+
 lemma unfold_stmt_rel:
   assumes PredDecl: "ViperLang.predicates (program_total ctxt_vpr) pred_id = Some pred_decl"
       and PredArgs: "ViperLang.predicate_decl.args pred_decl = ty_args"
       and PredBody: "ViperLang.predicate_decl.body pred_decl = Some pred_body"
       and SupportedPredBody: "supported_pred_body pred_body"
       and SelfFraming: "assertion_self_framing ctxt_vpr StateCons pred_body ty_args"
+      and IntConsFixed: "StateCons = consistent_internal_total_full"
       and WfCons: "mono_prop_downward StateCons"
       and ConsPreservedByStmt: "\<And>\<omega> \<omega>' stmt. StateCons \<omega> \<Longrightarrow> red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr stmt \<omega> (RNormal \<omega>') \<Longrightarrow> StateCons \<omega>'"
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
+      and CtxtWfPred: "ctxt_wf_pred ctxt_vpr"
       and ArgsSimp: "e_args = [pure_exp.Var 0]" \<comment> \<open>We only support one predicate argument, which must be the first method argument.\<close>
       and PermSimp: "e_p = ELit (LPerm 1)" \<comment> \<open>We only support a literal 1 as the permission.\<close>
       and StepExhale:
@@ -286,7 +307,17 @@ proof (rule stmt_rel_intro)
     using StateRelImpliesExtCons
     by auto
   have "vals_well_typed (absval_interp_total ctxt_vpr) v_args ty_args"
-    sorry (* External consistency needs to imply well typed predicate locations. *)
+  proof -
+    have "v_p > 0"
+      using PermSimp TotalExpressions.RedLit_case e_p_eval
+      by fastforce
+    have "get_mp_total_full \<omega> (pred_id,v_args) \<ge> Abs_preal v_p"
+      using unfold_rel_perm_sufficient[OF UnfoldRel]
+      by simp
+    thus ?thesis
+      using extcons_pred_well_typed ExtCons PredArgs PredDecl \<open>0 < v_p\<close> order_le_imp_less_or_eq order_less_trans positive_real_preal preal_not_0_gt_0
+      by fastforce
+  qed
   with SelfFraming have FramingArgs: "\<And>p. assertion_self_framing_store ctxt_vpr StateCons (syntactic_mult p pred_body) (nth_option v_args)"
     using assertion_self_framing_def
     by blast
@@ -294,13 +325,13 @@ proof (rule stmt_rel_intro)
   hence FramingArgsTrueCons: "\<And>p. assertion_self_framing_store ctxt_vpr (\<lambda>_. True) (syntactic_mult p pred_body) (nth_option v_args)"
     by (metis assertion_framing_state_def assertion_self_framing_store_def inhale_with_stronger_state_consistency_failure)
 
-  from inhale_simulates_unfold[OF UnfoldRel ExtCons PredDecl PredBody SupportedPredBody FramingArgsTrueCons]
+  from inhale_simulates_unfold[OF UnfoldRel ExtCons _ PredDecl PredBody CtxtWfPred FramingArgsTrueCons]
   obtain \<phi>\<^sub>d where
     \<phi>\<^sub>d: "\<phi>\<^sub>d = dec_mp_loc_total (mult_rm_nm_loc_total (get_total_full \<omega>) (pred_id,v_args) (Abs_preal v_p)) (pred_id,v_args) (Abs_preal v_p)" and
     step_inhale': "red_inhale ctxt_vpr (\<lambda>_. True) (syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)
                      \<lparr> get_store_total = nth_option v_args, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>\<^sub>d \<rparr>
             (RNormal \<lparr> get_store_total = nth_option v_args, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>' \<rparr>)"
-    by fast
+    by (metis IntConsFixed StateRelImpliesIntCons \<open>R \<omega> ns\<close> consistent_internal_total_full_def)
 
   from UnfoldRel have perm_suff: "get_mp_total_full \<omega> (pred_id,v_args) \<ge> Abs_preal v_p"
     apply (simp add: unfold_rel.simps shift_up.simps)

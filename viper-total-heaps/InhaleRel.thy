@@ -1,5 +1,6 @@
 theory InhaleRel
   imports ExpRel ExprWfRel ViperBoogieTranslationInterface Simulation ViperBoogieRelUtil TotalFraming
+          TotalExtConsPreservation
 begin
 
 
@@ -562,9 +563,7 @@ next
 
   from InhPremise have AtMostWritePerm: "r \<noteq> Null \<Longrightarrow> 1 \<ge> ?p'" 
     unfolding inhale_acc_normal_premise_def inhale_perm_single_def
-    (* by force *)
-    sorry
-    \<comment> \<open>TodoNow: state consistency\<close>
+    by force
 
   have
        LookupTempPerm: "lookup_var (var_context ctxt) ns temp_perm = Some (RealV p)"
@@ -601,11 +600,15 @@ next
 next
   fix \<omega> \<omega>' ns a
   assume "R \<omega> ns" and "r = Address a" and
-         InhAccPremise: "inhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f_vpr e_p p r \<omega> \<omega>'"
-  thus "StateCons \<omega>'"
-    using state_rel_consistent[OF StateRel[OF \<open>R \<omega> ns\<close>]] 
-    unfolding inhale_acc_normal_premise_def inhale_perm_single_def
-    by auto
+         InhAccPremise: "inhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f_vpr e_p p r \<omega> \<omega>'" and
+         "consistent_state_rel_opt (state_rel_opt Tr)"
+  thus "StateCons \<omega>' \<and>
+        consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>')"
+    apply (intro conjI)
+    apply (unfold inhale_acc_normal_premise_def inhale_perm_single_def)[1]
+    using state_rel_consistent[OF StateRel[OF \<open>R \<omega> ns\<close>]]
+     apply auto[1]
+    by (metis \<open>consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega> \<and> StateCons \<omega> \<and> consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>) \<and> consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>)\<close> extcons_preserved_by_inhale_acc inhale_acc_normal_premise_def ref.distinct(1))
 qed
 
 subsection \<open>Pure expression rule\<close>

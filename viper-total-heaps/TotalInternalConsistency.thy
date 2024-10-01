@@ -130,7 +130,8 @@ proof -
   moreover obtain s1 s_exh where
     "nm_loc_sum loc nm1 s1" and
     "nm_loc_sum loc nm_exh s_exh"
-    sorry
+    using nm_loc_sum_smaller[OF \<open>nm_loc_sum loc nm0 s\<close>] nm_sum_is_bigger
+    by (metis add.commute calculation)
   ultimately have "s = s1 + s_exh"
     by (metis \<open>nm0 = get_nm_total_full \<omega>\<close> assms(2) nm_loc_sum_add nm_loc_sum_unique)
 

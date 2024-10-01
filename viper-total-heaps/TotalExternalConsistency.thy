@@ -109,6 +109,19 @@ inductive_cases SatExists_case: "sat ctxt \<omega> mh mp (Exists ty A)"
 inductive_cases SatStar_case: "sat ctxt \<omega> mh mp (A && B)"
 
 
+subsection \<open>Well-typed list (Todo: move to a proper place)\<close>
+
+definition vals_well_typed :: "('a \<Rightarrow> abs_type) \<Rightarrow> ('a val) list \<Rightarrow> vtyp list \<Rightarrow> bool"
+  where "vals_well_typed A vs ts \<equiv> map (get_type A) vs = ts"
+
+lemma vals_well_typed_same_lengthD:
+  assumes "vals_well_typed A vs ts"
+  shows "length vs = length ts"
+  using assms
+  unfolding vals_well_typed_def
+  by auto
+
+
 subsection \<open>External Consistency\<close>
 
 inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool" and
@@ -117,6 +130,7 @@ inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a tot
   SatStep:
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
+     vals_well_typed (absval_interp_total ctxt) vs (ViperLang.predicate_decl.args pred_decl);
      sat ctxt
          \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
          (get_mh_total \<phi>) (get_mp_total \<phi>)

@@ -592,7 +592,6 @@ lemma total_consistency_trace_update_2:
   unfolding wf_total_consistency_def
   by simp
 
-(*
 lemma wf_total_consistency_trace_mono_downwardD:
   assumes "wf_total_consistency ctxt R Rt"
   shows "mono_prop_downward R"
@@ -600,6 +599,7 @@ lemma wf_total_consistency_trace_mono_downwardD:
   unfolding wf_total_consistency_def
   by blast
 
+(*
 subsection \<open>Experimental definitions\<close>
 
 definition assertion_sat :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> type_context \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> bool"
