@@ -833,6 +833,73 @@ proof -
     by blast
 qed
 
+lemma mask_var_upd_red_ast_bpl_propagate_general:
+  assumes StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" and
+          LookupTyNewVar: "lookup_var_ty (var_context ctxt) mvar' = Some (TConSingle (TMaskId TyRep))" and
+          WfMask:         "wf_mask_simple (get_mh_nm nm')" and
+          Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> 
+                       StateCons (upd_nm_total_full \<omega> nm') \<and> StateCons (upd_nm_total_full \<omega>def nm') \<and>
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_nm_total_full \<omega> nm')) \<and>
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_nm_total_full \<omega>def nm'))" and
+          TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and          
+          Disj: "mvar' \<notin> ({heap_var Tr, heap_var_def Tr} \<union>
+                      (ran (var_translation Tr)) \<union>
+                      (ran (field_translation Tr)) \<union>
+                      (range (const_repr Tr)) \<union>
+                      dom AuxPred)" and
+        RedRhsBpl:  "red_expr_bpl ctxt e_bpl ns (AbsV (AMask mbpl'))" and
+        MaskRel:    "mask_rel Pr (field_translation Tr) (get_mh_nm nm') (get_mp_nm nm') mbpl'" and
+        MaskRelDef: "mask_rel Pr (field_translation Tr) (get_mh_nm nm') (get_mp_nm nm') mbpl'"
+        shows "\<exists>ns'. red_ast_bpl P ctxt ((BigBlock name (Assign mvar' e_bpl#cs) str tr, cont), Normal ns) 
+                                  ((BigBlock name cs str tr, cont), Normal ns') \<and>
+                     state_rel Pr StateCons TyRep (Tr\<lparr>mask_var := mvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt (upd_nm_total_full \<omega>def nm') (upd_nm_total_full \<omega> nm') ns'"
+proof -
+
+  let ?\<omega>' = "upd_nm_total_full \<omega> nm'"
+  let ?\<omega>def' = "upd_nm_total_full \<omega>def nm'"
+  let ?ns' = "update_var (var_context ctxt) ns mvar' (AbsV (AMask mbpl'))"
+
+  have Red: "red_ast_bpl P ctxt   ((BigBlock name ((Assign mvar' e_bpl)#cs) str tr, cont), Normal ns) 
+                                  ((BigBlock name cs str tr, cont), Normal ?ns')"
+    apply (rule red_ast_bpl_one_assign[OF LookupTyNewVar RedRhsBpl])
+    apply (simp add: TypeInterp)
+    done
+
+  have BinderEmpty: "binder_state ns = Map.empty"
+    using StateRel
+    by (simp add: state_rel_def state_rel0_def state_well_typed_def)
+
+  have StateRel':"state_rel Pr StateCons TyRep (Tr\<lparr>mask_var := mvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt ?\<omega>def' ?\<omega>' ?ns'"
+    apply (rule state_rel_mask_update_wip_general[OF StateRel TypeInterp])
+                apply simp
+    using mask_var_disjoint[OF state_rel_state_rel0[OF StateRel]] Disj
+               apply simp
+              apply auto[1]
+    using state_rel_eval_welldef_eq[OF StateRel]
+             apply simp
+    using \<open>get_store_total \<omega>def = get_store_total \<omega> \<and> get_trace_total \<omega>def = get_trace_total \<omega> \<and> get_hh_total_full \<omega>def = get_hh_total_full \<omega>\<close>
+            apply fastforce+
+           apply (simp add: WfMask)
+          apply (simp add: WfMask)
+         apply (erule Consistent)
+        apply (simp add: mask_var_rel_def)
+    using LookupTyNewVar MaskRel
+        apply fastforce
+       apply (simp add: mask_var_rel_def)
+    using LookupTyNewVar MaskRelDef
+       apply fastforce
+      apply (simp add: update_var_old_global_same)
+    using BinderEmpty
+      apply (metis global_state_update_local global_state_update_other)
+     apply (simp add: update_var_old_global_same)
+    apply (simp add: update_var_binder_same)
+    using BinderEmpty by blast
+
+  show ?thesis
+    using Red StateRel'
+    by blast
+qed
+
 lemma heap_var_eval_def_havoc_upd_red_ast_bpl_propagate:
   assumes 
           StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" and
@@ -923,16 +990,16 @@ lemma post_framing_propagate_aux:
           RedMaskBpl: "\<And>\<omega>0  \<omega> ns hvar hvar'. state_rel Pr StateCons TyRep ((disable_consistent_state_rel_opt Tr)\<lparr>heap_var := hvar, heap_var_def := hvar'\<rparr>) AuxPred ctxt \<omega>0 \<omega> ns \<Longrightarrow>
                                     red_expr_bpl ctxt e_bpl ns (AbsV (AMask mbpl'))" and
           MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>1) (get_mp_total_full \<omega>1) mbpl'" and
-                \<comment>\<open> could weaken the disjointness condition such that the heap and mask variable can 
+                \<comment>\<open> could weaken the disjointness condition such that the heap and mask variable can
                     stay the same\<close>
-          Disj: "{hvar', mvar'} \<inter> ({heap_var Tr, heap_var_def Tr} \<union> 
+          Disj: "{hvar', mvar'} \<inter> ({heap_var Tr, heap_var_def Tr} \<union>
                               {mask_var Tr, mask_var_def Tr} \<union>
                               (ran (var_translation Tr)) \<union>
                               (ran (field_translation Tr)) \<union>
                               (range (const_repr Tr)) \<union>
                               dom AuxPred) = {}" (is "?A \<inter> ?B = {}") and
                 "hvar' \<noteq> mvar'"
-  shows  "\<exists>ns'. red_ast_bpl P ctxt ((BigBlock name (Havoc hvar'#Assign mvar' e_bpl#cs) str tr, cont), Normal ns) 
+  shows  "\<exists>ns'. red_ast_bpl P ctxt ((BigBlock name (Havoc hvar' # Assign mvar' e_bpl # cs) str tr, cont), Normal ns)
                             ((BigBlock name cs str tr, cont), Normal ns') \<and>
                 state_rel Pr StateCons TyRep (Tr\<lparr>heap_var := hvar', mask_var := mvar', heap_var_def := hvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt \<omega>1 \<omega>1 ns'"
 proof -
@@ -940,26 +1007,25 @@ proof -
     by fast+
                             
   let ?hh' = "get_hh_total_full \<omega>1"
-  let ?mh' = "get_mh_total_full \<omega>1"
+  let ?nm' = "get_nm_total_full \<omega>1"
 
   \<comment>\<open>We temporarily disable the state consistency so that we can reason about the heap and mask updates separately
      (the intermediate states may not be consistent).\<close>
   let ?Tr' = "disable_consistent_state_rel_opt Tr"
   from heap_var_eval_def_havoc_upd_red_ast_bpl_propagate[OF state_rel_disable_consistency[OF StateRel] LookupDeclHeap _ WfTyRep TypeInterp HeapWellTy ] \<open>hvar' \<notin> ?B\<close> obtain ns'
-    where RedBpl1: "red_ast_bpl P ctxt ((BigBlock name (Havoc hvar'#Assign mvar' e_bpl#cs) str tr, cont), Normal ns) 
+    where RedBpl1: "red_ast_bpl P ctxt ((BigBlock name (Havoc hvar' # Assign mvar' e_bpl # cs) str tr, cont), Normal ns) 
                             ((BigBlock name (Assign mvar' e_bpl#cs) str tr, cont), Normal ns')" and
           StateRel1: "state_rel Pr StateCons TyRep (?Tr'\<lparr>heap_var := hvar', heap_var_def := hvar'\<rparr>) AuxPred ctxt (upd_hh_total_full \<omega>0 ?hh') (upd_hh_total_full \<omega>0 ?hh') ns'"
     by force
 
-  let ?\<omega>' = "(upd_mh_total_full (upd_hh_total_full \<omega>0 (get_hh_total_full \<omega>1)) ?mh')"
+  let ?\<omega>' = "upd_nm_total_full (upd_hh_total_full \<omega>0 (get_hh_total_full \<omega>1)) ?nm'"
 
-  from mask_var_upd_red_ast_bpl_propagate[OF StateRel1 LookupTyMask WfMask _ TypeInterp _ RedMaskBpl[OF StateRel1] ]
+  from mask_var_upd_red_ast_bpl_propagate_general[OF StateRel1 LookupTyMask _ _ TypeInterp _ RedMaskBpl[OF StateRel1]]
   obtain ns'' where
-     RedBpl2: "red_ast_bpl P ctxt ((BigBlock name (Assign mvar' e_bpl # cs) str tr, cont), Normal ns') ((BigBlock name cs str tr, cont), Normal ns'')" and
-     StateRel2: "state_rel Pr StateCons TyRep (?Tr'\<lparr>heap_var := hvar', heap_var_def := hvar', mask_var := mvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt ?\<omega>' ?\<omega>' ns''"
-    using \<open>mvar' \<notin> _\<close> \<open>hvar' \<noteq> mvar'\<close> MaskRel
-    (* by force *)
-    sorry
+    RedBpl2: "red_ast_bpl P ctxt ((BigBlock name (Assign mvar' e_bpl # cs) str tr, cont), Normal ns') ((BigBlock name cs str tr, cont), Normal ns'')" and
+    StateRel2: "state_rel Pr StateCons TyRep (?Tr'\<lparr>heap_var := hvar', heap_var_def := hvar', mask_var := mvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt ?\<omega>' ?\<omega>' ns''"
+    using \<open>mvar' \<notin> _\<close> \<open>hvar' \<noteq> mvar'\<close> MaskRel WfMask
+    by fastforce
 
   have Aux:"?Tr'\<lparr>heap_var := hvar', heap_var_def := hvar', mask_var := mvar', mask_var_def := mvar'\<rparr> = ?Tr'\<lparr>heap_var := hvar', mask_var := mvar', heap_var_def := hvar', mask_var_def := mvar'\<rparr>"
     by simp
@@ -968,12 +1034,12 @@ proof -
     using StateRel2 Aux
     by argo
     
-  let ?\<omega>'' = "update_trace_total (upd_fnm_total_full (upd_mp_total_full ?\<omega>' (get_mp_total_full \<omega>1)) (get_fnm_total_full \<omega>1)) (get_trace_total \<omega>1)"
+  let ?\<omega>'' = "update_trace_total ?\<omega>' (get_trace_total \<omega>1)"
 
   (* from state_rel_trace_independent[OF _ _ state_rel_fnm_independent[OF state_rel_mask_pred_independent[OF StateRel3]]] have *)
   have StateRel4: "state_rel Pr StateCons TyRep (?Tr'\<lparr>heap_var := hvar', mask_var := mvar', heap_var_def := hvar', mask_var_def := mvar'\<rparr>) AuxPred ctxt ?\<omega>'' ?\<omega>'' ns''"
-    (* by simp *)
-  sorry
+    using state_rel_trace_independent StateRel3
+    by force
   \<comment>\<open>Here, we reenable the state consistency using the consistency assumption on the final state.\<close>
 
   have "?\<omega>'' = \<omega>1"

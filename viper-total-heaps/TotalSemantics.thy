@@ -487,7 +487,7 @@ lemma red_exhale_acc_normalI:
       and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
       and "a = the_address r"
       and "p \<ge> 0 \<and> (if r = Null then p = 0 else get_mh_total_full \<omega> (a,f) \<ge> Abs_preal p)" (is "?Success")
-      and "\<omega>' = (if r = Null then \<omega> else upd_mh_loc_total_full \<omega> (a,f) ((get_mh_total_full \<omega> (a,f)) - (Abs_preal p)))" (is "\<omega>' = ?\<omega>def")
+      and "\<omega>' = (if r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a,f) (Abs_preal p))" (is "\<omega>' = ?\<omega>def")
     shows "red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> (RNormal \<omega>')"
 proof -
   have Eq: "RNormal \<omega>' = exh_if_total ?Success ?\<omega>def"
@@ -507,7 +507,7 @@ lemma red_exhale_acc_failureI:
       and "\<not>(p \<ge> 0 \<and> (if r = Null then p = 0 else get_mh_total_full \<omega> (a,f) \<ge> Abs_preal p))" (is "\<not>?Success")
     shows "red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> RFailure"
 proof -
-  have Eq: "RFailure = exh_if_total ?Success (if r = Null then \<omega> else upd_mh_loc_total_full \<omega> (a,f) ((get_mh_total_full \<omega> (a,f)) - (Abs_preal p)))"
+  have Eq: "RFailure = exh_if_total ?Success (if r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a,f) (Abs_preal p))"
     using assms
     by auto
   show ?thesis

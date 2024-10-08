@@ -1,5 +1,5 @@
 theory ExhaleRel
-  imports ExpRel ExprWfRel ViperBoogieTranslationInterface Simulation ViperBoogieRelUtil 
+  imports ExpRel ExprWfRel ViperBoogieTranslationInterface Simulation ViperBoogieRelUtil TotalExtConsPreservation
           TotalSemProperties
 begin
 
@@ -389,9 +389,9 @@ proof (rule assertion_framing_exprs_wf_rel_inh)
         get_store_total \<omega> = get_store_total \<omega>def \<and> get_trace_total \<omega> = get_trace_total \<omega>def \<and> get_hh_total_full \<omega> = get_hh_total_full \<omega>def"
     (is "?Goal1 \<and> ?Goal2")
   proof (rule conjI)
-     show ?Goal1 sorry
-      (* using assertion_framing_state_mono[OF ConsistencyDownwardsMono FramingStateInh] AssertionConstraint \<open>\<omega>def \<ge> \<omega>_inh\<close> 
-      by blast *)
+     show ?Goal1
+      using assertion_framing_state_mono[OF ConsistencyDownwardsMono FramingStateInh] AssertionConstraint \<open>\<omega>def \<ge> \<omega>_inh\<close> 
+      by blast
   next
     show ?Goal2
       using full_total_state_greater_only_mask_changed[OF \<open>\<omega>def \<succeq> \<omega>\<close>]
@@ -725,8 +725,7 @@ definition exhale_acc_normal_premise
        exhale_field_acc_rel_assms ctxt StateCons e_r f e_p r p \<omega>0 \<omega>  \<and>
        exhale_field_acc_rel_perm_success ctxt StateCons \<omega> r p f \<and>
        (if r = Null then \<omega>' = \<omega> else
-          let mh = get_mh_total_full \<omega> in 
-              \<omega>' = upd_mh_loc_total_full \<omega> (the_address r,f) ((mh (the_address r,f)) - (Abs_preal p))
+              \<omega>' = dec_mh_loc_total_full \<omega> (the_address r,f) (Abs_preal p)
        )"
 
 lemma exhale_acc_normal_red_exhale:
@@ -847,12 +846,18 @@ proof (rule rel_general_conseq_output,
        rule mask_upd_rel[OF StateRel _ WfTyRep TyInterp MaskUpdateWf MaskUpdateBpl MaskVar FieldRelSingle])
   fix \<omega>0_\<omega>def \<omega>' ns
   assume "fst \<omega>0_\<omega>def = fst \<omega>' \<and> exhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def) (snd \<omega>')"
-  thus "fst \<omega>' = (if (mask_var_def Tr = mask_var Tr \<and> r \<noteq> Null) then (snd \<omega>') else (fst \<omega>0_\<omega>def)) \<and>
+  moreover have "upd_mh_loc_total_full (snd \<omega>0_\<omega>def) (the_address r,f)
+                   ((get_mh_total_full (snd \<omega>0_\<omega>def) (the_address r,f)) - (Abs_preal p)) =
+                 dec_mh_loc_total_full (snd \<omega>0_\<omega>def) (the_address r,f) (Abs_preal p)"
+    apply (rule full_total_state.equality; simp_all)
+    apply (rule total_state.equality; simp_all)
+    by (rule nested_mask_equality; simp_all)
+  ultimately show "fst \<omega>' = (if (mask_var_def Tr = mask_var Tr \<and> r \<noteq> Null) then (snd \<omega>') else (fst \<omega>0_\<omega>def)) \<and>
 
          snd \<omega>' = (if (r = Null) then (snd \<omega>0_\<omega>def) else (upd_mh_loc_total_full (snd \<omega>0_\<omega>def) (the_address r, f)
                                                    ((get_mh_total_full (snd \<omega>0_\<omega>def) (the_address r,f)) - (Abs_preal p))))"
     using MaskDefDifferent
-    unfolding exhale_acc_normal_premise_def 
+    unfolding exhale_acc_normal_premise_def
     by presburger
 next
   fix \<omega>0_\<omega>def \<omega>' ns
@@ -938,12 +943,25 @@ next
   show "StateCons (snd \<omega>0_\<omega>def') \<and>
           consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (snd \<omega>0_\<omega>def'))"
     apply (intro conjI)
-    using exhale_normal_result_smaller[OF exhale_acc_normal_red_exhale[OF conjunct2[OF Aux]]] and
-          state_rel_consistent[OF StateRel[OF \<open>R _ _\<close>]]
-          wf_total_consistency_trace_mono_downwardD[OF WfConsistency] mono_prop_downwardD 
-          ConsOn
+    using exhale_normal_result_smaller[OF exhale_acc_normal_red_exhale[OF conjunct2[OF Aux]]]
+          state_rel_consistent[OF StateRel[OF \<open>R _ _\<close>] ConsOn]
+          wf_total_consistency_trace_mono_downwardD[OF WfConsistency] mono_prop_downwardD
      apply blast
-    sorry
+    apply (cases \<open>r = Null\<close>)
+     apply (simp add: \<open>r = Address a\<close>)
+  proof -
+    assume "r \<noteq> Null"
+    moreover have "get_total_full (snd \<omega>0_\<omega>def') = (upd_mh_total (get_total_full (snd \<omega>0_\<omega>def)) (get_mh_total_full (dec_mh_loc_total_full (snd \<omega>0_\<omega>def) (the_address r, f) (Abs_preal p))))"
+      apply (rule total_state.equality; simp_all)
+      using Aux[simplified exhale_acc_normal_premise_def \<open>r \<noteq> Null\<close>, simplified]
+       apply simp
+      apply (rule nested_mask_equality; simp_all)
+      using Aux[simplified exhale_acc_normal_premise_def \<open>r \<noteq> Null\<close>, simplified]
+      by simp+
+    ultimately show "consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (snd \<omega>0_\<omega>def'))"
+      using state_rel_consistent[OF StateRel[OF \<open>R _ _\<close>] ConsOn]
+      by (metis extcons_preserved_by_mh_change)
+  qed
 qed (auto)
 
 subsection \<open>Pure expression rule\<close>

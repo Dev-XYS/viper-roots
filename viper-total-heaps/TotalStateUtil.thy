@@ -43,6 +43,9 @@ fun upd_nm_loc_opt_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Righta
 fun inc_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
   where "inc_mp_loc_nm (NM mh mp fnm) lp p = NM mh (mp( lp := mp lp + p )) fnm"
 
+fun dec_mh_loc_nm :: "'a nested_mask \<Rightarrow> heap_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
+  where "dec_mh_loc_nm (NM mh mp fnm) l p = NM (mh( l := mh l - p )) mp fnm"
+
 fun dec_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
   where "dec_mp_loc_nm (NM mh mp fnm) lp p = NM mh (mp( lp := mp lp - p )) fnm"
 
@@ -114,6 +117,9 @@ fun add_to_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predica
 
 fun inc_mp_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
   where "inc_mp_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := inc_mp_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
+
+fun dec_mh_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> heap_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "dec_mh_loc_total \<phi> l p = \<phi>\<lparr> get_nm_total := dec_mh_loc_nm (get_nm_total \<phi>) l p \<rparr>"
 
 fun dec_mp_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
   where "dec_mp_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := dec_mp_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
@@ -198,6 +204,10 @@ fun add_to_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 
 fun inc_mp_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
   where "inc_mp_loc_total_full \<omega> lp p =
         \<omega>\<lparr> get_total_full := inc_mp_loc_total (get_total_full \<omega>) lp p \<rparr>"
+
+fun dec_mh_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> heap_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "dec_mh_loc_total_full \<omega> l p =
+        \<omega>\<lparr> get_total_full := dec_mh_loc_total (get_total_full \<omega>) l p \<rparr>"
 
 fun dec_mp_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
   where "dec_mp_loc_total_full \<omega> lp p =

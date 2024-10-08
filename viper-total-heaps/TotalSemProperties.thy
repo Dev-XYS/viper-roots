@@ -1412,7 +1412,6 @@ next
 qed (rule HOL.TrueI)+
 *)
 
-(*
 lemma assertion_framing_state_mono:
   assumes "mono_prop_downward_ord StateCons"
       and "assertion_framing_state ctxt StateCons A \<omega>"
@@ -1423,6 +1422,7 @@ lemma assertion_framing_state_mono:
   unfolding assertion_framing_state_def
   by blast  
 
+(*
 lemma vpr_postcondition_framed_mono:
   assumes "mono_prop_downward_ord StateCons"
       and "vpr_postcondition_framed ctxt StateCons A \<phi> \<sigma>" 
@@ -2549,7 +2549,7 @@ next
 next
   case (RedFieldAssign \<omega> e_r addr f e v ty \<Lambda>)
   then show ?case
-    sorry
+    by fastforce
 next
   case (RedMethodCall \<omega> es v_args m mdecl \<Lambda> ys v_rets resPre res resPost)
   from this obtain \<omega>Post where "resPost = RNormal \<omega>Post"
@@ -3024,7 +3024,9 @@ next
     (* by (auto intro!: red_pure_exp_intros simp: red_pure_exp_store_same_on_free_var) *)
 next
   case (InhImpTrue \<omega> e A res)
-  then show ?case sorry (* by (auto intro!: red_pure_exp_intros) *)
+  then show ?case
+    by (smt (verit) UnCI assert_pred.elims(2) assert_pred_rec.simps(2) free_var_assertion.simps(2) full_total_state.fold_congs(1) map_result_total.elims map_result_total.simps(1) pure_exp_pred.simps red_inhale.InhImpTrue red_pure_exp_store_same_on_free_var(1))
+    (* by (auto intro!: red_pure_exp_intros) *)
 next
   case (InhImpFalse \<omega> e res A)
   hence "ctxt, Some \<omega>2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"

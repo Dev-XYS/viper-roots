@@ -188,7 +188,6 @@ proof -
     using state_rel_wf_mask_simple[OF InitRel] \<omega>'
                     apply (simp, simp)
     using \<omega>' \<omega>'_extcons
-                  apply fastforce
     subgoal sorry
                  apply (simp add: TyInterp)
                 apply (rule store_rel_stable[where ?\<omega>=\<omega> and ?ns=ns])

@@ -144,7 +144,7 @@ inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega>
      (exh_if_total (p \<ge> 0 \<and> (if r = Null then p = 0 else mh (a,f) \<ge> Abs_preal p))
-                   (if r = Null then \<omega> else upd_mh_loc_total_full \<omega> (a,f) ((mh (a,f)) - (Abs_preal p))))"
+                   (if r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a,f) (Abs_preal p)))"
 
 \<comment>\<open>Exhaling wildcard removes some non-zero permission that is less than the current permission held.\<close>
 | ExhAccWildcard:

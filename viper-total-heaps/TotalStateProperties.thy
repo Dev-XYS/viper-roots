@@ -94,7 +94,7 @@ lemma is_empty_total_less_eq:
     shows "\<phi> \<le> \<phi>'"
   using assms zero_mask_less_eq_mask
   unfolding less_eq_total_state_ext_def less_eq_nested_mask_def is_empty_total_def
-  by (metis (no_types, lifting) get_mh_nm.simps get_mp_nm.simps nested_mask_le.elims(3) zero_nested_mask_def)
+  by (smt (verit, best) nested_mask.inject nested_mask_le.elims(3) zero_nested_mask_def)
 
 lemma is_empty_total_full_less_eq:
   assumes "is_empty_total_full \<omega>" and
@@ -242,6 +242,18 @@ lemma inc_mp_loc_nm__mp_rel [simp]:
 
 lemma inc_mp_loc_nm__fnm_rel [simp]:
   shows "get_fnm_nm (inc_mp_loc_nm nm lp p) = get_fnm_nm nm"
+  by (cases nm, fastforce)
+
+lemma dec_mh_loc_nm__mh_rel [simp]:
+  shows "get_mh_nm (dec_mh_loc_nm nm l p) = (get_mh_nm nm)( l := get_mh_nm nm l - p )"
+  by (cases nm, fastforce)
+
+lemma dec_mh_loc_nm__mp_rel [simp]:
+  shows "get_mp_nm (dec_mh_loc_nm nm l p) = get_mp_nm nm"
+  by (cases nm, fastforce)
+
+lemma dec_mh_loc_nm__fnm_rel [simp]:
+  shows "get_fnm_nm (dec_mh_loc_nm nm l p) = get_fnm_nm nm"
   by (cases nm, fastforce)
 
 lemma dec_mp_loc_nm__mh_rel [simp]:
@@ -945,7 +957,10 @@ begin
 definition core_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a, 'b) total_state_ext"
   where "core_total_state_ext \<phi> = (upd_nm_total \<phi> 0)"
 
-instance proof
+instance
+  sorry
+(*
+proof
   fix a b c x y :: "('a,'b) total_state_ext"
 
   show "Some x = x \<oplus> |x|"
@@ -961,7 +976,7 @@ instance proof
     assume ?lhs
 
     have "get_nm_total c = 0" \<comment> \<open>Todo: This is actually incorrect. \<open>c\<close> might be something equivalent to \<open>empty_nm\<close>.\<close>
-      sorry
+      by ..
 
     thus ?thesis
       by (metis \<open>Some x = x \<oplus> c\<close> \<open>Some x = x \<oplus> |x|\<close> plus_total_state_zero_mask total_state_plus_defined)
@@ -974,8 +989,6 @@ instance proof
   show "Some a = b \<oplus> x \<Longrightarrow> Some a = b \<oplus> y \<Longrightarrow> |x| = |y| \<Longrightarrow> x = y" (is "?A \<Longrightarrow> ?B \<Longrightarrow> _ \<Longrightarrow> _")
     \<comment>\<open>\<^prop>\<open>|x| = |y|\<close> is not needed, since it is always the case if he heap of \<^term>\<open>x\<close> and \<^term>\<open>y\<close>
        are the same, which it must be because of the first two assumptions\<close>
-    sorry
-  (*
   proof -
     assume ?A and ?B
 
@@ -1006,8 +1019,8 @@ instance proof
     thus ?thesis
       by (metis \<open>?A\<close> \<open>?B\<close> total_state.equality total_state_plus_defined)
   qed
-  *)
 qed
+*)
 
 end
 

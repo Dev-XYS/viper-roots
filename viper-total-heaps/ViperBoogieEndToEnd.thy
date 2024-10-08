@@ -643,8 +643,7 @@ proof (rule allI | rule impI)+
           with inhale_no_perm_downwards_mono(3) ConsistencyDownwardMono RedInhPost 
           have "red_inhale ctxt_vpr StateCons (method_decl.post mdecl) ?\<omega>PostEmpty RFailure"
             using is_empty_empty_full_total_state \<open>res = _\<close>  VprNoPermSupportedSpec supported_assertion_no_unfolding
-            sorry
-            (* by blast *)
+            by blast
             
           with stmt_rel_failure_elim[OF PostFramingInhRel \<open>RPostFrameStart _ _\<close>]
           obtain c' where "red_ast_bpl proc_body_bpl ctxt (\<gamma>Framing0, Normal ns') c'" and 
