@@ -273,9 +273,8 @@ lemma unfold_stmt_rel:
       and PredBody: "ViperLang.predicate_decl.body pred_decl = Some pred_body"
       and SupportedPredBody: "supported_pred_body pred_body"
       and SelfFraming: "assertion_self_framing ctxt_vpr StateCons pred_body ty_args"
-      and IntConsFixed: "StateCons = consistent_internal_total_full"
-      and WfCons: "mono_prop_downward StateCons"
-      and ConsPreservedByStmt: "\<And>\<omega> \<omega>' stmt. StateCons \<omega> \<Longrightarrow> red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr stmt \<omega> (RNormal \<omega>') \<Longrightarrow> StateCons \<omega>'"
+      and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
+      and IntConsImpliesWfMask: "\<And>\<omega>. StateCons \<omega> \<Longrightarrow> valid_heap_mask (get_mh_total_full \<omega>)"
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
       and CtxtWfPred: "ctxt_wf_pred ctxt_vpr"
@@ -321,16 +320,20 @@ proof (rule stmt_rel_intro)
     using assertion_self_framing_def
     by blast
 
-  hence FramingArgsTrueCons: "\<And>p. assertion_self_framing_store ctxt_vpr (\<lambda>_. True) (syntactic_mult p pred_body) (nth_option v_args)"
-    by (metis assertion_framing_state_def assertion_self_framing_store_def inhale_with_stronger_state_consistency_failure)
+  have Cons_t: "StateCons_t (get_total_full \<omega>)"
+    using WfCons[simplified wf_total_consistency_def]
+    by (meson StateRelImpliesIntCons \<open>R \<omega> ns\<close>)
+  have LabelCons: "\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> StateCons_t \<phi>"
+    by (metis StateRelImpliesIntCons WfCons \<open>R \<omega> ns\<close> wf_total_consistency_def)
 
-  from inhale_simulates_unfold[OF UnfoldRel ExtCons _ PredDecl PredBody CtxtWfPred FramingArgsTrueCons]
+  from inhale_simulates_unfold[OF UnfoldRel ExtCons WfCons Cons_t PredDecl PredBody CtxtWfPred FramingArgs _ ]
   obtain \<phi>\<^sub>d where
     \<phi>\<^sub>d: "\<phi>\<^sub>d = dec_mp_loc_total (mult_rm_nm_loc_total (get_total_full \<omega>) (pred_id,v_args) (Abs_preal v_p)) (pred_id,v_args) (Abs_preal v_p)" and
-    step_inhale': "red_inhale ctxt_vpr (\<lambda>_. True) (syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)
+    step_inhale': "red_inhale ctxt_vpr StateCons (syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)
                      \<lparr> get_store_total = nth_option v_args, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>\<^sub>d \<rparr>
             (RNormal \<lparr> get_store_total = nth_option v_args, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>' \<rparr>)"
-    by (metis IntConsFixed StateRelImpliesIntCons \<open>R \<omega> ns\<close> consistent_internal_total_full_def)
+    using IntConsImpliesWfMask LabelCons
+    by blast
 
   from UnfoldRel have perm_suff: "get_mp_total_full \<omega> (pred_id,v_args) \<ge> Abs_preal v_p"
     apply (simp add: unfold_rel.simps shift_up.simps)
@@ -353,7 +356,7 @@ proof (rule stmt_rel_intro)
   \<comment> \<open>Step 2: inhale\<close>
 
   have step_inhale:
-    "red_inhale ctxt_vpr (\<lambda>_. True) (syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)
+    "red_inhale ctxt_vpr StateCons (syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)
                 \<lparr> get_store_total = get_store_total \<omega>, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>\<^sub>d \<rparr>
        (RNormal \<lparr> get_store_total = get_store_total \<omega>, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>' \<rparr>)"
   proof -
@@ -383,10 +386,7 @@ proof (rule stmt_rel_intro)
     by simp
 
   obtain ns' where "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>2, Normal ns\<^sub>2) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
-    using inhale_with_mono_state_consistency[OF step_inhale[simplified inh_perm_1] WfCons, simplified \<omega>'_rel[symmetric] \<omega>\<^sub>d_rel[symmetric]]
-          inhale_rel_normal_elim[OF StepInhale conjunct2[OF bpl_step_exh] TrueI]
-          ConsPreservedByStmt[OF StateRelImpliesIntCons[OF \<open>R \<omega> ns\<close>] red_stmt]
-    by auto
+    by (metis StepInhale \<omega>'_rel \<omega>\<^sub>d_rel bpl_step_exh inh_perm_1 inhale_rel_normal_elim step_inhale)
 
   thus "\<exists>ns'. red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
     using bpl_step_exh red_ast_bpl_transitive

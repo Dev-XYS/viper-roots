@@ -747,6 +747,27 @@ lemma sum_consistent_external:
   sorry
 
 
+subsection \<open>Fractioning Nested Mask\<close>
+
+lemma extcons_fraction_wrt_mp:
+  assumes "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = nm \<rparr>"
+      and "mp = get_mp_nm nm"
+      and "fnm = get_fnm_nm nm"
+      and "mp' \<le> mp"
+      and "\<And>lp. fnm' lp = (if mp' lp = 0 then None else (mp' lp / mp lp) *\<^sub>s fnm lp)"
+    shows "consistent_external ctxt (\<phi>\<lparr> get_nm_total := NM mh' mp' fnm' \<rparr>)"
+  sorry
+
+\<comment> \<open>Todo: move to somewhere else\<close>
+lemma split_implies_le:
+  assumes "mp_split mp mp\<^sub>1 mp\<^sub>2"
+  shows "mp\<^sub>1 \<le> mp" and "mp\<^sub>2 \<le> mp"
+  using assms less_eq_add_masks
+   apply auto[1]
+  using assms
+  by (metis add_masks_comm less_eq_add_masks mp_split.elims(2))
+
+
 subsection \<open>Empty States\<close>
 
 lemma empty_consistent_external:
