@@ -28,7 +28,7 @@ abbreviation var_ctxt_bpl where
 
 
 abbreviation state_rel_initial where 
-  "state_rel_initial A Pr ctxt w ns \<equiv> (state_rel_def_same Pr (\<lambda> _.True) (ty_repr_basic A) tr_vpr_bpl_0 Map.empty ctxt w ns)"
+  "state_rel_initial A Pr ctxt w ns \<equiv> (state_rel_def_same Pr consistent_internal_total_full (ty_repr_basic A) tr_vpr_bpl_0 Map.empty ctxt w ns)"
 
 
 abbreviation type_interp_bpl where 
@@ -81,7 +81,7 @@ val stmt_body_hints = (SeqnHint [(AtomicHint (InhaleHint {inhale_stmt_rel_thm = 
 
 lemma method_rel_proof : 
 
-shows "(method_rel (state_rel_empty (state_rel_initial (absval_interp_total ctxt_vpr) global_data_vpr.vpr_prog ectxt)) (state_rel_initial (absval_interp_total ctxt_vpr) global_data_vpr.vpr_prog ectxt) ctxt_vpr (\<lambda> _.True) var_ctxt_viper P ectxt method_decls.foo_decl (convert_ast_to_program_point foo_before_ast_to_cfg_prog.proc_body))"
+shows "(method_rel (state_rel_empty (state_rel_initial (absval_interp_total ctxt_vpr) global_data_vpr.vpr_prog ectxt)) (state_rel_initial (absval_interp_total ctxt_vpr) global_data_vpr.vpr_prog ectxt) ctxt_vpr consistent_internal_total_full var_ctxt_viper P ectxt method_decls.foo_decl (convert_ast_to_program_point foo_before_ast_to_cfg_prog.proc_body))"
 apply ((unfold method_rel_def))
 apply ((rule exI))
 apply ((intro conjI))
@@ -136,18 +136,24 @@ sorry
 
 
 schematic_goal
-"vpr_all_method_spec_correct_total ctxt_vpr (\<lambda>_. True) vpr_prog \<Longrightarrow>
+"vpr_all_method_spec_correct_total ctxt_vpr consistent_internal_total_full vpr_prog \<Longrightarrow>
   stmt_rel
-   (state_rel_well_def_same ectxt vpr_prog (\<lambda>_. True) (ty_repr_basic (absval_interp_total ctxt_vpr))
-     tr_vpr_bpl_0 (\<lambda>x. None))
-   (state_rel_well_def_same ectxt vpr_prog (\<lambda>_. True) (ty_repr_basic (absval_interp_total ctxt_vpr))
-     tr_vpr_bpl_0 (\<lambda>x. None))
-   ctxt_vpr (\<lambda>_. True) var_ctxt_viper P ectxt
+   (state_rel_well_def_same ectxt vpr_prog consistent_internal_total_full
+     (ty_repr_basic (absval_interp_total ctxt_vpr)) tr_vpr_bpl_0 (\<lambda>x. None))
+   (state_rel_well_def_same ectxt vpr_prog consistent_internal_total_full
+     (ty_repr_basic (absval_interp_total ctxt_vpr)) tr_vpr_bpl_0 (\<lambda>x. None))
+   ctxt_vpr consistent_internal_total_full var_ctxt_viper P ectxt
    (Unfold ''P'' [pure_exp.Var 0] (PureExp (ELit WritePerm)))
    (BigBlock None [Assign 8 (expr.Var 3), cmd.Assert (Lit (Lang.lit.LBool True))]
      (Some (ParsedIf (Some (expr.Var 8 \<guillemotleft>Lang.binop.Neq\<guillemotright> expr.Var 2)) [bigblock_1] [bigblock_2])) None,
     KSeq bigblock_3 KStop)
    ?\<gamma>1.225"
+  apply (rule unfold_stmt_rel)
+               apply (simp add: vpr_prog_def)
+              apply (simp add: vpr_prog_def predicate_decl.defs(1))
+             apply (simp add: predicate_decl.defs)
+            apply simp
+  subgoal sorry \<comment> \<open>self-framing\<close>
   sorry
 
 
