@@ -132,7 +132,23 @@ apply (tactic \<open> (stmt_rel_tac @{context} stmt_rel_info stmt_body_hints 1) 
 apply (tactic \<open> (progress_red_bpl_rel_tac @{context} 1) \<close>)
 apply ((unfold foo_decl_proj_mpost))
 apply ((rule exhale_true_stmt_rel))
-done
+sorry
+
+
+schematic_goal
+"vpr_all_method_spec_correct_total ctxt_vpr (\<lambda>_. True) vpr_prog \<Longrightarrow>
+  stmt_rel
+   (state_rel_well_def_same ectxt vpr_prog (\<lambda>_. True) (ty_repr_basic (absval_interp_total ctxt_vpr))
+     tr_vpr_bpl_0 (\<lambda>x. None))
+   (state_rel_well_def_same ectxt vpr_prog (\<lambda>_. True) (ty_repr_basic (absval_interp_total ctxt_vpr))
+     tr_vpr_bpl_0 (\<lambda>x. None))
+   ctxt_vpr (\<lambda>_. True) var_ctxt_viper P ectxt
+   (Unfold ''P'' [pure_exp.Var 0] (PureExp (ELit WritePerm)))
+   (BigBlock None [Assign 8 (expr.Var 3), cmd.Assert (Lit (Lang.lit.LBool True))]
+     (Some (ParsedIf (Some (expr.Var 8 \<guillemotleft>Lang.binop.Neq\<guillemotright> expr.Var 2)) [bigblock_1] [bigblock_2])) None,
+    KSeq bigblock_3 KStop)
+   ?\<gamma>1.225"
+  sorry
 
 
 
