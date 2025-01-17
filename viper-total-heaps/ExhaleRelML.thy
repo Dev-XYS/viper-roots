@@ -292,6 +292,7 @@ ML \<open>
           (store_temporary_perm_exh_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
           (prove_perm_non_negative_exh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
           (prove_sufficient_perm_tac ctxt info exp_rel_info lookup_aux_var_state_rel_thm exp_rel_perm_access_thm) THEN'
+          (SUBGOAL (fn (t,_) => raise TERM ("Exhale breakpoint", [t]))) THEN'
           (upd_exhale_field_acc_tac ctxt info exp_rel_info)
     | _ => error("only support FieldAccExhHint")
 

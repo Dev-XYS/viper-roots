@@ -241,6 +241,7 @@ fun state_rel_capture_state_intro ctxt =
    assumes that the current big block is unfolded *)
 
 fun store_temporary_perm_tac ctxt (info: basic_stmt_rel_info) exp_rel_info lookup_aux_var_ty_thm eval_vpr_perm_tac =
+  (SUBGOAL (fn (t,_) => raise TERM ("store perm breakpoint", [t]))) THEN'
   (Rmsg' "store perm init" (resolve_tac ctxt @{thms store_temporary_perm_rel}) ctxt) THEN'
   (Rmsg' "store perm state rel" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
   (Rmsg' "store perm eval vpr perm" (eval_vpr_perm_tac ctxt) ctxt) THEN'

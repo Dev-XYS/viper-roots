@@ -44,8 +44,8 @@ by ((force simp: relational_proof_foo.tr_vpr_bpl_0_def relational_proof_foo.var_
 
 lemma method_partial_proof : 
 assumes "(proc_is_correct (type_interp_bpl (absval_interp_total global_data_end_to_end.ctxt_vpr)) global_data.fdecls global_data.constants_vdecls global_data.unique_consts global_data.globals_vdecls global_data.axioms foo_before_ast_to_cfg_prog.ast_proc (Ast.proc_body_satisfies_spec::(((('a) vbpl_absval), ast) proc_body_satisfies_spec_ty)))"
-shows "(vpr_method_correct_total_partial (global_data_end_to_end.ctxt_vpr::(('a) total_context)) (\<lambda> _.True) method_decls.foo_decl)"
-apply ((rule end_to_end_vpr_method_correct_partial[where ?ctxt = ctxt_bpl, OF assms true_mono_prop_downward_ord wf_ty_repr_basic wf_total_consistency_trivial]))
+shows "(vpr_method_correct_total_partial (global_data_end_to_end.ctxt_vpr::(('a) total_context)) consistent_internal_total_full method_decls.foo_decl)"
+apply ((rule end_to_end_vpr_method_correct_partial[where ?ctxt = ctxt_bpl, OF assms consistency_internal_mono_prop_downward_ord wf_ty_repr_basic consistency_internal_wf]))
 apply ((simp add: ty_repr_basic_def))
 apply ((simp only: global_data_end_to_end.program_total_eq))
 apply ((rule method_decls.foo_lookup_lemma[simplified HOL.sym[OF global_data_vpr.methods_vpr_prog]]))
@@ -80,6 +80,7 @@ apply (simp)
 apply (simp)
 apply ((fastforce intro: is_empty_total_wf_mask))
 apply (simp)
+apply (rule empty_state_consistent_internal, simp)
 apply ((simp add: ctxt_bpl_def))
 apply ((simp add: ty_repr_basic_def))
 apply (simp)
