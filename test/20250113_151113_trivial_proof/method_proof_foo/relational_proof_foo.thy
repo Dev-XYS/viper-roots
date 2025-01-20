@@ -218,20 +218,18 @@ schematic_goal
      apply simp
     apply simp
 
-   apply (rule unfold_exhale_rel_rel)
    apply (rule unfold_exhale_pred_rel)
 
      apply (simp only: append_Cons append_Nil)
      apply (tactic \<open>exps_wf_rel_tac basic_stmt_rel_info exp_wf_rel_info exp_rel_info @{context} (#no_def_checks_tac_opt exhale_rel_info) 2 1\<close>)
 
-    \<comment> \<open>3.2 perm ok\<close>
+\<comment> \<open>3.2 perm ok\<close>
     apply (tactic \<open>rewrite_rel_general_tac @{context} 1\<close>)
     apply (rule rel_propagate_pre_2)
     \<comment> \<open>3.2.1 store perm\<close>
      apply (rule red_ast_bpl_relI)
      apply (rule store_temporary_perm_rel)
-           apply simp
-           apply (rule temp1) apply simp
+           apply simp apply blast
           apply (rule exhale_pred_acc_rel_assms_perm_eval)
           apply blast
   using temp1 apply simp
@@ -286,43 +284,36 @@ schematic_goal
    apply (simp only: bigblock_3_def)
 
    apply (rule exhale_rel_pred_acc_upd_rel)
-                     apply simp
-  apply simp
-
+                    apply simp
+                   apply simp
+                  apply simp
+                 apply (rule wf_ty_repr_basic)
+                apply simp
+               apply simp
+              apply (simp add: tr_vpr_bpl_0_def)
+             apply simp
+            apply (rule mask_update_wf_concrete)
+             apply (rule CtxtWf)
+            apply (rule wf_ty_repr_basic)
+           apply (rule mask_read_wf_concrete)
+            apply (rule CtxtWf)
+           apply (rule wf_ty_repr_basic)
+          apply (simp only: update_mask_concrete_def read_mask_concrete_def fun_repr_concrete.simps)
+          apply (simp add: tr_vpr_bpl_0_def)
+         apply (simp only: update_mask_concrete_def read_mask_concrete_def fun_repr_concrete.simps)
+         apply (simp add: tr_vpr_bpl_0_def)
+        apply simp
+        apply (tactic \<open>exp_rel_tac exp_rel_info @{context} 1\<close>)
+       apply (simp add: WfFunBpl)
+  using ctxt_wf_fun_interp[OF CtxtWf, of FPredicateLoc_P, simplified fun_repr_concrete.simps, simplified]
+       apply simp
+      apply simp
+     apply (simp add: vpr_prog_def)
+    apply blast
+   apply (simp add: predicate_decl.defs)
 
   apply (tactic \<open>inhale_rel_tac @{context} inhale_rel_info (GoodStateAfter (GoodStateAfter (AtomicInhHint (FieldAccInhHint (exp_wf_rel_info, exp_rel_info, @{thm foo_before_ast_to_cfg_prog.lvar8(2)}, @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]}))))) 1\<close>)
-
-  sorry
-
-
-schematic_goal
-"\<And>p \<omega> ns.
-     vpr_all_method_spec_correct_total ctxt_vpr (\<lambda>_. True) vpr_prog \<Longrightarrow>
-     ((\<exists>\<omega>'. \<omega> = \<omega>' \<and> ctxt_vpr, Some \<omega> \<turnstile> \<langle>ELit WritePerm;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> 0 \<le> p) \<or>
-      ctxt_vpr, Some \<omega> \<turnstile> \<langle>ELit WritePerm;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> p < 0) \<and>
-     state_rel_well_def_same ectxt vpr_prog (\<lambda>_. True) (ty_repr_basic (absval_interp_total ctxt_vpr)) tr_vpr_bpl_0 (\<lambda>x. None) \<omega>
-      ns \<Longrightarrow>
-     \<exists>ns'. red_ast_bpl P ectxt
-            ((BigBlock None
-               [Assign 8 (expr.Var 3), cmd.Assert (Lit (Lang.lit.LBool True)),
-                cmd.Assume (Lit (Lang.lit.LBool True) \<guillemotleft>binop.Imp\<guillemotright> (expr.Var 7 \<guillemotleft>Lang.binop.Neq\<guillemotright> expr.Var 0)),
-                Assign 6
-                 (FunExp ''updMask'' [TConSingle ''NormalField'', TPrim prim_ty.TInt]
-                   [expr.Var 6, expr.Var 7, expr.Var 4,
-                    FunExp ''readMask'' [TConSingle ''NormalField'', TPrim prim_ty.TInt]
-                     [expr.Var 6, expr.Var 7, expr.Var 4] \<guillemotleft>Lang.binop.Add\<guillemotright> expr.Var 8]),
-                cmd.Assume (FunExp ''state'' [] [expr.Var 5, expr.Var 6]),
-                cmd.Assume (FunExp ''state'' [] [expr.Var 5, expr.Var 6]),
-                cmd.Assume (FunExp ''state'' [] [expr.Var 5, expr.Var 6]), Assign 9 (expr.Var 5), Assign 10 (expr.Var 6),
-                Assign 8 (expr.Var 3), cmd.Assert (Lit (Lang.lit.LBool True))]
-               (Some (ParsedIf (Some (expr.Var 8 \<guillemotleft>Lang.binop.Neq\<guillemotright> expr.Var 2)) [bigblock_1] [bigblock_2])) None,
-              KSeq bigblock_3 KStop),
-             Normal ns)
-            (?\<gamma>1.100 p, Normal ns') \<and>
-           ?R'89 p \<omega> ns'"
-  apply (rule store_temporary_perm_rel)
-  apply simp apply blast
-
+  done
 
 
 end

@@ -449,6 +449,7 @@ next
   qed
 qed
 
+(*
 lemma unfold_exhale_rel_rel:
   assumes "rel_general (uncurry (\<lambda>\<omega>0 \<omega> ns. \<omega>0 = \<omega> \<and> R \<omega> ns)) (uncurry (\<lambda>\<omega>0 \<omega> ns. R \<omega> ns))
              (\<lambda>\<omega>0_\<omega> \<omega>0_\<omega>'. red_exhale ctxt_vpr StateCons (fst \<omega>0_\<omega>) (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) (snd \<omega>0_\<omega>) (RNormal (snd \<omega>0_\<omega>')))
@@ -459,7 +460,9 @@ lemma unfold_exhale_rel_rel:
              (\<lambda>\<omega>. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> RFailure)
              P ctxt_bpl \<gamma> \<gamma>'"
   by (smt (verit, ccfv_SIG) assms rel_general_conseq rel_general_convert_2 uncurry.elims)
+*)
 
+(*
 lemma unfold_exhale_pred_rel:
   assumes WfSubexp: "exprs_wf_rel
                        (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and>
@@ -484,6 +487,34 @@ lemma unfold_exhale_pred_rel:
     shows "rel_general (uncurry R) (uncurry R'')
              (\<lambda>\<omega>0_\<omega> \<omega>0_\<omega>'. red_exhale ctxt_vpr StateCons (fst \<omega>0_\<omega>) (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) (snd \<omega>0_\<omega>) (RNormal (snd \<omega>0_\<omega>')))
              (\<lambda>\<omega>0_\<omega>. red_exhale ctxt_vpr StateCons (fst \<omega>0_\<omega>) (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) (snd \<omega>0_\<omega>) RFailure)
+             P ctxt_bpl \<gamma> \<gamma>'"
+  sorry
+*)
+
+lemma unfold_exhale_pred_rel:
+  assumes WfSubexp: "exprs_wf_rel
+                       (\<lambda>\<omega>def \<omega> ns. R \<omega> ns \<and> \<omega>def = \<omega> \<and>
+                          Q (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega>)
+                       ctxt_vpr StateCons P ctxt_bpl (e_args_vpr @ [e_p_vpr]) \<gamma> \<gamma>\<^sub>2"
+      and CorrectPermRel:
+            "\<And>v_args v_p.
+               rel_general R (R' v_args v_p)
+                 (\<lambda>\<omega> \<omega>'. \<omega> = \<omega>' \<and>
+                    exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args v_p \<omega> \<omega> \<and>
+                    exhale_pred_acc_rel_perm_success ctxt_vpr StateCons \<omega> pred_id v_args v_p)
+                 (\<lambda>\<omega>.
+                    exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args v_p \<omega> \<omega> \<and>
+                    \<not> exhale_pred_acc_rel_perm_success ctxt_vpr StateCons \<omega> pred_id v_args v_p)
+                 P ctxt_bpl \<gamma>\<^sub>2 \<gamma>\<^sub>3"
+      and UpdExhRel:
+            "\<And>v_args v_p.
+               rel_general (R' v_args v_p) R  \<comment>\<open>Here, the simulation needs to revert back to R\<close>
+                 (\<lambda> \<omega> \<omega>'. exhale_pred_acc_normal_premise ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args v_p \<omega> \<omega> \<omega>')
+                 (\<lambda>_. False)
+                 P ctxt_bpl \<gamma>\<^sub>3 \<gamma>'"
+    shows "rel_general R R
+             (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> (RNormal \<omega>'))
+             (\<lambda>\<omega>. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> RFailure)
              P ctxt_bpl \<gamma> \<gamma>'"
   sorry
 
