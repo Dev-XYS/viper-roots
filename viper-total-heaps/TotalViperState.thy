@@ -1,7 +1,7 @@
 section \<open>A state model for the Viper total heap semantics\<close>
 
 theory TotalViperState
-  imports ViperCommon.ValueAndBasicState ViperCommon.PosReal
+  imports ViperCommon.ValueAndBasicState ViperCommon.PosReal ViperCommon.StrictlyPosReal
 begin
 
 
@@ -41,14 +41,16 @@ fun get_lpset_pheap :: "'a predicate_heap \<Rightarrow> 'a predicate_loc \<Right
 
 subsection \<open>Nested Mask\<close>
 
-datatype 'a nested_mask = NM field_mask "'a predicate_mask" "('a predicate_loc \<rightharpoonup> 'a nested_mask)"
+datatype 'a nested_mask = NM field_mask "'a predicate_loc \<rightharpoonup> (posreal \<times> 'a nested_mask)"
+
+type_synonym 'a predicate_nm_fun = "'a predicate_loc \<rightharpoonup> (posreal \<times> 'a nested_mask)"
 
 
 subsection \<open>Total State\<close>
 
 record 'a total_state =
-   get_hh_total :: "'a total_heap"
-   get_nm_total :: "'a nested_mask"
+  get_hh_total :: "'a total_heap"
+  get_nm_total :: "'a nested_mask"
 
 
 subsection \<open>Full Total State\<close>

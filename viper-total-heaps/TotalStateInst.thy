@@ -173,7 +173,30 @@ lemma less_eq_nested_maskD: "nm1 \<le> nm2 \<Longrightarrow>
          get_mp_nm nm1 \<le> get_mp_nm nm2"
   unfolding less_eq_nested_mask_def
   apply (cases nm1, cases nm2)
-  by simp
+  apply standard
+   apply simp
+  apply (rule iffD2[OF le_fun_def])
+proof
+  fix mh\<^sub>1 fnm\<^sub>1 mh\<^sub>2 fnm\<^sub>2 lp
+  assume "nested_mask_le nm1 nm2"
+     and [simp]: "nm1 = NM mh\<^sub>1 fnm\<^sub>1"
+     and [simp]: "nm2 = NM mh\<^sub>2 fnm\<^sub>2"
+  hence mple: "option_fold (\<lambda>lpm\<^sub>1. option_fold (\<lambda>lpm\<^sub>2. fst lpm\<^sub>1 \<le> fst lpm\<^sub>2) False (fnm\<^sub>2 lp)) True (fnm\<^sub>1 lp)"
+    using nested_mask_le.simps
+    by blast
+  show "get_mp_nm nm1 lp \<le> get_mp_nm nm2 lp"
+    apply (cases "fnm\<^sub>1 lp"; cases "fnm\<^sub>2 lp")
+       apply simp_all
+      apply (simp add: all_pos)
+    using mple
+     apply auto[1]
+    apply (insert mple)
+    apply (simp add: pos2p_def)
+    apply (simp add: less_eq_preal_def)
+    apply (insert Abs_preal_inverse)
+    apply simp
+    by (metis Abs_posreal_cases Rep_posreal_cases Rep_posreal_inverse dual_order.order_iff_strict less_eq_posreal.rep_eq mem_Collect_eq)
+qed
 
 lemma less_eq_total_stateI:
   " get_hh_total \<phi>1 = get_hh_total \<phi>2 \<Longrightarrow>
@@ -262,6 +285,7 @@ lemma update_mh_loc_nm_mono:
   using assms(1)[simplified less_eq_nested_mask_def]
   by (simp add: assms(2) le_funD le_funI)
 
+(*
 lemma update_mp_loc_nm_mono:
   assumes "nm1 \<le> nm2" and "p1 \<le> p2"
   shows "upd_mp_loc_nm nm1 lp p1 \<le> upd_mp_loc_nm nm2 lp p2"
@@ -269,6 +293,7 @@ lemma update_mp_loc_nm_mono:
   apply (simp add: less_eq_nested_mask_def)
   using assms(1)[simplified less_eq_nested_mask_def]
   by (simp add: assms(2) le_funD le_funI)
+*)
 
 lemma update_mh_loc_total_mono:
   assumes "\<phi>1 \<le> \<phi>2" and "p1 \<le> p2"
@@ -276,8 +301,9 @@ lemma update_mh_loc_total_mono:
   apply (rule less_eq_total_stateI)
     apply (insert assms)
     apply (auto dest: less_eq_total_stateD)
-  by (simp add: less_eq_total_stateD update_mh_loc_nm_mono)
+  by (metis less_eq_total_state_ext_def upd_mh_loc_nm.elims update_mh_loc_nm_mono)
 
+(*
 lemma update_mp_loc_total_mono:
   assumes "\<omega>1 \<le> \<omega>2" and "p1 \<le> p2"
   shows "upd_mp_loc_total \<omega>1 l p1 \<le> upd_mp_loc_total \<omega>2 l p2"
@@ -285,6 +311,7 @@ lemma update_mp_loc_total_mono:
     apply (insert assms)
     apply (auto dest: less_eq_total_stateD)
   by (simp add: less_eq_total_stateD update_mp_loc_nm_mono)
+*)
 
 lemma update_mh_loc_total_full_mono:
   assumes "\<omega>1 \<le> \<omega>2" and "p1 \<le> p2"
@@ -300,6 +327,7 @@ proof -
     by (fastforce dest: less_eq_full_total_stateD)+
 qed
 
+(*
 lemma update_mp_loc_total_full_mono:
   assumes "\<omega>1 \<le> \<omega>2" and "p1 \<le> p2"
   shows "upd_mp_loc_total_full \<omega>1 l p1 \<le> upd_mp_loc_total_full \<omega>2 l p2"
@@ -313,6 +341,7 @@ proof -
     apply (rule less_eq_full_total_stateI2)
     by (fastforce dest: less_eq_full_total_stateD)+
 qed
+*)
 
 lemma less_eq_add_masks: "m1 \<le> add_masks m1 m2"
   unfolding add_masks_def le_fun_def

@@ -7,7 +7,7 @@ theory PosReal
   imports Main HOL.Real PosPerm HOL.Topological_Spaces HOL.Limits
 begin
 
-typedef preal = "{ r :: real |r. r \<ge> 0}" by fastforce
+typedef preal = "{ r :: real | r. r \<ge> 0 }" by fastforce
 
 setup_lifting type_definition_preal
 

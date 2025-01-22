@@ -89,12 +89,17 @@ lemma is_empty_total_wf_mask: "is_empty_total_full \<omega> \<Longrightarrow> wf
 
 lemma is_empty_total_less_eq:
   assumes "is_empty_total \<phi>" and
-          "get_hh_total \<phi> = get_hh_total \<phi>'" and
-          "total_state.more \<phi> = total_state.more \<phi>'"
-    shows "\<phi> \<le> \<phi>'"
-  using assms zero_mask_less_eq_mask
-  unfolding less_eq_total_state_ext_def less_eq_nested_mask_def is_empty_total_def
-  by (smt (verit, best) nested_mask.inject nested_mask_le.elims(3) zero_nested_mask_def)
+    "get_hh_total \<phi> = get_hh_total \<phi>'" and
+    "total_state.more \<phi> = total_state.more \<phi>'"
+  shows "\<phi> \<le> \<phi>'"
+  unfolding less_eq_total_state_ext_def
+  apply (intro conjI)
+    defer 2
+    apply (simp_all add: assms(2,3))
+  unfolding less_eq_nested_mask_def
+  apply (cases "get_nm_total \<phi>"; cases "get_nm_total \<phi>'")
+  using assms(1)[simplified is_empty_total_def zero_nested_mask_def] zero_mask_less_eq_mask
+  by auto
 
 lemma is_empty_total_full_less_eq:
   assumes "is_empty_total_full \<omega>" and
@@ -105,7 +110,7 @@ lemma is_empty_total_full_less_eq:
         shows "\<omega> \<le> \<omega>'"
 proof -
   have "get_total_full \<omega> \<le> get_total_full \<omega>'"
-    using is_empty_total_less_eq assms 
+    using is_empty_total_less_eq assms
     unfolding is_empty_total_full_def
     by fastforce
 
@@ -117,9 +122,9 @@ qed
 
 definition empty_full_total_state :: "'a store \<Rightarrow> 'a total_trace \<Rightarrow> 'a total_heap \<Rightarrow> 'a full_total_state"
   where "empty_full_total_state \<sigma> t hh =
-   \<lparr> get_store_total = \<sigma>, 
-     get_trace_total = t, 
-     get_total_full = \<lparr> get_hh_total = hh, get_nm_total = 0 \<rparr> 
+   \<lparr> get_store_total = \<sigma>,
+     get_trace_total = t,
+     get_total_full = \<lparr> get_hh_total = hh, get_nm_total = 0 \<rparr>
    \<rparr>"
 
 lemma get_store_empty_full_total_state [simp]: "get_store_total (empty_full_total_state \<sigma> t hh) = \<sigma>"
@@ -172,6 +177,11 @@ lemma upd_mh_nm__mh_rel [simp]:
   shows "get_mh_nm (upd_mh_nm nm mh) = mh"
   by (cases nm, fastforce)
 
+lemma upd_mh_nm__fnm_rel [simp]:
+  shows "get_fnm_nm (upd_mh_nm nm mh) = get_fnm_nm nm"
+  by (cases nm, fastforce)
+
+(*
 lemma upd_mh_loc_nm__mh_rel [simp]:
   shows "get_mh_nm (upd_mh_loc_nm nm l p) = (get_mh_nm nm)( l := p )"
   by (cases nm, fastforce)
@@ -183,11 +193,9 @@ lemma upd_mh_loc_nm__mp_rel [simp]:
 lemma upd_mh_loc_nm__fnm_rel [simp]:
   shows "get_fnm_nm (upd_mh_loc_nm nm l p) = get_fnm_nm nm"
   by (cases nm, fastforce)
+*)
 
-lemma upd_mh_nm__fnm_rel [simp]:
-  shows "get_fnm_nm (upd_mh_nm nm mh) = get_fnm_nm nm"
-  by (cases nm, fastforce)
-
+(*
 lemma upd_mp_nm__mh_rel [simp]:
   shows "get_mh_nm (upd_mp_nm nm mp) = get_mh_nm nm"
   by (cases nm, fastforce)
@@ -211,19 +219,23 @@ lemma upd_mp_loc_nm__mp_rel [simp]:
 lemma upd_mp_loc_nm__fnm_rel [simp]:
   shows "get_fnm_nm (upd_mp_loc_nm nm lp p) = get_fnm_nm nm"
   by (cases nm, fastforce)
+*)
 
 lemma upd_fnm_nm__mh_rel [simp]:
   shows "get_mh_nm (upd_fnm_nm nm fnm) = get_mh_nm nm"
   by (cases nm, fastforce)
 
+(*
 lemma upd_fnm_nm__mp_rel [simp]:
   shows "get_mp_nm (upd_fnm_nm nm fnm) = get_mp_nm nm"
   by (cases nm, fastforce)
+*)
 
 lemma upd_fnm_nm__fnm_rel [simp]:
   shows "get_fnm_nm (upd_fnm_nm nm fnm) = fnm"
   by (cases nm, fastforce)
 
+(*
 lemma upd_nm_loc_opt_nm__mh_rel [simp]:
   shows "get_mh_nm (upd_nm_loc_opt_nm nm lp nm') = get_mh_nm nm"
   by (cases nm, fastforce)
@@ -231,7 +243,9 @@ lemma upd_nm_loc_opt_nm__mh_rel [simp]:
 lemma upd_nm_loc_opt_nm__mp_rel [simp]:
   shows "get_mp_nm (upd_nm_loc_opt_nm nm lp nm') = get_mp_nm nm"
   by (cases nm, fastforce)
+*)
 
+(*
 lemma inc_mp_loc_nm__mh_rel [simp]:
   shows "get_mh_nm (inc_mp_loc_nm nm lp p) = get_mh_nm nm"
   by (cases nm, fastforce)
@@ -291,6 +305,7 @@ lemma mult_rm_nm_loc_nm__mh_rel [simp]:
 lemma mult_rm_nm_loc_nm__mp_rel [simp]:
   shows "get_mp_nm (mult_rm_nm_loc_nm nm lp p) = get_mp_nm nm"
   by (cases nm, fastforce)
+*)
 
 
 subsubsection \<open>Total States\<close>
@@ -405,25 +420,77 @@ lemma zero_mp_multiply:
 lemma get_mh_multiply [simp]:
   fixes frac :: preal
   shows "get_mh_nm (frac *\<^sub>s get_nm_total \<phi>) = mul_mask frac (get_mh_total \<phi>)"
-  by (metis get_mh_nm.simps get_mh_total.elims get_mp_nm.elims nested_mask_multiply.simps scale_nested_mask_def)
+  by (metis (no_types, lifting) get_fnm_nm.simps get_mh_nm.simps get_mh_total.elims get_mp_nm.elims nested_mask_equality nested_mask_multiply.simps scale_nested_mask_def)
+
+lemma test:
+  assumes "b \<noteq> 0"
+  shows "Abs_preal (Rep_posreal (a * Abs_posreal (Rep_preal b))) = b * Abs_preal (Rep_posreal a)"
+proof -
+  have "Rep_preal b > 0"
+    using PosReal.ppos.rep_eq assms gr_0_is_ppos pperm_pnone_pgt by blast
+  hence "Rep_posreal (Abs_posreal (Rep_preal b)) = Rep_preal b"
+    by (simp add: Abs_posreal_inverse)
+  show ?thesis sorry
+qed
 
 lemma get_mp_multiply [simp]:
   fixes frac :: preal
   shows "get_mp_nm (frac *\<^sub>s get_nm_total \<phi>) = mul_mask frac (get_mp_total \<phi>)"
-  by (metis get_mp_nm.simps get_mp_total.elims get_mp_nm.elims nested_mask_multiply.simps scale_nested_mask_def)
+proof
+  fix lp
+  show "get_mp_nm (frac *\<^sub>s get_nm_total \<phi>) lp = mul_mask frac (get_mp_total \<phi>) lp"
+  proof (cases "get_fnm_total \<phi> lp")
+    case None
+    then show ?thesis
+      apply (simp add: mul_mask_def scale_nested_mask_def)
+      apply (cases "get_nm_total \<phi>")
+      by simp
+  next
+    case (Some a)
+    then show ?thesis
+      apply (simp add: mul_mask_def scale_nested_mask_def)
+      apply (cases "get_nm_total \<phi>")
+      apply (cases "frac = 0")
+       apply simp_all
+      apply (simp add: pos2p_def)
+      apply (simp add: preal_to_real posreal_to_real)
+      by (metis test zero_preal.rep_eq)
+  qed
+qed
 
+(*
 lemma get_nm_loc_total_multiply [simp]:
   fixes frac :: preal
   shows "get_nm_loc_total (\<phi>\<lparr> get_nm_total := frac *\<^sub>s get_nm_total \<phi> \<rparr>) loc =
          get_nm_loc_nm (frac *\<^sub>s get_nm_total \<phi>) loc"
   by (metis TotalStateUtil.get_nm_loc_total.simps get_fnm_nm.simps get_fnm_total.simps get_nm_loc_nm.simps nested_mask_multiply.elims total_state.simps(2) total_state.simps(5) total_state.surjective)
+*)
 
+\<^cancel>\<open>
 lemma get_nm_loc_nm_multiply:
   fixes frac :: preal
   shows "get_nm_loc_nm (frac *\<^sub>s nm) loc =
          map_option (\<lambda>m. frac *\<^sub>s m) (get_nm_loc_nm nm loc)"
-  by (metis comp_apply get_nm_loc_nm.simps nested_mask_multiply.elims scale_nested_mask_def)
+  apply (cases nm)
+  apply (cases "get_nm_loc_nm nm loc")
+   apply (simp add: scale_nested_mask_def)
+  apply (cases "frac = 0")
+proof -
+  fix mh fnm nm'
+  assume "nm = NM mh fnm"
+     and "get_nm_loc_nm nm loc = Some nm'"
+     and "frac = 0"
+  have "frac *\<^sub>s nm = 0"
+    apply (simp add: scale_nested_mask_def \<open>frac = 0\<close> \<open>nm = NM mh fnm\<close> mul_mask_def zero_nested_mask_def comp_def)
+    using zero_mask_def by force
+  hence "get_nm_loc_nm (frac *\<^sub>s nm) loc = None"
+    by (simp add: zero_nested_mask_def)
+  moreover have "map_option ((*\<^sub>s) frac) (get_nm_loc_nm nm loc) = None"
+    apply (simp only: \<open>get_nm_loc_nm nm loc = Some nm'\<close>)
+    apply simp
+\<close>
 
+(*
 lemma get_mp_total_full_multiply:
   fixes frac :: preal
   assumes "get_mp_total_full \<omega> loc = p"
@@ -431,6 +498,7 @@ lemma get_mp_total_full_multiply:
   apply (simp add: mul_mask_def)
   using PosReal.pmult_comm assms
   by fastforce
+*)
 
 lemma get_hh_total_full_multiply:
   fixes frac :: preal
@@ -454,7 +522,7 @@ lemma nm_multiply_none:
     fixes frac :: preal
   assumes "frac > 0"
     shows "(get_nm_loc_nm nm loc = None) = (get_nm_loc_nm (frac *\<^sub>s nm) loc = None)"
-  by (simp add: get_nm_loc_nm_multiply)
+  by (smt (verit) assms get_fnm_nm.simps get_nm_loc_nm.simps nested_mask_multiply.elims o_apply option.map_disc_iff preal_not_0_gt_0 scale_nested_mask_def)
 
 lemma nm_multiply_mp_value:
   fixes frac
@@ -564,6 +632,7 @@ lemma get_mh_nm__plus [simp]:
   apply standard
   by (simp add: plus_nested_mask_def add_masks_def)
 
+(*
 lemma get_mp_nm__plus [simp]:
   shows "get_mp_nm (nm1 + nm2) = add_masks (get_mp_nm nm1) (get_mp_nm nm2)"
   apply (cases nm1, cases nm2)
@@ -574,11 +643,13 @@ lemma get_fnm_nm__plus [simp]:
   shows "get_fnm_nm (nm1 + nm2) = ((get_fnm_nm nm1) +\<lparr>(+)\<rparr>+ (get_fnm_nm nm2))"
   apply (cases nm1, cases nm2)
   by (simp add: plus_nested_mask_def)
+*)
 
 lemma get_mh_nm__merge [simp]:
   shows "get_mh_nm (nested_mask_merge nm1 nm2) = add_masks (get_mh_nm nm1) (get_mh_nm nm2)"
   by (cases nm1, cases nm2, simp)
 
+(*
 lemma get_mp_nm__merge [simp]:
   shows "get_mp_nm (nested_mask_merge nm1 nm2) = add_masks (get_mp_nm nm1) (get_mp_nm nm2)"
   by (cases nm1, cases nm2, simp)
@@ -586,36 +657,55 @@ lemma get_mp_nm__merge [simp]:
 lemma get_fnm_nm__merge [simp]:
   shows "get_fnm_nm (nested_mask_merge nm1 nm2) = pfun_comb (get_fnm_nm nm1) nested_mask_merge (get_fnm_nm nm2)"
   by (cases nm1, cases nm2, simp)
+*)
 
 
 subsection \<open>Properties of Nested Mask Shift\<close>
 
+lemma mp_non_zero_implies_some:
+  assumes "get_mp_nm nm lp > 0"
+  shows "\<not> Option.is_none (get_nm_loc_nm nm lp)"
+  using assms
+  apply (cases nm)
+  apply simp
+  by (metis Option.is_none_def option_fold.simps(2) preal_not_0_gt_0)
+
+lemma mp_non_zero_obtain_nm_loc:
+  assumes "get_mp_nm nm lp > 0"
+  obtains nm' where "get_nm_loc_nm nm lp = Some nm'"
+  by (metis Option.is_none_def assms mp_non_zero_implies_some not_None_eq)
+
 lemma shift_up_exists:
   assumes "q \<le> get_mp_nm nm (pid,vs)"
-      and "q \<noteq> 0"
     shows "\<exists>nm'. shift_up pid vs q nm nm'"
-proof -
-  obtain mh mp fnm where 1: "nm = NM mh mp fnm"
-    using nested_mask.exhaust
-    by blast
-  obtain pnm p where 2: "pnm = fnm (pid,vs)" and 3: "p = mp (pid,vs)"
+proof (cases "q = 0")
+  case True
+  then show ?thesis
+    using ShiftZero by blast
+next
+  case False
+  then obtain mh fnm where
+    1: "mh = get_mh_nm nm" and
+    2: "fnm = get_fnm_nm nm"
     by auto
-  obtain mp' fnm' nm'_sub where
-    6: "mp' = mp( (pid,vs) := p - q )" and
-    7: "fnm' = fnm( (pid,vs) := if p = q then None else ((p - q) / p) *\<^sub>s pnm )" and
-    8: "nm'_sub = NM mh mp' fnm'"
+  from assms(1) have *: "get_mp_nm nm (pid,vs) > 0"
+    using False preal_not_0_gt_0
+    by fastforce
+  obtain p\<^sub>p pnm where
+    3: "Some (p\<^sub>p, pnm) = fnm (pid, vs)"
+    using mp_non_zero_obtain_nm_loc[OF *] 2
+    by fastforce
+  obtain p where
+    4: "p = pos2p p\<^sub>p"
     by auto
-  have
-    4: "q \<le> p" and
-    5: "q \<noteq> 0"
-    using \<open>nm = NM mh mp fnm\<close> \<open>p = mp (pid, vs)\<close> assms(1)
-     apply force
-    using assms(2)
-    by blast
-  obtain nm' where 9: "Some nm' = Some nm'_sub + (q / p) *\<^sub>s pnm"
-    by (metis add.right_neutral combine_options_simps(3) not_None_eq plus_option_def zero_option_def)
+  have "p = get_mp_nm nm (pid,vs)"
+    apply simp
+    by (metis "2" "3" "4" comp_apply fst_conv option_fold.simps(1))
+  hence 5: "q \<le> p"
+    using assms
+    by (simp add: pos2p_def)
   show ?thesis
-    using ShiftAny[OF 1 2 3 4 5 6 7 8 9]
+    using ShiftNonZero[OF 1 2 3 4 5]
     by blast
 qed
 

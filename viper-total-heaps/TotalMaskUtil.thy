@@ -8,20 +8,21 @@ begin
 subsection \<open>Well-foundness Relation for \<^typ>\<open>'a nested_mask\<close>\<close>
 
 abbreviation nested_mask_rel :: "('a nested_mask \<times> 'a nested_mask) set"
-  where "nested_mask_rel \<equiv> {(nm, (NM mh mp fnm)) | nm mh mp fnm ploc. nm \<in> set_option (fnm ploc)}"
+  where "nested_mask_rel \<equiv> {(nm, (NM mh fnm)) | nm mh fnm lp. nm \<in> set_option (map_option snd (fnm lp))}"
 
 lemma wf_nested_mask_rel: "wf nested_mask_rel"
   unfolding wf_def
   apply (rule allI | rule impI)+
   apply (rule nested_mask.induct)
-  by blast
+  apply simp
+  by (metis nested_mask.inject range_eqI snd_conv snds.intros)
 
 
 subsection \<open>Mask Merge\<close>
 
 function (sequential) nested_mask_merge :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
-  "nested_mask_merge (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) =
-     NM (add_masks mh\<^sub>1 mh\<^sub>2) (add_masks mp\<^sub>1 mp\<^sub>2) (fnm\<^sub>1 +\<lparr>nested_mask_merge\<rparr>+ fnm\<^sub>2)"
+  "nested_mask_merge (NM mh\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 fnm\<^sub>2) =
+     NM (add_masks mh\<^sub>1 mh\<^sub>2) (fnm\<^sub>1 +\<lparr>\<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, nested_mask_merge (snd lpm\<^sub>1) (snd lpm\<^sub>2))\<rparr>+ fnm\<^sub>2)"
   by (pat_completeness) auto
 termination
    \<comment>\<open>"nested_mask_rel <*lex*> {}" would be sufficient here, since the first argument becomes smaller always\<close>
@@ -35,18 +36,19 @@ termination
 subsection \<open>Mask Multiplication\<close>
 
 function (sequential) nested_mask_multiply :: "preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
-  "nested_mask_multiply p (NM mh mp fnm) = NM (mul_mask p mh) (mul_mask p mp) ((map_option (\<lambda>nm. nested_mask_multiply p nm)) \<circ> fnm)"
+  "nested_mask_multiply p (NM mh fnm) = NM (mul_mask p mh) ((\<lambda>nm. if p = 0 then None else (map_option (\<lambda>lpm. (fst lpm * Abs_posreal (Rep_preal p), nested_mask_multiply p (snd lpm))) nm)) \<circ> fnm)"
   by (pat_completeness) auto
 termination
   apply (relation "{} <*lex*> nested_mask_rel")
   using wf_nested_mask_rel
    apply blast
-  by fastforce
+  apply simp
+  by (metis image_iff prod.exhaust_sel)
 
 
 subsection \<open>Mask Subtraction\<close>
 
-function (sequential) nested_mask_subtract :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
+(* function (sequential) nested_mask_subtract :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
   "nested_mask_subtract (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) = NM (mh\<^sub>1 - mh\<^sub>2) (mp\<^sub>1 - mp\<^sub>2) (fnm\<^sub>1 +\<lparr>nested_mask_subtract\<rparr>+ fnm\<^sub>2)"
   by (pat_completeness) auto
 termination
@@ -54,20 +56,19 @@ termination
   using wf_nested_mask_rel
    apply blast
   using Option.is_none_def
-  by fastforce
+  by fastforce *)
 
 
 subsection \<open>Mask Ordering\<close>
 
 function (sequential) nested_mask_le :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool" where
-  "nested_mask_le (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) = (mh\<^sub>1 \<le> mh\<^sub>2 \<and> mp\<^sub>1 \<le> mp\<^sub>2 \<and>
-     (\<forall>lp. fnm\<^sub>1 lp = None \<or> (\<forall>nm'\<^sub>1 nm'\<^sub>2. fnm\<^sub>1 lp = Some nm'\<^sub>1 \<longrightarrow> fnm\<^sub>2 lp = Some nm'\<^sub>2 \<longrightarrow> nested_mask_le nm'\<^sub>1 nm'\<^sub>2)))"
+  "nested_mask_le (NM mh\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 fnm\<^sub>2) = (mh\<^sub>1 \<le> mh\<^sub>2 \<and>
+     (\<forall>lp. option_fold (\<lambda>lpm\<^sub>1. option_fold (\<lambda>lpm\<^sub>2. fst lpm\<^sub>1 \<le> fst lpm\<^sub>2) False (fnm\<^sub>2 lp)) True (fnm\<^sub>1 lp)))"
   by (pat_completeness) auto
 termination
   apply (relation "nested_mask_rel <*lex*> {}")
   using wf_nested_mask_rel
-   apply blast
-  by auto
+  by blast
 
 
 subsection \<open>Mask Split\<close>
@@ -92,19 +93,6 @@ fun is_singleton_mh :: "heap_loc \<Rightarrow> field_mask \<Rightarrow> bool" wh
 
 fun is_singleton_mp :: "'a predicate_loc \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
   "is_singleton_mp ploc mp = (\<exists>p > 0. mp = singleton_mp ploc p)"
-
-
-subsection \<open>Zero Equivalent Nested Mask\<close>
-
-function (sequential) nested_mask_zero_equiv :: "'a nested_mask \<Rightarrow> bool" where
-  "nested_mask_zero_equiv (NM mh mp fnm) = ((mh = zero_mask) \<and> (mp = zero_mask) \<and>
-     (\<forall>lp nm'. fnm lp = Some nm' \<longrightarrow> nested_mask_zero_equiv nm'))"
-  by (pat_completeness) auto
-termination
-  apply (relation "nested_mask_rel")
-  using wf_nested_mask_rel
-   apply blast
-  by fastforce
 
 
 end
