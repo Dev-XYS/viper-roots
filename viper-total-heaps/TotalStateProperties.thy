@@ -153,17 +153,6 @@ lemma update_trace_total_mask_same: "get_mh_total_full (update_trace_total \<ome
   by simp
 
 
-subsection \<open>Nested Mask Equality\<close>
-
-lemma nested_mask_equality:
-  assumes "get_mh_nm nm1 = get_mh_nm nm2"
-      and "get_mp_nm nm1 = get_mp_nm nm2"
-      and "get_fnm_nm nm1 = get_fnm_nm nm2"
-    shows "nm1 = nm2"
-  apply (cases nm1, cases nm2)
-  using assms by auto
-
-
 subsection \<open>Simplification Lemmas on State Update\<close>
 
 
@@ -354,6 +343,13 @@ lemma mult_nm_loc_total_full_mp_eq:
 *)
 
 
+subsection \<open>Deconstructing of Nested Masks\<close>
+
+lemma nm_get_eq:
+  shows "nm = NM (get_mh_nm nm) (get_fnm_nm nm)"
+  by (simp add: nested_mask_equality)
+
+
 subsection \<open>Lemmas on Mask Diff\<close>
 
 lemma mh_upd_loc_diff:
@@ -420,18 +416,7 @@ lemma zero_mp_multiply:
 lemma get_mh_multiply [simp]:
   fixes frac :: preal
   shows "get_mh_nm (frac *\<^sub>s get_nm_total \<phi>) = mul_mask frac (get_mh_total \<phi>)"
-  by (metis (no_types, lifting) get_fnm_nm.simps get_mh_nm.simps get_mh_total.elims get_mp_nm.elims nested_mask_equality nested_mask_multiply.simps scale_nested_mask_def)
-
-lemma test:
-  assumes "b \<noteq> 0"
-  shows "Abs_preal (Rep_posreal (a * Abs_posreal (Rep_preal b))) = b * Abs_preal (Rep_posreal a)"
-proof -
-  have "Rep_preal b > 0"
-    using PosReal.ppos.rep_eq assms gr_0_is_ppos pperm_pnone_pgt by blast
-  hence "Rep_posreal (Abs_posreal (Rep_preal b)) = Rep_preal b"
-    by (simp add: Abs_posreal_inverse)
-  show ?thesis sorry
-qed
+  by (metis (no_types, lifting) get_fnm_nm.simps get_mh_nm.simps get_mh_total.elims nested_mask_equality nested_mask_multiply.simps scale_nested_mask_def)
 
 lemma get_mp_multiply [simp]:
   fixes frac :: preal
@@ -454,7 +439,7 @@ proof
        apply simp_all
       apply (simp add: pos2p_def)
       apply (simp add: preal_to_real posreal_to_real)
-      by (metis test zero_preal.rep_eq)
+      by (smt (verit, del_insts) Abs_posreal_inverse Rep_posreal Rep_preal_inject mem_Collect_eq mult.commute prat_non_negative preal_to_real(12) times_posreal.rep_eq times_preal.rep_eq zero_preal.rep_eq)
   qed
 qed
 
@@ -698,14 +683,17 @@ next
   obtain p where
     4: "p = pos2p p\<^sub>p"
     by auto
+  have 5: "q > 0"
+    using False preal_not_0_gt_0
+    by blast
   have "p = get_mp_nm nm (pid,vs)"
     apply simp
     by (metis "2" "3" "4" comp_apply fst_conv option_fold.simps(1))
-  hence 5: "q \<le> p"
+  hence 6: "q \<le> p"
     using assms
     by (simp add: pos2p_def)
   show ?thesis
-    using ShiftNonZero[OF 1 2 3 4 5]
+    using ShiftNonZero[OF 1 2 3 4 5 6]
     by blast
 qed
 

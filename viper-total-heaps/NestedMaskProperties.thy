@@ -359,13 +359,13 @@ proof -
 qed
 
 
-\<comment> \<open>Adding to a sub-mask\<close>
+subsection \<open>Adding to a Sub-Mask\<close>
 
 (*
 lemma nm_loc_sum_add_to_sub':
-  assumes "nm_loc_sum loc (NM mh mp fnm) p"
+  assumes "nm_loc_sum loc (NM mh fnm) p"
       and "nm_loc_sum_option loc nm' q"
-    shows "nm_loc_sum loc (NM mh mp' (fnm( ploc := fnm ploc + nm' ))) (p + q)"
+    shows "nm_loc_sum loc (NM mh (fnm( ploc := fnm ploc + nm' ))) (p + q)"
 proof -
   obtain s_sub where "option_fold (\<lambda>nm. nm_loc_sum loc nm s_sub) (s_sub = 0) (fnm ploc)"
     using assms(1) nm_loc_sum.simps by blast
@@ -383,37 +383,13 @@ proof -
   thus ?thesis
     by (metis \<open>s_sub \<le> p\<close> greater_minus_plus group_cancel.add1)
 qed
+*)
 
-lemma nm_loc_sum_add_to_sub:
+lemma nm_loc_sum_add_to_lpm:
   assumes "nm_loc_sum loc nm s"
       and "nm_loc_sum loc nm' s'"
-    shows "nm_loc_sum loc (add_to_nm_loc_nm nm ploc nm') (s + s')"
-  using assms nm_loc_sum_add_to_sub'[where nm'="Some nm'"]
-  by (cases nm) (auto simp del: nm_loc_sum.simps)
-*)
-
-
-\<comment> \<open>Sum does not depend on predicate mask\<close>
-
-(*
-lemma nm_loc_sum_mp_irrelevant:
-  assumes "nm_loc_sum loc (NM mh mp fnm) s"
-  shows "nm_loc_sum loc (NM mh mp' fnm) s"
-  using assms by force
-*)
-
-
-\<comment> \<open>Nested mask subtraction\<close>
-
-(*
-lemma nested_mask_sub_add:
-  assumes "nm_diff = nested_mask_subtract nm1 nm2"
-      and "\<And>x. get_mh_nm nm1 x \<ge> get_mh_nm nm2 x"
-      and "\<And>x. get_mp_nm nm1 x \<ge> get_mp_nm nm2 x"
-      and "\<And>x. \<exists>frac. get_nm_loc_nm nm2 x = frac *\<^sub>s get_nm_loc_nm nm1 x"
-    shows "nm2 + nm_diff = nm1"
+    shows "nm_loc_sum loc (add_to_lpm_nm nm ploc p nm') (s + s')"
   sorry
-*)
 
 
 subsection \<open>Zero Permission Location\<close>

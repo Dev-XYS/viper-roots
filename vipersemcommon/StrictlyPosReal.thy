@@ -87,6 +87,10 @@ end
 subsection \<open>\<^typ>\<open>posreal\<close> to \<^typ>\<open>real\<close>\<close>
 
 lemmas posreal_to_real =
+  less_eq_posreal.rep_eq
+  less_posreal.rep_eq
+  plus_posreal.rep_eq
+  divide_posreal.rep_eq
   Abs_posreal_inverse
   Rep_posreal_inverse
   Rep_posreal_inject[symmetric]

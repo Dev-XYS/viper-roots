@@ -31,26 +31,16 @@ inductive fold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarr
   FoldRelNormal:
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
-     q \<noteq> 0;
      \<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>;
      red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal q) pred_body) \<omega>0 (RNormal \<omega>1);
-     nm_exh = nested_mask_subtract (get_nm_total_full \<omega>0) (get_nm_total_full \<omega>1);
-     \<omega>' = \<lparr> get_store_total = get_store_total \<omega>,
-            get_trace_total = get_trace_total \<omega>,
-            get_total_full = add_to_nm_loc_total
-              (inc_mp_loc_total (get_total_full \<omega>1) (pred_id, vs) q)
-              (pred_id,vs) nm_exh
-              \<comment> \<open>The code is a bit messy here. What we describe is first increasing the permission mask by q, and then merging the nested mask with the exhaled nested mask.\<close>
-          \<rparr>
+     get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0;
+     \<omega>' = add_to_lpm_total_full \<omega>1 (pred_id,vs) q nm_exh
    \<rbrakk> \<Longrightarrow>
    fold_rel ctxt pred_id vs q \<omega> (RNormal \<omega>')"
 | FoldRelFailure:
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
-     q \<noteq> 0;
-     \<omega>0 = \<lparr> get_store_total = nth_option vs,
-            get_trace_total = Map.empty,
-            get_total_full = get_total_full \<omega> \<rparr>;
+     \<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>;
      red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal q) pred_body) \<omega>0 RFailure
    \<rbrakk> \<Longrightarrow>
    fold_rel ctxt pred_id vs q \<omega> RFailure"

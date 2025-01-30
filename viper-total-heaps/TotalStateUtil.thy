@@ -7,19 +7,6 @@ begin
 
 subsection \<open>Nested Mask Getters and Setters\<close>
 
-fun get_mh_nm :: "'a nested_mask \<Rightarrow> field_mask"
-  where "get_mh_nm (NM mh _) = mh"
-
-fun get_fnm_nm :: "'a nested_mask \<Rightarrow> 'a predicate_nm_fun"
-  where "get_fnm_nm (NM _ fnm) = fnm"
-
-fun upd_mh_nm :: "'a nested_mask \<Rightarrow> field_mask \<Rightarrow> 'a nested_mask"
-  where "upd_mh_nm (NM _ fnm) mh = NM mh fnm"
-
-fun upd_fnm_nm :: "'a nested_mask \<Rightarrow> 'a predicate_nm_fun \<Rightarrow> 'a nested_mask"
-  where "upd_fnm_nm (NM mh _) fnm = NM mh fnm"
-
-
 fun get_mp_nm :: "'a nested_mask \<Rightarrow> 'a predicate_mask"
   where "get_mp_nm nm = (option_fold (pos2p \<circ> fst) 0) \<circ> (get_fnm_nm nm)"
 
@@ -28,6 +15,17 @@ fun get_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow
 
 fun upd_mh_loc_nm :: "'a nested_mask \<Rightarrow> heap_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
   where "upd_mh_loc_nm nm l p = upd_mh_nm nm ((get_mh_nm nm)( l := p ))"
+
+fun add_to_lpm_nonzero_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> posreal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
+  where "add_to_lpm_nonzero_nm nm lp p nm' = upd_fnm_nm nm ((get_fnm_nm nm)( lp :=
+           Some (option_fold (\<lambda>lpm. (fst lpm + p, snd lpm + nm')) (p, nm') (get_fnm_nm nm lp)) ))"
+
+fun add_to_lpm_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
+  where "add_to_lpm_nm nm lp p nm' = (if p = 0 then nm else add_to_lpm_nonzero_nm nm lp (p2pos p) nm')"
+
+fun rm_from_lpm_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
+  where "rm_from_lpm_nm nm lp p = upd_fnm_nm nm ((get_fnm_nm nm)( lp :=
+           option_fold (\<lambda>lpm. if p \<ge> pos2p (fst lpm) then None else Some (p2pos (pos2p (fst lpm) - p), (1 - pos2p (fst lpm) / p) *\<^sub>s snd lpm)) None (get_fnm_nm nm lp) ))"
 
 (*
 fun upd_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
@@ -143,6 +141,12 @@ fun mult_rm_nm_loc_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predic
   where "mult_rm_nm_loc_total \<phi> lp p = \<phi>\<lparr> get_nm_total := mult_rm_nm_loc_nm (get_nm_total \<phi>) lp p \<rparr>"
 *)
 
+fun add_to_lpm_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> posreal \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "add_to_lpm_total \<phi> lp p nm' = upd_nm_total \<phi> (add_to_lpm_nonzero_nm (get_nm_total \<phi>) lp p nm')"
+
+fun rm_from_lpm_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "rm_from_lpm_total \<phi> lp p = upd_nm_total \<phi> (rm_from_lpm_nm (get_nm_total \<phi>) lp p)"
+
 
 subsection \<open>Full Total State Getters and Setters\<close>
 
@@ -246,6 +250,15 @@ fun mult_rm_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow>
   where "mult_rm_nm_loc_total_full \<omega> lp p = \<omega>\<lparr> get_total_full := mult_rm_nm_loc_total (get_total_full \<omega>) lp p \<rparr>"
 *)
 
+fun add_to_lpm_nonzero_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> posreal \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "add_to_lpm_nonzero_total_full \<omega> lp p nm' = upd_nm_total_full \<omega> (add_to_lpm_nonzero_nm (get_nm_total_full \<omega>) lp p nm')"
+
+fun add_to_lpm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "add_to_lpm_total_full \<omega> lp p nm' = upd_nm_total_full \<omega> (add_to_lpm_nm (get_nm_total_full \<omega>) lp p nm')"
+
+fun rm_from_lpm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "rm_from_lpm_total_full \<phi> lp p = upd_nm_total_full \<phi> (rm_from_lpm_nm (get_nm_total_full \<phi>) lp p)"
+
 
 subsection \<open>Empty States\<close>
 
@@ -302,6 +315,7 @@ inductive shift_up :: "predicate_ident \<Rightarrow> ('a val list) \<Rightarrow>
      fnm = get_fnm_nm nm;
      Some (p\<^sub>p, pnm) = fnm (pred_id,vs);
      p = pos2p p\<^sub>p;
+     q > 0;
      q \<le> p;
      fnm' = fnm( (pred_id,vs) := if p = q then None else Some (p2pos (p - q), ((p - q) / p) *\<^sub>s pnm) );
      nm'_sub = NM mh fnm';
@@ -314,11 +328,12 @@ inductive_cases shift_up_case: "shift_up pred_id vs q nm nm'"
 inductive_simps shift_up_simp: "shift_up pred_id vs q nm nm'"
 
 
-(* lemma shift_up_perm_sufficient:
+lemma shift_up_perm_sufficient:
   assumes "shift_up pid vs q nm nm'"
   shows "q \<le> get_mp_nm nm (pid,vs)"
-  using assms
-  by (auto elim: shift_up_case) *)
+  using assms[simplified shift_up.simps]
+  apply simp
+  by (metis (no_types, opaque_lifting) all_pos comp_def fst_conv option_fold.simps(1))
 
 
 end

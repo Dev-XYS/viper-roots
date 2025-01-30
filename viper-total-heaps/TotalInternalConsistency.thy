@@ -1,5 +1,5 @@
 theory TotalInternalConsistency
-  imports NestedMaskProperties TotalFoldUnfold
+  imports TotalFoldUnfold NestedMaskProperties TotalStateProperties
 begin
 
 
@@ -10,69 +10,95 @@ definition consistent_internal :: "'a nested_mask \<Rightarrow> bool" where
 
 
 lemma shift_up_preserves_loc_sum:
-  assumes "shift_up pred_id vs q nm nm'"
+  assumes "shift_up pid vs q nm nm'"
       and "nm_loc_sum loc nm s"
     shows "nm_loc_sum loc nm' s"
-proof -
-  from assms(1) obtain mh mp fnm pnm_opt p mp' fnm' nm'_sub where
-    nm: "nm = NM mh mp fnm" and
-    pnm_opt: "pnm_opt = fnm (pred_id,vs)" and
-    "p = mp (pred_id,vs)" and
+proof (cases "q > 0")
+  case True
+  from assms(1) obtain mh fnm p\<^sub>p pnm p fnm' nm'_sub where
+    "mh = get_mh_nm nm" and
+    "fnm = get_fnm_nm nm" and
+    lpm: "Some (p\<^sub>p, pnm) = fnm (pid,vs)" and
+    "p = pos2p p\<^sub>p" and
     "q \<le> p" and
-    "q \<noteq> 0" and
-    "mp' = mp( (pred_id,vs) := p - q )" and
-    fnm': "fnm' = fnm( (pred_id,vs) := if p = q then None else ((p - q) / p) *\<^sub>s pnm_opt )" and
-    nm_sub: "nm'_sub = NM mh mp' fnm'" and
-    nm': "Some nm' = Some nm'_sub + (q / p) *\<^sub>s pnm_opt"
-    by (blast elim: shift_up.cases)
-  show ?thesis
-  proof (cases pnm_opt)
-    case None
-    then show ?thesis
-      by (smt (verit, ccfv_threshold) \<open>\<And>thesis. (\<And>mh mp fnm pnm_opt p mp' fnm' nm'_sub. \<lbrakk>nm = NM mh mp fnm; pnm_opt = fnm (pred_id, vs); p = mp (pred_id, vs); q \<le> p; q \<noteq> pos_perm_class.pnone; mp' = mp((pred_id, vs) := p - q); fnm' = fnm ((pred_id, vs) := if p = q then None else ((p - q) / p) *\<^sub>s pnm_opt); nm'_sub = NM mh mp' fnm'; Some nm' = Some nm'_sub + (q / p) *\<^sub>s pnm_opt\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close> assms(2) fun_upd_triv get_fnm_nm.simps group_cancel.rule0 nm nm_loc_sum_mp_irrelevant option.map(1) option.sel pnm_opt scale_option_def zero_option_def)
-  next
-    case (Some pnm)
-    from assms(2) obtain pf where
-      pf: "pf has_sumA (s - mh loc) \<and>
-           (\<forall>ploc. option_fold (\<lambda>m. nm_loc_sum loc m (pf ploc)) (pf ploc = 0) (fnm ploc))"
-      using nm nm_loc_sum.simps by blast
-    then obtain ps where pnm_sum: "nm_loc_sum loc pnm ps"
-      by (metis option_fold.simps(1) pnm_opt Some)
-    with pf have "s - mh loc \<ge> ps"
-      by (metis all_pos has_sumA_nonneg_ge_one_preal nm_loc_sum_unique option_fold.simps(1) pnm_opt Some)
-    hence "s \<ge> ps"
-      by (metis assms(2) nm nm_loc_sum.simps order.trans psub_smaller)
-  
-    \<comment> \<open>sum of \<^term>\<open>nm_sub\<close>\<close>
-    from pnm_sum have "option_fold (\<lambda>nm. nm_loc_sum loc nm (ps * ((p - q) / p))) (ps * ((p - q) / p) = 0) (fnm' (pred_id,vs))"
-      apply (cases "fnm' (pred_id,vs)")
-       apply simp_all
-       apply (simp add: Some fnm' scale_option_def)
-       apply (metis None_eq_map_option_iff PosReal.field_divide_inverse Some cancel_comm_monoid_add_class.diff_cancel lambda_zero mult_zero_right option.distinct(1) scale_option_def)
-      apply (simp add: fnm' Some scale_option_def)
-      using nm_loc_sum_mult
-      by (metis Some option.distinct(1) option.sel option.simps(9) scale_option_def)
-    moreover have "option_fold (\<lambda>nm. nm_loc_sum loc nm ps) (ps = 0) (fnm (pred_id,vs))"
-      by (metis option_fold.simps(1) pnm_opt Some pnm_sum)
-    moreover have "fnm' = fnm( (pred_id, vs) := fnm' (pred_id, vs) )"
-      by (simp add: fnm')
-    ultimately have nm_sub_sum: "nm_loc_sum loc nm'_sub (s - ps + ps * ((p - q) / p))"
-      using nm_loc_sum_change_sum[of loc mh mp fnm s ps "(pred_id,vs)" "ps * ((p - q) / p)" "fnm' (pred_id,vs)" mp'] nm assms(2) fnm' nm_sub
-      by argo
-  
-    \<comment> \<open>sum of q/p of pnm\<close>
-    have pnm_frac_sum: "nm_loc_sum loc ((q / p) *\<^sub>s pnm) (ps * (q / p))"
-      using nm_loc_sum_mult pnm_sum
-      by blast
-  
-    \<comment> \<open>sum of nm'\<close>
-    have "s - ps + ps * ((p - q) / p) + ps * (q / p) = s"
-      by (metis PosReal.field_divide_inverse PosReal.field_inverse \<open>ps \<le> s\<close> \<open>q \<le> p\<close> \<open>q \<noteq> pos_perm_class.pnone\<close> add.assoc add_cancel_right_left distrib_left greater_minus_plus mult.commute mult.right_neutral padd_pos)
+    fnm': "fnm' = fnm( (pid,vs) := if p = q then None else Some (p2pos (p - q), ((p - q) / p) *\<^sub>s pnm) )" and
+    "nm'_sub = NM mh fnm'" and
+    "nm' = nm'_sub + (q / p) *\<^sub>s pnm"
+    using True pperm_pgt_pnone
+    by (fastforce elim: shift_up.cases)
 
-    thus "nm_loc_sum loc nm' s"
-      using pnm_frac_sum nm_sub_sum nm'[simplified scale_option_def Some]
-      by (metis combine_options_simps(3) nm_loc_sum_add option.sel option.simps(9) plus_option_def)
+  from iffD1[OF nm_loc_sum'.simps
+      subst[OF nm_get_eq[of nm],
+        of "\<lambda>nm. nm_loc_sum' loc nm (Rep_preal s)",
+        OF assms(2)[simplified]]]
+  obtain pf where
+    pf_sum: "pf has_sumA (Rep_preal s - Rep_preal (mh loc))" and
+    pf_each: "\<forall>lp. option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf lp)) (pf lp = 0) (fnm lp)"
+    using \<open>fnm = _\<close> \<open>mh = _\<close>
+    by blast
+
+  define pf' where "pf' = pf( (pid,vs) :=  Rep_preal ((p - q) / p) * pf (pid,vs) )"
+
+  have pf'_sum: "pf' has_sumA (Rep_preal s - Rep_preal (mh loc) - Rep_preal (q / p) * pf (pid,vs))"
+    apply (rule subst[where ?P="\<lambda>s. pf' has_sumA s"])
+     defer
+    using has_sumA_change_one_real[OF pf_sum, of "(pid,vs)" "Rep_preal ((p - q) / p) * pf (pid,vs)", simplified pf'_def[symmetric]]
+     apply simp
+    apply (simp add: preal_to_real iffD1[OF less_eq_preal.rep_eq \<open>q \<le> p\<close>])
+    apply (subgoal_tac "Rep_preal p \<noteq> 0")
+     apply (metis (no_types, opaque_lifting) cancel_ab_semigroup_add_class.diff_right_commute cancel_comm_monoid_add_class.diff_cancel left_diff_distrib' nonzero_mult_div_cancel_left times_divide_eq_right verit_minus_simplify(3))
+    using \<open>p = pos2p p\<^sub>p\<close> pos2p_gt_0 pperm_pgt_pnone preal_to_real(10) zero_preal.rep_eq
+    by fastforce
+
+  have pf'_each: "\<forall>lp. option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf' lp)) (pf' lp = 0) (fnm' lp)"
+  proof
+    fix lp
+    show "option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf' lp)) (pf' lp = 0) (fnm' lp)"
+    proof (cases "lp = (pid,vs)")
+      case True
+      then show ?thesis
+        apply (simp add: pf'_def fnm')
+        apply (intro conjI)
+         apply (simp add: divide_preal.rep_eq zero_preal.rep_eq)
+        by (metis lpm mult.commute nm_loc_sum'_mult option_fold.simps(1) pf_each snd_conv)
+    next
+      case False
+      then show ?thesis
+        apply (simp add: pf'_def fnm')
+        using pf_each
+        by blast
+    qed
   qed
+
+  have "nm_loc_sum' loc nm'_sub (Rep_preal s - Rep_preal (q / p) * pf (pid,vs))"
+  proof -
+    have "\<And>x. pf x \<ge> 0"
+      by (smt (verit) has_Some_iff nm_loc_sum'_nonneg pf_each)
+    hence "\<And>x. pf' x \<ge> 0"
+      by (simp add: pf'_def prat_non_negative)
+    hence "Rep_preal s - Rep_preal (mh loc) - Rep_preal (q / p) * pf (pid,vs) \<ge> 0"
+      using has_sum_nonneg pf'_sum
+      by blast
+    thus ?thesis
+      unfolding \<open>nm'_sub = _\<close> nm_loc_sum'.simps
+      apply (intro conjI)
+       defer
+       apply (rule exI[of _ pf'])
+      using pf'_each pf'_sum
+      by argo+
+  qed
+
+  moreover have "nm_loc_sum' loc ((q / p) *\<^sub>s pnm) (Rep_preal (q / p) * pf (pid,vs))"
+    by (metis lpm mult.commute nm_loc_sum'_mult option_fold.simps(1) pf_each snd_conv)
+
+  ultimately show ?thesis
+    using \<open>nm' = _\<close> nm_loc_sum'_add
+    by fastforce
+next
+  case False
+  then show ?thesis
+    using assms shift_up_case
+    by blast
 qed
 
 
@@ -101,16 +127,10 @@ proof -
   obtain pred_decl pred_body \<omega>0 R \<omega>1 nm_exh where
     "ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl" and
     "ViperLang.predicate_decl.body pred_decl = Some pred_body" and
-    "p \<noteq> 0" and
     \<omega>0: "\<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>" and
     exh: "red_exhale ctxt R \<omega>0 (syntactic_mult (Rep_preal p) pred_body) \<omega>0 (RNormal \<omega>1)" and
-    nm_sub: "nm_exh = nested_mask_subtract (get_nm_total_full \<omega>0) (get_nm_total_full \<omega>1)" and
-    \<omega>': "\<omega>' = \<lparr> get_store_total = get_store_total \<omega>,
-                get_trace_total = get_trace_total \<omega>,
-                get_total_full = add_to_nm_loc_total
-                  (inc_mp_loc_total (get_total_full \<omega>1) (pred_id,vs) p)
-                  (pred_id,vs) nm_exh
-              \<rparr>"
+    nm_sub: "get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0" and
+    \<omega>': "\<omega>' = add_to_lpm_total_full \<omega>1 (pred_id,vs) p nm_exh"
     using assms(1)
     by (auto elim: FoldRelNormal_case)
 
@@ -123,26 +143,25 @@ proof -
   hence "nm_loc_sum loc nm0 s"
     using assms(2) by blast
 
-  have "nm0 = nm1 + nm_exh"
-    using exhale_fraction[OF exh] nested_mask_sub_add[OF nm_sub] exhale_smaller[OF exh]
-    apply simp
-    by (metis TotalStateUtil.get_nm_total_full.simps get_fnm_nm.elims get_nm_loc_nm.simps nm0_def nm1_def)
+  moreover have "nm0 = nm1 + nm_exh"
+    using nm0_def nm1_def nm_sub
+    by presburger
   moreover obtain s1 s_exh where
-    "nm_loc_sum loc nm1 s1" and
-    "nm_loc_sum loc nm_exh s_exh"
+    nm1_sum: "nm_loc_sum loc nm1 s1" and
+    nm_exh_sum: "nm_loc_sum loc nm_exh s_exh"
     using nm_loc_sum_smaller[OF \<open>nm_loc_sum loc nm0 s\<close>] nm_sum_is_bigger
-    by (metis add.commute calculation)
+    by (metis add.commute calculation(2))
   ultimately have "s = s1 + s_exh"
-    by (metis \<open>nm0 = get_nm_total_full \<omega>\<close> assms(2) nm_loc_sum_add nm_loc_sum_unique)
+    using nm_loc_sum_add nm_loc_sum_unique
+    by (metis nm_loc_sum.elims(2) Rep_preal_inject[symmetric])
 
-  have "nm_loc_sum loc (get_nm_total (inc_mp_loc_total (get_total_full \<omega>1) (pred_id,vs) p)) s1"
-    apply simp
-    using \<open>nm_loc_sum loc nm1 s1\<close> nm1_def nm_loc_sum.elims(2) by fastforce
-  hence "nm_loc_sum loc (get_nm_total_full \<omega>') (s1 + s_exh)"
-    by (simp add: \<open>nm_loc_sum loc nm_exh s_exh\<close> nm_loc_sum_add_to_sub \<omega>')
+  have "nm_loc_sum loc (get_nm_total_full \<omega>') (s1 + s_exh)"
+    apply (simp add: \<omega>' del: nm_loc_sum.simps add_to_lpm_nm.simps)
+    by (metis nm1_sum nm_exh_sum get_nm_total_full.simps nm1_def nm_loc_sum_add_to_lpm)
 
   thus ?thesis
-    using \<open>s = s1 + s_exh\<close> by blast
+    using \<open>s = s1 + s_exh\<close>
+    by blast
 qed
 
 
@@ -155,12 +174,14 @@ lemma fold_rel_preserves_internal_consistency:
 
 subsection \<open>Full permission in direct mask\<close>
 
+(*
 lemma mh_1_sub_0:
   assumes "consistent_internal nm"
       and "get_mh_nm nm loc = 1"
       and "get_fnm_nm nm ploc = Some nm'"
     shows "nm_loc_sum loc nm' 0"
   sorry
+*)
 
 
 subsection \<open>Internal Consistency on Total States\<close>

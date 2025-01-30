@@ -48,15 +48,17 @@ termination
 
 subsection \<open>Mask Subtraction\<close>
 
-(* function (sequential) nested_mask_subtract :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
-  "nested_mask_subtract (NM mh\<^sub>1 mp\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 mp\<^sub>2 fnm\<^sub>2) = NM (mh\<^sub>1 - mh\<^sub>2) (mp\<^sub>1 - mp\<^sub>2) (fnm\<^sub>1 +\<lparr>nested_mask_subtract\<rparr>+ fnm\<^sub>2)"
+(* Hopefully we will not need this. *)
+(*
+function (sequential) nested_mask_subtract :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
+  "nested_mask_subtract (NM mh\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 fnm\<^sub>2) =
+     NM (mh\<^sub>1 - mh\<^sub>2) (fnm\<^sub>1 +\<lparr>\<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, nested_mask_merge (snd lpm\<^sub>1) (snd lpm\<^sub>2))\<rparr>+ fnm\<^sub>2)"
   by (pat_completeness) auto
 termination
   apply (relation "nested_mask_rel <*lex*> {}")
   using wf_nested_mask_rel
-   apply blast
-  using Option.is_none_def
-  by fastforce *)
+  by blast
+*)
 
 
 subsection \<open>Mask Ordering\<close>
@@ -93,6 +95,32 @@ fun is_singleton_mh :: "heap_loc \<Rightarrow> field_mask \<Rightarrow> bool" wh
 
 fun is_singleton_mp :: "'a predicate_loc \<Rightarrow> 'a predicate_mask \<Rightarrow> bool" where
   "is_singleton_mp ploc mp = (\<exists>p > 0. mp = singleton_mp ploc p)"
+
+
+subsection \<open>The Most Basic Getters and Setters\<close>
+
+fun get_mh_nm :: "'a nested_mask \<Rightarrow> field_mask"
+  where "get_mh_nm (NM mh _) = mh"
+
+fun get_fnm_nm :: "'a nested_mask \<Rightarrow> 'a predicate_nm_fun"
+  where "get_fnm_nm (NM _ fnm) = fnm"
+
+fun upd_mh_nm :: "'a nested_mask \<Rightarrow> field_mask \<Rightarrow> 'a nested_mask"
+  where "upd_mh_nm (NM _ fnm) mh = NM mh fnm"
+
+fun upd_fnm_nm :: "'a nested_mask \<Rightarrow> 'a predicate_nm_fun \<Rightarrow> 'a nested_mask"
+  where "upd_fnm_nm (NM mh _) fnm = NM mh fnm"
+
+
+subsection \<open>Nested Mask Equality\<close>
+
+lemma nested_mask_equality:
+  assumes "get_mh_nm nm1 = get_mh_nm nm2"
+      and "get_fnm_nm nm1 = get_fnm_nm nm2"
+    shows "nm1 = nm2"
+  apply (cases nm1, cases nm2)
+  using assms
+  by auto
 
 
 end

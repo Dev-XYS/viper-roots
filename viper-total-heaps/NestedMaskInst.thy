@@ -17,8 +17,70 @@ definition zero_nested_mask :: "'a nested_mask" where
 definition plus_nested_mask :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
   "plus_nested_mask \<equiv> nested_mask_merge"
 
-instance
-  sorry
+instance proof
+  fix a b c :: "'a nested_mask"
+
+  show "a + b + c = a + (b + c)"
+  proof (induction a arbitrary: b c)
+    case IH: (NM mh\<^sub>a fnm\<^sub>a)
+    show ?case
+    proof (cases b)
+      case b: (NM mh\<^sub>b fnm\<^sub>b)
+      show ?thesis
+      proof (cases c)
+        case c: (NM mh\<^sub>c fnm\<^sub>c)
+        show ?thesis
+          apply (simp add: b c plus_nested_mask_def)
+          apply (intro conjI)
+           apply (simp add: add_masks_assoc)
+          apply standard
+          apply (fold plus_nested_mask_def)
+        proof -
+          fix lp
+          show "((fnm\<^sub>a +\<lparr> \<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, snd lpm\<^sub>1 + snd lpm\<^sub>2) \<rparr>+ fnm\<^sub>b) +\<lparr> \<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, snd lpm\<^sub>1 + snd lpm\<^sub>2) \<rparr>+ fnm\<^sub>c) lp =
+                (fnm\<^sub>a +\<lparr> \<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, snd lpm\<^sub>1 + snd lpm\<^sub>2) \<rparr>+ (fnm\<^sub>b +\<lparr> \<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, snd lpm\<^sub>1 + snd lpm\<^sub>2) \<rparr>+ fnm\<^sub>c)) lp"
+            apply (cases "fnm\<^sub>a lp"; cases "fnm\<^sub>b lp"; cases "fnm\<^sub>c lp")
+                   apply (simp_all add: pfun_comb_def)
+            using IH add.assoc
+            by fastforce
+        qed
+      qed
+    qed
+  qed
+
+  show "a + b = b + a"
+  proof (induction a arbitrary: b)
+    case IH: (NM mh\<^sub>a fnm\<^sub>a)
+    show ?case
+    proof (cases b)
+      case b: (NM mh\<^sub>b fnm\<^sub>b)
+      show ?thesis
+        apply (simp add: b plus_nested_mask_def)
+        apply (intro conjI)
+         apply (simp add: add_masks_comm)
+        apply standard
+        apply (fold plus_nested_mask_def)
+      proof -
+        fix lp
+        show "(fnm\<^sub>a +\<lparr> \<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, snd lpm\<^sub>1 + snd lpm\<^sub>2) \<rparr>+ fnm\<^sub>b) lp =
+              (fnm\<^sub>b +\<lparr> \<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, snd lpm\<^sub>1 + snd lpm\<^sub>2) \<rparr>+ fnm\<^sub>a) lp"
+          apply (cases "fnm\<^sub>a lp"; cases "fnm\<^sub>b lp")
+             apply (simp_all add: pfun_comb_def)
+          using IH add.commute
+          by fastforce
+      qed
+    qed
+  qed
+
+  show "0 + a = a"
+    apply (cases a)
+    apply (simp add: zero_nested_mask_def plus_nested_mask_def)
+    apply standard
+     apply (simp add: add_masks_comm add_masks_zero_mask)
+    apply standard
+    apply (simp add: pfun_comb_def)
+    done
+qed
 
 end
 

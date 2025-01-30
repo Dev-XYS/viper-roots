@@ -22,9 +22,9 @@ definition inhale_perm_single_pred :: "'a total_context \<Rightarrow> ('a full_t
   where "inhale_perm_single_pred ctxt R \<omega> lp p_opt =
     { \<omega>'| \<omega>' \<phi>_inh q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
-            (q > 0 \<longrightarrow> consistent_external_wrt_ploc ctxt \<phi>_inh lp q) \<and>
+            consistent_external_wrt_ploc ctxt \<phi>_inh lp q \<and>
             get_hh_total \<phi>_inh = get_hh_total_full \<omega> \<and>
-            \<omega>' = (if q = 0 then \<omega> else add_to_nm_loc_total_full (inc_mp_loc_total_full \<omega> lp q) lp (get_nm_total \<phi>_inh)) \<and>
+            \<omega>' = (if q = 0 then \<omega> else add_to_lpm_nonzero_total_full \<omega> lp (p2pos q) (get_nm_total \<phi>_inh)) \<and>
             R \<omega>'
     }"
 
@@ -130,7 +130,7 @@ fun exh_if_total :: "bool \<Rightarrow> 'a full_total_state \<Rightarrow> 'a res
 | "exh_if_total True \<omega> = RNormal \<omega>"
 
 definition exhale_pred :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a full_total_state" where
-  "exhale_pred \<omega> ploc p = dec_mp_loc_total_full (mult_rm_nm_loc_total_full \<omega> ploc p) ploc p"
+  "exhale_pred \<omega> lp p = rm_from_lpm_total_full \<omega> lp p"
 
 inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool"
   for ctxt :: "'a total_context" and R :: "'a full_total_state \<Rightarrow> bool" and \<omega>0 :: "'a full_total_state" where
