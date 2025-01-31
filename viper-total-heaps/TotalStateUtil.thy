@@ -20,8 +20,8 @@ fun add_to_lpm_nonzero_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Ri
   where "add_to_lpm_nonzero_nm nm lp p nm' = upd_fnm_nm nm ((get_fnm_nm nm)( lp :=
            Some (option_fold (\<lambda>lpm. (fst lpm + p, snd lpm + nm')) (p, nm') (get_fnm_nm nm lp)) ))"
 
-fun add_to_lpm_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
-  where "add_to_lpm_nm nm lp p nm' = (if p = 0 then nm else add_to_lpm_nonzero_nm nm lp (p2pos p) nm')"
+fun add_to_lpm_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> (posreal \<times> 'a nested_mask) option \<Rightarrow> 'a nested_mask"
+  where "add_to_lpm_nm nm lp lpm = option_fold (\<lambda>lpm. add_to_lpm_nonzero_nm nm lp (fst lpm) (snd lpm)) nm lpm"
 
 fun rm_from_lpm_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
   where "rm_from_lpm_nm nm lp p = upd_fnm_nm nm ((get_fnm_nm nm)( lp :=
@@ -253,8 +253,8 @@ fun mult_rm_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow>
 fun add_to_lpm_nonzero_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> posreal \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) full_total_state_scheme"
   where "add_to_lpm_nonzero_total_full \<omega> lp p nm' = upd_nm_total_full \<omega> (add_to_lpm_nonzero_nm (get_nm_total_full \<omega>) lp p nm')"
 
-fun add_to_lpm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) full_total_state_scheme"
-  where "add_to_lpm_total_full \<omega> lp p nm' = upd_nm_total_full \<omega> (add_to_lpm_nm (get_nm_total_full \<omega>) lp p nm')"
+fun add_to_lpm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> (posreal \<times> 'a nested_mask) option \<Rightarrow> ('a, 'b) full_total_state_scheme"
+  where "add_to_lpm_total_full \<omega> lp lpm = upd_nm_total_full \<omega> (add_to_lpm_nm (get_nm_total_full \<omega>) lp lpm)"
 
 fun rm_from_lpm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) full_total_state_scheme"
   where "rm_from_lpm_total_full \<phi> lp p = upd_nm_total_full \<phi> (rm_from_lpm_nm (get_nm_total_full \<phi>) lp p)"

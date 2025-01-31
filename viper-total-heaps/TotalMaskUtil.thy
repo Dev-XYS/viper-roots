@@ -122,5 +122,9 @@ lemma nested_mask_equality:
   using assms
   by auto
 
+lemma nm_get_eq:
+  shows "nm = NM (get_mh_nm nm) (get_fnm_nm nm)"
+  by (simp add: nested_mask_equality)
+
 
 end

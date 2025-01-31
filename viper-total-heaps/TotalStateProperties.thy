@@ -343,13 +343,6 @@ lemma mult_nm_loc_total_full_mp_eq:
 *)
 
 
-subsection \<open>Deconstructing of Nested Masks\<close>
-
-lemma nm_get_eq:
-  shows "nm = NM (get_mh_nm nm) (get_fnm_nm nm)"
-  by (simp add: nested_mask_equality)
-
-
 subsection \<open>Lemmas on Mask Diff\<close>
 
 lemma mh_upd_loc_diff:

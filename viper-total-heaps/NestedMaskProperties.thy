@@ -385,11 +385,70 @@ proof -
 qed
 *)
 
+lemma nm_loc_sum'_add_to_lpm:
+  assumes "nm_loc_sum' loc nm s"
+      and "nm_loc_sum' loc nm' s'"
+    shows "nm_loc_sum' loc (add_to_lpm_nm nm lp (Some (p, nm'))) (s + s')"
+proof -
+  define mh where "mh = get_mh_nm nm"
+  define fnm where "fnm = get_fnm_nm nm"
+  have "nm = NM mh fnm"
+    by (simp add: fnm_def mh_def nm_get_eq)
+  with assms(1) have nm_sum: "nm_loc_sum' loc (NM mh fnm) s"
+    by fast
+
+  from iffD1[OF nm_loc_sum'.simps nm_sum] obtain pf where
+    "Rep_preal (mh loc) \<le> s" and
+    "pf has_sumA (s - Rep_preal (mh loc))" and
+    pf: "\<forall>lp. option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf lp)) (pf lp = 0) (fnm lp)"
+    by blast
+
+  have lpm_origin_sum: "option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf lp)) (pf lp = 0) (fnm lp)"
+  using pf
+  by blast
+
+  have lpm_addend_sum: "option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) s') (s' = 0) (Some (p, nm'))"
+    by (simp add: assms(2))
+
+  show ?thesis
+  proof (cases "fnm lp")
+    case None
+    hence new_nm: "add_to_lpm_nm nm lp (Some (p, nm')) = NM mh (fnm( lp := Some (p, nm') ))"
+      by (simp add: \<open>nm = _\<close>)
+    have *: "s + s' = s - 0 + s'"
+      by auto
+    show ?thesis
+      apply (subst new_nm)
+      apply (subst *)
+      apply (rule nm_loc_sum'_change_sum)
+        apply (rule nm_sum)
+       apply (simp add: None)
+      by (rule lpm_addend_sum)
+  next
+    case (Some lpm)
+    hence new_nm: "add_to_lpm_nm nm lp (Some (p, nm')) = NM mh (fnm( lp := Some (fst lpm + p, snd lpm + nm') ))"
+      by (simp add: \<open>nm = _\<close>)
+    have *: "s + s' = s - pf lp + (pf lp + s')"
+      by auto
+    have **: "option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf lp + s')) (pf lp + s' = 0) (Some (fst lpm + p, snd lpm + nm'))"
+      apply simp
+      using Some assms(2) lpm_origin_sum nm_loc_sum'_add
+      by fastforce
+    show ?thesis
+      apply (subst new_nm)
+      apply (subst *)
+      apply (rule nm_loc_sum'_change_sum)
+        apply (rule nm_sum)
+       apply (rule lpm_origin_sum)
+      by (rule **)
+  qed
+qed
+
 lemma nm_loc_sum_add_to_lpm:
   assumes "nm_loc_sum loc nm s"
       and "nm_loc_sum loc nm' s'"
-    shows "nm_loc_sum loc (add_to_lpm_nm nm ploc p nm') (s + s')"
-  sorry
+    shows "nm_loc_sum loc (add_to_lpm_nm nm lp (Some (p, nm'))) (s + s')"
+  by (metis assms nm_loc_sum'_add_to_lpm nm_loc_sum.elims(2) nm_loc_sum.elims(3) plus_preal.rep_eq)
 
 
 subsection \<open>Zero Permission Location\<close>

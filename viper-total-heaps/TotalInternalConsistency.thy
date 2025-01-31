@@ -119,6 +119,11 @@ lemma unfold_preserves_internal_consistency:
 
 subsubsection \<open>Fold preserves internal consistency\<close>
 
+lemma exhale_0_state_same:
+  assumes "red_exhale ctxt R \<omega>0 (syntactic_mult 0 pred_body) \<omega> (RNormal \<omega>')"
+  shows "\<omega>' = \<omega>"
+  sorry
+
 lemma fold_rel_preserves_loc_sum:
   assumes "fold_rel ctxt pred_id vs p \<omega> (RNormal \<omega>')"
       and "nm_loc_sum loc (get_nm_total_full \<omega>) s"
@@ -130,7 +135,7 @@ proof -
     \<omega>0: "\<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>" and
     exh: "red_exhale ctxt R \<omega>0 (syntactic_mult (Rep_preal p) pred_body) \<omega>0 (RNormal \<omega>1)" and
     nm_sub: "get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0" and
-    \<omega>': "\<omega>' = add_to_lpm_total_full \<omega>1 (pred_id,vs) p nm_exh"
+    \<omega>': "\<omega>' = add_to_lpm_total_full \<omega>1 (pred_id,vs) (if p = 0 then None else Some (p2pos p, nm_exh))"
     using assms(1)
     by (auto elim: FoldRelNormal_case)
 
@@ -156,8 +161,12 @@ proof -
     by (metis nm_loc_sum.elims(2) Rep_preal_inject[symmetric])
 
   have "nm_loc_sum loc (get_nm_total_full \<omega>') (s1 + s_exh)"
-    apply (simp add: \<omega>' del: nm_loc_sum.simps add_to_lpm_nm.simps)
-    by (metis nm1_sum nm_exh_sum get_nm_total_full.simps nm1_def nm_loc_sum_add_to_lpm)
+    apply (simp only: \<omega>')
+    apply (cases "p = 0")
+    using \<open>nm_loc_sum loc nm0 s\<close> \<open>s = s1 + s_exh\<close> exh exhale_0_state_same nm0_def zero_preal.rep_eq
+     apply fastforce
+    apply (simp del: add_to_lpm_nm.simps)
+    by (metis get_nm_total_full.simps nm1_def nm1_sum nm_exh_sum nm_loc_sum.simps nm_loc_sum_add_to_lpm)
 
   thus ?thesis
     using \<open>s = s1 + s_exh\<close>
