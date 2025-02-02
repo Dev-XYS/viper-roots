@@ -358,6 +358,12 @@ lemma plus_masks_defined: "(m1 :: ('a, preal) abstract_mask) ## m2"
   unfolding defined_def
   by (simp add: SepAlgebra.plus_preal_def compatible_funI plus_fun_def)
 
+lemma neq_by_fun:
+  assumes "P a \<noteq> P b"
+  shows "a \<noteq> b"
+  using assms
+  by blast
+
 
 instantiation total_state_ext :: (type,type) pcm
 begin
@@ -371,51 +377,12 @@ definition plus_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a,'b
 instance proof
   fix a b ab c bc :: "('a,'b) total_state_ext"
 
-  let ?mh_a = "get_mh_total a"
-  let ?mp_a = "get_mp_total a"
-  let ?mh_b = "get_mh_total b"
-  let ?mp_b = "get_mp_total b"
-  let ?mh_c = "get_mh_total c"
-  let ?mp_c = "get_mp_total c"
-
-  obtain mh_ab where MhEqAB: "?mh_a \<oplus> ?mh_b = Some mh_ab"
-    using plus_masks_defined
-    unfolding defined_def
-    by blast
-
-  obtain mp_ab where MpEqAB: "?mp_a \<oplus> ?mp_b = Some mp_ab"
-    using plus_masks_defined
-    unfolding defined_def
-    by blast
-
-  note MEqAB = MhEqAB MpEqAB
-
-  obtain mh_bc where MhEqBC: "?mh_b \<oplus> ?mh_c = Some mh_bc"
-    using plus_masks_defined
-    unfolding defined_def
-    by blast
-
-  obtain mp_bc where MpEqBC: "?mp_b \<oplus> ?mp_c = Some mp_bc"
-    using plus_masks_defined
-    unfolding defined_def
-    by blast
-
-  note MEqBC = MhEqBC MpEqBC
-
   show "a \<oplus> b = b \<oplus> a"
     unfolding plus_total_state_ext_def
     by (simp add: add.commute)
 
   show "a \<oplus> b = Some ab \<and> b \<oplus> c = Some bc \<Longrightarrow> ab \<oplus> c = a \<oplus> bc"
   proof -
-    have *: "mh_ab \<oplus> get_mh_total c = get_mh_total a \<oplus> mh_bc"
-      using MEqAB MEqBC asso1
-      by blast
-
-    have **: "mp_ab \<oplus> get_mp_total c = get_mp_total a \<oplus> mp_bc"
-      using MEqAB MEqBC asso1
-      by blast
-
     assume "a \<oplus> b = Some ab \<and> b \<oplus> c = Some bc"
     thus ?thesis
       unfolding plus_total_state_ext_def
@@ -429,50 +396,101 @@ instance proof
   by (clarsimp split: if_split if_split_asm)
 
   show "a \<oplus> b = Some c \<Longrightarrow> Some c = c \<oplus> c \<Longrightarrow> Some a = a \<oplus> a"
-    sorry  \<comment> \<open>Is positivity ever used?\<close>
-  (*
   proof -
-    assume A: "a \<oplus> b = Some c" and B: "Some c = c \<oplus> c"
+    assume a_b: "a \<oplus> b = Some c"
+    assume c_c: "Some c = c \<oplus> c"
+    define a_nm where "a_nm = get_nm_total a"
+    define b_nm where "b_nm = get_nm_total b"
+    define c_nm where "c_nm = get_nm_total c"
 
-    obtain mh_cc where MhEqCC: "?mh_c \<oplus> ?mh_c = Some mh_cc"
-    using plus_masks_defined
-    unfolding defined_def
-    by blast
-
-    obtain mp_cc where MpEqCC: "?mp_c \<oplus> ?mp_c = Some mp_cc"
-    using plus_masks_defined
-    unfolding defined_def
-    by blast
-
-    note MEqCC = MhEqCC MpEqCC
-
-    from B have *: "?mh_c \<oplus> ?mh_c = Some ?mh_c \<and> ?mp_c \<oplus> ?mp_c = Some ?mp_c"
-      unfolding plus_total_state_ext_def
-    proof (clarsimp simp: MEqCC split: if_split if_split_asm)
-      assume "c = c\<lparr>get_mh_total := mh_cc, get_mp_total := mp_cc\<rparr>"
-      have "get_mh_total c = mh_cc"
-        apply (subst \<open>c = _\<close>)
-        by simp
-      moreover have "get_mp_total c = mp_cc"
-        apply (subst \<open>c = _\<close>)
-        by simp
-      ultimately show "mh_cc = get_mh_total c \<and> mp_cc = get_mp_total c"
-        by simp
+    have "c_nm = 0"
+    proof (rule ccontr)
+      assume c_not_0: "c_nm \<noteq> 0"
+      then consider (mh_non_0) "get_mh_nm c_nm \<noteq> zero_mask" | (fnm_non_0) "get_fnm_nm c_nm \<noteq> Map.empty"
+        by (metis nm_get_eq zero_nested_mask_def)
+      then show False
+      proof cases
+        case mh_non_0
+        then obtain l where "get_mh_nm c_nm l \<noteq> 0"
+          using zero_mask_def
+          by fastforce
+        hence "Some c \<noteq> c \<oplus> c"
+          apply (simp add: plus_total_state_ext_def plus_nested_mask_def c_nm_def[symmetric])
+          apply (rule neq_by_fun[of get_mh_total])
+          apply (rule neq_by_fun[of "\<lambda>f. f l"])
+          apply (cases c_nm)
+          apply simp
+          by (metis (no_types, lifting) add_cancel_left_left add_masks_def c_nm_def get_mh_nm.simps)
+        thus ?thesis
+          using c_c
+          by contradiction
+      next
+        case fnm_non_0
+        then obtain lp p nm_p where "get_fnm_nm c_nm lp = Some (p, nm_p)"
+          by (metis option.collapse prod.collapse)
+        hence "Some c \<noteq> c \<oplus> c"
+          apply (simp add: plus_total_state_ext_def plus_nested_mask_def c_nm_def[symmetric])
+          apply (rule neq_by_fun[of get_fnm_total])
+          apply (rule neq_by_fun[of "\<lambda>f. f lp"])
+          apply (cases c_nm)
+          apply (simp add: pfun_comb_def c_nm_def[symmetric])
+          by (smt (verit, best) Rep_posreal mem_Collect_eq plus_posreal.rep_eq)
+        thus ?thesis
+          using c_c
+          by contradiction
+      qed
     qed
 
-    moreover from * A have "?mh_a \<oplus> ?mh_b = Some ?mh_c \<and> ?mp_a \<oplus> ?mp_b = Some ?mp_c"
-      unfolding plus_total_state_ext_def
-      by (clarsimp simp: MEqAB split: if_split if_split_asm)
+    have "a_nm = 0"
+    proof (rule ccontr)
+      assume c_not_0: "a_nm \<noteq> 0"
+      then consider (mh_non_0) "get_mh_nm a_nm \<noteq> zero_mask" | (fnm_non_0) "get_fnm_nm a_nm \<noteq> Map.empty"
+        by (metis nm_get_eq zero_nested_mask_def)
+      then show False
+      proof cases
+        case mh_non_0
+        then obtain l where "get_mh_nm a_nm l \<noteq> 0"
+          using zero_mask_def
+          by fastforce
+        hence "a \<oplus> b \<noteq> Some c"
+          apply (simp add: plus_total_state_ext_def plus_nested_mask_def a_nm_def[symmetric])
+          apply standard
+          apply (rule neq_by_fun[of get_mh_total])
+          apply (rule neq_by_fun[of "\<lambda>f. f l"])
+          apply (cases a_nm)
+          apply (cases b_nm)
+          apply (cases c_nm)
+          apply simp
+          by (metis (no_types, lifting) \<open>c_nm = 0\<close> add_masks_def b_nm_def c_nm_def get_mh_nm.simps nested_mask_merge.simps padd_pos zero_mask_def zero_nested_mask_def)
+        thus ?thesis
+          using a_b
+          by contradiction
+      next
+        case fnm_non_0
+        then obtain lp p nm_p where "get_fnm_nm a_nm lp = Some (p, nm_p)"
+          by (metis option.collapse prod.collapse)
+        hence "a \<oplus> b \<noteq> Some c"
+          apply (simp add: plus_total_state_ext_def plus_nested_mask_def a_nm_def[symmetric])
+          apply standard
+          apply (rule neq_by_fun[of get_fnm_total])
+          apply (rule neq_by_fun[of "\<lambda>f. f lp"])
+          apply (cases a_nm)
+          apply (cases b_nm)
+          apply (cases c_nm)
+          apply (simp add: pfun_comb_def a_nm_def[symmetric] b_nm_def[symmetric] c_nm_def[symmetric])
+          by (metis (no_types, lifting) \<open>c_nm = 0\<close> combine_options_simps(2) combine_options_simps(3) get_fnm_nm.simps not_None_eq zero_nested_mask_def)
+        thus ?thesis
+          using a_b
+          by contradiction
+      qed
+    qed
 
-    ultimately have "?mh_a \<oplus> ?mh_a = Some ?mh_a \<and> ?mp_a \<oplus> ?mp_a = Some ?mp_a"
-      using positivity
-      by metis
-
-    thus ?thesis
-      unfolding plus_total_state_ext_def
-      by (clarsimp simp: MEqAB MEqBC split: if_split if_split_asm)
+    show "Some a = a \<oplus> a"
+      apply (simp add: plus_total_state_ext_def plus_nested_mask_def)
+      apply (rule total_state.equality; simp_all)
+      apply (simp add: a_nm_def[symmetric] \<open>a_nm = 0\<close>)
+      by (metis add_0 plus_nested_mask_def)
   qed
-  *)
 qed
 
 end

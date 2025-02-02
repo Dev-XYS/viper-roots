@@ -129,11 +129,12 @@ lemma fold_rel_preserves_loc_sum:
       and "nm_loc_sum loc (get_nm_total_full \<omega>) s"
     shows "nm_loc_sum loc (get_nm_total_full \<omega>') s"
 proof -
-  obtain pred_decl pred_body \<omega>0 R \<omega>1 nm_exh where
+  obtain pred_decl pred_body \<omega>0 \<omega>1 \<omega>1' nm_exh where
     "ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl" and
     "ViperLang.predicate_decl.body pred_decl = Some pred_body" and
     \<omega>0: "\<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>" and
-    exh: "red_exhale ctxt R \<omega>0 (syntactic_mult (Rep_preal p) pred_body) \<omega>0 (RNormal \<omega>1)" and
+    exh: "red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal p) pred_body) \<omega>0 (RNormal \<omega>1')" and
+    \<omega>1: "\<omega>1 = \<omega>\<lparr> get_total_full := get_total_full \<omega>1' \<rparr>" and
     nm_sub: "get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0" and
     \<omega>': "\<omega>' = add_to_lpm_total_full \<omega>1 (pred_id,vs) (if p = 0 then None else Some (p2pos p, nm_exh))"
     using assms(1)
@@ -161,12 +162,15 @@ proof -
     by (metis nm_loc_sum.elims(2) Rep_preal_inject[symmetric])
 
   have "nm_loc_sum loc (get_nm_total_full \<omega>') (s1 + s_exh)"
-    apply (simp only: \<omega>')
+    apply (simp only: \<omega>' \<omega>1)
     apply (cases "p = 0")
     using \<open>nm_loc_sum loc nm0 s\<close> \<open>s = s1 + s_exh\<close> exh exhale_0_state_same nm0_def zero_preal.rep_eq
      apply fastforce
     apply (simp del: add_to_lpm_nm.simps)
-    by (metis get_nm_total_full.simps nm1_def nm1_sum nm_exh_sum nm_loc_sum.simps nm_loc_sum_add_to_lpm)
+    apply (subgoal_tac "get_nm_total_full \<omega>1' = nm1")
+    using nm1_sum nm_exh_sum nm_loc_sum_add_to_lpm
+     apply fastforce
+    by (simp add: nm1_def \<omega>1)
 
   thus ?thesis
     using \<open>s = s1 + s_exh\<close>

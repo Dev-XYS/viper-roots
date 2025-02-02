@@ -135,15 +135,12 @@ inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a tot
          \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
          (get_mh_total \<phi>) (get_mp_total \<phi>)
          (syntactic_mult (Rep_preal p) pred_body);
-     consistent_external ctxt \<phi>;
-     p > 0
+     consistent_external ctxt \<phi>
    \<rbrakk> \<Longrightarrow>
    consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p"
 | SatAll:
-  "\<lbrakk> \<And>pred_id vs q. get_mp_total \<phi> (pred_id,vs) = q \<Longrightarrow> (q = 0) = (get_nm_loc_total \<phi> (pred_id,vs) = None);
-     \<And>pred_id vs q nm'. get_mp_total \<phi> (pred_id,vs) = q \<Longrightarrow>
-       Some nm' = get_nm_loc_total \<phi> (pred_id,vs) \<Longrightarrow>
-       consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm' \<rparr>) (pred_id,vs) q
+  "\<lbrakk> \<And>pred_id vs q nm'. Some (q, nm') = get_fnm_total \<phi> (pred_id,vs) \<Longrightarrow>
+       consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm' \<rparr>) (pred_id,vs) (pos2p q)
    \<rbrakk> \<Longrightarrow>
    consistent_external ctxt \<phi>"
 

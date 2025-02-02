@@ -2348,11 +2348,11 @@ lemma fold_rel_normal_only_changes_mask:
          get_hh_total_full \<omega>' = get_hh_total_full \<omega>"
   using assms
 proof cases
-  case (FoldRelNormal pred_decl pred_body \<omega>'' m)  
-  then show ?thesis     
-    using exhale_only_changes_total_state_aux
+  case (FoldRelNormal pred_decl pred_body \<omega>0 \<omega>1 nm_exh)
+  then show ?thesis
     unfolding \<open>\<omega>' = _\<close>
-    by fastforce    
+    using exhale_only_changes_total_state_aux[OF FoldRelNormal(4), of \<omega>1]
+    by fastforce
 qed
 
 lemma red_stmt_preserves_well_typed_store:

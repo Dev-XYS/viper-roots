@@ -17,6 +17,7 @@ lemma supported_sub_expr_supported:
   using assms
   by (induct e; simp add: list_all_length)
 
+(*
 lemma nm_subtract_mh:
   shows "get_mh_nm (nested_mask_subtract nm\<^sub>1 nm\<^sub>2) = get_mh_nm nm\<^sub>1 - get_mh_nm nm\<^sub>2"
   by (metis get_fnm_nm.cases get_mh_nm.simps nested_mask_subtract.simps)
@@ -24,6 +25,7 @@ lemma nm_subtract_mh:
 lemma nm_subtract_mp:
   shows "get_mp_nm (nested_mask_subtract nm\<^sub>1 nm\<^sub>2) = get_mp_nm nm\<^sub>1 - get_mp_nm nm\<^sub>2"
   by (metis get_fnm_nm.cases get_mp_nm.simps nested_mask_subtract.simps)
+*)
 
 
 \<comment> \<open>The total state \<phi> we give to \<^const>\<open>sat\<close> does not matter.\<close>
@@ -125,8 +127,13 @@ next
     by (metis (mono_tags, lifting) option.map_disc_iff pure_exp_pred.elims(2) pure_exp_pred_rec.simps(12) sub_pure_exp_total.simps(9) supported_sub_expr_supported)
 next
   case IH: (RedUnfoldingDefNoPred \<omega>_def es \<omega> vs pred_id ubody)
-  then show ?case
-    by (metis (mono_tags, lifting) RedUnfoldingDefNoPred Rep_preal_inject get_mp_total_full_multiply mult_eq_0_iff option.simps(9) sub_pure_exp_total.simps(9) supported_sub_expr_supported times_preal.rep_eq zero_preal.rep_eq)
+  have "get_mp_total_full (mult_nm_total_full \<omega>_def frac) (pred_id, vs) = 0"
+    using IH(3)
+    apply simp
+    by (metis comp_apply get_mp_nm.simps mult_not_zero nm_multiply_mp_value)
+  show ?case
+    apply (simp del: mult_nm_total_full.simps)
+    by (metis (mono_tags, lifting) IH.IH(2) IH.prems RedUnfoldingDefNoPred \<open>get_mp_total_full (mult_nm_total_full \<omega>_def frac) (pred_id, vs) = pos_perm_class.pnone\<close> option.simps(9) sub_pure_exp_total.simps(9) supported_sub_expr_supported)
 next
   case IH: (RedUnfoldingDef \<omega>_def es \<omega> vs perm p nm' \<omega>'_def ubody v)
   hence es_sup: "list_all supported_pred_expr es" and
@@ -140,14 +147,15 @@ next
      (get_nm_total_full (mult_nm_total_full \<omega>_def frac)) (frac *\<^sub>s nm')"
     using shift_up_frac[OF assms(1) IH(7), simplified IH(5)]
     apply (simp add: mul_mask_def)
-    by (simp add: PosReal.field_divide_inverse mult.assoc)
+    by (metis PosReal.field_divide_inverse comp_apply get_mp_nm.simps mult.assoc nm_multiply_mp_value)
   show ?case
     apply (simp del: mult_nm_total_full.simps)
     apply (rule RedUnfoldingDef)
     using IH es_sup
          apply simp
         apply blast
-       apply (metis IH.hyps(1) IH.hyps(2) assms get_mp_total_full_multiply less_preal.rep_eq mult_eq_0_iff pperm_pnone_pgt times_preal.rep_eq zero_preal.rep_eq)
+       apply simp
+       apply (metis IH.hyps(1) IH.hyps(2) PosReal.field_divide_inverse assms comp_apply get_mp_nm.simps get_mp_total.elims get_mp_total_full.simps mult_zero_left nm_multiply_back preal_not_0_gt_0)
     using nm_unfold
       apply blast
      apply simp
@@ -671,8 +679,8 @@ lemma fraction_consistent_external:
   fixes frac :: preal
   assumes "0 < frac"
       and "ctxt_wf_pred ctxt"
-    shows "consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p \<Longrightarrow>
-           consistent_external_wrt_ploc ctxt (mult_nm_total \<phi> frac) (pred_id,vs) (frac * p)"
+    shows "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
+           consistent_external_wrt_ploc ctxt (mult_nm_total \<phi> frac) (pid,vs) (frac * p)"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
            consistent_external ctxt (mult_nm_total \<phi> frac)"
 proof (induction rule: consistent_external_wrt_ploc_consistent_external.inducts)

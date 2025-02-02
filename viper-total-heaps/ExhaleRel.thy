@@ -1149,28 +1149,7 @@ lemma exhale_rel_pred_acc_upd_rel:
            (\<lambda>_. False) P ctxt_bpl
            (BigBlock name ((Assign m_bpl m_upd_bpl) # cs) str tr, cont)
            (BigBlock name cs str tr, cont)"
-  sorry
 *)
-  (* apply (rule rel_intro_no_fail)
-proof
-  fix \<omega>0_\<omega> ns \<omega>0_\<omega>'
-  assume "R \<omega>0_\<omega> ns"
-    "fst \<omega>0_\<omega> = fst \<omega>0_\<omega>' \<and>
-     exhale_pred_acc_normal_premise ctxt_vpr StateCons pred_id [e_arg_vpr] e_p_vpr [v_arg_vpr] v_p_vpr (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) (snd \<omega>0_\<omega>')"
-
-  note StateRelInst = StateRelIn[OF \<open>R \<omega>0_\<omega> ns\<close>]
-
-  obtain mb where
-    LookupMask: "lookup_var (var_context ctxt_bpl) ns (mask_var Tr) = Some (AbsV (AMask mb))" and
-    LookupMaskTy: "lookup_var_ty (var_context ctxt_bpl) (mask_var Tr) = Some (TConSingle (TMaskId TyRep))" and
-    MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full (snd \<omega>0_\<omega>)) (get_mp_total_full (snd \<omega>0_\<omega>)) mb"
-    using state_rel_obtain_mask[OF StateRelInst]
-    by blast
-
-  let ?p' = "if r = Null then 0 else Rep_preal (p_preal \<omega>)"
-  let ?mb' = "mb ( (r, ?f_bpl_val) := ?p' )"
-
-  sorry *)
 
 lemma exhale_rel_pred_acc_upd_rel:
   assumes

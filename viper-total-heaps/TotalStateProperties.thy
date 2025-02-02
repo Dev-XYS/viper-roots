@@ -733,7 +733,7 @@ definition total_heap_well_typed :: "program \<Rightarrow> ('a \<Rightarrow> abs
            \<forall>loc \<tau>. declared_fields Pr (snd loc) = Some \<tau> \<longrightarrow> has_type \<Delta> \<tau> (h loc)"
 
 
-subsubsection \<open>Lemmas\<close>
+subsection \<open>Lemmas\<close>
 
 lemma plus_mask_zero_mask_neutral: "(m :: ('a, preal) abstract_mask) \<oplus> zero_mask = Some m"
 proof -
@@ -1020,6 +1020,50 @@ proof -
 qed
 *)
 
+\<comment> \<open>Consider instantiate nested mask with \<^class>\<open>pcm\<close>\<close>
+lemma nm_cancellativity:
+  fixes c :: "'a nested_mask"
+  assumes "a + c = b + c"
+  shows "a = b"
+  using assms
+proof (induction c arbitrary: a b)
+  case (NM mh fnm)
+  show ?case
+  proof (rule ccontr)
+    assume "a \<noteq> b"
+    then consider (mh_diff) "get_mh_nm a \<noteq> get_mh_nm b" | (fnm_diff) "get_fnm_nm a \<noteq> get_fnm_nm b"
+      using nested_mask_equality
+      by blast
+    then show False
+    proof cases
+      case mh_diff
+      then show ?thesis
+        by (metis NM.prems add.commute add_masks_minus get_mh_nm__merge plus_nested_mask_def)
+    next
+      case fnm_diff
+      then obtain lp where *: "get_fnm_nm a lp \<noteq> get_fnm_nm b lp"
+        by blast
+      have "a + NM mh fnm \<noteq> b + NM mh fnm"
+        apply (subst nm_get_eq[of a])
+        apply (subst nm_get_eq[of b])
+        unfolding plus_nested_mask_def
+        apply (rule neq_by_fun[of "\<lambda>nm. get_fnm_nm nm lp"])
+        apply (cases "get_fnm_nm a lp"; cases "get_fnm_nm b lp"; cases "fnm lp")
+               apply (simp_all add: pfun_comb_def)
+        using *
+             apply argo+
+           apply (smt (verit) Rep_posreal fst_conv mem_Collect_eq plus_posreal.rep_eq)+
+        using *
+         apply fastforce
+        by (metis * NM.IH Rep_posreal_inject add_right_imp_eq option.set_intros plus_nested_mask_def plus_posreal.rep_eq range_eqI snds.intros surjective_pairing)
+      then show ?thesis
+        using NM
+        by meson
+    qed
+  qed
+qed
+
+
 subsection \<open>Partial commutative monoid with core instantiation\<close>
 
 instantiation total_state_ext :: (type,type) pcm_with_core
@@ -1029,8 +1073,6 @@ definition core_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a, '
   where "core_total_state_ext \<phi> = (upd_nm_total \<phi> 0)"
 
 instance
-  sorry
-(*
 proof
   fix a b c x y :: "('a,'b) total_state_ext"
 
@@ -1043,14 +1085,59 @@ proof
     by simp
 
   show "Some x = x \<oplus> c \<Longrightarrow> \<exists>r. Some |x| = c \<oplus> r" (is "?lhs \<Longrightarrow> ?rhs")
-  proof -
-    assume ?lhs
+  proof
+    assume x_c: "Some x = x \<oplus> c"
 
-    have "get_nm_total c = 0" \<comment> \<open>Todo: This is actually incorrect. \<open>c\<close> might be something equivalent to \<open>empty_nm\<close>.\<close>
-      by ..
+    hence "get_hh_total x = get_hh_total c \<and> total_state.more x = total_state.more c"
+      by (metis total_state_plus_defined)
 
-    thus ?thesis
-      by (metis \<open>Some x = x \<oplus> c\<close> \<open>Some x = x \<oplus> |x|\<close> plus_total_state_zero_mask total_state_plus_defined)
+    moreover have "get_nm_total c = 0"
+    proof (rule ccontr)
+      assume c_not_0: "get_nm_total c \<noteq> 0"
+      then consider (mh_non_0) "get_mh_total c \<noteq> zero_mask" | (fnm_non_0) "get_fnm_total c \<noteq> Map.empty"
+        by (metis get_fnm_total.simps get_mh_total.simps nm_get_eq zero_nested_mask_def)
+      then show False
+      proof cases
+        case mh_non_0
+        then obtain l where "get_mh_total c l \<noteq> 0"
+          using zero_mask_def
+          by fastforce
+        have "Some x \<noteq> x \<oplus> c"
+          apply (simp add: plus_total_state_ext_def plus_nested_mask_def)
+          apply standard
+          apply (rule neq_by_fun[of get_mh_total])
+          apply (rule neq_by_fun[of "\<lambda>f. f l"])
+          apply (subst nm_get_eq)
+          apply (simp add: add_masks_def)
+          using \<open>get_mh_total c l \<noteq> 0\<close>
+          by force
+        thus ?thesis
+          using x_c
+          by contradiction
+      next
+        case fnm_non_0
+        then obtain lp p nm_p where "get_fnm_total c lp = Some (p, nm_p)"
+          by (metis option.collapse prod.collapse)
+        hence "Some x \<noteq> x \<oplus> c"
+          apply (simp add: plus_total_state_ext_def plus_nested_mask_def)
+          apply standard
+          apply (rule neq_by_fun[of get_fnm_total])
+          apply (rule neq_by_fun[of "\<lambda>f. f lp"])
+          apply (subst nm_get_eq)
+          apply (subst nm_get_eq[of "get_nm_total c"])
+          apply (simp add: pfun_comb_def)
+          apply (cases "get_fnm_total x lp")
+           apply simp_all
+          by (smt (verit, ccfv_SIG) Rep_posreal mem_Collect_eq plus_posreal.rep_eq split_pairs)
+        thus ?thesis
+          using x_c
+          by contradiction
+      qed
+    qed
+
+    ultimately show "Some |x| = c \<oplus> c\<lparr> get_nm_total := 0 \<rparr>"
+      unfolding core_total_state_ext_def plus_total_state_ext_def
+      by simp
   qed
 
   show "Some c = a \<oplus> b \<Longrightarrow> Some |c| = |a| \<oplus> |b|"
@@ -1061,37 +1148,14 @@ proof
     \<comment>\<open>\<^prop>\<open>|x| = |y|\<close> is not needed, since it is always the case if he heap of \<^term>\<open>x\<close> and \<^term>\<open>y\<close>
        are the same, which it must be because of the first two assumptions\<close>
   proof -
-    assume ?A and ?B
-
-    from \<open>?A\<close> have Eqx1: "a = b \<lparr> get_mh_total := add_masks (get_mh_total b) (get_mh_total x),
-                            get_mp_total := add_masks (get_mp_total b) (get_mp_total x) \<rparr>"
-      using plus_Some_total_state_eq
-      by metis
-
-    from \<open>?B\<close> have Eqy1: "a = b \<lparr> get_mh_total := add_masks (get_mh_total b) (get_mh_total y),
-                            get_mp_total := add_masks (get_mp_total b) (get_mp_total y) \<rparr>"
-      using plus_Some_total_state_eq
-      by metis
-
-    from Eqx1 have Eqx2: "get_mh_total a = add_masks (get_mh_total b) (get_mh_total x) \<and>
-                    get_mp_total a = add_masks (get_mp_total b) (get_mp_total x)"
-      by simp
-
-    from Eqy1 have Eqy2: "get_mh_total a = add_masks (get_mh_total b) (get_mh_total y) \<and>
-                    get_mp_total a = add_masks (get_mp_total b) (get_mp_total y)"
-      by simp
-
-    have "get_mh_total x = get_mh_total y \<and> get_mp_total x = get_mp_total y"
-      unfolding add_masks_def
-       \<comment>\<open>one could instead do a proof here that does not unfold \<^term>\<open>add_masks\<close> and instead uses the properties
-        of the mask core instantiation (but the current proof is more straightforward)\<close>
-      by (metis Eqx2 Eqy2 add_masks_minus)
-
-    thus ?thesis
-      by (metis \<open>?A\<close> \<open>?B\<close> total_state.equality total_state_plus_defined)
+    assume "?A" and "?B"
+    hence b_x_eq: "get_hh_total b = get_hh_total x \<and> total_state.more b = total_state.more x" and
+          b_y_eq: "get_hh_total b = get_hh_total y \<and> total_state.more b = total_state.more y"
+      by (metis option.simps(3) plus_total_state_ext_def)+
+    show "x = y"
+      by (metis \<open>Some a = b \<oplus> x\<close> \<open>Some a = b \<oplus> y\<close> add.commute b_x_eq b_y_eq nm_cancellativity option.sel plus_total_state_ext_def total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
   qed
 qed
-*)
 
 end
 
@@ -1219,44 +1283,55 @@ lemma full_total_state_defined_core_same_2:
   unfolding defined_def
   by fast
 
-(*
+lemma get_mp_nm_distr_over_plus:
+  shows "get_mp_nm (nm\<^sub>1 + nm\<^sub>2) = add_masks (get_mp_nm nm\<^sub>1) (get_mp_nm nm\<^sub>2)"
+proof
+  fix lp
+  obtain mh\<^sub>1 fnm\<^sub>1 mh\<^sub>2 fnm\<^sub>2 where "nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1" and "nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2"
+    using nm_get_eq
+    by blast
+  show "get_mp_nm (nm\<^sub>1 + nm\<^sub>2) lp = add_masks (get_mp_nm nm\<^sub>1) (get_mp_nm nm\<^sub>2) lp"
+    apply (subst \<open>nm\<^sub>1 = _\<close>)
+    apply (subst \<open>nm\<^sub>2 = _\<close>)
+    apply (cases "fnm\<^sub>1 lp"; cases "fnm\<^sub>2 lp")
+       apply (simp_all add: add_masks_def plus_nested_mask_def pfun_comb_def)
+       apply (simp_all add: \<open>nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1\<close> \<open>nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2\<close>)
+    apply (simp add: pos2p_def preal_to_real posreal_to_real)
+    by (smt (verit) Rep_posreal mem_Collect_eq Abs_preal_inverse)
+qed
+
 lemma minus_total_state:
   assumes "\<phi> \<succeq> \<phi>'"
-  shows "\<phi> \<ominus> \<phi>' = \<phi> \<lparr> get_mh_total := get_mh_total \<phi> - get_mh_total \<phi>',
-                      get_mp_total := get_mp_total \<phi> - get_mp_total \<phi>' \<rparr>" (is "_ = ?\<Delta>")
-proof -
-  from assms minus_exists obtain \<phi>m
-    where PlusSome: "Some \<phi> = \<phi>' \<oplus> \<phi>m" and "\<phi>m \<succeq> |\<phi>|"
-    by blast
+  shows "get_mh_total (\<phi> \<ominus> \<phi>') = get_mh_total \<phi> - get_mh_total \<phi>' \<and>
+         get_mp_total (\<phi> \<ominus> \<phi>') = get_mp_total \<phi> - get_mp_total \<phi>'" (is "?A \<and> ?B")
+proof
+  obtain \<phi>'' where plus: "\<phi>' \<oplus> \<phi>'' = Some \<phi>"
+    by (metis assms greater_def)
+  moreover have "\<phi>'' \<succeq> |\<phi>|"
+    by (metis assms calculation core_total_state_ext_def defined_def max_projection_prop_def max_projection_prop_pure_core option.simps(3) plus_total_state_ext_def smaller_compatible_core total_state.surjective total_state.update_convs(2) upd_nm_total.elims)
+  ultimately have minus: "\<phi> \<ominus> \<phi>' = \<phi>''"
+    unfolding minus_def
+    by (metis (full_types) minusI minus_def)
 
-  hence "\<phi>m = \<phi> \<ominus> \<phi>'"
-    using minusI by auto
+  from plus have "\<And>l. get_mh_total \<phi>' l + get_mh_total \<phi>'' l = get_mh_total \<phi> l"
+    by (metis add_masks_def get_mh_nm__merge get_mh_total.simps option.sel plus_nested_mask_def plus_total_state_ext_def total_state.select_convs(2) total_state.surjective total_state.update_convs(2) total_state_plus_defined)
+  thus "?A"
+    apply (subst minus)
+    by (metis add_masks_minus get_mh_nm__merge get_mh_total.simps option.sel plus plus_nested_mask_def plus_total_state_ext_def total_state.select_convs(2) total_state.surjective total_state.update_convs(2) total_state_plus_defined)
 
-  from PlusSome have
-     PlusMh: "get_mh_total \<phi> = add_masks (get_mh_total \<phi>') (get_mh_total \<phi>m)" and
-     PlusMp: "get_mp_total \<phi> = add_masks (get_mp_total \<phi>') (get_mp_total \<phi>m)"
-    unfolding plus_total_state_ext_def
-    by (auto split: if_split_asm simp: mask_plus_Some)
-
-  have "get_mh_total \<phi>m = get_mh_total \<phi> - get_mh_total \<phi>'"
-    using add_masks_minus PlusMh
-    by blast
-
-  moreover have "get_mp_total \<phi>m = get_mp_total \<phi> - get_mp_total \<phi>'"
-    using add_masks_minus PlusMp
-    by blast
-
-  moreover from PlusSome have "get_hh_total \<phi> = get_hh_total \<phi>m \<and>
-                               get_hp_total \<phi> = get_hp_total \<phi>m \<and>
-                               total_state.more \<phi> = total_state.more \<phi>m"
-    by (metis total_state_plus_defined)
-  ultimately have "\<phi>m = ?\<Delta>"
-    by simp
-  thus ?thesis
-    using \<open>\<phi>m = \<phi> \<ominus> \<phi>'\<close>
-    by argo
+  from plus have *: "get_nm_total \<phi>' + get_nm_total \<phi>'' = get_nm_total \<phi>"
+    by (metis option.sel option.simps(3) plus_total_state_ext_def total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
+  have **: "\<And>lp. get_mp_total \<phi>' lp + get_mp_total \<phi>'' lp = get_mp_total \<phi> lp" (is "\<And>lp. ?P lp")
+  proof -
+    fix lp
+    show "?P lp"
+      by (metis "*" add_masks_def get_mp_nm_distr_over_plus get_mp_total.simps)
+  qed
+  show "?B"
+    apply standard
+    apply (subst minus)
+    by (metis ** add_diff_cancel_left' minus_apply)
 qed
-*)
 
 lemma minus_full_total_state_only_mask_different:
   shows "get_store_total (\<omega> \<ominus> \<omega>') = get_store_total \<omega> \<and>
@@ -1276,52 +1351,12 @@ lemma minus_full_total_state_only_mask_different_2:
 lemma minus_full_total_state:
   assumes "\<omega> \<succeq> \<omega>'"
   shows "\<omega> \<ominus> \<omega>' = \<omega> \<lparr> get_total_full := get_total_full \<omega> \<ominus> get_total_full \<omega>' \<rparr>" (is "_ = ?\<Delta>")
-  sorry
-(*
-proof -
-  from assms minus_exists obtain \<omega>m
-    where PlusSome: "\<omega>' \<oplus> \<omega>m = Some \<omega>" and "\<omega>m \<succeq> |\<omega>|"
-    by force
-
-  hence "\<omega>m = \<omega> \<ominus> \<omega>'"
-    using minusI
-    by metis
-
-  from plus_Some_full_total_state_eq[OF PlusSome] have
-     PlusMh: "get_mh_total_full \<omega> = add_masks (get_mh_total_full \<omega>') (get_mh_total_full \<omega>m)" and
-     PlusMp: "get_mp_total_full \<omega> = add_masks (get_mp_total_full \<omega>') (get_mp_total_full \<omega>m)"
-    by simp_all
-
-
-  have "get_mh_total_full \<omega>m = get_mh_total_full \<omega> - get_mh_total_full \<omega>'"
-    using add_masks_minus PlusMh
-    by blast
-
-  moreover have "get_mp_total_full \<omega>m = get_mp_total_full \<omega> - get_mp_total_full \<omega>'"
-    using add_masks_minus PlusMp
-    by blast
-
-  moreover from PlusSome have "get_store_total \<omega> = get_store_total \<omega>m \<and>
-                               get_trace_total \<omega> = get_trace_total \<omega>m \<and>
-                               get_h_total_full \<omega> = get_h_total_full \<omega>m \<and>
-                               full_total_state.more \<omega> = full_total_state.more \<omega>m"
-    by (metis \<open>\<omega>m = \<omega> \<ominus> \<omega>'\<close> core_is_smaller minus_equiv_def_any_elem minus_full_total_state_only_mask_different option.discI plus_full_total_state_ext_def)
-
-  ultimately have "\<omega>m = ?\<Delta>"
-    using minus_total_state[OF greater_full_total_state_total_state[OF assms]]
-    by simp
-  thus ?thesis
-    using \<open>\<omega>m = \<omega> \<ominus> \<omega>'\<close>
-    by argo
-qed
-*)
+  by (smt (z3) assms core_full_total_state_ext_def defined_def full_total_state.simps(3) full_total_state.simps(7) full_total_state.surjective minus_equiv_def minus_equiv_def_any_elem option.exhaust_sel option.sel option.simps(3) plus_full_total_state_ext_def)
 
 lemma minus_full_total_state_mask:
   assumes "\<omega> \<succeq> \<omega>'"
   shows "get_mh_total_full (\<omega> \<ominus> \<omega>') = get_mh_total_full \<omega> - get_mh_total_full \<omega>' \<and>
          get_mp_total_full (\<omega> \<ominus> \<omega>') = get_mp_total_full \<omega> - get_mp_total_full \<omega>'"
-  sorry
-(*
 proof -
   from minus_full_total_state[OF assms]
   have "get_total_full (\<omega> \<ominus> \<omega>') = get_total_full \<omega> \<ominus> get_total_full \<omega>'" (is "_ = ?\<phi> \<ominus> ?\<phi>'")
@@ -1331,7 +1366,6 @@ proof -
   using greater_full_total_state_total_state[OF assms, THEN minus_total_state]
   by simp
 qed
-*)
 
 subsection \<open>Monotonicity relationship\<close>
 
