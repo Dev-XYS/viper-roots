@@ -111,6 +111,19 @@ definition p2pos :: "preal \<Rightarrow> posreal" where
 
 lemma pos2p_gt_0:
   shows "pos2p a > 0"
-  using Rep_posreal pos2p_def positive_real_preal pperm_pnone_pgt by auto
+  using Rep_posreal pos2p_def positive_real_preal pperm_pnone_pgt
+  by auto
+
+lemma pos2p_p2pos_id:
+  shows "p2pos (pos2p x) = x"
+  apply (simp add: p2pos_def pos2p_def)
+  by (metis Rep_posreal Rep_posreal_inverse Abs_preal_inverse dual_order.order_iff_strict mem_Collect_eq)
+
+lemma p2pos_pos2p_id:
+  assumes "x > 0"
+  shows "pos2p (p2pos x) = x"
+  apply (simp add: p2pos_def pos2p_def)
+  using Abs_posreal_inverse Rep_preal_inverse assms less_preal.rep_eq zero_preal.rep_eq
+  by force
 
 end

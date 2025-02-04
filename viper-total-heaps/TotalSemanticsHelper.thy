@@ -47,9 +47,15 @@ lemmas red_inhale_intros =
   InhCondAssertFalse
   InhSubExpFailure
 
+inductive_cases InhPure_case: "red_inhale ctxt R (Atomic (Pure e)) \<omega> res"
+inductive_cases InhAcc_case: "red_inhale ctxt R (Atomic (Acc e_r f perm)) \<omega> res"
+inductive_cases InhAccPerm_case: "red_inhale ctxt R (Atomic (Acc e_r f (PureExp e_p))) \<omega> res"
+inductive_cases InhAccWildcard_case: "red_inhale ctxt R (Atomic (Acc e_r f Wildcard)) \<omega> res"
+inductive_cases InhAccPredPerm_case: "red_inhale ctxt R (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> res"
+inductive_cases InhAccPredWildcard_case: "red_inhale ctxt R (Atomic (AccPredicate pid e_args Wildcard)) \<omega> res"
 inductive_cases InhStar_case: "red_inhale ctxt R (A && B) \<omega> res"
 inductive_cases InhImp_case: "red_inhale ctxt R (Imp e A) \<omega> res"
-inductive_cases InhPure_case: "red_inhale ctxt R (Atomic (Pure e)) \<omega> res"
+inductive_cases InhCondAssert: "red_inhale ctxt R (CondAssert e A B) \<omega> res"
 
 lemmas red_inhale_elims =
   InhStar_case

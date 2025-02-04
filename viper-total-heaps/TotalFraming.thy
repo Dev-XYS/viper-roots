@@ -5,7 +5,7 @@ theory TotalFraming
 begin
 
 
-text \<open>We have two definitions of self-framing at the moment. We need to prove their equivalance eventually.\<close>
+text \<open>We have two definitions of self-framing at the moment. We need to prove their equivalence eventually.\<close>
 
 
 subsection \<open>Self-Framing Assertion Definition Based on \<^const>\<open>red_inhale\<close>\<close>

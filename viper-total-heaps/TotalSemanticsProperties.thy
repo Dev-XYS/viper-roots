@@ -445,10 +445,8 @@ next
           by (simp add: preal_to_real)
         obtain nm' where nm': "shift_up pred_id vs\<^sub>2 (get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs) / Abs_preal 2) (get_nm_total_full \<omega>\<^sub>0\<^sub>2) nm'"
           apply simp
-          using shift_up_exists[of "get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs) / Abs_preal 2" "get_nm_total_full \<omega>\<^sub>0\<^sub>2" pred_id vs, simplified,
-                OF 1[of "get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs)", simplified] 2[OF False[simplified]]]
-                \<open>vs\<^sub>2 = vs\<close>
-          by blast
+          using "1" \<open>vs\<^sub>2 = vs\<close> shift_up_exists
+          by fastforce
         then obtain v\<^sub>2 where v\<^sub>2: "ctxt, Some (upd_nm_total_full \<omega>\<^sub>0\<^sub>2 nm') \<turnstile> \<langle>ubody;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t v\<^sub>2"
           using IH(4)[OF IH(5) body_sup IH(7) IH(8), of "Some (upd_nm_total_full \<omega>\<^sub>0\<^sub>2 nm')"]
           by blast
@@ -520,10 +518,8 @@ next
           by (simp add: preal_to_real)
         obtain nm' where nm': "shift_up pred_id vs\<^sub>2 (get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs) / Abs_preal 2) (get_nm_total_full \<omega>\<^sub>0\<^sub>2) nm'"
           apply simp
-          using shift_up_exists[of "get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs) / Abs_preal 2" "get_nm_total_full \<omega>\<^sub>0\<^sub>2" pred_id vs, simplified,
-                OF 1[of "get_mp_total_full \<omega>\<^sub>0\<^sub>2 (pred_id, vs)", simplified] 2[OF False[simplified]]]
-                \<open>vs\<^sub>2 = vs\<close>
-          by blast
+          using "1" \<open>vs\<^sub>2 = vs\<close> shift_up_exists
+          by fastforce
         then obtain v\<^sub>2 where v\<^sub>2: "ctxt, Some (upd_nm_total_full \<omega>\<^sub>0\<^sub>2 nm') \<turnstile> \<langle>ubody;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t v\<^sub>2"
           by (metis IH(4) IH.prems(1) IH.prems(3) IH.prems(4) body_sup)
         show ?thesis
@@ -591,6 +587,9 @@ lemma eval_multi_exhale_sat_helper:
          (Some vs)"
   sorry
 
+
+subsection \<open>Relation between exhale and sat\<close>
+
 lemma exhale_mh_diff:
   shows "get_mh_total_full \<omega> - get_mh_total_full (exhale_pred \<omega> ploc p) = zero_mask"
   apply (simp add: exhale_pred_def)
@@ -602,14 +601,20 @@ lemma exhale_mp_diff:
   assumes "p \<le> get_mp_total_full \<omega> ploc"
   shows "get_mp_total_full \<omega> - get_mp_total_full (exhale_pred \<omega> ploc p) = singleton_mp ploc p"
 proof -
-  have 1: "get_mp_total_full (exhale_pred \<omega> ploc p) = get_mp_total_full (dec_mp_loc_total_full \<omega> ploc p)"
+  have 1: "get_mp_total_full (exhale_pred \<omega> ploc p) = get_mp_total_full (rm_from_lpm_total_full \<omega> ploc p)"
     by (simp add: exhale_pred_def)
   have 2: "get_mp_total_full \<omega> ploc - (get_mp_total_full \<omega> ploc - p) = p"
-    using assms minus_preal_gte by auto
-  show ?thesis
-    apply (simp add: 1 exhale_pred_def Let_def)
-    using 2 minus_preal.abs_eq zero_preal.abs_eq assms psub_smaller
+    using assms minus_preal_gte
     by auto
+  show ?thesis
+    apply standard
+    apply (simp add: exhale_pred_def)
+    apply (cases "get_fnm_total_full \<omega> ploc")
+    using all_pos assms order_antisym_conv
+     apply auto[1]
+    apply simp
+    using pos2p_p2pos_id
+    by (metis (no_types, opaque_lifting) add.commute assms comp_def get_mp_nm.simps get_mp_total.simps get_mp_total_full.simps greater_minus_plus minus_preal_gte option_fold.simps(1) order_class.order_eq_iff p2pos_pos2p_id preal_not_0_gt_0 verit_sum_simplify)
 qed
 
 lemma mh_sub_twice:
@@ -631,9 +636,6 @@ lemma mp_sub_twice:
   apply (simp add: add_masks_def preal_to_real)
   using assms less_eq_preal.rep_eq
   by auto
-
-
-\<comment> \<open>Relation between exhale and sat\<close>
 
 lemma exhale_diff_sat:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
@@ -660,12 +662,15 @@ proof (induction arbitrary: \<omega>')
       apply blast
      apply (cases r)
       apply (simp add: If_def \<omega>')
-    using "1" IH.hyps(1) IH.hyps(4) mh_upd_loc_diff minus_preal_gte psub_smaller
+    using 1 IH.hyps(1) IH.hyps(4) mh_upd_loc_diff minus_preal_gte psub_smaller
       apply auto[1]
-    using "1" \<omega>' same_mh_diff
+    using 1 \<omega>'
+      apply (metis (no_types, opaque_lifting) dec_mh_loc_nm.simps get_mh_nm.simps nm_get_eq)
+    using 1 \<omega>' same_mh_diff
      apply force
     apply standard
-    by (simp add: zero_mask_def \<omega>')
+    apply (simp add: zero_mask_def \<omega>')
+    by (metis cancel_comm_monoid_add_class.diff_cancel dec_mh_loc_nm.simps get_fnm_nm.simps nm_get_eq)
 next
   case IH: (ExhAccWildcard mh \<omega> e_r r a f q)
   have 1: "mh (a,f) \<noteq> 0 \<and> r \<noteq> Null"
@@ -779,6 +784,7 @@ next
 qed
 
 
+\<^cancel>\<open>
 subsection \<open>Inhale Properties\<close>
 
 lemma inhale_with_more_variables:
@@ -854,7 +860,7 @@ proof (induction A arbitrary: \<omega> nm)
       using IH.hyps(6) IH.prems(2)
         apply auto[1]
       using zero_mask_def
-      by (metis IH.hyps(6) IH.prems(2) IH.prems(3) SatAll_case prod.exhaust total_state.select_convs(2))
+      by (metis (mono_tags, lifting) comp_apply option.exhaust option_fold.simps(1) pos2p_gt_0 pperm_pgt_pnone)
     show "th_result_rel (0 \<le> p) (W \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null)) W (RNormal (add_to_nm_total_full \<omega> nm))"
       apply (simp add: \<open>p = 0\<close> \<open>W = {\<omega>}\<close> True th_result_rel.simps)
       by (simp add: zero_nested_mask_def[symmetric] \<open>nm = 0\<close>)
@@ -863,7 +869,7 @@ proof (induction A arbitrary: \<omega> nm)
     have mh: "get_mh_nm nm = singleton_mh (a, f) (Abs_preal p)"
       using False IH.hyps(5) IH.prems(1) by presburger
     have fnm: "get_fnm_nm nm = (\<lambda>_. None)"
-      by (metis IH.hyps(6) IH.prems(2) IH.prems(3) SatAll_case surj_pair total_state.select_convs(2) zero_mask_def)
+      by (metis (mono_tags, opaque_lifting) IH.hyps(6) IH.prems(2) comp_def get_mp_nm.simps option.exhaust_sel option_fold.simps(1) pos2p_gt_0 preal_not_0_gt_0 zero_mask_def)
     have mask_wf: "get_mh_total_full \<omega> (the_address r, f) + Abs_preal p \<le> 1"
       using spec[OF IH(14)[simplified wf_mask_simple_def], simplified, simplified add_masks_def]
       by (metis IH.hyps(3) get_mh_total.simps get_mh_total_full.simps mh singleton_mh.elims)
@@ -1532,6 +1538,7 @@ proof -
     using WfCons
     by simp
 qed
+\<close>
 
 
 end

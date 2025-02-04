@@ -154,6 +154,9 @@ fun get_mh_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> field_m
 fun get_mp_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_mask"
   where "get_mp_total_full \<omega> = get_mp_total (get_total_full \<omega>)"
 
+fun get_fnm_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow> 'a predicate_nm_fun"
+  where "get_fnm_total_full \<omega> = get_fnm_total (get_total_full \<omega>)"
+
 fun upd_hh_total_full ::  "('a, 'b) full_total_state_scheme \<Rightarrow> 'a total_heap \<Rightarrow> ('a, 'b) full_total_state_scheme"
   where "upd_hh_total_full \<omega> hh = \<omega>\<lparr> get_total_full := upd_hh_total (get_total_full \<omega>) hh \<rparr>"
 

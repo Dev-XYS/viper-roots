@@ -300,7 +300,7 @@ lemma sat_Imp_False_only_zero:
   done
 
 
-\<comment> \<open>Fractionability of fractional resources.\<close>
+subsection \<open>Fractionability of fractional resources.\<close>
 
 lemma fractionability_SatAcc:
     fixes p :: preal
@@ -677,12 +677,13 @@ qed
 
 lemma fraction_consistent_external:
   fixes frac :: preal
-  assumes "0 < frac"
-      and "ctxt_wf_pred ctxt"
+  assumes "ctxt_wf_pred ctxt"
     shows "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
            consistent_external_wrt_ploc ctxt (mult_nm_total \<phi> frac) (pid,vs) (frac * p)"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
            consistent_external ctxt (mult_nm_total \<phi> frac)"
+  sorry
+(*
 proof (induction rule: consistent_external_wrt_ploc_consistent_external.inducts)
   case IH: (SatStep pred_id pred_decl pred_body vs \<phi> p)
   show ?case
@@ -744,6 +745,7 @@ next
       by fastforce
   qed
 qed
+*)
 
 
 subsection \<open>Combinability of External Consistent States\<close>
@@ -757,14 +759,14 @@ lemma sum_consistent_external:
 
 subsection \<open>Fractioning Nested Mask\<close>
 
-lemma extcons_fraction_wrt_mp:
+(* lemma extcons_fraction_wrt_mp:
   assumes "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = nm \<rparr>"
       and "mp = get_mp_nm nm"
       and "fnm = get_fnm_nm nm"
       and "mp' \<le> mp"
       and "\<And>lp. fnm' lp = (if mp' lp = 0 then None else (mp' lp / mp lp) *\<^sub>s fnm lp)"
     shows "consistent_external ctxt (\<phi>\<lparr> get_nm_total := NM mh' mp' fnm' \<rparr>)"
-  sorry
+  sorry *)
 
 \<comment> \<open>Todo: move to somewhere else\<close>
 lemma split_implies_le:

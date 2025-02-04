@@ -187,14 +187,12 @@ lemma fold_rel_preserves_internal_consistency:
 
 subsection \<open>Full permission in direct mask\<close>
 
-(*
-lemma mh_1_sub_0:
+lemma mh_1_nested_0:
   assumes "consistent_internal nm"
       and "get_mh_nm nm loc = 1"
-      and "get_fnm_nm nm ploc = Some nm'"
-    shows "nm_loc_sum loc nm' 0"
+      and "get_fnm_nm nm lp = Some lpm"
+    shows "nm_loc_sum loc (snd lpm) 0"
   sorry
-*)
 
 
 subsection \<open>Internal Consistency on Total States\<close>

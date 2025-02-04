@@ -453,12 +453,12 @@ lemma nm_loc_sum_add_to_lpm:
 
 subsection \<open>Zero Permission Location\<close>
 
-(*
 lemma sum_0_implies_mh_zero:
   assumes "nm_loc_sum loc nm 0"
     shows "get_mh_nm nm loc = 0"
-  by (metis assms get_mh_nm.simps leD nm_loc_sum.elims(2) preal_not_0_gt_0)
+  by (metis assms less_eq_preal.rep_eq nm_get_eq nm_loc_sum'.simps nm_loc_sum.simps padd_pos preal_gte_padd)
 
+(*
 lemma sum_0_implies_sub_zero:
   assumes "nm_loc_sum loc nm 0"
       and "Some nm' = get_fnm_nm nm ploc"

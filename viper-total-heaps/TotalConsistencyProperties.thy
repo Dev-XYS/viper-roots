@@ -3,7 +3,7 @@ theory TotalConsistencyProperties
 begin
 
 
-\<comment> \<open>Unfold statement preserves external consistency.\<close>
+subsection \<open>Unfold Preserves External Consistency.\<close>
 
 lemma unfold_preserves_external_consistency:
   assumes "consistent_external ctxt \<phi>"
@@ -162,113 +162,7 @@ proof -
 qed
 
 
-\<comment> \<open>Field assignment preserves external state consistency.\<close>
-
-lemma field_assignment_no_perm_PEC:
-  assumes "consistent_external ctxt \<phi>"
-      and "nm_loc_sum loc (get_nm_total \<phi>) 0"
-      and "\<And>pred_id pred_decl.
-              ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl \<Longrightarrow>
-              pred_self_framing ctxt pred_decl"
-    shows "consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p \<Longrightarrow>
-           consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v) (pred_id,vs) p"
-      and "consistent_external ctxt \<phi> \<Longrightarrow>
-           consistent_external ctxt (upd_hh_loc_total \<phi> loc v)"
-  using assms(2)
-proof (induct rule: consistent_external_wrt_ploc_consistent_external.inducts)
-  case IH: (SatStep pred_id pred_decl pred_body vs \<phi> p)
-  show ?case
-    apply standard
-        defer 3
-        apply (simp only: IH)+
-  proof -
-    have store_equal:
-      "get_store_total (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = \<phi>\<rparr>) =
-       get_store_total (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = upd_hh_loc_total \<phi> loc v\<rparr>)"
-      by simp
-    have "get_mh_total \<phi> loc = 0"
-      using sum_0_implies_mh_zero[OF IH(7)]
-      by simp
-      
-    hence hh_unchanged:
-      "\<forall>l. get_mh_total (upd_hh_loc_total \<phi> loc v) l > 0 \<longrightarrow>
-           get_hh_total_full (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = \<phi>\<rparr>) l =
-           get_hh_total_full (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = upd_hh_loc_total \<phi> loc v\<rparr>) l"
-      by simp
-    show "sat ctxt
-            \<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = upd_hh_loc_total \<phi> loc v\<lparr> get_nm_total := 0 \<rparr> \<rparr>
-            (get_mh_total (upd_hh_loc_total \<phi> loc v))
-            (get_mp_total (upd_hh_loc_total \<phi> loc v))
-            (syntactic_mult (Rep_preal p) pred_body)"
-      using IH pred_self_framing_subst[OF _ IH(2) store_equal hh_unchanged]
-      apply simp
-      using assms(3)
-      by (smt (verit, best) full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.elims pred_self_framing_subst total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
-  qed
-next
-  case IH: (SatAll \<phi>)
-  show ?case
-  proof
-    fix pred_id vs q
-    assume "get_mp_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
-    hence "get_mp_total \<phi> (pred_id, vs) = q"
-      by simp
-    from IH(1)[OF this]
-    show "(q = 0) = (get_nm_loc_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs) = None)"
-      by simp
-  next
-    fix pred_id vs q nm'
-    assume "get_mp_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
-       and "Some nm' = get_nm_loc_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs)"
-    hence 1: "get_mp_total \<phi> (pred_id, vs) = q"
-      and 2: "Some nm' = get_nm_loc_total \<phi> (pred_id, vs)"
-      by simp+
-    have "nm_loc_sum loc nm' 0"
-      by (metis "2" IH.prems get_fnm_total.simps get_nm_loc_total.simps sum_0_implies_sub_zero)
-    have "consistent_external_wrt_ploc ctxt (upd_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v) (pred_id, vs) q"
-      using IH IH(3)[OF 1 2] \<open>nm_loc_sum loc nm' pos_perm_class.pnone\<close>
-      by auto
-    moreover have "upd_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v =
-                   upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>"
-      by simp
-    ultimately show "consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pred_id, vs) q"
-      by argo
-  qed
-qed
-
-
-lemma field_assignment_preserves_external_consistency':
-  assumes "consistent_external ctxt \<phi>"
-      and "consistent_internal (get_nm_total \<phi>)"
-      and "get_mh_total \<phi> loc = 1"
-      and "\<And>pred_id pred_decl.
-              ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl \<Longrightarrow>
-              pred_self_framing ctxt pred_decl"
-    shows "consistent_external ctxt (upd_hh_loc_total \<phi> loc v)"
-proof -
-  have zero_perm: "\<And>ploc nm. get_nm_loc_total \<phi> ploc = Some nm \<Longrightarrow> nm_loc_sum loc nm 0"
-    by (metis assms(2) assms(3) get_fnm_total.simps get_mh_total.elims get_nm_loc_total.simps mh_1_sub_0)
-  show ?thesis
-    apply standard
-    using assms(1) SatAll_case[of ctxt \<phi>]
-     apply fastforce
-  proof -
-    fix pred_id vs q nm'
-    assume "get_mp_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
-       and nm': "Some nm' = get_nm_loc_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs)"
-    hence "get_mp_total \<phi> (pred_id, vs) = q"
-      and "Some nm' = get_nm_loc_total \<phi> (pred_id, vs)"
-      by simp+
-    moreover hence "consistent_external_wrt_ploc ctxt (\<phi>\<lparr>get_nm_total := nm'\<rparr>) (pred_id, vs) q"
-      by (metis assms(1) consistent_external.cases)
-    moreover have "upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr> = upd_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v"
-      by simp
-    ultimately show "consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pred_id, vs) q"
-      by (metis assms(4) consistent_external_wrt_ploc.cases field_assignment_no_perm_PEC(1) total_state_update_nm_read zero_perm)
-  qed
-qed
-
-\<comment> \<open>Unfold statement preserves external consistency.\<close>
+subsection \<open>Exhale statement preserves external consistency.\<close>
 
 lemma exhale_preserves_external_consistency:
   assumes "consistent_external ctxt (get_total_full \<omega>)"

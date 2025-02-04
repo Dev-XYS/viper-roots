@@ -2,7 +2,7 @@ section \<open>Total heap semantics of statements\<close>
 
 theory TotalSemantics
   imports ViperCommon.ViperLang TotalResult TotalFoldUnfold TotalSemanticsHelper TotalFraming
-          TotalStateProperties TotalStateInst
+          TotalStateProperties TotalStateInst NestedMaskProperties
           "HOL-Eisbach.Eisbach" "HOL-Eisbach.Eisbach_Tools"
 begin
 
@@ -146,12 +146,14 @@ always has at least one failure transition. This is in-sync with the Carbon impl
 
 | RedExhale:
   "\<lbrakk> red_exhale ctxt R \<omega> A \<omega> (RNormal \<omega>_exh);
-     \<omega>' \<in> havoc_locs_state ctxt \<omega>_exh ({loc. get_mh_total_full \<omega> loc > 0 \<and> get_mh_total_full \<omega>_exh loc = 0})
+     \<comment> \<open>\<omega>' \<in> havoc_locs_state ctxt \<omega>_exh ({loc. get_mh_total_full \<omega> loc > 0 \<and> get_mh_total_full \<omega>_exh loc = 0})\<close>
      \<comment>\<open>We havoc all locations \<^term>\<open>l\<close> for which both of the following conditions hold:
          (1) there is no direct permission to \<^term>\<open>l\<close> after the exhale
          (2) the exhale removed nonzero permission to \<^term>\<open>l\<close>\<close>
      \<comment>\<open>Once full support for Viper predicates is added, then this exhale semantics needs to also
        take \<^term>\<open>R\<close> into account.\<close>
+     \<omega>' \<in> havoc_locs_state ctxt \<omega>_exh
+       {loc. \<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full \<omega>) p \<and> nm_loc_sum loc (get_nm_total_full \<omega>) 0}
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Exhale A) \<omega> (RNormal \<omega>')"
 | RedExhaleFailure:
@@ -313,7 +315,7 @@ always has at least one failure transition. This is in-sync with the Carbon impl
    red_stmt_total ctxt R \<Lambda> s \<omega> RFailure"
 
 
-inductive_cases RedLocalAssign_case: "red_stmt_total ctxt R \<Lambda> (LocalAssign x e) \<omega> (RNormal (update_var_total \<omega> x v))"
+inductive_cases RedLocalAssign_case: "red_stmt_total ctxt R \<Lambda> (LocalAssign x e) \<omega> (RNormal \<omega>')"
 inductive_cases RedSkip_case: "red_stmt_total ctxt R \<Lambda> Skip \<omega> res"
 inductive_cases RedSeqNormal_case: "red_stmt_total ctxt R \<Lambda> (Seq s1 s2) \<omega> (RNormal \<omega>')"
 inductive_cases RedSeqFailureOrMagic_case: "red_stmt_total ctxt R \<Lambda> (Seq s1 s2) \<omega> RFailure"
@@ -330,7 +332,7 @@ inductive_cases RedScope_case: "red_stmt_total ctxt R \<Lambda> (Scope \<tau> sc
 inductive_cases RedUnfold_case: "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
 inductive_cases RedUnfoldFailure_case: "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> RFailure"
 inductive_cases RedFold_case: "red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
-inductive_cases RedFieldAssign_case: "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal (upd_hh_loc_total_full \<omega> (addr,f) v))"
+inductive_cases RedFieldAssign_case: "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal \<omega>')"
 
 lemmas red_stmt_total_inversion_thms =
    RedSkip_case
