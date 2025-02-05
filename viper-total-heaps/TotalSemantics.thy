@@ -247,6 +247,7 @@ always has at least one failure transition. This is in-sync with the Carbon impl
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> RFailure"
 
+(*
 \<comment>\<open>\<^term>\<open>unfold_rel\<close> constrains permission \<^term>\<open>p\<close> to be strictly positive\<close>
 | RedUnfoldWildcard:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
@@ -260,6 +261,7 @@ always has at least one failure transition. This is in-sync with the Carbon impl
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args Wildcard) \<omega> RFailure"
 \<comment>\<open>TODO: unfold acc(P(x),0)\<close>
+*)
 
 \<comment>\<open>One should be able to prove that if \<omega> is unfolding consistent, then so is \<omega>' after a fold, without
   explicitly pruning states. This is because folds just replace permissions with a predicate instance
@@ -268,15 +270,18 @@ always has at least one failure transition. This is in-sync with the Carbon impl
 | RedFold:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
      ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p);
+     v_p \<ge> 0;
      fold_rel ctxt pred_id v_args (Abs_preal v_p) \<omega> res
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args (PureExp e_p)) \<omega> res"
 
+(*
 | RedFoldWildcard:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
      fold_rel ctxt pred_id v_args p \<omega> res
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args Wildcard) \<omega> res"
+*)
 \<comment>\<open>TODO: fold acc(P(x),0)\<close>
 
 \<comment>\<open>Composite statements\<close>
@@ -333,6 +338,7 @@ inductive_cases RedUnfold_case: "red_stmt_total ctxt R \<Lambda> (Unfold pred_id
 inductive_cases RedUnfoldFailure_case: "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> RFailure"
 inductive_cases RedFold_case: "red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
 inductive_cases RedFieldAssign_case: "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal \<omega>')"
+inductive_cases RedMethodCall_case: "red_stmt_total ctxt R \<Lambda> (MethodCall ys m es) \<omega> (RNormal \<omega>')"
 
 lemmas red_stmt_total_inversion_thms =
    RedSkip_case

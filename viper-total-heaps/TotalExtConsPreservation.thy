@@ -16,10 +16,12 @@ subsection \<open>Lemmas (Todo: put somewhere else)\<close>
 lemma extcons_preserved_by_mh_change:
   assumes "consistent_external ctxt \<phi>"
   shows "consistent_external ctxt (upd_mh_total \<phi> mh')"
-  sorry
+  apply standard
+  using assms consistent_external.cases get_fnm_total.simps total_state.surjective total_state.update_convs(2)
+  by fastforce
 
 
-subsection \<open>Preserved by \<^const>\<open>red_inhale\<close>\<close>
+subsection \<open>Preserved by Inhale\<close>
 
 lemma extcons_preserved_by_inhale_perm_single:
   assumes "\<omega>' \<in> inhale_perm_single StateCons \<omega> lh p_opt"
@@ -36,10 +38,53 @@ qed
 
 lemma extcons_preserved_by_add_to_lpm_nonzero:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
-      and "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm \<rparr> lp q"
-      and "q > 0"
-    shows "consistent_external ctxt (get_total_full (add_to_lpm_nonzero_total_full \<omega> lp (p2pos q) nm))"
-  sorry
+      and "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm \<rparr> lp p"
+      and "p > 0"
+    shows "consistent_external ctxt (get_total_full (add_to_lpm_nonzero_total_full \<omega> lp (p2pos p) nm))"
+proof
+  fix pid vs q nm'
+  assume lpm: "Some (q, nm') = get_fnm_total (get_total_full (add_to_lpm_nonzero_total_full \<omega> lp (p2pos p) nm)) (pid,vs)"
+  show "consistent_external_wrt_ploc ctxt
+          (get_total_full (add_to_lpm_nonzero_total_full \<omega> lp (p2pos p) nm) \<lparr>get_nm_total := nm'\<rparr>)
+          (pid,vs) (pos2p q)"
+  proof (cases "(pid,vs) = lp")
+    case True
+    show ?thesis
+    proof (cases "get_fnm_total_full \<omega> lp")
+      case None
+      hence "pos2p q = p \<and> nm' = nm"
+        using True lpm
+        apply simp
+        using assms(3) p2pos_pos2p_id
+        by blast
+      then show ?thesis
+        apply simp
+        by (metis (full_types) True assms(2) get_hh_total_full.simps old.unit.exhaust total_state.surjective total_state.update_convs(2))
+    next
+      case (Some lpm_orig)
+      obtain p_orig nm_orig where
+        "lpm_orig = (p_orig, nm_orig)"
+        by fastforce
+      hence "pos2p q = pos2p p_orig + p \<and> nm' = nm_orig + nm"
+        using True lpm Some
+        apply simp
+        by (smt (verit, del_insts) Rep_posreal assms(3) eq_onp_same_args mem_Collect_eq p2pos_pos2p_id plus_posreal.rep_eq plus_preal.abs_eq pos2p_def)
+      moreover have "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_orig \<rparr> lp (pos2p p_orig)"
+        by (metis Some True \<open>lpm_orig = _\<close> assms(1) consistent_external.cases get_fnm_total_full.simps get_hh_total_full.simps total_state.cases total_state.simps(1) total_state.update_convs(2))
+      ultimately show ?thesis
+        apply simp
+        using assms(2)
+        by (metis (full_types) True get_hh_total_full.simps old.unit.exhaust sum_consistent_external(2) total_state.surjective total_state.update_convs(2))
+    qed
+  next
+    case False
+    then show ?thesis
+      apply simp
+      using SatAll_case[OF assms(1)] lpm
+      by fastforce
+  qed
+qed
+
 
 lemma extcons_preserved_by_inhale_perm_single_pred:
   assumes "\<omega>' \<in> inhale_perm_single_pred ctxt StateCons \<omega> lp p_opt"
@@ -142,7 +187,7 @@ next
 qed (blast elim: red_inhale.cases)+
 
 
-subsection \<open>Preserved by \<^const>\<open>red_exhale\<close>\<close>
+subsection \<open>Preserved by Exhale\<close>
 
 lemma extcons_preserved_by_red_exhale:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
@@ -324,7 +369,158 @@ proof -
 qed
 
 
+subsection \<open>Preserved by Unfold\<close>
+
+lemma extcons_preserved_by_red_stmt_unfold:
+  assumes "consistent_external ctxt (get_total_full \<omega>)"
+      and "red_stmt_total ctxt R \<Lambda> (Unfold pid e_args (PureExp e_q)) \<omega> (RNormal \<omega>')"
+      and "ctxt_wf_pred ctxt"
+    shows "consistent_external ctxt (get_total_full \<omega>')"
+proof -
+  obtain vs q \<phi>' where
+    "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some vs)" and
+    "ctxt, (Some \<omega>) \<turnstile> \<langle>e_q; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm q)" and
+    "q \<ge> 0" and
+    "unfold_rel ctxt pid vs (Abs_preal q) (get_total_full \<omega>) \<phi>'" and
+    "\<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr>"
+    using assms
+    by (auto elim: RedUnfold_case)
+  then obtain nm nm' where
+    shift: "shift_up pid vs (Abs_preal q) nm nm'" and
+    nm: "get_nm_total (get_total_full \<omega>) = nm" and
+    \<phi>'_nm: "get_nm_total \<phi>' = nm'" and
+    hh_unchanged: "get_hh_total \<phi>' = get_hh_total (get_total_full \<omega>)"
+    using assms(2) unfold_rel.simps
+    by blast
+
+  show ?thesis
+  proof (cases "q = 0")
+    case True
+    hence "nm = nm'"
+      using shift shift_up_case zero_preal.abs_eq
+      by force
+    have "\<omega> = \<omega>'"
+      apply (rule full_total_state.equality)
+         apply (simp_all add: \<open>\<omega>' = _\<close>)
+      by (simp add: \<open>nm = nm'\<close> \<phi>'_nm hh_unchanged nm)
+    then show ?thesis
+      using assms(1)
+      by blast
+  next
+    case False
+    then obtain mh fnm p\<^sub>p pnm p fnm' nm'_sub where
+      "mh = get_mh_nm nm" and
+      "fnm = get_fnm_nm nm" and
+      "Some (p\<^sub>p, pnm) = fnm (pid,vs)" and
+      "p = pos2p p\<^sub>p" and
+      "Abs_preal q > 0" and
+      "Abs_preal q \<le> p" and
+      "fnm' = fnm( (pid,vs) := if p = Abs_preal q then None else Some (p2pos (p - Abs_preal q), ((p - Abs_preal q) / p) *\<^sub>s pnm) )" and
+      "nm'_sub = NM mh fnm'" and
+      "nm' = nm'_sub + (Abs_preal q / p) *\<^sub>s pnm"
+      using shift_up_case
+      by (smt (verit) \<open>0 \<le> q\<close> positive_real_preal shift)
+
+    have pnm_extcons_wrt_ploc: "consistent_external_wrt_ploc ctxt (get_total_full \<omega>\<lparr> get_nm_total := pnm \<rparr>) (pid,vs) p"
+      using SatAll_case \<open>Some (p\<^sub>p, pnm) = fnm (pid, vs)\<close> \<open>fnm = _\<close> \<open>p = pos2p p\<^sub>p\<close> assms(1) nm
+      by fastforce
+    hence pnm_extcons: "consistent_external ctxt (get_total_full \<omega>\<lparr> get_nm_total := pnm \<rparr>)"
+      using consistent_external_wrt_ploc.cases
+      by blast
+
+    have "consistent_external ctxt (get_total_full \<omega>\<lparr> get_nm_total := nm'_sub \<rparr>)"
+      apply standard
+      apply (simp add: \<open>nm'_sub = _\<close>)
+    proof -
+      fix pid' vs' q\<^sub>s nm\<^sub>s
+      assume lpm: "Some (q\<^sub>s, nm\<^sub>s) = fnm' (pid',vs')"
+      show "consistent_external_wrt_ploc ctxt (get_total_full \<omega>\<lparr> get_nm_total := nm\<^sub>s \<rparr>) (pid',vs') (pos2p q\<^sub>s)"
+      proof (cases "(pid',vs') = (pid,vs)")
+        case True
+        have "q\<^sub>s = p2pos (p - Abs_preal q)" and "nm\<^sub>s = ((p - Abs_preal q) / p) *\<^sub>s pnm"
+          using lpm[simplified \<open>fnm' = _\<close> True, simplified]
+          by (meson not_None_eq old.prod.inject option.inject)+
+        show ?thesis
+          apply (simp add: True \<open>q\<^sub>s = _\<close> \<open>nm\<^sub>s = _\<close>)
+          apply (subgoal_tac "p - Abs_preal q > 0")
+           apply (simp add: p2pos_pos2p_id)
+          apply (subgoal_tac "(p - Abs_preal q) / p * p = p - Abs_preal q")
+          using fraction_consistent_external(1)[OF assms(3) pnm_extcons_wrt_ploc, of "(p - Abs_preal q) / p", simplified]
+            apply presburger
+           apply (metis PosReal.field_divide_inverse PosReal.field_inverse \<open>p = pos2p p\<^sub>p\<close> mult.assoc mult.right_neutral order_less_irrefl pos2p_gt_0) 
+          using True \<open>Abs_preal q \<le> p\<close> \<open>fnm' = _\<close> lpm minus_preal_gte preal_not_0_gt_0
+          by fastforce
+      next
+        case False
+        then show ?thesis
+          by (metis SatAll_case lpm \<open>fnm = _\<close> \<open>fnm' = _\<close> assms(1) fun_upd_other nm)
+      qed
+    qed
+    moreover have "consistent_external ctxt (get_total_full \<omega>\<lparr> get_nm_total := ((Abs_preal q / p) *\<^sub>s pnm) \<rparr>)"
+      using fraction_consistent_external(2)[OF assms(3) pnm_extcons, of "Abs_preal q / p", simplified]
+      by auto
+    ultimately show ?thesis
+      by (smt (verit) \<open>\<omega>' = _\<close> \<open>nm' = _\<close> \<phi>'_nm full_total_state.ext_inject full_total_state.surjective full_total_state.update_convs(3) hh_unchanged old.unit.exhaust sum_consistent_external total_state.surjective total_state.update_convs(2))
+  qed
+qed
+
+
+subsection \<open>Preserved by Fold\<close>
+
+lemma extcons_preserved_by_red_stmt_fold:
+  assumes "consistent_external ctxt (get_total_full \<omega>)"
+      and "red_stmt_total ctxt StateCons \<Lambda> (Fold pid e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
+      and "ctxt_wf_pred ctxt"
+    shows "consistent_external ctxt (get_total_full \<omega>')"
+proof -
+  obtain vs p where
+    "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some vs)" and
+    "ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)" and
+    "p \<ge> 0" and
+    fold_rel: "fold_rel ctxt pid vs (Abs_preal p) \<omega> (RNormal \<omega>')"
+    using assms(2)
+    by (auto elim: RedFold_case)
+  obtain pdecl pbody \<omega>0 \<omega>1 \<omega>1' nm_exh where
+    pred_decl: "ViperLang.predicates (program_total ctxt) pid = Some pdecl" and
+    pred_body: "ViperLang.predicate_decl.body pdecl = Some pbody" and
+    "\<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>" and
+    red_exh: "red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal (Abs_preal p)) pbody) \<omega>0 (RNormal \<omega>1')" and
+    "\<omega>1 = \<omega>\<lparr> get_total_full := get_total_full \<omega>1' \<rparr>" and
+    "get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0" and
+    "\<omega>' = add_to_lpm_total_full \<omega>1 (pid,vs) (if Abs_preal p = 0 then None else Some (p2pos (Abs_preal p), nm_exh))"
+    apply (rule FoldRelNormal_case[OF fold_rel])
+    by simp
+
+  have exhaled_extcons: "consistent_external ctxt (get_total_full \<omega>1)"
+    by (metis \<open>\<omega>0 = _\<close> \<open>\<omega>1 = _\<close> red_exh assms(1) assms(3) extcons_preserved_by_red_exhale full_total_state.ext_inject full_total_state.surjective full_total_state.update_convs(3))
+
+  have folded_extcons: "consistent_external_wrt_ploc ctxt ((get_total_full \<omega>1)\<lparr> get_nm_total := nm_exh \<rparr>) (pid,vs) (Abs_preal p)"
+    sorry
+
+  show ?thesis
+  proof (cases "Abs_preal p = 0")
+    case True
+    hence "\<omega>' = \<omega>1"
+      using \<open>\<omega>' = _\<close>
+      by simp
+    then show ?thesis
+      using exhaled_extcons
+      by blast
+  next
+    case False
+    hence "\<omega>' = add_to_lpm_nonzero_total_full \<omega>1 (pid,vs) (p2pos (Abs_preal p)) nm_exh"
+      using \<open>\<omega>' = _\<close>
+      by simp
+    thus ?thesis
+      using extcons_preserved_by_add_to_lpm_nonzero folded_extcons
+      by (metis (full_types) False exhaled_extcons get_hh_total_full.simps old.unit.exhaust preal_not_0_gt_0 total_state.surjective total_state.update_convs(2))
+  qed
+qed
+
+
 subsection \<open>Preserved by \<^const>\<open>red_stmt_total\<close>\<close>
+
+inductive_simps RedMethodCall_simp: "red_stmt_total ctxt R \<Lambda> (MethodCall ys m es) \<omega> (RNormal \<omega>')"
 
 lemma extcons_preserved_by_red_stmt:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
@@ -385,18 +581,58 @@ next
   then show ?case
     by (fastforce elim: red_stmt_total.cases)
 next
-  case (MethodCall x101 x102 x103)
-  then show ?case sorry
+  case IH: (MethodCall ys m es)
+  obtain v_args mdecl v_rets resPre resPost where
+    "red_pure_exps_total ctxt (Some \<omega>) es \<omega> (Some v_args)" and
+    "program.methods (program_total ctxt) m = Some mdecl" and
+    "vals_well_typed (absval_interp_total ctxt) v_args (method_decl.args mdecl)" and
+    "list_all2 (\<lambda> y t. y = Some t) (map \<Lambda> ys) (method_decl.rets mdecl)" and
+    "vals_well_typed (absval_interp_total ctxt) v_rets (method_decl.rets mdecl)" and
+  red_exh:
+    "red_stmt_total ctxt StateCons \<Lambda> (Exhale (method_decl.pre mdecl))
+                    \<lparr> get_store_total = (shift_and_add_list_alt Map.empty v_args),
+                      get_trace_total = [old_label \<mapsto> get_total_full \<omega>],
+                      get_total_full = get_total_full \<omega> \<rparr>
+                    resPre" and
+    "resPre = RFailure \<or> resPre = RMagic \<Longrightarrow> RNormal \<omega>' = resPre" and
+  red_inh:
+    "\<And> \<omega>Pre. resPre = RNormal \<omega>Pre \<Longrightarrow>
+        (red_stmt_total ctxt StateCons \<Lambda> (Inhale (method_decl.post mdecl))
+                        \<lparr> get_store_total = (shift_and_add_list_alt Map.empty (v_args @ v_rets)),
+                          get_trace_total = [old_label \<mapsto> get_total_full \<omega>],
+                          get_total_full = get_total_full \<omega>Pre \<rparr>
+                        resPost \<and>
+        RNormal \<omega>' = map_result_total (reset_state_after_call ys v_rets \<omega>) resPost)"
+    using RedMethodCall_case[OF IH(3)]
+    by blast
+  then obtain \<omega>Pre where "resPre = RNormal \<omega>Pre"
+    by (metis result_total.exhaust)
+  hence "consistent_external ctxt (get_total_full \<omega>Pre)"
+    by (metis IH.prems(1) red_exh assms(4) assms(5) extcons_preserved_by_red_stmt_exhale full_total_state.select_convs(3))
+  obtain \<omega>Post where "resPost = RNormal \<omega>Post"
+    by (metis \<open>resPre = RNormal \<omega>Pre\<close> map_result_total.elims red_inh)
+  hence "consistent_external ctxt (get_total_full \<omega>Post)"
+    by (metis RedInhale_case \<open>consistent_external ctxt (get_total_full \<omega>Pre)\<close> \<open>resPre = RNormal \<omega>Pre\<close> extcons_preserved_by_red_inhale full_total_state.select_convs(3) red_inh sub_expressions.simps(7))
+  then show ?case
+    by (metis \<open>resPost = RNormal \<omega>Post\<close> \<open>resPre = RNormal \<omega>Pre\<close> full_total_state.select_convs(3) map_result_total.simps(1) red_inh reset_state_after_call_def result_total.inject)
 next
   case (While _ _ _)
   then show ?case
     by (blast elim: red_stmt_total.cases)
 next
-  case (Unfold x121 x122 x123)
-  then show ?case sorry
+  case (Unfold pid es perm)
+  then show ?case
+    apply (cases perm)
+    using assms(4) extcons_preserved_by_red_stmt_unfold
+     apply blast
+    by (blast elim: red_stmt_total.cases)
 next
-  case (Fold x131 x132 x133)
-  then show ?case sorry
+  case (Fold pid es perm)
+  then show ?case
+    apply (cases perm)
+    using assms(4) extcons_preserved_by_red_stmt_fold
+     apply blast
+    by (blast elim: red_stmt_total.cases)
 next
   case (Package _ _)
   then show ?case
