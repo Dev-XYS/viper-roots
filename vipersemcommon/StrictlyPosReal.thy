@@ -90,6 +90,7 @@ lemmas posreal_to_real =
   less_eq_posreal.rep_eq
   less_posreal.rep_eq
   plus_posreal.rep_eq
+  minus_posreal_def
   divide_posreal.rep_eq
   Abs_posreal_inverse
   Rep_posreal_inverse
@@ -125,5 +126,9 @@ lemma p2pos_pos2p_id:
   apply (simp add: p2pos_def pos2p_def)
   using Abs_posreal_inverse Rep_preal_inverse assms less_preal.rep_eq zero_preal.rep_eq
   by force
+
+lemma pos2p_add_distr:
+  shows "pos2p a + pos2p b = pos2p (a + b)"
+  by (metis Abs_posreal_inverse Rep_preal_inject gr_0_is_ppos mem_Collect_eq p2pos_def plus_posreal.rep_eq plus_preal.rep_eq pos2p_gt_0 pos2p_p2pos_id ppos.rep_eq)
 
 end

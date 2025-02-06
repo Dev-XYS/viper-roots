@@ -7,21 +7,6 @@ begin
 
 subsection \<open>General Helper Lemmas\<close>
 
-lemma add_masks_minus:
-  assumes "m1 = add_masks (m2 :: ('a, preal) abstract_mask) m3"
-  shows "m3 = m1 - m2"
-  unfolding fun_diff_def
-proof
-  fix x
-
-  have "m1 x = (m2 x) + (m3 x)"
-    using assms
-    by (simp add: add_masks_def)
-
-  thus "m3 x = m1 x - m2 x"
-    by (simp add: Rep_preal_inverse minus_preal.abs_eq plus_preal.rep_eq pos_perm_class.sum_larger)
-qed
-
 lemma minus_masks_empty:
  "m - (m :: ('a, preal) abstract_mask) = zero_mask"
   unfolding fun_diff_def
@@ -735,16 +720,6 @@ definition total_heap_well_typed :: "program \<Rightarrow> ('a \<Rightarrow> abs
 
 subsection \<open>Lemmas\<close>
 
-lemma plus_mask_zero_mask_neutral: "(m :: ('a, preal) abstract_mask) \<oplus> zero_mask = Some m"
-proof -
-  have "compatible_fun m zero_mask"
-    by (simp add: SepAlgebra.plus_preal_def compatible_funI)
-
-  thus ?thesis
-  unfolding plus_fun_def
-  by (simp add: SepAlgebra.plus_preal_def zero_mask_def)
-qed
-
 lemma core_mask_zero_mask: "zero_mask = |m :: ('a, preal) abstract_mask|"
 proof
   fix x
@@ -752,14 +727,6 @@ proof
     unfolding zero_mask_def
     by (simp add: core_fun core_preal_def)
 qed
-
-lemma total_state_plus_defined:
-  assumes "a \<oplus> b = Some c"
-  shows "get_hh_total a = get_hh_total b \<and> total_state.more a = total_state.more b \<and>
-         get_hh_total a = get_hh_total c \<and> total_state.more a = total_state.more c"
-  using assms
-  unfolding plus_total_state_ext_def
-  by (clarsimp split: if_split_asm )
 
 (*
 lemma plus_Some_total_state_eq:
@@ -778,13 +745,6 @@ lemma plus_Some_full_total_state_eq:
   using assms
   unfolding plus_full_total_state_ext_def defined_def
   by (fastforce split: if_split_asm dest: plus_Some_total_state_eq)
-
-lemma plus_Some_full_total_state_total_state:
-  assumes "Some a = b \<oplus> x"
-  shows "Some (get_total_full a) = (get_total_full b) \<oplus> (get_total_full x)"
-  using assms
-  unfolding plus_full_total_state_ext_def defined_def
-  by (auto split: if_split_asm)
 *)
 
 lemma plus_total_state_zero_mask:
@@ -1019,245 +979,6 @@ proof -
     by fastforce
 qed
 *)
-
-\<comment> \<open>Consider instantiate nested mask with \<^class>\<open>pcm\<close>\<close>
-lemma nm_cancellativity:
-  fixes c :: "'a nested_mask"
-  assumes "a + c = b + c"
-  shows "a = b"
-  using assms
-proof (induction c arbitrary: a b)
-  case (NM mh fnm)
-  show ?case
-  proof (rule ccontr)
-    assume "a \<noteq> b"
-    then consider (mh_diff) "get_mh_nm a \<noteq> get_mh_nm b" | (fnm_diff) "get_fnm_nm a \<noteq> get_fnm_nm b"
-      using nested_mask_equality
-      by blast
-    then show False
-    proof cases
-      case mh_diff
-      then show ?thesis
-        by (metis NM.prems add.commute add_masks_minus get_mh_nm__merge plus_nested_mask_def)
-    next
-      case fnm_diff
-      then obtain lp where *: "get_fnm_nm a lp \<noteq> get_fnm_nm b lp"
-        by blast
-      have "a + NM mh fnm \<noteq> b + NM mh fnm"
-        apply (subst nm_get_eq[of a])
-        apply (subst nm_get_eq[of b])
-        unfolding plus_nested_mask_def
-        apply (rule neq_by_fun[of "\<lambda>nm. get_fnm_nm nm lp"])
-        apply (cases "get_fnm_nm a lp"; cases "get_fnm_nm b lp"; cases "fnm lp")
-               apply (simp_all add: pfun_comb_def)
-        using *
-             apply argo+
-           apply (smt (verit) Rep_posreal fst_conv mem_Collect_eq plus_posreal.rep_eq)+
-        using *
-         apply fastforce
-        by (metis * NM.IH Rep_posreal_inject add_right_imp_eq option.set_intros plus_nested_mask_def plus_posreal.rep_eq range_eqI snds.intros surjective_pairing)
-      then show ?thesis
-        using NM
-        by meson
-    qed
-  qed
-qed
-
-
-subsection \<open>Partial commutative monoid with core instantiation\<close>
-
-instantiation total_state_ext :: (type,type) pcm_with_core
-begin
-
-definition core_total_state_ext :: "('a,'b) total_state_ext \<Rightarrow> ('a, 'b) total_state_ext"
-  where "core_total_state_ext \<phi> = (upd_nm_total \<phi> 0)"
-
-instance
-proof
-  fix a b c x y :: "('a,'b) total_state_ext"
-
-  show "Some x = x \<oplus> |x|"
-    unfolding core_total_state_ext_def plus_total_state_ext_def
-    by simp
-
-  show "Some |x| = |x| \<oplus> |x|"
-    unfolding core_total_state_ext_def plus_total_state_ext_def
-    by simp
-
-  show "Some x = x \<oplus> c \<Longrightarrow> \<exists>r. Some |x| = c \<oplus> r" (is "?lhs \<Longrightarrow> ?rhs")
-  proof
-    assume x_c: "Some x = x \<oplus> c"
-
-    hence "get_hh_total x = get_hh_total c \<and> total_state.more x = total_state.more c"
-      by (metis total_state_plus_defined)
-
-    moreover have "get_nm_total c = 0"
-    proof (rule ccontr)
-      assume c_not_0: "get_nm_total c \<noteq> 0"
-      then consider (mh_non_0) "get_mh_total c \<noteq> zero_mask" | (fnm_non_0) "get_fnm_total c \<noteq> Map.empty"
-        by (metis get_fnm_total.simps get_mh_total.simps nm_get_eq zero_nested_mask_def)
-      then show False
-      proof cases
-        case mh_non_0
-        then obtain l where "get_mh_total c l \<noteq> 0"
-          using zero_mask_def
-          by fastforce
-        have "Some x \<noteq> x \<oplus> c"
-          apply (simp add: plus_total_state_ext_def plus_nested_mask_def)
-          apply standard
-          apply (rule neq_by_fun[of get_mh_total])
-          apply (rule neq_by_fun[of "\<lambda>f. f l"])
-          apply (subst nm_get_eq)
-          apply (simp add: add_masks_def)
-          using \<open>get_mh_total c l \<noteq> 0\<close>
-          by force
-        thus ?thesis
-          using x_c
-          by contradiction
-      next
-        case fnm_non_0
-        then obtain lp p nm_p where "get_fnm_total c lp = Some (p, nm_p)"
-          by (metis option.collapse prod.collapse)
-        hence "Some x \<noteq> x \<oplus> c"
-          apply (simp add: plus_total_state_ext_def plus_nested_mask_def)
-          apply standard
-          apply (rule neq_by_fun[of get_fnm_total])
-          apply (rule neq_by_fun[of "\<lambda>f. f lp"])
-          apply (subst nm_get_eq)
-          apply (subst nm_get_eq[of "get_nm_total c"])
-          apply (simp add: pfun_comb_def)
-          apply (cases "get_fnm_total x lp")
-           apply simp_all
-          by (smt (verit, ccfv_SIG) Rep_posreal mem_Collect_eq plus_posreal.rep_eq split_pairs)
-        thus ?thesis
-          using x_c
-          by contradiction
-      qed
-    qed
-
-    ultimately show "Some |x| = c \<oplus> c\<lparr> get_nm_total := 0 \<rparr>"
-      unfolding core_total_state_ext_def plus_total_state_ext_def
-      by simp
-  qed
-
-  show "Some c = a \<oplus> b \<Longrightarrow> Some |c| = |a| \<oplus> |b|"
-    unfolding core_total_state_ext_def plus_total_state_ext_def
-    by (clarsimp split: if_split if_split_asm simp: plus_mask_zero_mask_neutral)
-
-  show "Some a = b \<oplus> x \<Longrightarrow> Some a = b \<oplus> y \<Longrightarrow> |x| = |y| \<Longrightarrow> x = y" (is "?A \<Longrightarrow> ?B \<Longrightarrow> _ \<Longrightarrow> _")
-    \<comment>\<open>\<^prop>\<open>|x| = |y|\<close> is not needed, since it is always the case if he heap of \<^term>\<open>x\<close> and \<^term>\<open>y\<close>
-       are the same, which it must be because of the first two assumptions\<close>
-  proof -
-    assume "?A" and "?B"
-    hence b_x_eq: "get_hh_total b = get_hh_total x \<and> total_state.more b = total_state.more x" and
-          b_y_eq: "get_hh_total b = get_hh_total y \<and> total_state.more b = total_state.more y"
-      by (metis option.simps(3) plus_total_state_ext_def)+
-    show "x = y"
-      by (metis \<open>Some a = b \<oplus> x\<close> \<open>Some a = b \<oplus> y\<close> add.commute b_x_eq b_y_eq nm_cancellativity option.sel plus_total_state_ext_def total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
-  qed
-qed
-
-end
-
-
-instantiation full_total_state_ext :: (type,type) pcm_with_core
-begin
-
-text \<open>In the following, we do not take the core of the trace, because the addition of states is
-      defined only if the traces are the same.\<close>
-
-definition core_full_total_state_ext :: "('a,'b) full_total_state_ext \<Rightarrow> ('a, 'b) full_total_state_ext"
-  where "core_full_total_state_ext \<omega> =
-            \<omega> \<lparr> get_total_full := |get_total_full \<omega>| \<rparr>"
-instance sorry (* proof
-  fix a b c x y :: "('a,'b) full_total_state_ext"
-
-  let ?at = "get_total_full a"
-  let ?bt = "get_total_full b"
-  let ?ct = "get_total_full c"
-  let ?xt = "get_total_full x"
-  let ?yt = "get_total_full y"
-
-
-  show "Some x = x \<oplus> |x|"
-  proof -
-    from core_is_smaller[where ?x = ?xt]
-    show ?thesis
-      unfolding core_full_total_state_ext_def plus_full_total_state_ext_def defined_def
-      using option.sel
-      by (fastforce split: if_split_asm)
-  qed
-
-  show "Some |x| = |x| \<oplus> |x|"
-  proof -
-    from core_is_pure[where ?x = ?xt]
-    show ?thesis
-      unfolding core_full_total_state_ext_def plus_full_total_state_ext_def defined_def
-      using option.sel
-      by (fastforce split: if_split_asm)
-  qed
-
-  show "Some x = x \<oplus> c \<Longrightarrow> \<exists>r. Some |x| = c \<oplus> r" (is "?A \<Longrightarrow> _")
-  proof -
-    assume ?A
-    hence "Some ?xt = ?xt \<oplus> ?ct"
-      by (blast intro: plus_Some_full_total_state_total_state)
-
-    from core_max[OF plus_Some_full_total_state_total_state[OF \<open>?A\<close>]] obtain rt where Eq_xt: "Some |?xt| = ?ct \<oplus> rt"
-      by blast
-
-    let ?r = "x \<lparr> get_total_full := rt \<rparr>"
-
-    have "Some |x| = c \<oplus> ?r"
-      using \<open>?A\<close>
-      unfolding core_full_total_state_ext_def plus_full_total_state_ext_def defined_def
-      apply (simp split: if_split_asm if_split)
-      using Eq_xt
-      by (metis full_total_state.surjective full_total_state.update_convs(3) option.sel)
-
-    thus ?thesis
-      by blast
-  qed
-
-
-  show "Some c = a \<oplus> b \<Longrightarrow> Some |c| = |a| \<oplus> |b|" (is "?A \<Longrightarrow> _")
-  proof -
-    assume "?A"
-    hence *: "Some ?ct = ?at \<oplus> ?bt"
-      by (blast intro: plus_Some_full_total_state_total_state)
-
-    show ?thesis
-      unfolding core_full_total_state_ext_def plus_full_total_state_ext_def defined_def
-      apply (simp split: if_split_asm if_split)
-      using core_sum[OF *]
-      by (metis (no_types, lifting) \<open>?A\<close> full_total_state.surjective full_total_state.update_convs(3) option.distinct(1) option.sel plus_full_total_state_ext_def)
-  qed
-
-
-  show "Some a = b \<oplus> x \<Longrightarrow> Some a = b \<oplus> y \<Longrightarrow> |x| = |y| \<Longrightarrow> x = y" (is "?A \<Longrightarrow> ?B \<Longrightarrow> ?C \<Longrightarrow> _")
-  proof -
-    assume "?A" and "?B" and "?C"
-
-    from \<open>?A\<close> have "Some ?at = ?bt \<oplus> ?xt"
-      by (blast intro: plus_Some_full_total_state_total_state)
-
-    moreover from \<open>?B\<close> have "Some ?at = ?bt \<oplus> ?yt"
-      by (blast intro: plus_Some_full_total_state_total_state)
-
-    moreover from \<open>?C\<close> have "|?xt| = |?yt|"
-      unfolding core_full_total_state_ext_def
-      by (metis full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3))
-
-    ultimately have "?xt = ?yt"
-      using cancellative by blast
-
-    thus ?thesis
-      by (metis Some_Some_ifD \<open>?A\<close> \<open>?B\<close> full_total_state.surjective plus_full_total_state_ext_def)
-  qed
-qed
-*)
-
-end
 
 
 subsubsection \<open>Lemmas\<close>

@@ -229,7 +229,7 @@ subsection \<open>Exhale Properties (Todo: put in separate file?)\<close>
 lemma exhale_fraction:
   assumes "red_exhale ctxt R \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
       and "get_fnm_total_full \<omega>' lp = Some (p', nm')"
-    shows "\<exists>p nm. get_fnm_total_full \<omega> lp = Some (p, nm) \<and> nm' = (pos2p (p' / p)) *\<^sub>s nm"
+    shows "\<exists>p nm. get_fnm_total_full \<omega> lp = Some (p, nm) \<and> p \<ge> p' \<and> nm' = (pos2p (p' / p)) *\<^sub>s nm"
   sorry
 
 \<comment> \<open>already proved elsewhere, but need adjustment\<close>

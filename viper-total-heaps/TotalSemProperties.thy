@@ -2351,7 +2351,7 @@ proof cases
   case (FoldRelNormal pred_decl pred_body \<omega>0 \<omega>1 nm_exh)
   then show ?thesis
     unfolding \<open>\<omega>' = _\<close>
-    using exhale_only_changes_total_state_aux[OF FoldRelNormal(4), of \<omega>1]
+    using exhale_only_changes_total_state_aux[OF FoldRelNormal(5), of \<omega>1]
     by fastforce
 qed
 
@@ -2406,19 +2406,23 @@ next
   case (RedUnfold \<omega> e_args v_args e_p v_p pred_id \<phi>' \<omega>' \<Lambda>)
   then show ?case
     by fastforce
+(*
 next
   case (RedUnfoldWildcard \<omega> e_args v_args pred_id p \<phi>' \<omega>' \<Lambda>)
-  then show ?case by auto    
+  then show ?case by auto
+*)   
 next
   case (RedFold \<omega> e_args v_args e_p v_p pred_id res \<Lambda>)
   then show ?case
     using fold_rel_normal_only_changes_mask
     by metis
+(*
 next
   case (RedFoldWildcard \<omega> e_args v_args pred_id p res \<Lambda>)
   then show ?case
     using fold_rel_normal_only_changes_mask
     by metis
+*)
 next
   case (RedScope v \<tau> \<Lambda> scopeBody \<omega> res res_unshift)
   from this obtain \<omega>s where "res = RNormal \<omega>s"
@@ -2499,18 +2503,22 @@ next
   case (RedUnfold \<omega> e_args v_args e_p v_p pred_id \<phi>' \<omega>' \<Lambda>)
   then show ?case
     by fastforce
+(*
 next
   case (RedUnfoldWildcard \<omega> e_args v_args pred_id p \<phi>' \<omega>' \<Lambda>)
   then show ?case 
     by fastforce
+*)
 next
   case (RedFold \<omega> e_args v_args e_p v_p pred_id res \<Lambda>)
   then show ?case
     by (auto elim: FoldRelNormal_case)
+(*
 next
   case (RedFoldWildcard \<omega> e_args v_args pred_id p res \<Lambda>)
   then show ?case
     by (auto elim: FoldRelNormal_case)
+*)
 next
   case (RedScope v \<tau> \<Lambda> scopeBody \<omega> res res_unshift)
   then show ?case 
@@ -2570,19 +2578,23 @@ next
 next
   case (RedUnfold \<omega> e_args v_args e_p v_p pred_id \<phi>' \<omega>' \<Lambda>)
   then show ?case
-    by fastforce    
+    by fastforce
+(*
 next
   case (RedUnfoldWildcard \<omega> e_args v_args pred_id p \<phi>' \<omega>' \<Lambda>)
   then show ?case
     by fastforce
+*)
 next
   case (RedFold \<omega> e_args v_args e_p v_p pred_id res \<Lambda>)
   then show ?case
     by (auto elim: FoldRelNormal_case)
+(*
 next
   case (RedFoldWildcard \<omega> e_args v_args pred_id p res \<Lambda>)
   then show ?case
     by (auto elim: FoldRelNormal_case)
+*)
 next
   case (RedScope v \<tau> \<Lambda> scopeBody \<omega> res res_unshift)
   from this obtain \<omega>Body where "res = RNormal \<omega>Body"

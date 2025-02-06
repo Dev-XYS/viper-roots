@@ -1,5 +1,5 @@
 theory TotalExtConsPreservation
-  imports TotalExtConsProps TotalIntConsPreservation
+  imports TotalExtConsProps TotalIntConsPreservation TotalSemanticsProperties
 begin
 
 
@@ -19,6 +19,131 @@ lemma extcons_preserved_by_mh_change:
   apply standard
   using assms consistent_external.cases get_fnm_total.simps total_state.surjective total_state.update_convs(2)
   by fastforce
+
+lemma nm_add_mh_sub:
+  assumes "nm\<^sub>1 + nm\<^sub>2 = nm"
+  shows "get_mh_nm nm - get_mh_nm nm\<^sub>1 = get_mh_nm nm\<^sub>2"
+  by (metis add_masks_minus assms get_mh_nm__plus)
+
+lemma nm_add_mp_sub:
+  assumes "nm\<^sub>1 + nm\<^sub>2 = nm"
+  shows "get_mp_nm nm - get_mp_nm nm\<^sub>1 = get_mp_nm nm\<^sub>2"
+  by (metis add_masks_minus assms get_mp_nm_distr_over_plus)
+
+lemma nm_plus_lpm_plus_Some_Some:
+  assumes "nm\<^sub>1 + nm\<^sub>2 = nm"
+      and "get_fnm_nm nm\<^sub>1 lp = Some (p\<^sub>1, nm'\<^sub>1)"
+      and "get_fnm_nm nm\<^sub>2 lp = Some (p\<^sub>2, nm'\<^sub>2)"
+      and "get_fnm_nm nm lp = Some (p, nm')"
+    shows "nm'\<^sub>1 + nm'\<^sub>2 = nm'"
+      and "p\<^sub>1 + p\<^sub>2 = p"
+proof -
+  obtain mh\<^sub>1 fnm\<^sub>1 where "nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1"
+    using nm_get_eq by blast
+  obtain mh\<^sub>2 fnm\<^sub>2 where "nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2"
+    using nm_get_eq by blast
+  show "nm'\<^sub>1 + nm'\<^sub>2 = nm'"
+    using assms(1)[simplified \<open>nm\<^sub>1 = _\<close> \<open>nm\<^sub>2 = _\<close> plus_nested_mask_def, simplified]
+    by (metis (mono_tags, lifting) \<open>nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1\<close> \<open>nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2\<close> assms(2) assms(3) assms(4) combine_options_simps(3) get_fnm_nm.simps option.sel pfun_comb_def plus_nested_mask_def snd_conv)
+  show "p\<^sub>1 + p\<^sub>2 = p"
+    using assms(1)[simplified \<open>nm\<^sub>1 = _\<close> \<open>nm\<^sub>2 = _\<close> plus_nested_mask_def, simplified]
+    by (metis (mono_tags, lifting) \<open>nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1\<close> \<open>nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2\<close> assms(2) assms(3) assms(4) combine_options_simps(3) get_fnm_nm.simps option.sel pfun_comb_def plus_nested_mask_def fst_conv)
+qed
+
+lemma nm_plus_lpm_plus_Some_None:
+  assumes "nm\<^sub>1 + nm\<^sub>2 = nm"
+      and "get_fnm_nm nm\<^sub>1 lp = Some (p\<^sub>1, nm'\<^sub>1)"
+      and "get_fnm_nm nm\<^sub>2 lp = None"
+    shows "get_fnm_nm nm lp = Some (p\<^sub>1, nm'\<^sub>1)"
+  apply (subst assms(1)[symmetric])
+  apply (simp add: plus_nested_mask_def)
+  apply (cases nm\<^sub>1, cases nm\<^sub>2)
+  using assms(2,3)
+  by (simp add: pfun_comb_def)
+
+lemma exhale_pred_body_part_extcons_wrt_ploc:
+  assumes "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
+      and "ViperLang.predicate_decl.body pdecl = Some pbody"
+      and "vals_well_typed (absval_interp_total ctxt) vs (predicate_decl.args pdecl)"
+      and "\<omega> = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi> \<rparr>"
+      and "consistent_external ctxt \<phi>"
+      and "red_exhale ctxt StateCons \<omega>0 (syntactic_mult (Rep_preal p) pbody) \<omega> (RNormal \<omega>')"
+      and "get_nm_total_full \<omega>' + nm_exh = get_nm_total_full \<omega>"
+      and "ctxt_wf_pred ctxt"
+    shows "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) (pid,vs) p"
+  apply standard
+      apply (rule assms)+
+proof -
+  have "get_store_total \<omega> = nth_option vs"
+    by (simp add: assms(4))
+  moreover have "get_mh_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) = get_mh_total_full \<omega> - get_mh_total_full \<omega>'"
+    using nm_add_mh_sub[OF assms(7)]
+    by force
+  moreover have "get_mp_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) = get_mp_total_full \<omega> - get_mp_total_full \<omega>'"
+    using nm_add_mp_sub[OF assms(7)]
+    by force
+  ultimately show "sat ctxt \<lparr> get_store_total = nth_option vs, get_trace_total = \<lambda>x. None,
+                              get_total_full = \<phi>\<lparr> get_nm_total := nm_exh, get_nm_total := 0 \<rparr> \<rparr>
+                       (get_mh_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>))
+                       (get_mp_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>))
+                       (syntactic_mult (Rep_preal p) pbody)"
+    using exhale_diff_sat[OF _ assms(6), of \<omega>'] assms ctxt_wf_pred_def syntactic_mult_supported
+    by fastforce
+next
+  show "consistent_external ctxt (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>)"
+  proof
+    fix pid vs q\<^sub>s nm\<^sub>s
+    assume lpm\<^sub>s: "Some (q\<^sub>s, nm\<^sub>s) = get_fnm_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) (pid,vs)"
+    show "consistent_external_wrt_ploc ctxt
+            (\<phi>\<lparr> get_nm_total := nm_exh, get_nm_total := nm\<^sub>s \<rparr>) (pid,vs) (pos2p q\<^sub>s)"
+    proof (cases "get_fnm_total_full \<omega>' (pid,vs)")
+      case None
+      have "Some (q\<^sub>s, nm\<^sub>s) = get_fnm_total_full \<omega> (pid,vs)"
+        by (metis None add.commute assms(7) get_fnm_total.simps get_fnm_total_full.simps get_nm_total_full.simps lpm\<^sub>s nm_plus_lpm_plus_Some_None total_state_update_nm_read)
+      then show ?thesis
+        using assms(4) assms(5) consistent_external.simps
+        by fastforce
+    next
+      case (Some lpm)
+      obtain q\<^sub>e nm\<^sub>e where "lpm = (q\<^sub>e, nm\<^sub>e)"
+        by fastforce
+      obtain q\<^sub>a nm\<^sub>a where
+        lpm\<^sub>a: "get_fnm_total_full \<omega> (pid,vs) = Some (q\<^sub>a, nm\<^sub>a)" and
+        "q\<^sub>a \<ge> q\<^sub>e" and
+        "nm\<^sub>e = (pos2p (q\<^sub>e / q\<^sub>a)) *\<^sub>s nm\<^sub>a"
+        using exhale_fraction[OF assms(6) Some[simplified \<open>lpm = _\<close>]]
+        by blast
+      hence nm\<^sub>a_extcons: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm\<^sub>a \<rparr>) (pid,vs) (pos2p q\<^sub>a)"
+        using SatAll_case[OF assms(5)]
+        by (metis assms(4) full_total_state.select_convs(3) get_fnm_total.simps get_fnm_total_full.simps)
+
+      have "q\<^sub>e + q\<^sub>s = q\<^sub>a" and "nm\<^sub>e + nm\<^sub>s = nm\<^sub>a"
+        using nm_plus_lpm_plus_Some_Some[OF assms(7), of "(pid,vs)"]
+        by (metis (mono_tags, lifting) Some lpm\<^sub>s lpm\<^sub>a \<open>lpm = _\<close> get_fnm_total.simps get_fnm_total_full.simps get_nm_total_full.simps total_state_update_nm_read)+
+      have "nm\<^sub>e + (pos2p ((q\<^sub>a - q\<^sub>e) / q\<^sub>a)) *\<^sub>s nm\<^sub>a = nm\<^sub>a"
+        apply (subst \<open>nm\<^sub>e = _\<close>)
+        apply (subgoal_tac "pos2p (q\<^sub>e / q\<^sub>a) + pos2p ((q\<^sub>a - q\<^sub>e) / q\<^sub>a) = 1")
+         apply (metis preal_semimodule_class.scale_one scale_add_left)
+        apply (subst pos2p_add_distr[of "q\<^sub>e / q\<^sub>a" "(q\<^sub>a - q\<^sub>e) / q\<^sub>a"])
+        apply (simp add: pos2p_def posreal_to_real)
+        by (metis Rep_posreal Rep_posreal_inverse Rep_preal_inverse \<open>q\<^sub>e + q\<^sub>s = q\<^sub>a\<close> add_diff_cancel_left' add_divide_distrib div_self mem_Collect_eq one_preal_def plus_posreal.rep_eq positive_real_preal zero_preal.rep_eq)
+      hence "nm\<^sub>s = (pos2p ((q\<^sub>a - q\<^sub>e) / q\<^sub>a)) *\<^sub>s nm\<^sub>a"
+        using \<open>nm\<^sub>e + nm\<^sub>s = nm\<^sub>a\<close> by force
+      have "q\<^sub>s = q\<^sub>a - q\<^sub>e"
+        using Rep_posreal_inverse \<open>q\<^sub>e + q\<^sub>s = q\<^sub>a\<close> minus_posreal_def plus_posreal.rep_eq
+        by force
+      show ?thesis
+        using fraction_consistent_external(1)[OF assms(8) nm\<^sub>a_extcons, of "pos2p (q\<^sub>s / q\<^sub>a)"]
+        apply (subgoal_tac "pos2p (q\<^sub>s / q\<^sub>a) * pos2p q\<^sub>a = pos2p q\<^sub>s")
+         apply simp
+         apply (subst \<open>q\<^sub>s = _\<close>)
+         apply (subst \<open>nm\<^sub>s = _\<close>)
+        using \<open>q\<^sub>s = q\<^sub>a - q\<^sub>e\<close>
+         apply fastforce
+        by (smt (verit, ccfv_threshold) Rep_posreal Rep_preal_inverse divide_posreal.rep_eq mem_Collect_eq nonzero_eq_divide_eq pos2p_def preal_to_real(12) times_preal.rep_eq)
+    qed
+  qed
+qed
 
 
 subsection \<open>Preserved by Inhale\<close>
@@ -220,6 +345,49 @@ proof
     by force
 qed
 
+definition differ_only_in_0_perm_locs where
+  "differ_only_in_0_perm_locs \<phi> \<phi>' \<equiv>
+     (\<forall>loc. get_hh_total \<phi> loc \<noteq> get_hh_total \<phi>' loc \<longrightarrow> nm_loc_sum loc (get_nm_total \<phi>) 0) \<and>
+     get_nm_total \<phi> = get_nm_total \<phi>'"
+
+lemma extcons_preserved_by_changing_0_locs':
+  assumes "ctxt_pred_self_framing ctxt"
+    shows "(consistent_external_wrt_ploc ctxt \<phi> lp p \<longrightarrow>
+            (\<forall>\<phi>'. differ_only_in_0_perm_locs \<phi> \<phi>' \<longrightarrow>
+                  consistent_external_wrt_ploc ctxt \<phi>' lp p)) \<and>
+           (consistent_external ctxt \<phi> \<longrightarrow>
+            (\<forall>\<phi>'. differ_only_in_0_perm_locs \<phi> \<phi>' \<longrightarrow>
+                  consistent_external ctxt \<phi>'))"
+  apply (rule consistent_external_wrt_ploc_consistent_external.induct)
+   apply (standard, standard, standard)
+       apply fast+
+    apply (smt (verit) assms ctxt_pred_self_framing_def differ_only_in_0_perm_locs_def full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps get_mh_total.simps get_mp_total.simps preal_not_0_gt_0 pred_self_framing_subst sum_0_implies_mh_zero total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
+   apply blast
+proof (standard, intro impI)
+  fix \<phi> \<phi>' :: "'a total_state"
+  assume IH:
+         "\<And>pid vs q nm'. Some (q, nm') = get_fnm_total \<phi> (pid,vs) \<Longrightarrow>
+            \<forall>\<phi>''. differ_only_in_0_perm_locs (\<phi>\<lparr> get_nm_total := nm' \<rparr>) \<phi>'' \<longrightarrow>
+                  consistent_external_wrt_ploc ctxt \<phi>'' (pid,vs) (pos2p q)"
+     and diff_only: "differ_only_in_0_perm_locs \<phi> \<phi>'"
+  show "consistent_external ctxt \<phi>'"
+  proof
+    fix pid vs q nm'
+    assume lpm: "Some (q, nm') = get_fnm_total \<phi>' (pid,vs)"
+    with IH have "\<forall>\<phi>''. differ_only_in_0_perm_locs (\<phi>\<lparr> get_nm_total := nm' \<rparr>) \<phi>'' \<longrightarrow>
+                        consistent_external_wrt_ploc ctxt \<phi>'' (pid,vs) (pos2p q)"
+      using diff_only differ_only_in_0_perm_locs_def
+      by (metis get_fnm_total.simps)
+    moreover have "differ_only_in_0_perm_locs (\<phi>\<lparr> get_nm_total := nm' \<rparr>) (\<phi>'\<lparr> get_nm_total := nm' \<rparr>)"
+      apply (subgoal_tac "\<And>loc. nm_loc_sum loc (get_nm_total \<phi>) 0 \<Longrightarrow> nm_loc_sum loc nm' 0")
+       apply (simp add: differ_only_in_0_perm_locs_def)
+       apply (meson diff_only differ_only_in_0_perm_locs_def nm_loc_sum.elims(2))
+      by (metis diff_only differ_only_in_0_perm_locs_def get_fnm_total.simps lpm padd_pos preal_gte_padd sub_mask_smaller)
+    ultimately show "consistent_external_wrt_ploc ctxt (\<phi>'\<lparr> get_nm_total := nm' \<rparr>) (pid,vs) (pos2p q)"
+      by blast
+  qed
+qed
+
 lemma extcons_preserved_by_changing_0_locs:
   assumes "\<And>loc. get_hh_total \<phi> loc \<noteq> get_hh_total \<phi>' loc \<Longrightarrow> nm_loc_sum loc (get_nm_total \<phi>) 0"
       and "get_nm_total \<phi> = get_nm_total \<phi>'"
@@ -228,70 +396,8 @@ lemma extcons_preserved_by_changing_0_locs:
            consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) p"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
            consistent_external ctxt \<phi>'"
-  sorry
-(*
-  using assms(2)
-proof (induct rule: consistent_external_wrt_ploc_consistent_external.inducts)
-  case IH: (SatStep pred_id pred_decl pred_body vs \<phi> p)
-  show ?case
-    apply standard
-        defer 3
-        apply (simp only: IH)+
-  proof -
-    have store_equal:
-      "get_store_total (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = \<phi>\<rparr>) =
-       get_store_total (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = upd_hh_loc_total \<phi> loc v\<rparr>)"
-      by simp
-    have "get_mh_total \<phi> loc = 0"
-      using sum_0_implies_mh_zero[OF IH(7)]
-      by simp
-
-    hence hh_unchanged:
-      "\<forall>l. get_mh_total (upd_hh_loc_total \<phi> loc v) l > 0 \<longrightarrow>
-           get_hh_total_full (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = \<phi>\<rparr>) l =
-           get_hh_total_full (\<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = upd_hh_loc_total \<phi> loc v\<rparr>) l"
-      by simp
-    show "sat ctxt
-            \<lparr>get_store_total = nth_option vs, get_trace_total = \<lambda>x. None, get_total_full = upd_hh_loc_total \<phi> loc v\<lparr> get_nm_total := 0 \<rparr> \<rparr>
-            (get_mh_total (upd_hh_loc_total \<phi> loc v))
-            (get_mp_total (upd_hh_loc_total \<phi> loc v))
-            (syntactic_mult (Rep_preal p) pred_body)"
-      using IH pred_self_framing_subst[OF _ IH(2) store_equal hh_unchanged]
-      apply simp
-      using assms(3)
-      by (smt (verit, best) full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.elims pred_self_framing_subst total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
-  qed
-next
-  case IH: (SatAll \<phi>)
-  show ?case
-  proof
-    fix pred_id vs q
-    assume "get_mp_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
-    hence "get_mp_total \<phi> (pred_id, vs) = q"
-      by simp
-    from IH(1)[OF this]
-    show "(q = 0) = (get_nm_loc_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs) = None)"
-      by simp
-  next
-    fix pred_id vs q nm'
-    assume "get_mp_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs) = q"
-       and "Some nm' = get_nm_loc_total (upd_hh_loc_total \<phi> loc v) (pred_id, vs)"
-    hence 1: "get_mp_total \<phi> (pred_id, vs) = q"
-      and 2: "Some nm' = get_nm_loc_total \<phi> (pred_id, vs)"
-      by simp+
-    have "nm_loc_sum loc nm' 0"
-      by (metis "2" IH.prems get_fnm_total.simps get_nm_loc_total.simps sum_0_implies_sub_zero)
-    have "consistent_external_wrt_ploc ctxt (upd_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v) (pred_id, vs) q"
-      using IH IH(3)[OF 1 2] \<open>nm_loc_sum loc nm' pos_perm_class.pnone\<close>
-      by auto
-    moreover have "upd_hh_loc_total (\<phi>\<lparr>get_nm_total := nm'\<rparr>) loc v =
-                   upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>"
-      by simp
-    ultimately show "consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pred_id, vs) q"
-      by argo
-  qed
-qed
-*)
+  using assms differ_only_in_0_perm_locs_def extcons_preserved_by_changing_0_locs' 
+  by blast+
 
 lemma extcons_preserved_by_red_stmt_exhale:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
@@ -483,10 +589,11 @@ proof -
   obtain pdecl pbody \<omega>0 \<omega>1 \<omega>1' nm_exh where
     pred_decl: "ViperLang.predicates (program_total ctxt) pid = Some pdecl" and
     pred_body: "ViperLang.predicate_decl.body pdecl = Some pbody" and
+    ty: "vals_well_typed (absval_interp_total ctxt) vs (predicate_decl.args pdecl)" and
     "\<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>" and
     red_exh: "red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal (Abs_preal p)) pbody) \<omega>0 (RNormal \<omega>1')" and
     "\<omega>1 = \<omega>\<lparr> get_total_full := get_total_full \<omega>1' \<rparr>" and
-    "get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0" and
+    nm_exh: "get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0" and
     "\<omega>' = add_to_lpm_total_full \<omega>1 (pid,vs) (if Abs_preal p = 0 then None else Some (p2pos (Abs_preal p), nm_exh))"
     apply (rule FoldRelNormal_case[OF fold_rel])
     by simp
@@ -495,7 +602,8 @@ proof -
     by (metis \<open>\<omega>0 = _\<close> \<open>\<omega>1 = _\<close> red_exh assms(1) assms(3) extcons_preserved_by_red_exhale full_total_state.ext_inject full_total_state.surjective full_total_state.update_convs(3))
 
   have folded_extcons: "consistent_external_wrt_ploc ctxt ((get_total_full \<omega>1)\<lparr> get_nm_total := nm_exh \<rparr>) (pid,vs) (Abs_preal p)"
-    sorry
+    using exhale_pred_body_part_extcons_wrt_ploc[OF pred_decl pred_body ty \<open>\<omega>0 = _\<close> assms(1) red_exh _ assms(3), of nm_exh]
+    by (smt (verit, ccfv_SIG) \<open>\<omega>0 = _\<close> \<open>\<omega>1 = _\<close> exhale_only_changes_total_state_aux full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3) get_hh_total_full.simps get_nm_total_full.simps nm_exh old.unit.exhaust red_exh total_state.surjective total_state.update_convs(2))
 
   show ?thesis
   proof (cases "Abs_preal p = 0")

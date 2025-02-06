@@ -3,7 +3,32 @@ theory NestedMaskInst
 begin
 
 
-subsection \<open>Uninstantiated Lemmas\<close>
+subsection \<open>Lemmas\<close>
+
+lemma add_masks_minus:
+  assumes "m1 = add_masks (m2 :: ('a, preal) abstract_mask) m3"
+  shows "m3 = m1 - m2"
+  unfolding fun_diff_def
+proof
+  fix x
+
+  have "m1 x = (m2 x) + (m3 x)"
+    using assms
+    by (simp add: add_masks_def)
+
+  thus "m3 x = m1 x - m2 x"
+    by (simp add: Rep_preal_inverse minus_preal.abs_eq plus_preal.rep_eq pos_perm_class.sum_larger)
+qed
+
+lemma get_mh_nm__merge [simp]:
+  shows "get_mh_nm (nested_mask_merge nm1 nm2) = add_masks (get_mh_nm nm1) (get_mh_nm nm2)"
+  by (cases nm1, cases nm2, simp)
+
+lemma neq_by_fun:
+  assumes "P a \<noteq> P b"
+  shows "a \<noteq> b"
+  using assms
+  by blast
 
 
 subsection \<open>Monoid\<close>
@@ -103,6 +128,60 @@ proof
     by (simp add: add.commute combine_options_commute plus_option_def)
   show "0 + a = a"
     by (simp add: plus_option_def zero_option_def)
+qed
+
+end
+
+
+subsection \<open>Cancellative\<close>
+
+instantiation nested_mask :: (type) cancel_semigroup_add
+begin
+
+instance
+proof
+  fix a b c :: "'a nested_mask"
+
+  show "a + c = b + c \<Longrightarrow> a = b"
+  proof (induction c arbitrary: a b)
+    case (NM mh fnm)
+    show ?case
+    proof (rule ccontr)
+      assume "a \<noteq> b"
+      then consider (mh_diff) "get_mh_nm a \<noteq> get_mh_nm b" | (fnm_diff) "get_fnm_nm a \<noteq> get_fnm_nm b"
+        using nested_mask_equality
+        by blast
+      then show False
+      proof cases
+        case mh_diff
+        then show ?thesis
+          by (metis NM.prems add.commute add_masks_minus get_mh_nm__merge plus_nested_mask_def)
+      next
+        case fnm_diff
+        then obtain lp where *: "get_fnm_nm a lp \<noteq> get_fnm_nm b lp"
+          by blast
+        have "a + NM mh fnm \<noteq> b + NM mh fnm"
+          apply (subst nm_get_eq[of a])
+          apply (subst nm_get_eq[of b])
+          unfolding plus_nested_mask_def
+          apply (rule neq_by_fun[of "\<lambda>nm. get_fnm_nm nm lp"])
+          apply (cases "get_fnm_nm a lp"; cases "get_fnm_nm b lp"; cases "fnm lp")
+                 apply (simp_all add: pfun_comb_def)
+          using *
+               apply argo+
+             apply (smt (verit) Rep_posreal fst_conv mem_Collect_eq plus_posreal.rep_eq)+
+          using *
+           apply fastforce
+          by (metis * NM.IH Rep_posreal_inject add_right_imp_eq option.set_intros plus_nested_mask_def plus_posreal.rep_eq range_eqI snds.intros surjective_pairing)
+        then show ?thesis
+          using NM
+          by meson
+      qed
+    qed
+  qed
+
+  thus "c + a = c + b \<Longrightarrow> a = b"
+    by (simp add: add.commute)
 qed
 
 end

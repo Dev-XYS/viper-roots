@@ -458,13 +458,23 @@ lemma sum_0_implies_mh_zero:
     shows "get_mh_nm nm loc = 0"
   by (metis assms less_eq_preal.rep_eq nm_get_eq nm_loc_sum'.simps nm_loc_sum.simps padd_pos preal_gte_padd)
 
-(*
-lemma sum_0_implies_sub_zero:
-  assumes "nm_loc_sum loc nm 0"
-      and "Some nm' = get_fnm_nm nm ploc"
-    shows "nm_loc_sum loc nm' 0"
-  sorry
-*)
+
+subsection \<open>Sub-Mask Smaller\<close>
+
+lemma sub_mask_smaller:
+  assumes "nm_loc_sum loc nm s"
+      and "Some (p,nm') = get_fnm_nm nm lp"
+    shows "\<exists>s'. s' \<le> s \<and> nm_loc_sum loc nm' s'"
+proof -
+  obtain mh fnm pf where
+    "nm = NM mh fnm" and
+    "pf has_sumA (Rep_preal s - Rep_preal (mh loc)) \<and>
+     (\<forall>lp. option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf lp)) (pf lp = 0) (fnm lp))"
+    by (metis assms(1) nm_loc_sum'.elims(2) nm_loc_sum.simps)
+  show ?thesis
+    apply (rule exI[of _ "Abs_preal (pf lp)"])
+    by (smt (verit, ccfv_threshold) \<open>nm = NM mh fnm\<close> \<open>pf has_sumA Rep_preal s - Rep_preal (mh loc) \<and> (\<forall>lp. option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf lp)) (pf lp = 0) (fnm lp))\<close> assms(2) get_fnm_nm.simps has_Some_iff has_sumA_nonneg_ge_one_real less_eq_preal.rep_eq mem_Collect_eq nm_loc_sum'_nonneg nm_loc_sum.elims(3) option_fold.simps(1) prat_non_negative preal_to_real(12) snd_conv)
+qed
 
 
 subsection \<open>Sum of a smaller state\<close>
