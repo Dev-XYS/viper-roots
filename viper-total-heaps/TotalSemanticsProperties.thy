@@ -5,14 +5,6 @@ theory TotalSemanticsProperties
 begin
 
 
-subsection \<open>Predicate Body Manipulation\<close>
-
-lemma syntactic_mult_supported:
-  assumes "supported_pred_body A"
-    shows "supported_pred_body (syntactic_mult p A)"
-  sorry
-
-
 subsection \<open>Expression Evaluation Properties\<close>
 
 lemma eval_with_None:
