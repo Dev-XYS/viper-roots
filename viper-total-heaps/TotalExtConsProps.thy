@@ -1183,12 +1183,367 @@ qed
 
 subsection \<open>Combinability of External Consistent States\<close>
 
+lemma combinability_sat_Acc:
+  assumes "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult p (Atomic (Acc e_r f (PureExp e_p))))"
+      and "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult q (Atomic (Acc e_r f (PureExp e_p))))"
+    shows "sat ctxt \<omega> (add_masks mh\<^sub>1 mh\<^sub>2) (add_masks mp\<^sub>1 mp\<^sub>2) (syntactic_mult (p + q) (Atomic (Acc e_r f (PureExp e_p))))"
+proof -
+  from assms(1)[simplified] obtain v_r v_p\<^sub>1 a where
+    "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)" and
+    v_p\<^sub>1: "ctxt, None \<turnstile> \<langle>Binop (ELit (LPerm p)) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p\<^sub>1)" and
+    "a = the_address v_r" and
+    "v_p\<^sub>1 \<ge> 0" and
+    mh\<^sub>1: "if v_r = Null then v_p\<^sub>1 = 0 \<and> mh\<^sub>1 = zero_mask else mh\<^sub>1 = singleton_mh (a,f) (Abs_preal v_p\<^sub>1)" and
+    "mp\<^sub>1 = zero_mask"
+    by (auto elim: SatAcc_case)
+
+  with assms(2)[simplified] obtain v_p\<^sub>2 where
+    v_p\<^sub>2: "ctxt, None \<turnstile> \<langle>Binop (ELit (LPerm q)) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p\<^sub>2)" and
+    "v_p\<^sub>2 \<ge> 0" and
+    mh\<^sub>2: "if v_r = Null then v_p\<^sub>2 = 0 \<and> mh\<^sub>2 = zero_mask else mh\<^sub>2 = singleton_mh (a,f) (Abs_preal v_p\<^sub>2)" and
+    "mp\<^sub>2 = zero_mask"
+    using eval_is_deterministic(1)
+    by (blast elim: SatAcc_case)
+
+  obtain val_p where
+    val_p: "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val val_p" and
+    v_p\<^sub>1_calc: "eval_binop (Option.is_none None) (VPerm p) Mult val_p = BinopNormal (VPerm v_p\<^sub>1)"
+    using v_p\<^sub>1
+    by (fastforce elim: RedBinop_case RedLit_case)
+
+  have v_p\<^sub>2_calc: "eval_binop (Option.is_none None) (VPerm q) Mult val_p = BinopNormal (VPerm v_p\<^sub>2)"
+    using v_p\<^sub>2 eval_is_deterministic(1)[OF val_p]
+    by (fastforce elim: RedBinop_case RedLit_case)
+
+  have "ctxt, None \<turnstile> \<langle>Binop (ELit (LPerm (p + q))) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (v_p\<^sub>1 + v_p\<^sub>2))"
+    apply (rule RedBinop)
+       apply (rule RedLit[where ?l="LPerm (p + q)", simplified])
+      apply fact
+     apply simp
+    apply (cases val_p)
+    using v_p\<^sub>1_calc[simplified] v_p\<^sub>2_calc[simplified]
+        apply simp
+        apply argo
+       defer
+    using v_p\<^sub>1_calc[simplified] v_p\<^sub>2_calc[simplified]
+       apply simp
+       apply argo
+    using v_p\<^sub>1_calc
+    by fastforce+
+
+  show ?thesis
+    apply simp
+    apply (rule SatAcc)
+         apply fact+
+    using \<open>0 \<le> v_p\<^sub>1\<close> \<open>0 \<le> v_p\<^sub>2\<close>
+      apply auto[1]
+     apply (split if_split)
+     apply (intro conjI)
+      apply (simp add: add_masks_zero_mask mh\<^sub>1 mh\<^sub>2)
+     apply (simp add: plus_preal.abs_eq[symmetric, of v_p\<^sub>1 v_p\<^sub>2, simplified eq_onp_def, simplified, OF \<open>v_p\<^sub>1 \<ge> 0\<close> \<open>v_p\<^sub>2 \<ge> 0\<close>])
+     apply standard+
+     apply (simp add: add_masks_def mh\<^sub>1 mh\<^sub>2)
+    by (simp add: \<open>mp\<^sub>1 = _\<close> \<open>mp\<^sub>2 = _\<close> add_masks_zero_mask)
+qed
+
+
+lemma combinability_sat_AccWildcard:
+  assumes "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult p (Atomic (Acc e_r f Wildcard)))"
+      and "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult q (Atomic (Acc e_r f Wildcard)))"
+      and "p \<ge> 0"
+      and "q \<ge> 0"
+    shows "sat ctxt \<omega> (add_masks mh\<^sub>1 mh\<^sub>2) (add_masks mp\<^sub>1 mp\<^sub>2) (syntactic_mult (p + q) (Atomic (Acc e_r f Wildcard)))"
+proof (cases "p = 0")
+  case True
+  show ?thesis
+  proof (cases "q = 0")
+    case True
+    show ?thesis
+      apply (simp add: \<open>p = 0\<close> \<open>q = 0\<close>)
+      using assms[simplified \<open>p = 0\<close> \<open>q = 0\<close>, simplified]
+      by (metis \<open>q = 0\<close> add_masks_zero_mask assms(2) sat_Acc_mp_zero synmult_0_mh_0)
+  next
+    case False
+    then show ?thesis
+      by (metis \<open>p = 0\<close> add.left_neutral add_masks_comm add_masks_zero_mask assms(1) assms(2) synmult_0_mh_0 synmult_0_mp_0)
+  qed
+next
+  case False
+  show ?thesis
+  proof (cases "q = 0")
+    case True
+    then show ?thesis
+      by (metis add.right_neutral add_masks_zero_mask assms(1) assms(2) synmult_0_mh_0 synmult_0_mp_0)
+  next
+    case False
+    have "p > 0" and "q > 0"
+      using \<open>p \<noteq> 0\<close> \<open>q \<noteq> 0\<close> assms(3,4)
+      by linarith+
+    have "p + q > 0"
+      using \<open>q \<noteq> 0\<close> assms(3) assms(4)
+      by linarith
+    hence "p + q \<noteq> 0"
+      by linarith
+
+    from assms(1)[simplified, simplified \<open>p \<noteq> 0\<close> \<open>p > 0\<close>, simplified] obtain v_r a where
+      v_r: "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)" and
+      "a = the_address v_r" and
+      "v_r \<noteq> Null" and
+      mh\<^sub>1: "is_singleton_mh (a,f) mh\<^sub>1" and
+      "mp\<^sub>1 = zero_mask"
+      by (fastforce elim: SatAccWildcard_case)
+
+    with assms(2)[simplified, simplified \<open>q \<noteq> 0\<close> \<open>q > 0\<close>, simplified] have
+      mh\<^sub>1: "is_singleton_mh (a,f) mh\<^sub>2" and
+      "mp\<^sub>2 = zero_mask"
+      using eval_is_deterministic(1)[OF v_r]
+      by (auto elim: SatAccWildcard_case)
+
+    show ?thesis
+      apply (simp add: \<open>p + q > 0\<close> \<open>p + q \<noteq> 0\<close>)
+      apply (rule SatAccWildcard)
+          apply fact+
+       apply simp
+       apply (rule exI[of _ "mh\<^sub>1 (a,f) + mh\<^sub>2 (a,f)"])
+       apply (intro conjI)
+        apply (metis add_cancel_right_left is_singleton_mh.simps mh\<^sub>1 padd_pos pperm_pnone_pgt singleton_mh.simps)
+       apply standard
+       apply (simp add: add_masks_def)
+       apply (metis SatAccWildcard_case \<open>a = _\<close> assms(1)[simplified, simplified \<open>p \<noteq> 0\<close> \<open>p > 0\<close>, simplified] assms(2)[simplified, simplified \<open>q \<noteq> 0\<close> \<open>q > 0\<close>, simplified] add.right_neutral eval_is_deterministic(1) extended_val.inject singleton_mh.simps v_r val.inject(4))
+      by (simp add: \<open>mp\<^sub>1 = _\<close> \<open>mp\<^sub>2 = _\<close> add_masks_zero_mask)
+  qed
+qed
+
+
+lemma combinability_sat_AccPred:
+  assumes "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult p (Atomic (AccPredicate pid e_args (PureExp e_p))))"
+      and "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult q (Atomic (AccPredicate pid e_args (PureExp e_p))))"
+    shows "sat ctxt \<omega> (add_masks mh\<^sub>1 mh\<^sub>2) (add_masks mp\<^sub>1 mp\<^sub>2) (syntactic_mult (p + q) (Atomic (AccPredicate pid e_args (PureExp e_p))))"
+proof -
+  from assms(1)[simplified] obtain v_args v_p\<^sub>1 where
+    "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)" and
+    v_p\<^sub>1: "ctxt, None \<turnstile> \<langle>Binop (ELit (LPerm p)) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p\<^sub>1)" and
+    "v_p\<^sub>1 \<ge> 0" and
+    "mh\<^sub>1 = zero_mask" and
+    mp\<^sub>1: "mp\<^sub>1 = singleton_mp (pid,v_args) (Abs_preal v_p\<^sub>1)"
+    by (auto elim: SatAccPred_case)
+
+  with assms(2)[simplified] obtain v_p\<^sub>2 where
+    v_p\<^sub>2: "ctxt, None \<turnstile> \<langle>Binop (ELit (LPerm q)) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p\<^sub>2)" and
+    "v_p\<^sub>2 \<ge> 0" and
+    "mh\<^sub>2 = zero_mask" and
+    mp\<^sub>2: "mp\<^sub>2 = singleton_mp (pid,v_args) (Abs_preal v_p\<^sub>2)"
+    using eval_is_deterministic(2)
+    by (blast elim: SatAccPred_case)
+
+  obtain val_p where
+    val_p: "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val val_p" and
+    v_p\<^sub>1_calc: "eval_binop (Option.is_none None) (VPerm p) Mult val_p = BinopNormal (VPerm v_p\<^sub>1)"
+    using v_p\<^sub>1
+    by (fastforce elim: RedBinop_case RedLit_case)
+
+  have v_p\<^sub>2_calc: "eval_binop (Option.is_none None) (VPerm q) Mult val_p = BinopNormal (VPerm v_p\<^sub>2)"
+    using v_p\<^sub>2 eval_is_deterministic(1)[OF val_p]
+    by (fastforce elim: RedBinop_case RedLit_case)
+
+  have "ctxt, None \<turnstile> \<langle>Binop (ELit (LPerm (p + q))) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm (v_p\<^sub>1 + v_p\<^sub>2))"
+    apply (rule RedBinop)
+       apply (rule RedLit[where ?l="LPerm (p + q)", simplified])
+      apply fact
+     apply simp
+    apply (cases val_p)
+    using v_p\<^sub>1_calc[simplified] v_p\<^sub>2_calc[simplified]
+        apply simp
+        apply argo
+       defer
+    using v_p\<^sub>1_calc[simplified] v_p\<^sub>2_calc[simplified]
+       apply simp
+       apply argo
+    using v_p\<^sub>1_calc
+    by fastforce+
+
+  show ?thesis
+    apply simp
+    apply (rule SatAccPred)
+        apply fact+
+    using \<open>0 \<le> v_p\<^sub>1\<close> \<open>0 \<le> v_p\<^sub>2\<close>
+      apply auto[1]
+     apply (simp add: \<open>mh\<^sub>1 = _\<close> \<open>mh\<^sub>2 = _\<close> add_masks_zero_mask)
+    apply (simp add: plus_preal.abs_eq[symmetric, of v_p\<^sub>1 v_p\<^sub>2, simplified eq_onp_def, simplified, OF \<open>v_p\<^sub>1 \<ge> 0\<close> \<open>v_p\<^sub>2 \<ge> 0\<close>])
+    apply standard+
+    by (simp add: add_masks_def mp\<^sub>1 mp\<^sub>2)
+qed
+
+
+lemma combinability_sat_AccPredWildcard:
+  assumes "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult p (Atomic (AccPredicate pid e_args Wildcard)))"
+      and "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult q (Atomic (AccPredicate pid e_args Wildcard)))"
+      and "p \<ge> 0"
+      and "q \<ge> 0"
+    shows "sat ctxt \<omega> (add_masks mh\<^sub>1 mh\<^sub>2) (add_masks mp\<^sub>1 mp\<^sub>2) (syntactic_mult (p + q) (Atomic (AccPredicate pid e_args Wildcard)))"
+proof (cases "p = 0")
+  case True
+  show ?thesis
+  proof (cases "q = 0")
+    case True
+    show ?thesis
+      apply (simp add: \<open>p = 0\<close> \<open>q = 0\<close>)
+      using assms[simplified \<open>p = 0\<close> \<open>q = 0\<close>, simplified]
+      by (metis \<open>q = 0\<close> add_masks_zero_mask assms(2) sat_AccPred_mh_zero synmult_0_mp_0)
+  next
+    case False
+    then show ?thesis
+      by (metis \<open>p = 0\<close> add.left_neutral add_masks_comm add_masks_zero_mask assms(1) assms(2) synmult_0_mh_0 synmult_0_mp_0)
+  qed
+next
+  case False
+  show ?thesis
+  proof (cases "q = 0")
+    case True
+    then show ?thesis
+      by (metis add.right_neutral add_masks_zero_mask assms(1) assms(2) synmult_0_mh_0 synmult_0_mp_0)
+  next
+    case False
+    have "p > 0" and "q > 0"
+      using \<open>p \<noteq> 0\<close> \<open>q \<noteq> 0\<close> assms(3,4)
+      by linarith+
+    have "p + q > 0"
+      using \<open>q \<noteq> 0\<close> assms(3) assms(4)
+      by linarith
+    hence "p + q \<noteq> 0"
+      by linarith
+
+    from assms(1)[simplified, simplified \<open>p \<noteq> 0\<close> \<open>p > 0\<close>, simplified] obtain v_args where
+      v_args: "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)" and
+      "mh\<^sub>1 = zero_mask" and
+      mp\<^sub>1: "is_singleton_mp (pid,v_args) mp\<^sub>1"
+      by (fastforce elim: SatAccPredWildcard_case)
+
+    with assms(2)[simplified, simplified \<open>q \<noteq> 0\<close> \<open>q > 0\<close>, simplified] have
+      "mh\<^sub>2 = zero_mask" and
+      mp\<^sub>2: "is_singleton_mp (pid,v_args) mp\<^sub>2"
+      using eval_is_deterministic(2)[OF v_args]
+      by (auto elim: SatAccPredWildcard_case)
+
+    show ?thesis
+      apply (simp add: \<open>p + q > 0\<close> \<open>p + q \<noteq> 0\<close>)
+      apply (rule SatAccPredWildcard)
+        apply fact+
+       apply (simp add: \<open>mh\<^sub>1 = _\<close> \<open>mh\<^sub>2 = _\<close> add_masks_zero_mask)
+      apply simp
+      apply (rule exI[of _ "mp\<^sub>1 (pid,v_args) + mp\<^sub>2 (pid,v_args)"])
+      apply (intro conjI)
+       apply (metis is_singleton_mp.simps mp\<^sub>1 padd_pos pperm_pnone_pgt singleton_mp.simps)
+      apply standard
+      apply (simp add: add_masks_def)
+      by (metis mp\<^sub>2 add.comm_neutral is_singleton_mp.simps mp\<^sub>1 singleton_mp.simps)
+  qed
+qed
+
+
 lemma combinability_sat:
-  (* assumes "supported_pred_body A" *)
   assumes "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult p A)"
       and "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult q A)"
+      and "p \<ge> 0"
+      and "q \<ge> 0"
     shows "sat ctxt \<omega> (add_masks mh\<^sub>1 mh\<^sub>2) (add_masks mp\<^sub>1 mp\<^sub>2) (syntactic_mult (p + q) A)"
-  sorry
+  using assms(1,2)
+proof (induction A arbitrary: mh\<^sub>1 mp\<^sub>1 mh\<^sub>2 mp\<^sub>2)
+  case IH: (Atomic atm)
+  show ?case
+  proof (cases atm)
+    case (Pure e)
+    then show ?thesis
+      by (metis IH.prems(1) IH.prems(2) add_masks_zero_mask synmult_0_mh_0 synmult_0_mp_0 syntactic_mult.simps(1))
+  next
+    case (Acc e_r f perm)
+    show ?thesis
+    proof (cases perm)
+      case (PureExp e_p)
+      show ?thesis
+        using combinability_sat_Acc[OF IH[unfolded Acc PureExp]] Acc PureExp
+        by fastforce
+    next
+      case Wildcard
+      then show ?thesis
+        using combinability_sat_AccWildcard[OF IH[unfolded Acc Wildcard]] Acc Wildcard assms(3,4)
+        by fastforce
+    qed
+  next
+    case (AccPredicate pid e_args perm)
+    show ?thesis
+    proof (cases perm)
+      case (PureExp e_p)
+      show ?thesis
+        using combinability_sat_AccPred[OF IH[unfolded AccPredicate PureExp]] AccPredicate PureExp
+        by fastforce
+    next
+      case Wildcard
+      then show ?thesis
+        using combinability_sat_AccPredWildcard[OF IH[unfolded AccPredicate Wildcard]] AccPredicate Wildcard assms(3,4)
+        by fastforce
+    qed
+  qed
+next
+  case IH: (Imp e A)
+  then consider (True) "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+               (False) "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    using sat_Imp_True_or_False
+    by fastforce
+  then show ?case
+    apply cases
+     apply (metis IH.IH IH.prems(1) IH.prems(2) SatImpTrue SatImp_case eval_is_deterministic(1) extended_val.inject syntactic_mult.simps(4) val.inject(2))
+    by (metis IH.prems(1) IH.prems(2) SatImpFalse add_masks_zero_mask sat_Imp_False_only_zero(1) sat_Imp_False_only_zero(2) syntactic_mult.simps(4))
+next
+  case IH: (CondAssert e A B)
+  then consider (True) "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+               (False) "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    using sat_Cond_True_or_False
+    by fastforce
+  then show ?case
+    apply cases
+     apply simp
+     apply (rule SatCondTrue)
+      apply simp
+     apply (rule IH(1))
+    using SatCond_case[OF IH(3)[simplified]]
+      apply (metis eval_is_deterministic(1) extended_val.inject val.inject(2))
+    using SatCond_case[OF IH(4)[simplified]]
+     apply (metis eval_is_deterministic(1) extended_val.inject val.inject(2))
+    apply simp
+    by (metis IH.IH(2) SatCondFalse SatCond_case[OF IH(3)[simplified]] SatCond_case[OF IH(4)[simplified]] eval_is_deterministic(1) extended_val.inject val.inject(2))
+next
+  case IH: (Star A B)
+  obtain mh\<^sub>1\<^sub>A mh\<^sub>1\<^sub>B mp\<^sub>1\<^sub>A mp\<^sub>1\<^sub>B where
+    "mh_split mh\<^sub>1 mh\<^sub>1\<^sub>A mh\<^sub>1\<^sub>B" and
+    "mp_split mp\<^sub>1 mp\<^sub>1\<^sub>A mp\<^sub>1\<^sub>B" and
+    "sat ctxt \<omega> mh\<^sub>1\<^sub>A mp\<^sub>1\<^sub>A (syntactic_mult p A)" and
+    "sat ctxt \<omega> mh\<^sub>1\<^sub>B mp\<^sub>1\<^sub>B (syntactic_mult p B)"
+    using IH(3)
+    by (auto elim: SatStar_case)
+  moreover obtain mh\<^sub>2\<^sub>A mh\<^sub>2\<^sub>B mp\<^sub>2\<^sub>A mp\<^sub>2\<^sub>B where
+    "mh_split mh\<^sub>2 mh\<^sub>2\<^sub>A mh\<^sub>2\<^sub>B" and
+    "mp_split mp\<^sub>2 mp\<^sub>2\<^sub>A mp\<^sub>2\<^sub>B" and
+    "sat ctxt \<omega> mh\<^sub>2\<^sub>A mp\<^sub>2\<^sub>A (syntactic_mult q A)" and
+    "sat ctxt \<omega> mh\<^sub>2\<^sub>B mp\<^sub>2\<^sub>B (syntactic_mult q B)"
+    using IH(4)
+    by (auto elim: SatStar_case)
+
+  ultimately have
+    "sat ctxt \<omega> (add_masks mh\<^sub>1\<^sub>A mh\<^sub>2\<^sub>A) (add_masks mp\<^sub>1\<^sub>A mp\<^sub>2\<^sub>A) (syntactic_mult (p + q) A)" and
+    "sat ctxt \<omega> (add_masks mh\<^sub>1\<^sub>B mh\<^sub>2\<^sub>B) (add_masks mp\<^sub>1\<^sub>B mp\<^sub>2\<^sub>B) (syntactic_mult (p + q) B)"
+    using IH(1,2)
+    by blast+
+
+  show ?case
+    apply simp
+    apply (rule SatStar)
+       defer
+       defer
+       apply fact+
+     apply (meson \<open>mh_split mh\<^sub>1 mh\<^sub>1\<^sub>A mh\<^sub>1\<^sub>B\<close> \<open>mh_split mh\<^sub>2 mh\<^sub>2\<^sub>A mh\<^sub>2\<^sub>B\<close> mh_split.elims(3) mh_split_twice)
+    by (meson \<open>mp_split mp\<^sub>1 mp\<^sub>1\<^sub>A mp\<^sub>1\<^sub>B\<close> \<open>mp_split mp\<^sub>2 mp\<^sub>2\<^sub>A mp\<^sub>2\<^sub>B\<close> mp_split.elims(3) mp_split_twice)
+qed (auto elim: sat.cases)+
 
 
 lemma sum_consistent_external_helper:
@@ -1308,9 +1663,10 @@ proof (induction arbitrary: lp p q rule: nested_mask_merge.induct[of _ nm\<^sub>
        apply (simp del: get_mp_nm.simps add: get_mp_nm_distr_over_plus plus_preal.rep_eq)
        apply (rule combinability_sat)
       using sat\<^sub>1
-        apply simp
+          apply simp
       using sat\<^sub>2
-       apply simp
+         apply simp
+        apply (simp add: prat_non_negative)+
       using sum_consistent_external_helper[OF _ extcons\<^sub>1 extcons\<^sub>2] IH(2)
       by fastforce
   }
