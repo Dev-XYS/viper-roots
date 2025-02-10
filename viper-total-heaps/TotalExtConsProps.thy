@@ -1183,6 +1183,14 @@ qed
 
 subsection \<open>Combinability of External Consistent States\<close>
 
+lemma combinability_sat:
+  (* assumes "supported_pred_body A" *)
+  assumes "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult p A)"
+      and "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult q A)"
+    shows "sat ctxt \<omega> (add_masks mh\<^sub>1 mh\<^sub>2) (add_masks mp\<^sub>1 mp\<^sub>2) (syntactic_mult (p + q) A)"
+  sorry
+
+
 lemma sum_consistent_external:
     shows "consistent_external ctxt (\<lparr> get_hh_total = hh, get_nm_total = nm\<^sub>1 \<rparr>) \<Longrightarrow>
            consistent_external ctxt (\<lparr> get_hh_total = hh, get_nm_total = nm\<^sub>2 \<rparr>) \<Longrightarrow>
@@ -1190,7 +1198,152 @@ lemma sum_consistent_external:
       and "consistent_external_wrt_ploc ctxt (\<lparr> get_hh_total = hh, get_nm_total = nm\<^sub>1 \<rparr>) lp p \<Longrightarrow>
            consistent_external_wrt_ploc ctxt (\<lparr> get_hh_total = hh, get_nm_total = nm\<^sub>2 \<rparr>) lp q \<Longrightarrow>
            consistent_external_wrt_ploc ctxt (\<lparr> get_hh_total = hh, get_nm_total = nm\<^sub>1 + nm\<^sub>2 \<rparr>) lp (p + q)"
-  sorry
+proof (induction arbitrary: lp p q rule: nested_mask_merge.induct[of _ nm\<^sub>1 nm\<^sub>2])
+  case IH: (1 mh\<^sub>1 fnm\<^sub>1 mh\<^sub>2 fnm\<^sub>2)
+  {
+    case 1
+    show ?case
+    proof
+      fix pid vs r nm'
+      assume lpm: "Some (r,nm') = get_fnm_total \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 + NM mh\<^sub>2 fnm\<^sub>2 \<rparr> (pid,vs)"
+      show "consistent_external_wrt_ploc ctxt
+              (\<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 + NM mh\<^sub>2 fnm\<^sub>2 \<rparr>\<lparr> get_nm_total := nm' \<rparr>)
+              (pid,vs) (pos2p r)"
+      proof (cases "fnm\<^sub>1 (pid,vs)")
+        case lpm\<^sub>1: None
+        show ?thesis
+        proof (cases "fnm\<^sub>2 (pid,vs)")
+          case lpm\<^sub>2: None
+          show ?thesis
+            using lpm[unfolded plus_nested_mask_def, simplified]
+            by (simp add: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
+        next
+          case lpm\<^sub>2: (Some lpm\<^sub>2)
+          have "(r,nm') = lpm\<^sub>2"
+            using lpm[unfolded plus_nested_mask_def, simplified]
+            by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
+          show ?thesis
+            apply simp
+            using 1
+            by (metis SatAll_case \<open>(r, nm') = lpm\<^sub>2\<close> get_fnm_nm.simps lpm\<^sub>2 total_state.select_convs(2) total_state.update_convs(2))
+        qed
+      next
+        case lpm\<^sub>1: (Some lpm\<^sub>1)
+        show ?thesis
+        proof (cases "fnm\<^sub>2 (pid,vs)")
+          case lpm\<^sub>2: None
+          have "(r,nm') = lpm\<^sub>1"
+            using lpm[unfolded plus_nested_mask_def, simplified]
+            by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
+          show ?thesis
+            apply simp
+            using 1
+            by (metis SatAll_case \<open>(r, nm') = lpm\<^sub>1\<close> get_fnm_nm.simps lpm\<^sub>1 total_state.select_convs(2) total_state.update_convs(2))
+        next
+          case lpm\<^sub>2: (Some lpm\<^sub>2)
+          have "(r,nm') = (fst lpm\<^sub>1 + fst lpm\<^sub>2, snd lpm\<^sub>1 + snd lpm\<^sub>2)"
+            using lpm[unfolded plus_nested_mask_def, simplified, folded plus_nested_mask_def]
+            by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
+          then show ?thesis
+            apply (simp add: pos2p_add_distr[symmetric])
+            apply (rule IH(2)[of "Some lpm\<^sub>1" "Some lpm\<^sub>2", simplified])
+               apply (metis lpm\<^sub>1 range_eqI)
+              apply (metis lpm\<^sub>2 range_eqI)
+             apply (metis "1.prems"(1) consistent_external.cases get_fnm_nm.simps get_fnm_total.simps lpm\<^sub>1 prod.collapse total_state.select_convs(2) total_state.update_convs(2))
+            by (metis "1.prems"(2) consistent_external.cases get_fnm_nm.simps get_fnm_total.simps lpm\<^sub>2 prod.collapse total_state.select_convs(2) total_state.update_convs(2))
+        qed
+      qed
+    qed
+  next
+    case 2
+    obtain pid vs where "lp = (pid,vs)"
+      by fastforce
+    obtain pdecl pbody where
+      pdecl: "ViperLang.predicates (program_total ctxt) pid = Some pdecl" and
+      pbody: "ViperLang.predicate_decl.body pdecl = Some pbody" and
+      "vals_well_typed (absval_interp_total ctxt) vs (ViperLang.predicate_decl.args pdecl)" and
+      sat\<^sub>1: "sat ctxt
+         \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 \<rparr>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
+         (get_mh_total \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 \<rparr>)
+         (get_mp_total \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 \<rparr>)
+         (syntactic_mult (Rep_preal p) pbody)" and
+      extcons\<^sub>1: "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 \<rparr>"
+      using 2(1)[unfolded \<open>lp = _\<close>]
+      by (auto elim: SatStep_case)
+
+    hence
+      sat\<^sub>2: "sat ctxt
+         \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>2 fnm\<^sub>2 \<rparr>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
+         (get_mh_total \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>2 fnm\<^sub>2 \<rparr>)
+         (get_mp_total \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>2 fnm\<^sub>2 \<rparr>)
+         (syntactic_mult (Rep_preal q) pbody)" and
+      extcons\<^sub>2: "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>2 fnm\<^sub>2 \<rparr>"
+      using 2(2)[unfolded \<open>lp = _\<close>]
+      by (auto elim: SatStep_case)
+
+    show ?case
+      unfolding \<open>lp = _\<close>
+      apply (rule SatStep)
+          apply fact+
+       apply (simp del: get_mp_nm.simps add: get_mp_nm_distr_over_plus plus_preal.rep_eq)
+       apply (rule combinability_sat)
+      using sat\<^sub>1
+        apply simp
+      using sat\<^sub>2
+       apply simp
+    proof
+      fix pid vs r nm'
+      assume lpm: "Some (r,nm') = get_fnm_total \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 + NM mh\<^sub>2 fnm\<^sub>2 \<rparr> (pid,vs)"
+      show "consistent_external_wrt_ploc ctxt
+              (\<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 + NM mh\<^sub>2 fnm\<^sub>2 \<rparr>\<lparr> get_nm_total := nm' \<rparr>)
+              (pid,vs) (pos2p r)"
+      proof (cases "fnm\<^sub>1 (pid,vs)")
+        case lpm\<^sub>1: None
+        show ?thesis
+        proof (cases "fnm\<^sub>2 (pid,vs)")
+          case lpm\<^sub>2: None
+          show ?thesis
+            using lpm[unfolded plus_nested_mask_def, simplified]
+            by (simp add: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
+        next
+          case lpm\<^sub>2: (Some lpm\<^sub>2)
+          have "(r,nm') = lpm\<^sub>2"
+            using lpm[unfolded plus_nested_mask_def, simplified]
+            by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
+          show ?thesis
+            apply simp
+            using extcons\<^sub>2
+            by (metis SatAll_case \<open>(r, nm') = lpm\<^sub>2\<close> get_fnm_nm.simps lpm\<^sub>2 total_state.select_convs(2) total_state.update_convs(2))
+        qed
+      next
+        case lpm\<^sub>1: (Some lpm\<^sub>1)
+        show ?thesis
+        proof (cases "fnm\<^sub>2 (pid,vs)")
+          case lpm\<^sub>2: None
+          have "(r,nm') = lpm\<^sub>1"
+            using lpm[unfolded plus_nested_mask_def, simplified]
+            by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
+          show ?thesis
+            apply simp
+            using extcons\<^sub>1
+            by (metis SatAll_case \<open>(r, nm') = lpm\<^sub>1\<close> get_fnm_nm.simps lpm\<^sub>1 total_state.select_convs(2) total_state.update_convs(2))
+        next
+          case lpm\<^sub>2: (Some lpm\<^sub>2)
+          have "(r,nm') = (fst lpm\<^sub>1 + fst lpm\<^sub>2, snd lpm\<^sub>1 + snd lpm\<^sub>2)"
+            using lpm[unfolded plus_nested_mask_def, simplified, folded plus_nested_mask_def]
+            by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
+          then show ?thesis
+            apply (simp add: pos2p_add_distr[symmetric])
+            apply (rule IH(2)[of "Some lpm\<^sub>1" "Some lpm\<^sub>2", simplified])
+               apply (metis lpm\<^sub>1 range_eqI)
+              apply (metis lpm\<^sub>2 range_eqI)
+             apply (metis extcons\<^sub>1 consistent_external.cases get_fnm_nm.simps get_fnm_total.simps lpm\<^sub>1 prod.collapse total_state.select_convs(2) total_state.update_convs(2))
+            by (metis extcons\<^sub>2 consistent_external.cases get_fnm_nm.simps get_fnm_total.simps lpm\<^sub>2 prod.collapse total_state.select_convs(2) total_state.update_convs(2))
+        qed
+      qed
+    qed
+  }
+qed
 
 
 subsection \<open>Fractioning Nested Mask\<close>

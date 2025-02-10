@@ -88,6 +88,7 @@ proof -
                        (get_mp_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>))
                        (syntactic_mult (Rep_preal p) pbody)"
     using exhale_diff_sat[OF _ assms(6), of \<omega>'] assms ctxt_wf_pred_def syntactic_mult_supported
+          prat_non_negative total_state.surjective total_state.update_convs(2)
     by fastforce
 next
   show "consistent_external ctxt (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>)"
