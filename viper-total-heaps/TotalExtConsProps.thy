@@ -1191,6 +1191,75 @@ lemma combinability_sat:
   sorry
 
 
+lemma sum_consistent_external_helper:
+  assumes
+    "\<And>x y lp p q.
+        x \<in> range fnm\<^sub>1 \<Longrightarrow>
+        y \<in> range fnm\<^sub>2 \<Longrightarrow>
+        \<not> Option.is_none x \<Longrightarrow>
+        \<not> Option.is_none y \<Longrightarrow>
+        consistent_external_wrt_ploc ctxt
+         \<lparr> get_hh_total = hh, get_nm_total = snd (the x) \<rparr> lp p \<Longrightarrow>
+        consistent_external_wrt_ploc ctxt
+         \<lparr> get_hh_total = hh, get_nm_total = snd (the y) \<rparr> lp q \<Longrightarrow>
+        consistent_external_wrt_ploc ctxt
+         \<lparr> get_hh_total = hh, get_nm_total = snd (the x) + snd (the y) \<rparr> lp (p + q)"
+      and "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 \<rparr>"
+      and "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>2 fnm\<^sub>2 \<rparr>"
+    shows "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 + NM mh\<^sub>2 fnm\<^sub>2 \<rparr>"
+proof
+  fix pid vs r nm'
+  assume lpm: "Some (r,nm') = get_fnm_total \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 + NM mh\<^sub>2 fnm\<^sub>2 \<rparr> (pid,vs)"
+  show "consistent_external_wrt_ploc ctxt
+          (\<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 + NM mh\<^sub>2 fnm\<^sub>2 \<rparr>\<lparr> get_nm_total := nm' \<rparr>)
+          (pid,vs) (pos2p r)"
+  proof (cases "fnm\<^sub>1 (pid,vs)")
+    case lpm\<^sub>1: None
+    show ?thesis
+    proof (cases "fnm\<^sub>2 (pid,vs)")
+      case lpm\<^sub>2: None
+      show ?thesis
+        using lpm[unfolded plus_nested_mask_def, simplified]
+        by (simp add: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
+    next
+      case lpm\<^sub>2: (Some lpm\<^sub>2)
+      have "(r,nm') = lpm\<^sub>2"
+        using lpm[unfolded plus_nested_mask_def, simplified]
+        by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
+      show ?thesis
+        apply simp
+        using assms(3)
+        by (metis SatAll_case \<open>(r, nm') = lpm\<^sub>2\<close> get_fnm_nm.simps lpm\<^sub>2 total_state.select_convs(2) total_state.update_convs(2))
+    qed
+  next
+    case lpm\<^sub>1: (Some lpm\<^sub>1)
+    show ?thesis
+    proof (cases "fnm\<^sub>2 (pid,vs)")
+      case lpm\<^sub>2: None
+      have "(r,nm') = lpm\<^sub>1"
+        using lpm[unfolded plus_nested_mask_def, simplified]
+        by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
+      show ?thesis
+        apply simp
+        using assms(2)
+        by (metis SatAll_case \<open>(r, nm') = lpm\<^sub>1\<close> get_fnm_nm.simps lpm\<^sub>1 total_state.select_convs(2) total_state.update_convs(2))
+    next
+      case lpm\<^sub>2: (Some lpm\<^sub>2)
+      have "(r,nm') = (fst lpm\<^sub>1 + fst lpm\<^sub>2, snd lpm\<^sub>1 + snd lpm\<^sub>2)"
+        using lpm[unfolded plus_nested_mask_def, simplified, folded plus_nested_mask_def]
+        by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
+      then show ?thesis
+        apply (simp add: pos2p_add_distr[symmetric])
+        apply (rule assms(1)[of "Some lpm\<^sub>1" "Some lpm\<^sub>2", simplified])
+           apply (metis lpm\<^sub>1 range_eqI)
+          apply (metis lpm\<^sub>2 range_eqI)
+         apply (metis assms(2) consistent_external.cases get_fnm_nm.simps get_fnm_total.simps lpm\<^sub>1 prod.collapse total_state.select_convs(2) total_state.update_convs(2))
+        by (metis assms(3) consistent_external.cases get_fnm_nm.simps get_fnm_total.simps lpm\<^sub>2 prod.collapse total_state.select_convs(2) total_state.update_convs(2))
+    qed
+  qed
+qed
+
+
 lemma sum_consistent_external:
     shows "consistent_external ctxt (\<lparr> get_hh_total = hh, get_nm_total = nm\<^sub>1 \<rparr>) \<Longrightarrow>
            consistent_external ctxt (\<lparr> get_hh_total = hh, get_nm_total = nm\<^sub>2 \<rparr>) \<Longrightarrow>
@@ -1203,57 +1272,8 @@ proof (induction arbitrary: lp p q rule: nested_mask_merge.induct[of _ nm\<^sub>
   {
     case 1
     show ?case
-    proof
-      fix pid vs r nm'
-      assume lpm: "Some (r,nm') = get_fnm_total \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 + NM mh\<^sub>2 fnm\<^sub>2 \<rparr> (pid,vs)"
-      show "consistent_external_wrt_ploc ctxt
-              (\<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 + NM mh\<^sub>2 fnm\<^sub>2 \<rparr>\<lparr> get_nm_total := nm' \<rparr>)
-              (pid,vs) (pos2p r)"
-      proof (cases "fnm\<^sub>1 (pid,vs)")
-        case lpm\<^sub>1: None
-        show ?thesis
-        proof (cases "fnm\<^sub>2 (pid,vs)")
-          case lpm\<^sub>2: None
-          show ?thesis
-            using lpm[unfolded plus_nested_mask_def, simplified]
-            by (simp add: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
-        next
-          case lpm\<^sub>2: (Some lpm\<^sub>2)
-          have "(r,nm') = lpm\<^sub>2"
-            using lpm[unfolded plus_nested_mask_def, simplified]
-            by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
-          show ?thesis
-            apply simp
-            using 1
-            by (metis SatAll_case \<open>(r, nm') = lpm\<^sub>2\<close> get_fnm_nm.simps lpm\<^sub>2 total_state.select_convs(2) total_state.update_convs(2))
-        qed
-      next
-        case lpm\<^sub>1: (Some lpm\<^sub>1)
-        show ?thesis
-        proof (cases "fnm\<^sub>2 (pid,vs)")
-          case lpm\<^sub>2: None
-          have "(r,nm') = lpm\<^sub>1"
-            using lpm[unfolded plus_nested_mask_def, simplified]
-            by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
-          show ?thesis
-            apply simp
-            using 1
-            by (metis SatAll_case \<open>(r, nm') = lpm\<^sub>1\<close> get_fnm_nm.simps lpm\<^sub>1 total_state.select_convs(2) total_state.update_convs(2))
-        next
-          case lpm\<^sub>2: (Some lpm\<^sub>2)
-          have "(r,nm') = (fst lpm\<^sub>1 + fst lpm\<^sub>2, snd lpm\<^sub>1 + snd lpm\<^sub>2)"
-            using lpm[unfolded plus_nested_mask_def, simplified, folded plus_nested_mask_def]
-            by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
-          then show ?thesis
-            apply (simp add: pos2p_add_distr[symmetric])
-            apply (rule IH(2)[of "Some lpm\<^sub>1" "Some lpm\<^sub>2", simplified])
-               apply (metis lpm\<^sub>1 range_eqI)
-              apply (metis lpm\<^sub>2 range_eqI)
-             apply (metis "1.prems"(1) consistent_external.cases get_fnm_nm.simps get_fnm_total.simps lpm\<^sub>1 prod.collapse total_state.select_convs(2) total_state.update_convs(2))
-            by (metis "1.prems"(2) consistent_external.cases get_fnm_nm.simps get_fnm_total.simps lpm\<^sub>2 prod.collapse total_state.select_convs(2) total_state.update_convs(2))
-        qed
-      qed
-    qed
+      using sum_consistent_external_helper[OF _ 1(1) 1(2)] IH(2)
+      by fastforce
   next
     case 2
     obtain pid vs where "lp = (pid,vs)"
@@ -1291,57 +1311,8 @@ proof (induction arbitrary: lp p q rule: nested_mask_merge.induct[of _ nm\<^sub>
         apply simp
       using sat\<^sub>2
        apply simp
-    proof
-      fix pid vs r nm'
-      assume lpm: "Some (r,nm') = get_fnm_total \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 + NM mh\<^sub>2 fnm\<^sub>2 \<rparr> (pid,vs)"
-      show "consistent_external_wrt_ploc ctxt
-              (\<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 + NM mh\<^sub>2 fnm\<^sub>2 \<rparr>\<lparr> get_nm_total := nm' \<rparr>)
-              (pid,vs) (pos2p r)"
-      proof (cases "fnm\<^sub>1 (pid,vs)")
-        case lpm\<^sub>1: None
-        show ?thesis
-        proof (cases "fnm\<^sub>2 (pid,vs)")
-          case lpm\<^sub>2: None
-          show ?thesis
-            using lpm[unfolded plus_nested_mask_def, simplified]
-            by (simp add: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
-        next
-          case lpm\<^sub>2: (Some lpm\<^sub>2)
-          have "(r,nm') = lpm\<^sub>2"
-            using lpm[unfolded plus_nested_mask_def, simplified]
-            by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
-          show ?thesis
-            apply simp
-            using extcons\<^sub>2
-            by (metis SatAll_case \<open>(r, nm') = lpm\<^sub>2\<close> get_fnm_nm.simps lpm\<^sub>2 total_state.select_convs(2) total_state.update_convs(2))
-        qed
-      next
-        case lpm\<^sub>1: (Some lpm\<^sub>1)
-        show ?thesis
-        proof (cases "fnm\<^sub>2 (pid,vs)")
-          case lpm\<^sub>2: None
-          have "(r,nm') = lpm\<^sub>1"
-            using lpm[unfolded plus_nested_mask_def, simplified]
-            by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
-          show ?thesis
-            apply simp
-            using extcons\<^sub>1
-            by (metis SatAll_case \<open>(r, nm') = lpm\<^sub>1\<close> get_fnm_nm.simps lpm\<^sub>1 total_state.select_convs(2) total_state.update_convs(2))
-        next
-          case lpm\<^sub>2: (Some lpm\<^sub>2)
-          have "(r,nm') = (fst lpm\<^sub>1 + fst lpm\<^sub>2, snd lpm\<^sub>1 + snd lpm\<^sub>2)"
-            using lpm[unfolded plus_nested_mask_def, simplified, folded plus_nested_mask_def]
-            by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
-          then show ?thesis
-            apply (simp add: pos2p_add_distr[symmetric])
-            apply (rule IH(2)[of "Some lpm\<^sub>1" "Some lpm\<^sub>2", simplified])
-               apply (metis lpm\<^sub>1 range_eqI)
-              apply (metis lpm\<^sub>2 range_eqI)
-             apply (metis extcons\<^sub>1 consistent_external.cases get_fnm_nm.simps get_fnm_total.simps lpm\<^sub>1 prod.collapse total_state.select_convs(2) total_state.update_convs(2))
-            by (metis extcons\<^sub>2 consistent_external.cases get_fnm_nm.simps get_fnm_total.simps lpm\<^sub>2 prod.collapse total_state.select_convs(2) total_state.update_convs(2))
-        qed
-      qed
-    qed
+      using sum_consistent_external_helper[OF _ extcons\<^sub>1 extcons\<^sub>2] IH(2)
+      by fastforce
   }
 qed
 
