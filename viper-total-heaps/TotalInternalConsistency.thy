@@ -328,7 +328,38 @@ lemma mh_1_nested_0:
       and "get_mh_nm nm loc = 1"
       and "get_fnm_nm nm lp = Some lpm"
     shows "nm_loc_sum loc (snd lpm) 0"
-  sorry
+proof -
+  obtain s where s: "s \<le> 1 \<and> nm_loc_sum loc nm s"
+    using assms(1) consistent_internal_def
+    by blast
+  obtain mh fnm where "nm = NM mh fnm"
+    using nm_get_eq
+    by blast
+  hence "mh loc = 1"
+    using assms(2)
+    by force
+
+  from s[unfolded \<open>nm = _\<close>, simplified] obtain pf where
+    *: "Rep_preal (mh loc) \<le> Rep_preal s" and
+    pf: "(pf has_sumA (Rep_preal s - Rep_preal (mh loc)) \<and>
+           (\<forall>lp. option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf lp)) (pf lp = 0) (fnm lp)))"
+    by fast+
+
+  have "s = 1"
+    using *[unfolded \<open>mh loc = 1\<close>] conjunct1[OF s]
+    by (simp add: Rep_preal_inject less_eq_preal.rep_eq)
+
+  with pf have pf0: "pf has_sumA 0"
+    using \<open>mh loc = pos_perm_class.pwrite\<close>
+    by force
+
+  have "pf lp = 0"
+    using nm_loc_sum'_nonneg has_sumA_nonneg_ge_one_real[OF pf0]
+    by (smt (verit, best) has_Some_iff pf)
+
+  thus ?thesis
+    by (metis \<open>nm = _\<close> assms(3) get_fnm_nm.simps nm_loc_sum.simps option_fold.simps(1) pf zero_preal.rep_eq)
+qed
 
 
 subsection \<open>Internal Consistency on Total States\<close>
