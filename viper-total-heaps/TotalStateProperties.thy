@@ -866,28 +866,46 @@ lemma greater_full_total_state_total_state:
   by (metis defined_def full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3) option.distinct(1) option.exhaust_sel option.sel)
 
 
+lemma get_mp_nm_distr_over_plus:
+  shows "get_mp_nm (nm\<^sub>1 + nm\<^sub>2) = add_masks (get_mp_nm nm\<^sub>1) (get_mp_nm nm\<^sub>2)"
+proof
+  fix lp
+  obtain mh\<^sub>1 fnm\<^sub>1 mh\<^sub>2 fnm\<^sub>2 where "nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1" and "nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2"
+    using nm_get_eq
+    by blast
+  show "get_mp_nm (nm\<^sub>1 + nm\<^sub>2) lp = add_masks (get_mp_nm nm\<^sub>1) (get_mp_nm nm\<^sub>2) lp"
+    apply (subst \<open>nm\<^sub>1 = _\<close>)
+    apply (subst \<open>nm\<^sub>2 = _\<close>)
+    apply (cases "fnm\<^sub>1 lp"; cases "fnm\<^sub>2 lp")
+       apply (simp_all add: add_masks_def plus_nested_mask_def pfun_comb_def)
+       apply (simp_all add: \<open>nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1\<close> \<open>nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2\<close>)
+    apply (simp add: pos2p_def preal_to_real posreal_to_real)
+    by (smt (verit) Rep_posreal mem_Collect_eq Abs_preal_inverse)
+qed
+
+
 lemma total_state_greater_mask:
   assumes "\<phi> \<succeq> \<phi>'"
   shows "get_mh_total \<phi> \<succeq> get_mh_total \<phi>' \<and> get_mp_total \<phi> \<succeq> get_mp_total \<phi>'"
-  sorry
-(*
 proof -
 
   from assms obtain \<phi>a where "\<phi>' \<oplus> \<phi>a = Some \<phi>"
     unfolding greater_def
     by auto
 
-  hence "get_mh_total \<phi> = add_masks (get_mh_total \<phi>') (get_mh_total \<phi>a)" and
-        "get_mp_total \<phi> = add_masks (get_mp_total \<phi>') (get_mp_total \<phi>a)"
-    using plus_Some_total_state_eq
-    by fastforce+
+  hence
+    "get_mh_total \<phi> = add_masks (get_mh_total \<phi>') (get_mh_total \<phi>a)" and
+    "get_mp_total \<phi> = add_masks (get_mp_total \<phi>') (get_mp_total \<phi>a)"
+     apply (metis get_mh_nm__merge get_mh_total.simps option.sel option.simps(3) plus_nested_mask_def plus_total_state_ext_def total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
+    using \<open>\<phi>' \<oplus> \<phi>a = Some \<phi>\<close>[unfolded plus_total_state_ext_def]
+    by (metis \<open>\<phi>' \<oplus> \<phi>a = Some \<phi>\<close> get_mp_nm_distr_over_plus get_mp_total.simps option.inject total_state.select_convs(2) total_state.surjective total_state.update_convs(2) total_state_plus_defined)
 
   thus ?thesis
     using mask_plus_Some
     unfolding greater_def
     by metis
 qed
-*)
+
 
 lemma full_total_state_greater_mask:
   assumes "\<omega> \<succeq> \<omega>'"
@@ -1013,23 +1031,6 @@ lemma full_total_state_defined_core_same_2:
   using assms full_total_state_defined_core_same
   unfolding defined_def
   by fast
-
-lemma get_mp_nm_distr_over_plus:
-  shows "get_mp_nm (nm\<^sub>1 + nm\<^sub>2) = add_masks (get_mp_nm nm\<^sub>1) (get_mp_nm nm\<^sub>2)"
-proof
-  fix lp
-  obtain mh\<^sub>1 fnm\<^sub>1 mh\<^sub>2 fnm\<^sub>2 where "nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1" and "nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2"
-    using nm_get_eq
-    by blast
-  show "get_mp_nm (nm\<^sub>1 + nm\<^sub>2) lp = add_masks (get_mp_nm nm\<^sub>1) (get_mp_nm nm\<^sub>2) lp"
-    apply (subst \<open>nm\<^sub>1 = _\<close>)
-    apply (subst \<open>nm\<^sub>2 = _\<close>)
-    apply (cases "fnm\<^sub>1 lp"; cases "fnm\<^sub>2 lp")
-       apply (simp_all add: add_masks_def plus_nested_mask_def pfun_comb_def)
-       apply (simp_all add: \<open>nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1\<close> \<open>nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2\<close>)
-    apply (simp add: pos2p_def preal_to_real posreal_to_real)
-    by (smt (verit) Rep_posreal mem_Collect_eq Abs_preal_inverse)
-qed
 
 lemma minus_total_state:
   assumes "\<phi> \<succeq> \<phi>'"
