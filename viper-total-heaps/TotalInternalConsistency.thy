@@ -59,7 +59,7 @@ proof (cases "q > 0")
       then show ?thesis
         apply (simp add: pf'_def fnm')
         apply (intro conjI)
-         apply (simp add: divide_preal.rep_eq zero_preal.rep_eq)
+         apply (simp add: divide_preal.rep_eq minus_preal.rep_eq)
         by (metis lpm mult.commute nm_loc_sum'_mult option_fold.simps(1) pf_each snd_conv)
     next
       case False
@@ -120,9 +120,144 @@ lemma unfold_preserves_internal_consistency:
 subsubsection \<open>Fold preserves internal consistency\<close>
 
 lemma exhale_0_state_same:
-  assumes "red_exhale ctxt R \<omega>0 (syntactic_mult 0 pred_body) \<omega> (RNormal \<omega>')"
+  assumes "red_exhale ctxt R \<omega>0 (syntactic_mult 0 A) \<omega> (RNormal \<omega>')"
   shows "\<omega>' = \<omega>"
-  sorry
+  using assms
+proof (induction A arbitrary: \<omega> \<omega>')
+  case IH: (Atomic atm)
+  show ?case
+  proof (cases atm)
+    case (Pure e)
+    show ?thesis
+      using red_exhale.cases[OF IH[simplified Pure, simplified], simplified]
+      by (metis exh_if_total.elims result_total.distinct(5) result_total.inject)
+  next
+    case (Acc e_r f perm)
+    show ?thesis
+    proof (cases perm)
+      case (PureExp e_p)
+      obtain mh v_r v_p a where
+        "mh = get_mh_total_full \<omega>" and
+        "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)" and
+        v_p: "ctxt, (Some \<omega>0) \<turnstile> \<langle>Binop (ELit NoPerm) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
+        "a = the_address v_r" and
+        "RNormal \<omega>' = exh_if_total (v_p \<ge> 0 \<and> (if v_r = Null then v_p = 0 else mh (a,f) \<ge> Abs_preal v_p))
+                                   (if v_r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a,f) (Abs_preal v_p))"
+        using IH[simplified Acc PureExp, simplified]
+        by (auto elim: red_exhale.cases)
+      hence "v_p = 0"
+        using RedBinop_case[OF v_p, simplified]
+        by (metis (no_types, lifting) RedLit_case binop_result.inject eval_binop_perm_mult_constant extended_val.inject mult_not_zero val.inject(3) val_of_lit.simps(3))
+      moreover have "dec_mh_loc_total_full \<omega> (a,f) (Abs_preal v_p) = \<omega>"
+        apply (simp add: \<open>v_p = 0\<close>)
+        apply (rule full_total_state.equality)
+           apply simp_all
+        apply (rule total_state.equality)
+          apply simp_all
+        apply (rule nested_mask_equality)
+         apply standard
+         apply (simp_all add: zero_preal.abs_eq[symmetric])
+        using all_pos greater_minus_plus
+        by fastforce
+      then show ?thesis
+        using exh_if_total.elims[OF \<open>RNormal \<omega>' = _\<close>[symmetric], simplified]
+        by metis
+    next
+      case Wildcard
+      obtain mh v_r v_p a where
+        "mh = get_mh_total_full \<omega>" and
+        "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r)" and
+        "ctxt, (Some \<omega>0) \<turnstile> \<langle>ELit NoPerm; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
+        "a = the_address v_r" and
+        "RNormal \<omega>' = exh_if_total (v_p \<ge> 0 \<and> (if v_r = Null then v_p = 0 else mh (a,f) \<ge> Abs_preal v_p))
+                                   (if v_r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a,f) (Abs_preal v_p))"
+        using IH[simplified Acc Wildcard, simplified]
+        by (auto elim: red_exhale.cases)
+      hence "v_p = 0"
+        by (auto elim: RedLit_case)
+      moreover have "dec_mh_loc_total_full \<omega> (a,f) (Abs_preal v_p) = \<omega>"
+        apply (simp add: \<open>v_p = 0\<close>)
+        apply (rule full_total_state.equality)
+           apply simp_all
+        apply (rule total_state.equality)
+          apply simp_all
+        apply (rule nested_mask_equality)
+         apply standard
+         apply (simp_all add: zero_preal.abs_eq[symmetric])
+        using all_pos greater_minus_plus
+        by fastforce
+      ultimately show ?thesis
+        using exh_if_total.elims[OF \<open>RNormal \<omega>' = _\<close>[symmetric], simplified]
+        by metis
+    qed
+  next
+    case (AccPredicate pid e_args perm)
+    show ?thesis
+    proof (cases perm)
+      case (PureExp e_p)
+      obtain mp v_args v_p where
+        "mp = get_mp_total_full \<omega>" and
+        "red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args)" and
+        v_p: "ctxt, (Some \<omega>0) \<turnstile> \<langle>Binop (ELit NoPerm) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
+        "RNormal \<omega>' = exh_if_total (v_p \<ge> 0 \<and> mp (pid,v_args) \<ge> Abs_preal v_p)
+                                   (exhale_pred \<omega> (pid,v_args) (Abs_preal v_p))"
+        using IH[simplified AccPredicate PureExp, simplified]
+        by (auto elim: red_exhale.cases)
+      hence "v_p = 0"
+        using RedBinop_case[OF v_p, simplified]
+        by (metis (no_types, lifting) RedLit_case binop_result.inject eval_binop_perm_mult_constant extended_val.inject mult_not_zero val.inject(3) val_of_lit.simps(3))
+      moreover have "exhale_pred \<omega> (pid,v_args) (Abs_preal v_p) = \<omega>"
+        apply (simp add: \<open>v_p = 0\<close> exhale_pred_def)
+        apply (rule full_total_state.equality)
+           apply simp_all
+        apply (rule total_state.equality)
+          apply simp_all
+        apply (rule nested_mask_equality)
+         apply standard
+         apply simp
+        apply standard
+        apply (subgoal_tac "\<And>x. pos2p x \<le> Abs_preal 0 = False")
+         apply simp
+         apply (smt (verit, ccfv_threshold) Rep_preal_inverse all_pos divide_preal.rep_eq division_ring_divide_zero minus_preal.abs_eq not_None_eq option_fold.simps(1) option_fold.simps(2) pos2p_p2pos_id preal_semimodule_class.scale_one surjective_pairing zero_preal.rep_eq)
+        using linorder_not_le pos2p_gt_0 zero_preal_def
+        by auto
+      then show ?thesis
+        using exh_if_total.elims[OF \<open>RNormal \<omega>' = _\<close>[symmetric], simplified]
+        by metis
+    next
+      case Wildcard
+      obtain mp v_args v_p where
+        "mp = get_mp_total_full \<omega>" and
+        "red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args)" and
+        v_p: "ctxt, (Some \<omega>0) \<turnstile> \<langle>ELit NoPerm; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
+        "RNormal \<omega>' = exh_if_total (v_p \<ge> 0 \<and> mp (pid,v_args) \<ge> Abs_preal v_p)
+                                   (exhale_pred \<omega> (pid,v_args) (Abs_preal v_p))"
+        using IH[simplified AccPredicate Wildcard, simplified]
+        by (auto elim: red_exhale.cases)
+      hence "v_p = 0"
+        by (auto elim: RedLit_case)
+      moreover have "exhale_pred \<omega> (pid,v_args) (Abs_preal v_p) = \<omega>"
+        apply (simp add: \<open>v_p = 0\<close> exhale_pred_def)
+        apply (rule full_total_state.equality)
+           apply simp_all
+        apply (rule total_state.equality)
+          apply simp_all
+        apply (rule nested_mask_equality)
+         apply standard
+         apply simp
+        apply standard
+        apply (subgoal_tac "\<And>x. pos2p x \<le> Abs_preal 0 = False")
+         apply simp
+         apply (smt (verit, ccfv_threshold) Rep_preal_inverse all_pos divide_preal.rep_eq division_ring_divide_zero minus_preal.abs_eq not_None_eq option_fold.simps(1) option_fold.simps(2) pos2p_p2pos_id preal_semimodule_class.scale_one surjective_pairing zero_preal.rep_eq)
+        using linorder_not_le pos2p_gt_0 zero_preal_def
+        by auto
+      ultimately show ?thesis
+        using exh_if_total.elims[OF \<open>RNormal \<omega>' = _\<close>[symmetric], simplified]
+        by metis
+    qed
+  qed
+qed (simp, blast elim: red_exhale.cases)+
+
 
 lemma fold_rel_preserves_loc_sum:
   assumes "fold_rel ctxt pred_id vs p \<omega> (RNormal \<omega>')"

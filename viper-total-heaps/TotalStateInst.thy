@@ -181,7 +181,7 @@ proof
   assume "nested_mask_le nm1 nm2"
      and [simp]: "nm1 = NM mh\<^sub>1 fnm\<^sub>1"
      and [simp]: "nm2 = NM mh\<^sub>2 fnm\<^sub>2"
-  hence mple: "option_fold (\<lambda>lpm\<^sub>1. option_fold (\<lambda>lpm\<^sub>2. fst lpm\<^sub>1 \<le> fst lpm\<^sub>2) False (fnm\<^sub>2 lp)) True (fnm\<^sub>1 lp)"
+  hence mple: "option_fold (\<lambda>lpm\<^sub>1. option_fold (\<lambda>lpm\<^sub>2. fst lpm\<^sub>1 \<le> fst lpm\<^sub>2 \<and> nested_mask_le (snd lpm\<^sub>1) (snd lpm\<^sub>2)) False (fnm\<^sub>2 lp)) True (fnm\<^sub>1 lp)"
     using nested_mask_le.simps
     by blast
   show "get_mp_nm nm1 lp \<le> get_mp_nm nm2 lp"
@@ -414,7 +414,7 @@ instance proof
           apply (rule neq_by_fun[of "\<lambda>f. f l"])
           apply (cases c_nm)
           apply simp
-          by (metis (no_types, lifting) add_cancel_left_left add_masks_def c_nm_def get_mh_nm.simps)
+          by (metis Rep_preal_inject add_cancel_left_left add_masks_def c_nm_def get_mh_nm.simps plus_preal.rep_eq zero_preal.rep_eq)
         thus ?thesis
           using c_c
           by contradiction
@@ -646,7 +646,7 @@ proof
           apply (rule neq_by_fun[of "\<lambda>f. f l"])
           apply (subst nm_get_eq)
           apply (simp add: add_masks_def)
-          by (metis (no_types, lifting) \<open>get_mh_total c l \<noteq> pos_perm_class.pnone\<close> get_mh_total.simps)
+          by (metis PosReal.padd_cancellative \<open>get_mh_total c l \<noteq> pos_perm_class.pnone\<close> add.commute add_0 get_mh_total.simps)
         thus ?thesis
           using x_c
           by contradiction

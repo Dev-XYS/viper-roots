@@ -53,7 +53,6 @@ qed
 
 end
 
-
 instantiation preal :: comm_monoid_mult
 begin
 
@@ -64,7 +63,6 @@ instance proof
 qed
 
 end
-
 
 instantiation preal :: inverse
 begin
@@ -87,6 +85,7 @@ instance proof
 qed
 
 end
+
 
 lemma field_inverse:
   assumes "(a :: preal) \<noteq> 0"
@@ -527,69 +526,5 @@ qed
 
 end
 
-instantiation preal :: topological_space
-begin
-
-lift_definition open_preal :: "preal set \<Rightarrow> bool" is "open \<circ> image Rep_preal" done
-
-instance sorry
-
-end
-
-instantiation preal :: topological_comm_monoid_add
-begin
-
-instance sorry
-
-end
-
-instantiation preal :: topological_semigroup_mult
-begin
-
-instance sorry
-
-end
-
-instantiation preal :: semiring_0
-begin
-
-instance sorry
-
-end
-
-instantiation preal :: t2_space
-begin
-
-instance sorry
-
-end
-
-instantiation preal :: comm_semiring_1_cancel
-begin
-
-instance sorry
-
-end
-
-(* instantiation preal :: topological_ab_group_add
-begin
-
-instance sorry
-
-end
-
-instantiation preal :: ordered_comm_monoid_add
-begin
-
-instance sorry
-
-end
-
-instantiation preal :: linorder_topology
-begin
-
-instance sorry
-
-end *)
 
 end

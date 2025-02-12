@@ -17,7 +17,7 @@ fun upd_mh_loc_nm :: "'a nested_mask \<Rightarrow> heap_loc \<Rightarrow> preal 
   where "upd_mh_loc_nm nm l p = upd_mh_nm nm ((get_mh_nm nm)( l := p ))"
 
 fun dec_mh_loc_nm :: "'a nested_mask \<Rightarrow> heap_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
-  where "dec_mh_loc_nm (NM mh fnm) l p = NM (mh( l := mh l - p )) fnm"
+  where "dec_mh_loc_nm nm l p = upd_mh_nm nm ((get_mh_nm nm)( l := get_mh_nm nm l - p ))"
 
 fun add_to_lpm_nonzero_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> posreal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask"
   where "add_to_lpm_nonzero_nm nm lp p nm' = upd_fnm_nm nm ((get_fnm_nm nm)( lp :=

@@ -551,11 +551,11 @@ proof -
           apply (simp add: True \<open>q\<^sub>s = _\<close> \<open>nm\<^sub>s = _\<close>)
           apply (subgoal_tac "p - Abs_preal q > 0")
            apply (simp add: p2pos_pos2p_id)
-          apply (subgoal_tac "(p - Abs_preal q) / p * p = p - Abs_preal q")
+           apply (subgoal_tac "(p - Abs_preal q) / p * p = p - Abs_preal q")
           using fraction_consistent_external(1)[OF assms(3) pnm_extcons_wrt_ploc, of "(p - Abs_preal q) / p", simplified]
             apply presburger
            apply (metis PosReal.field_divide_inverse PosReal.field_inverse \<open>p = pos2p p\<^sub>p\<close> mult.assoc mult.right_neutral order_less_irrefl pos2p_gt_0) 
-          using True \<open>Abs_preal q \<le> p\<close> \<open>fnm' = _\<close> lpm minus_preal_gte preal_not_0_gt_0
+          using True \<open>Abs_preal q \<le> p\<close> \<open>fnm' = _\<close> lpm minus_preal_gte preal_not_0_gt_0 greater_minus_plus
           by fastforce
       next
         case False

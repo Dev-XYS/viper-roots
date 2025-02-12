@@ -65,12 +65,13 @@ subsection \<open>Mask Ordering\<close>
 
 function (sequential) nested_mask_le :: "'a nested_mask \<Rightarrow> 'a nested_mask \<Rightarrow> bool" where
   "nested_mask_le (NM mh\<^sub>1 fnm\<^sub>1) (NM mh\<^sub>2 fnm\<^sub>2) = (mh\<^sub>1 \<le> mh\<^sub>2 \<and>
-     (\<forall>lp. option_fold (\<lambda>lpm\<^sub>1. option_fold (\<lambda>lpm\<^sub>2. fst lpm\<^sub>1 \<le> fst lpm\<^sub>2) False (fnm\<^sub>2 lp)) True (fnm\<^sub>1 lp)))"
+     (\<forall>lp. option_fold (\<lambda>lpm\<^sub>1. option_fold (\<lambda>lpm\<^sub>2. fst lpm\<^sub>1 \<le> fst lpm\<^sub>2 \<and> nested_mask_le (snd lpm\<^sub>1) (snd lpm\<^sub>2)) False (fnm\<^sub>2 lp)) True (fnm\<^sub>1 lp)))"
   by (pat_completeness) auto
 termination
   apply (relation "nested_mask_rel <*lex*> {}")
   using wf_nested_mask_rel
-  by blast
+   apply blast
+  by fastforce
 
 
 subsection \<open>Mask Split\<close>

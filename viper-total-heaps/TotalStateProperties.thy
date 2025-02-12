@@ -20,7 +20,8 @@ qed
 lemma minus_preal_gte:
   assumes "p \<ge> (q :: preal)"
   shows "p - (p - q) = q"
-  using assms Rep_preal_inject minus_preal.rep_eq psub_smaller by fastforce
+  using assms Rep_preal_inject minus_preal.rep_eq psub_smaller
+  by fastforce
 
 lemma mask_plus_Some:
   shows "(m1 :: ('a, preal) abstract_mask) \<oplus> m2 = Some (add_masks m1 m2)"
@@ -333,22 +334,24 @@ subsection \<open>Lemmas on Mask Diff\<close>
 lemma mh_upd_loc_diff:
   assumes "p \<le> mh l"
   shows "mh - (mh( l := p )) = singleton_mh l (mh l - p)"
-  by (standard, simp)
+  apply standard
+  by (simp add: minus_preal.abs_eq zero_preal.abs_eq)
 
 lemma mp_upd_loc_diff:
   assumes "p \<le> mp lp"
   shows "mp - (mp( lp := p )) = singleton_mp lp (mp lp - p)"
-  by (standard, simp)
+  apply standard
+  by (simp add: minus_preal.abs_eq zero_preal.abs_eq)
 
 lemma same_mh_diff:
   shows "get_mh_total_full \<omega> - get_mh_total_full \<omega> = zero_mask"
   apply standard
-  by (simp add: zero_mask_def)
+  by (simp add: minus_preal.abs_eq zero_preal.abs_eq zero_mask_def)
 
 lemma same_mp_diff:
   shows "get_mp_total_full \<omega> - get_mp_total_full \<omega> = zero_mask"
   apply standard
-  by (simp add: zero_mask_def)
+  by (simp add: minus_preal.abs_eq zero_preal.abs_eq zero_mask_def)
 
 lemma dec_mh_mh_diff:
   assumes "p < get_mh_total_full \<omega> loc"
@@ -375,21 +378,25 @@ subsection \<open>Helper Lemmas for Mask Multiplication\<close>
 
 lemma singleton_mh_multiply:
   shows "singleton_mh loc (q * p) = ((*) q) \<circ> singleton_mh loc p"
-  by (standard, simp)
+  apply standard
+  by (simp add: Rep_preal_inject[symmetric] times_preal.rep_eq zero_preal.rep_eq)
 
 lemma singleton_mp_multiply:
   shows "singleton_mp loc (q * p) = ((*) q) \<circ> singleton_mp loc p"
-  by (standard, simp)
+  apply standard
+  by (simp add: Rep_preal_inject[symmetric] times_preal.rep_eq zero_preal.rep_eq)
 
 lemma zero_mh_multiply:
   fixes frac :: preal
   shows "mul_mask frac zero_mask = zero_mask"
-  by (standard, simp add: mul_mask_def zero_mask_def)
+  apply standard
+  by (simp add: Rep_preal_inject[symmetric] times_preal.rep_eq zero_preal.rep_eq mul_mask_def zero_mask_def)
 
 lemma zero_mp_multiply:
   fixes frac :: preal
   shows "mul_mask frac zero_mask = zero_mask"
-  by (standard, simp add: mul_mask_def zero_mask_def)
+  apply standard
+  by (simp add: Rep_preal_inject[symmetric] times_preal.rep_eq zero_preal.rep_eq mul_mask_def zero_mask_def)
 
 lemma get_mh_multiply [simp]:
   fixes frac :: preal
@@ -407,7 +414,8 @@ proof
     then show ?thesis
       apply (simp add: mul_mask_def scale_nested_mask_def)
       apply (cases "get_nm_total \<phi>")
-      by simp
+      apply simp
+      by (metis lambda_zero map_fun_apply mult.commute times_preal_def zero_preal.abs_eq zero_preal.rep_eq)
   next
     case (Some a)
     then show ?thesis
@@ -415,9 +423,11 @@ proof
       apply (cases "get_nm_total \<phi>")
       apply (cases "frac = 0")
        apply simp_all
-      apply (simp add: pos2p_def)
-      apply (simp add: preal_to_real posreal_to_real)
-      by (smt (verit, del_insts) Abs_posreal_inverse Rep_posreal Rep_preal_inject mem_Collect_eq mult.commute prat_non_negative preal_to_real(12) times_posreal.rep_eq times_preal.rep_eq zero_preal.rep_eq)
+       apply (simp add: pos2p_def)
+       apply (simp add: preal_to_real posreal_to_real)
+      using times_preal.rep_eq zero_preal.rep_eq
+       apply force
+      by (smt (verit, ccfv_threshold) Abs_posreal_inverse Rep_posreal Rep_preal_inverse mem_Collect_eq mult.commute pos2p_def prat_non_negative preal_to_real(12) times_posreal.rep_eq times_preal.rep_eq zero_preal.rep_eq)
   qed
 qed
 
@@ -479,7 +489,7 @@ lemma get_valid_locs_multiply:
   apply standard
   using PosReal.pgt.rep_eq assms preal_pnone_pgt times_preal.rep_eq zero_preal.rep_eq less_preal.rep_eq
    apply (simp add: mul_mask_def)
-  by (metis comp_apply mul_mask_def mult_zero_right preal_not_0_gt_0)
+  by (metis PosReal.pmult_comm comp_def mul_mask_0 mul_mask_def pperm_pnone_pgt singleton_mh.elims)
 
 lemma nm_multiply_none:
     fixes frac :: preal
@@ -1051,7 +1061,7 @@ proof
   show "?B"
     apply standard
     apply (subst minus)
-    by (metis ** add_diff_cancel_left' minus_apply)
+    by (metis ** add_masks_def add_masks_minus minus_apply)
 qed
 
 lemma minus_full_total_state_only_mask_different:

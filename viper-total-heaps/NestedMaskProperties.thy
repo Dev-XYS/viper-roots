@@ -485,11 +485,5 @@ lemma nm_loc_sum_smaller:
     shows "\<exists>s'. s' \<le> s \<and> nm_loc_sum loc nm' s'"
   sorry
 
-lemma nm_sum_is_bigger:
-  fixes nm1 nm2 nm :: "'a nested_mask"
-  assumes "nm = nm1 + nm2"
-  shows "nm1 \<le> nm"
-  sorry
-
 
 end

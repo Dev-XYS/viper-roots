@@ -149,7 +149,7 @@ next
   have "get_mp_total_full (mult_nm_total_full \<omega>_def frac) (pred_id, vs) = 0"
     using IH(3)
     apply simp
-    by (metis comp_apply get_mp_nm.simps mult_not_zero nm_multiply_mp_value)
+    by (metis comp_apply get_mp_nm.simps mult_zero_right nm_multiply_mp_value preal_to_real(10) times_preal.rep_eq zero_preal.rep_eq)
   show ?case
     apply (simp del: mult_nm_total_full.simps)
     by (metis (mono_tags, lifting) IH.IH(2) IH.prems RedUnfoldingDefNoPred \<open>get_mp_total_full (mult_nm_total_full \<omega>_def frac) (pred_id, vs) = pos_perm_class.pnone\<close> option.simps(9) sub_pure_exp_total.simps(9) supported_sub_expr_supported)
@@ -174,7 +174,7 @@ next
          apply simp
         apply blast
        apply simp
-       apply (metis IH.hyps(1) IH.hyps(2) PosReal.field_divide_inverse assms comp_apply get_mp_nm.simps get_mp_total.elims get_mp_total_full.simps mult_zero_left nm_multiply_back preal_not_0_gt_0)
+       apply (metis IH.hyps(1) IH.hyps(2) PosReal.field_divide_inverse Rep_preal_inverse assms comp_apply get_mp_nm.simps get_mp_total.simps get_mp_total_full.elims mult_zero_left nm_multiply_back preal_not_0_gt_0 times_preal.rep_eq zero_preal.rep_eq)
     using nm_unfold
       apply blast
      apply simp
@@ -400,7 +400,7 @@ proof -
          apply (rule a_eval)
         apply simp
       using v_r_non_null zero_preal_def
-       apply auto[1]
+       apply (metis (mono_tags, lifting) is_singleton_mh.simps map_fun_apply mh_sing mult_eq_0_iff singleton_mh_multiply times_preal_def zero_preal.rep_eq)
       by simp
   next
     case False
@@ -505,8 +505,8 @@ proof -
          apply auto[1]
         apply simp
        apply simp
-      using zero_preal_def
-      by fastforce
+      apply standard
+      by (metis Rep_preal_inverse comp_apply mult_eq_0_iff singleton_mp.elims times_preal.rep_eq zero_preal.rep_eq)
   next
     case False
     hence "Rep_preal p \<noteq> 0" and "Rep_preal p > 0"
@@ -1306,7 +1306,7 @@ next
        apply simp
        apply (rule exI[of _ "mh\<^sub>1 (a,f) + mh\<^sub>2 (a,f)"])
        apply (intro conjI)
-        apply (metis add_cancel_right_left is_singleton_mh.simps mh\<^sub>1 padd_pos pperm_pnone_pgt singleton_mh.simps)
+        apply (metis add.commute is_singleton_mh.simps linorder_not_less mh\<^sub>1 pos_perm_class.sum_larger preal_not_0_gt_0 singleton_mh.simps)
        apply standard
        apply (simp add: add_masks_def)
        apply (metis SatAccWildcard_case \<open>a = _\<close> assms(1)[simplified, simplified \<open>p \<noteq> 0\<close> \<open>p > 0\<close>, simplified] assms(2)[simplified, simplified \<open>q \<noteq> 0\<close> \<open>q > 0\<close>, simplified] add.right_neutral eval_is_deterministic(1) extended_val.inject singleton_mh.simps v_r val.inject(4))

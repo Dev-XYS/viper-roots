@@ -587,7 +587,7 @@ lemma exhale_mh_diff:
   apply (simp add: exhale_pred_def)
   apply standard
   unfolding zero_mask_def
-  by simp
+  by (simp add: minus_preal.abs_eq zero_preal_def)
 
 lemma exhale_mp_diff:
   assumes "p \<le> get_mp_total_full \<omega> ploc"
@@ -602,11 +602,11 @@ proof -
     apply standard
     apply (simp add: exhale_pred_def)
     apply (cases "get_fnm_total_full \<omega> ploc")
-    using all_pos assms order_antisym_conv
-     apply auto[1]
+    using all_pos antisym assms minus_preal.abs_eq zero_preal_def
+     apply fastforce
     apply simp
     using pos2p_p2pos_id
-    by (metis (no_types, opaque_lifting) add.commute assms comp_def get_mp_nm.simps get_mp_total.simps get_mp_total_full.simps greater_minus_plus minus_preal_gte option_fold.simps(1) order_class.order_eq_iff p2pos_pos2p_id preal_not_0_gt_0 verit_sum_simplify)
+    by (smt (verit, best) "2" antisym comp_apply dual_order.refl get_mp_nm.simps get_mp_total.simps get_mp_total_full.simps minus_preal.abs_eq minus_preal_gte option_fold.simps(1) p2pos_pos2p_id pperm_pnone_pgt zero_preal.abs_eq)
 qed
 
 lemma mh_sub_twice:
@@ -656,13 +656,10 @@ proof (induction arbitrary: \<omega>')
       apply (simp add: If_def \<omega>')
     using 1 IH.hyps(1) IH.hyps(4) mh_upd_loc_diff minus_preal_gte psub_smaller
       apply auto[1]
-    using 1 \<omega>'
-      apply (metis (no_types, opaque_lifting) dec_mh_loc_nm.simps get_mh_nm.simps nm_get_eq)
     using 1 \<omega>' same_mh_diff
      apply force
     apply standard
-    apply (simp add: zero_mask_def \<omega>')
-    by (metis cancel_comm_monoid_add_class.diff_cancel dec_mh_loc_nm.simps get_fnm_nm.simps nm_get_eq)
+    by (simp add: zero_mask_def \<omega>' minus_preal.abs_eq zero_preal.abs_eq)
 next
   case IH: (ExhAccWildcard mh \<omega> e_r r a f q)
   have 1: "mh (a,f) \<noteq> 0 \<and> r \<noteq> Null"
