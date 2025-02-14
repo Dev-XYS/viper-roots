@@ -629,12 +629,10 @@ qed
 
 subsection \<open>Preserved by \<^const>\<open>red_stmt_total\<close>\<close>
 
-inductive_simps RedMethodCall_simp: "red_stmt_total ctxt R \<Lambda> (MethodCall ys m es) \<omega> (RNormal \<omega>')"
-
 lemma extcons_preserved_by_red_stmt:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
-      and "consistent_internal (get_nm_total_full \<omega>)"
-      and "red_stmt_total ctxt StateCons \<Lambda> stmt \<omega> (RNormal \<omega>')"
+      and "consistent_internal_total_full \<omega>"
+      and "red_stmt_total ctxt consistent_internal_total_full \<Lambda> stmt \<omega> (RNormal \<omega>')"
       and "ctxt_wf_pred ctxt"
       and "ctxt_pred_self_framing ctxt"
     shows "consistent_external ctxt (get_total_full \<omega>')"
@@ -664,10 +662,9 @@ next
     using RedIfNormal_case
     by blast
 next
-  case (Seq s1 s2)
+  case IH: (Seq s1 s2)
   then show ?case
-    using RedSeqNormal_case
-    by (metis intcons_preserved_by_red_stmt)
+    by (meson RedSeqNormal_case intcons_preserved_by_red_stmt)
 next
   case IH: (LocalAssign x e)
   then show ?case
@@ -684,6 +681,7 @@ next
     by blast
   then show ?case
     using extcons_preserved_by_field_assignment[OF IH(1)] IH.prems(2) assms(5) get_writeable_locs_def
+          consistent_internal_total_def consistent_internal_total_full_def
     by fastforce
 next
   case (Havoc _)
@@ -698,7 +696,7 @@ next
     "list_all2 (\<lambda> y t. y = Some t) (map \<Lambda> ys) (method_decl.rets mdecl)" and
     "vals_well_typed (absval_interp_total ctxt) v_rets (method_decl.rets mdecl)" and
   red_exh:
-    "red_stmt_total ctxt StateCons \<Lambda> (Exhale (method_decl.pre mdecl))
+    "red_stmt_total ctxt consistent_internal_total_full \<Lambda> (Exhale (method_decl.pre mdecl))
                     \<lparr> get_store_total = (shift_and_add_list_alt Map.empty v_args),
                       get_trace_total = [old_label \<mapsto> get_total_full \<omega>],
                       get_total_full = get_total_full \<omega> \<rparr>
@@ -706,7 +704,7 @@ next
     "resPre = RFailure \<or> resPre = RMagic \<Longrightarrow> RNormal \<omega>' = resPre" and
   red_inh:
     "\<And> \<omega>Pre. resPre = RNormal \<omega>Pre \<Longrightarrow>
-        (red_stmt_total ctxt StateCons \<Lambda> (Inhale (method_decl.post mdecl))
+        (red_stmt_total ctxt consistent_internal_total_full \<Lambda> (Inhale (method_decl.post mdecl))
                         \<lparr> get_store_total = (shift_and_add_list_alt Map.empty (v_args @ v_rets)),
                           get_trace_total = [old_label \<mapsto> get_total_full \<omega>],
                           get_total_full = get_total_full \<omega>Pre \<rparr>
@@ -758,7 +756,7 @@ next
   case IH: (Scope \<tau> scopeBody)
   then obtain v res where
     "get_type (absval_interp_total ctxt) v = \<tau>" and
-    red: "red_stmt_total ctxt StateCons (shift_and_add \<Lambda> \<tau>) scopeBody (shift_and_add_state_total \<omega> v) res" and
+    red: "red_stmt_total ctxt consistent_internal_total_full (shift_and_add \<Lambda> \<tau>) scopeBody (shift_and_add_state_total \<omega> v) res" and
     map: "RNormal \<omega>' = map_result_total (unshift_state_total 1) res"
     using RedScope_case[OF IH(4)]
     by (metis One_nat_def shift_and_add_state_total.elims sub_expressions.simps(17) update_store_total.simps)
@@ -771,7 +769,8 @@ next
     by (metis map map_result_total.elims)
   have "consistent_external ctxt (get_total_full \<omega>\<^sub>m)"
     using IH(1)[OF * _ red[simplified \<open>res = _\<close>]] IH.prems(2)
-    by fastforce
+    unfolding consistent_internal_total_full_def consistent_internal_total_def
+    by simp
 
   then show ?case
     using \<open>res = RNormal \<omega>\<^sub>m\<close> map

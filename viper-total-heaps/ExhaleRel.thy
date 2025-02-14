@@ -172,14 +172,13 @@ text \<open>\<^const>\<open>framing_exh\<close> expresses an exhale relation inv
       that after exhaling a conjunct we can update \<^term>\<open>\<omega>_inh\<close> to a new normal state (instead of going to magic),
       since we can exhale at most \<^term>\<open>\<omega>\<close>. This is required to prove that \<^const>\<open>framing_exh\<close> is an exhale
       invariant.\<close>
-        
+
+(*
 lemma framing_exh_is_assertion_red_invariant_exh:
   assumes MonoStateCons: "mono_prop_downward StateCons"
   shows "is_exh_rel_invariant ctxt_vpr StateCons (\<lambda>A. no_perm_assertion A \<and> no_unfolding_assertion A)
                                                  (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e)
                                                  (framing_exh ctxt_vpr StateCons)"
-  sorry
-(*
 proof (rule is_exh_rel_invariant_intro)
   \<comment>\<open>Separating Conjunction 1\<close>
   fix A1 A2 \<omega>def \<omega>

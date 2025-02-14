@@ -1542,6 +1542,7 @@ lemmas mask_update_succ_aux = succ_maskI[OF mask_update_greater_aux]
 lemmas mask_update_succ_aux_2 = succ_maskI[OF mask_update_greater_aux_2]
 *)
 
+
 lemma exhale_normal_result_smaller:
   assumes "red_exhale ctxt StateCons \<omega>def A \<omega> res" and
           "res = RNormal \<omega>'"
