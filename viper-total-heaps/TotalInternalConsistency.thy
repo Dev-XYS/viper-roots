@@ -9,6 +9,20 @@ definition consistent_internal :: "'a nested_mask \<Rightarrow> bool" where
   "consistent_internal nm \<equiv> \<forall>loc. \<exists>s. s \<le> 1 \<and> nm_loc_sum loc nm s"
 
 
+subsection \<open>Internal Consistency on Total States\<close>
+
+definition consistent_internal_total where
+  "consistent_internal_total \<phi> \<equiv> consistent_internal (get_nm_total \<phi>)"
+
+
+subsection \<open>Internal Consistency on Full Total States\<close>
+
+definition consistent_internal_total_full where
+  "consistent_internal_total_full \<omega> \<equiv>
+     consistent_internal_total (get_total_full \<omega>) \<and>
+     (\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> consistent_internal_total \<phi>)"
+
+
 lemma shift_up_preserves_loc_sum:
   assumes "shift_up pid vs q nm nm'"
       and "nm_loc_sum loc nm s"
@@ -115,6 +129,13 @@ lemma unfold_preserves_internal_consistency:
       and "consistent_internal (get_nm_total \<phi>)"
     shows "consistent_internal (get_nm_total \<phi>')"
   by (meson assms(1) assms(2) shift_up_preserves_internal_consistency unfold_rel.simps)
+
+lemma unfold_preserves_internal_consistency_total:
+  assumes "unfold_rel ctxt pid vs q \<phi> \<phi>'"
+      and "consistent_internal_total \<phi>"
+    shows "consistent_internal_total \<phi>'"
+  using unfold_preserves_internal_consistency assms(1) assms(2) consistent_internal_total_def
+  by blast
 
 
 subsubsection \<open>Fold preserves internal consistency\<close>
@@ -321,6 +342,20 @@ lemma fold_rel_preserves_internal_consistency:
   by (metis assms(1) assms(2) consistent_internal_def fold_rel_preserves_loc_sum)
 
 
+lemma fold_rel_preserved_trace:
+  assumes "fold_rel ctxt pred_id vs p \<omega> (RNormal \<omega>')"
+  shows "get_trace_total \<omega> = get_trace_total \<omega>'"
+  using assms
+  by (fastforce elim: fold_rel.cases)
+
+
+lemma intcons_preserved_by_fold_rel:
+  assumes "fold_rel ctxt pred_id vs p \<omega> (RNormal \<omega>')"
+      and "consistent_internal_total_full \<omega>"
+    shows "consistent_internal_total_full \<omega>'"
+  by (metis assms(1) assms(2) consistent_internal_total_def consistent_internal_total_full_def fold_rel_preserved_trace fold_rel_preserves_internal_consistency get_nm_total_full.simps)
+
+
 subsection \<open>Full permission in direct mask\<close>
 
 lemma mh_1_nested_0:
@@ -360,27 +395,6 @@ proof -
   thus ?thesis
     by (metis \<open>nm = _\<close> assms(3) get_fnm_nm.simps nm_loc_sum.simps option_fold.simps(1) pf zero_preal.rep_eq)
 qed
-
-
-subsection \<open>Internal Consistency on Total States\<close>
-
-definition consistent_internal_total where
-  "consistent_internal_total \<phi> \<equiv> consistent_internal (get_nm_total \<phi>)"
-
-lemma unfold_preserves_internal_consistency_total:
-  assumes "unfold_rel ctxt pid vs q \<phi> \<phi>'"
-      and "consistent_internal_total \<phi>"
-    shows "consistent_internal_total \<phi>'"
-  using unfold_preserves_internal_consistency assms(1) assms(2) consistent_internal_total_def
-  by blast
-
-
-subsection \<open>Internal Consistency on Full Total States\<close>
-
-definition consistent_internal_total_full where
-  "consistent_internal_total_full \<omega> \<equiv>
-     consistent_internal_total (get_total_full \<omega>) \<and>
-     (\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> consistent_internal_total \<phi>)"
 
 
 end

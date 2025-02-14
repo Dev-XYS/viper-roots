@@ -339,6 +339,7 @@ inductive_cases RedUnfoldFailure_case: "red_stmt_total ctxt R \<Lambda> (Unfold 
 inductive_cases RedFold_case: "red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
 inductive_cases RedFieldAssign_case: "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal \<omega>')"
 inductive_cases RedMethodCall_case: "red_stmt_total ctxt R \<Lambda> (MethodCall ys m es) \<omega> (RNormal \<omega>')"
+inductive_cases RedHavoc_case: "red_stmt_total ctxt R \<Lambda> (Havoc x) \<omega> res"
 
 lemmas red_stmt_total_inversion_thms =
    RedSkip_case
