@@ -224,20 +224,4 @@ inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
    red_exhale ctxt R \<omega>0 A \<omega> RFailure"
 
 
-subsection \<open>Exhale Properties (Todo: put in separate file?)\<close>
-
-lemma exhale_fraction:
-  assumes "red_exhale ctxt R \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
-      and "get_fnm_total_full \<omega>' lp = Some (p', nm')"
-    shows "\<exists>p nm. get_fnm_total_full \<omega> lp = Some (p, nm) \<and> p \<ge> p' \<and> nm' = (pos2p (p' / p)) *\<^sub>s nm"
-  sorry
-
-\<comment> \<open>already proved elsewhere, but need adjustment\<close>
-lemma exhale_smaller:
-  assumes "red_exhale ctxt R \<omega>_def A \<omega> (RNormal \<omega>')"
-    shows "\<And>x. get_mh_total_full \<omega> x \<ge> get_mh_total_full \<omega>' x"
-      and "\<And>x. get_mp_total_full \<omega> x \<ge> get_mp_total_full \<omega>' x"
-  sorry
-
-
 end

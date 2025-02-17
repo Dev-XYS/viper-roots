@@ -116,7 +116,7 @@ next
 qed
 
 
-subsubsection \<open>Unfold preserves internal consistency\<close>
+subsection \<open>Unfold preserves internal consistency\<close>
 
 lemma shift_up_preserves_internal_consistency:
   assumes "shift_up pred_id vs q nm nm'"
@@ -138,7 +138,7 @@ lemma unfold_preserves_internal_consistency_total:
   by blast
 
 
-subsubsection \<open>Fold preserves internal consistency\<close>
+subsection \<open>Fold preserves internal consistency\<close>
 
 lemma exhale_0_state_same:
   assumes "red_exhale ctxt R \<omega>0 (syntactic_mult 0 A) \<omega> (RNormal \<omega>')"
@@ -354,6 +354,27 @@ lemma intcons_preserved_by_fold_rel:
       and "consistent_internal_total_full \<omega>"
     shows "consistent_internal_total_full \<omega>'"
   by (metis assms(1) assms(2) consistent_internal_total_def consistent_internal_total_full_def fold_rel_preserved_trace fold_rel_preserves_internal_consistency get_nm_total_full.simps)
+
+
+subsection \<open>Some Basic Properties\<close>
+
+lemma intcons_mono_prop_downward:
+  shows "mono_prop_downward consistent_internal_total_full"
+  sorry
+
+
+lemma intcons_empty:
+  assumes "is_empty_total \<phi>"
+  shows "consistent_internal_total \<phi>"
+  unfolding consistent_internal_total_def consistent_internal_def
+  apply (intro allI)
+  apply (rule exI[of _ 0])
+  unfolding assms[unfolded is_empty_total_def] zero_nested_mask_def
+  apply (intro conjI)
+   apply (simp add: all_pos)
+  apply (simp add: zero_mask_def)
+  apply (rule exI[of _ "\<lambda>_. 0"])
+  by force
 
 
 subsection \<open>Full permission in direct mask\<close>

@@ -245,10 +245,10 @@ fun mult_rm_nm_loc_total_full :: "('a, 'b) full_total_state_scheme \<Rightarrow>
 
 subsection \<open>Empty States\<close>
 
-definition is_empty_total :: "('a,'b) total_state_scheme \<Rightarrow> bool"
+definition is_empty_total :: "'a total_state \<Rightarrow> bool"
   where "is_empty_total \<phi> \<equiv> get_nm_total \<phi> = 0"
 
-definition is_empty_total_full :: "('a,'b) full_total_state_scheme \<Rightarrow> bool"
+definition is_empty_total_full :: "'a full_total_state \<Rightarrow> bool"
   where "is_empty_total_full \<omega> \<equiv> is_empty_total (get_total_full \<omega>)"
 
 

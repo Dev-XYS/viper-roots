@@ -131,4 +131,10 @@ lemma pos2p_add_distr:
   shows "pos2p a + pos2p b = pos2p (a + b)"
   by (metis Abs_posreal_inverse Rep_preal_inject gr_0_is_ppos mem_Collect_eq p2pos_def plus_posreal.rep_eq plus_preal.rep_eq pos2p_gt_0 pos2p_p2pos_id ppos.rep_eq)
 
+lemma pos2p_mult:
+  shows "pos2p a * pos2p b = pos2p (a * b)"
+  apply (simp add: pos2p_def posreal_to_real preal_to_real)
+  by (metis Abs_posreal_cases Abs_posreal_inverse dual_order.order_iff_strict mem_Collect_eq preal_to_real(12) times_posreal.rep_eq times_preal.rep_eq)
+
+
 end

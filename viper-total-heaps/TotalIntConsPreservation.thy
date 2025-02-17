@@ -1,5 +1,5 @@
 theory TotalIntConsPreservation
-  imports TotalInternalConsistency TotalSemantics
+  imports TotalInternalConsistency TotalSemantics TotalSemProperties
 begin
 
 
@@ -115,7 +115,18 @@ lemma intcons_preserved_by_red_exhale_stmt:
   assumes "consistent_internal_total_full \<omega>"
       and "red_stmt_total ctxt consistent_internal_total_full \<Lambda> (Exhale A) \<omega> (RNormal \<omega>')"
     shows "consistent_internal_total_full \<omega>'"
-  sorry
+proof -
+  from assms(2) obtain \<omega>_exh locset where
+    "red_exhale ctxt consistent_internal_total_full \<omega> A \<omega> (RNormal \<omega>_exh)" and
+    "\<omega>' \<in> havoc_locs_state ctxt \<omega>_exh locset"
+    by (blast elim: RedExhale_case)
+  hence "consistent_internal_total_full \<omega>_exh"
+    using assms(1) exhale_normal_result_smaller intcons_mono_prop_downward mono_prop_downward_def
+    by meson
+  thus "consistent_internal_total_full \<omega>'"
+    using \<open>\<omega>' \<in> _\<close>
+    by (metis consistent_internal_total_def consistent_internal_total_full_def get_nm_total_full.simps havoc_locs_state_same_mask havoc_locs_state_same_trace)
+qed
 
 
 lemma intcons_preserved_by_red_stmt:

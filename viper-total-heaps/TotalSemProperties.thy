@@ -1641,6 +1641,46 @@ next
 qed (simp_all)
 *)
 
+
+\<comment> \<open>Almost the same as the lemma above, just extracting mh and mp.\<close>
+lemma exhale_smaller:
+  assumes "red_exhale ctxt R \<omega>_def A \<omega> (RNormal \<omega>')"
+    shows "\<And>x. get_mh_total_full \<omega> x \<ge> get_mh_total_full \<omega>' x"
+      and "\<And>x. get_mp_total_full \<omega> x \<ge> get_mp_total_full \<omega>' x"
+proof -
+  from assms(1) have "\<omega> \<succeq> \<omega>'"
+    by (simp add: exhale_normal_result_smaller)
+  then obtain \<omega>\<^sub>d where "\<omega>' \<oplus> \<omega>\<^sub>d = Some \<omega>"
+    by (metis greater_def)
+  have *: "get_nm_total_full \<omega>' + get_nm_total_full \<omega>\<^sub>d = get_nm_total_full \<omega>"
+    using \<open>\<omega>' \<oplus> \<omega>\<^sub>d = Some \<omega>\<close>[unfolded plus_full_total_state_ext_def plus_total_state_ext_def]
+    by (smt (verit, ccfv_SIG) Some_Some_ifD defined_def full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3) get_nm_total_full.simps option.sel plus_total_state_ext_def total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
+
+  obtain mh fnm mh' fnm' mh\<^sub>d fnm\<^sub>d where
+    nm_\<omega>: "get_nm_total_full \<omega> = NM mh fnm" and
+    nm_\<omega>': "get_nm_total_full \<omega>' = NM mh' fnm'" and
+    nm_\<omega>\<^sub>d: "get_nm_total_full \<omega>\<^sub>d = NM mh\<^sub>d fnm\<^sub>d"
+    using nm_get_eq
+    by blast
+
+  fix l
+  show "get_mh_total_full \<omega>' l \<le> get_mh_total_full \<omega> l"
+    apply simp
+    using *[simplified]
+    by (metis \<open>\<omega> \<succeq> \<omega>'\<close> full_total_state_succ_implies_gte get_nm_total_full.simps le_fun_def less_eq_full_total_stateD_2 less_eq_nested_maskD)
+
+  fix lp
+  show "get_mp_total_full \<omega>' lp \<le> get_mp_total_full \<omega> lp"
+    apply (simp add: nm_\<omega>[simplified] nm_\<omega>'[simplified])
+    apply (cases "fnm lp"; cases "fnm' lp"; cases "fnm\<^sub>d lp")
+           apply simp_all
+    using fun_cong[OF conjunct2[OF *[unfolded plus_nested_mask_def nm_\<omega> nm_\<omega>' nm_\<omega>\<^sub>d, simplified]],
+                   of lp, simplified pfun_comb_def, simplified]
+         apply (auto simp: all_pos)
+    by (metis padd_pgte pos2p_add_distr)
+qed
+
+
 lemma exhale_pure_normal_same:
   assumes "red_exhale ctxt R \<omega>def A \<omega> res" 
       and "res = RNormal \<omega>'"
@@ -1648,6 +1688,173 @@ lemma exhale_pure_normal_same:
     shows "\<omega> = \<omega>'"
   using assms
   by (induction) (auto elim: exh_if_total.elims)
+
+
+lemma pos2p_le_implies_le:
+  assumes "pos2p a \<le> pos2p b"
+  shows "a \<le> b"
+  by (metis Rep_posreal assms eq_onp_same_args less_eq_posreal.rep_eq less_eq_preal.abs_eq mem_Collect_eq order.strict_iff_order pos2p_def)
+
+
+lemma rm_from_lpm_total_full_inverse:
+  assumes "\<omega>' = rm_from_lpm_total_full \<omega> lp p\<^sub>d"
+      and "get_fnm_total_full \<omega>' lp = Some (p',nm')"
+    shows "\<exists>p nm. get_fnm_total_full \<omega> lp = Some (p,nm) \<and> p \<ge> p' \<and> nm' = (pos2p (p' / p)) *\<^sub>s nm"
+  apply (rule exI[of _ "p2pos (pos2p p' + p\<^sub>d)"])
+  apply (rule exI[of _ "((pos2p p' + p\<^sub>d) / p\<^sub>d) *\<^sub>s nm'"])
+proof (intro conjI)
+  show "get_fnm_total_full \<omega> lp = Some (p2pos (pos2p p' + p\<^sub>d), ((pos2p p' + p\<^sub>d) / p\<^sub>d) *\<^sub>s nm')" sorry
+
+  show "p' \<le> p2pos (pos2p p' + p\<^sub>d)"
+    apply (rule pos2p_le_implies_le)
+    apply (subst p2pos_pos2p_id)
+     apply (metis padd_pos pos2p_gt_0 preal_not_0_gt_0)
+    using padd_pgte
+    by blast
+
+  show "nm' = pos2p (p' / p2pos (pos2p p' + p\<^sub>d)) *\<^sub>s ((pos2p p' + p\<^sub>d) / p\<^sub>d) *\<^sub>s nm'"
+    apply (subst preal_semimodule_class.scale_scale)
+    apply (subgoal_tac "pos2p (p' / p2pos (pos2p p' + p\<^sub>d)) * ((pos2p p' + p\<^sub>d) / p\<^sub>d) = 1")
+     apply (simp add: preal_semimodule_class.scale_one)
+    apply (simp add: pos2p_def p2pos_def)
+    sorry
+qed
+
+
+lemma exhale_fraction:
+  assumes "red_exhale ctxt StateCons \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
+      and "get_fnm_total_full \<omega>' lp = Some (p', nm')"
+    shows "\<exists>p nm. get_fnm_total_full \<omega> lp = Some (p, nm) \<and> p \<ge> p' \<and> nm' = (pos2p (p' / p)) *\<^sub>s nm"
+  using assms
+proof (induction A arbitrary: \<omega> \<omega>' p' nm')
+  case (Atomic atm)
+  show ?case
+  proof (cases atm)
+    case (Pure e)
+    hence "\<omega>' = \<omega>"
+      by (metis Atomic.prems(1) atomic_assert.disc(1) exhale_pure_normal_same is_pure.simps(1))
+    then show ?thesis
+      by (metis Atomic.prems(2) div_self divide_posreal.rep_eq one_preal_def order_refl pos2p_def pos2p_gt_0 pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
+  next
+    case (Acc e_r f perm)
+    hence "get_fnm_total_full \<omega> = get_fnm_total_full \<omega>'"
+    proof (cases perm)
+      case (PureExp e_p)
+      show ?thesis
+        apply (rule ExhAcc_case[OF Atomic(1)[unfolded Acc PureExp]])
+         apply simp_all
+        apply (case_tac "r = Null")
+         apply simp
+         apply (metis exh_if_total_normal_2)
+        using exh_if_total_normal_2[of _ _ \<omega>']
+        by simp
+    next
+      case Wildcard
+      show ?thesis
+        apply (rule ExhAcc_case[OF Atomic(1)[unfolded Acc Wildcard]])
+         apply simp_all
+        using exh_if_total_normal_2[of _ _ \<omega>']
+        by simp
+    qed
+    then show ?thesis
+      by (metis Atomic.prems(2) div_self divide_posreal.rep_eq one_preal_def order_refl pos2p_def pos2p_gt_0 pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
+  next
+    case (AccPredicate pid e_args perm)
+    show ?thesis
+    proof (cases perm)
+      case (PureExp e_p)
+      obtain mp v_args v_p where
+        "mp = get_mp_total_full \<omega>" and
+        "red_pure_exps_total ctxt (Some \<omega>\<^sub>0) e_args \<omega> (Some v_args)" and
+        "ctxt, (Some \<omega>\<^sub>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
+        res: "RNormal \<omega>' = exh_if_total (v_p \<ge> 0 \<and> mp (pid,v_args) \<ge> Abs_preal v_p)
+                                        (exhale_pred \<omega> (pid,v_args) (Abs_preal v_p))"
+        using Atomic AccPredicate PureExp
+        by (auto elim: ExhAccPred_case)
+      show ?thesis
+        apply (cases "lp = (pid,v_args)")
+         apply (metis Atomic.prems(2) exh_if_total_normal_2 exhale_pred_def res rm_from_lpm_total_full_inverse)
+        apply (rule exI[of _ p'])
+        apply (rule exI[of _ nm'])
+        apply (intro conjI)
+        using arg_cong[OF exh_if_total_normal_2[OF res[symmetric], unfolded exhale_pred_def], of "\<lambda>\<omega>. get_fnm_total_full \<omega> lp"] Atomic.prems(2)
+          apply simp
+         apply order
+        by (metis div_self divide_posreal.rep_eq one_preal_def pos2p_def pos2p_gt_0 pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
+    next
+      case Wildcard
+      obtain mp v_args q where
+        "mp = get_mp_total_full \<omega>" and
+        "red_pure_exps_total ctxt (Some \<omega>\<^sub>0) e_args \<omega> (Some v_args)" and
+        "mp (pid,v_args) \<noteq> 0 \<Longrightarrow> q > 0 \<and> mp (pid,v_args) > q" and
+        res: "RNormal \<omega>' = exh_if_total (mp (pid,v_args) \<noteq> 0) (exhale_pred \<omega> (pid,v_args) q)"
+        using Atomic AccPredicate Wildcard
+        by (auto elim: ExhAccPredWildcard_case)
+      show ?thesis
+        apply (cases "lp = (pid,v_args)")
+         apply (metis Atomic.prems(2) exh_if_total_normal_2 exhale_pred_def res rm_from_lpm_total_full_inverse)
+        apply (rule exI[of _ p'])
+        apply (rule exI[of _ nm'])
+        apply (intro conjI)
+        using arg_cong[OF exh_if_total_normal_2[OF res[symmetric], unfolded exhale_pred_def], of "\<lambda>\<omega>. get_fnm_total_full \<omega> lp"] Atomic.prems(2)
+          apply simp
+         apply order
+        by (metis div_self divide_posreal.rep_eq one_preal_def pos2p_def pos2p_gt_0 pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
+    qed
+  qed
+next
+  case IH: (Imp e A)
+  then consider (True) "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+               (False) "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    by (auto elim: ExhImp_case)
+  then show ?case
+  proof cases
+    case True
+    hence "red_exhale ctxt StateCons \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
+      using IH.prems(1) eval_is_deterministic(1)
+      by (blast elim: ExhImp_case)
+    then show ?thesis
+      using IH.IH IH.prems(2)
+      by blast
+  next
+    case False
+    hence "\<omega>' = \<omega>"
+      using IH.prems(1) eval_is_deterministic(1)
+      by (blast elim: ExhImp_case)
+    show ?thesis
+      apply (rule exI[of _ p'])
+      apply (rule exI[of _ nm'])
+      by (metis IH.prems(2) \<open>\<omega>' = \<omega>\<close> div_self divide_posreal.rep_eq one_preal_def order_refl pos2p_def pos2p_gt_0 pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
+  qed
+next
+  case IH: (Star A B)
+  then obtain \<omega>\<^sub>A where
+    redA: "red_exhale ctxt StateCons \<omega>\<^sub>0 A \<omega> (RNormal \<omega>\<^sub>A)" and
+    redB: "red_exhale ctxt StateCons \<omega>\<^sub>0 B \<omega>\<^sub>A (RNormal \<omega>')"
+    by (auto elim: ExhStar_case)
+
+  from IH(2)[OF redB IH(4)] obtain p\<^sub>A nm\<^sub>A where
+    lpm\<^sub>A: "get_fnm_total_full \<omega>\<^sub>A lp = Some (p\<^sub>A, nm\<^sub>A)" and
+    "p' \<le> p\<^sub>A" and
+    "nm' = pos2p (p' / p\<^sub>A) *\<^sub>s nm\<^sub>A"
+    by blast
+
+  from IH(1)[OF redA lpm\<^sub>A] obtain p nm where
+    lpm: "get_fnm_total_full \<omega> lp = Some (p, nm)" and
+    "p\<^sub>A \<le> p" and
+    "nm\<^sub>A = pos2p (p\<^sub>A / p) *\<^sub>s nm"
+    by blast
+
+  show ?case
+    apply (rule exI[of _ p])
+    apply (rule exI[of _ nm])
+    apply (intro conjI)
+      apply fact
+    using \<open>p' \<le> p\<^sub>A\<close> \<open>p\<^sub>A \<le> p\<close>
+     apply order
+    using \<open>nm' = _\<close>[unfolded \<open>nm\<^sub>A = _\<close> preal_semimodule_class.scale_scale pos2p_mult]
+    by (metis divide_posreal.rep_eq nonzero_eq_divide_eq pos2p_def pos2p_gt_0 pperm_pgt_pnone times_divide_eq_right times_posreal.rep_eq zero_preal_def)
+qed (auto elim: red_exhale.cases)+
 
 
 subsection \<open>Relationship inhale and exhale\<close>

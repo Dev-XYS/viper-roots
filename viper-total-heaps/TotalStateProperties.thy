@@ -914,7 +914,7 @@ lemma full_total_state_greater_mask:
   by auto
 
 lemma total_state_greater_equiv:
-  shows "(\<omega> :: 'a total_state) \<succeq> \<omega>' \<longleftrightarrow> \<omega> \<ge> \<omega>'"
+  shows "(\<phi> :: 'a total_state) \<succeq> \<phi>' \<longleftrightarrow> \<phi> \<ge> \<phi>'"
   sorry
 (*
 proof
@@ -966,26 +966,12 @@ next
 qed
 *)
 
+
 lemma full_total_state_succ_implies_gte:
   assumes "(\<omega> :: 'a full_total_state) \<succeq> \<omega>'"
   shows "\<omega> \<ge> \<omega>'"
-  sorry
-(*
-proof -
-  from assms obtain \<omega>2 where Sum: "\<omega>' \<oplus> \<omega>2 = Some \<omega>"
-    by (auto simp add: greater_def)
+  by (metis assms full_total_state_greater_only_mask_changed greater_full_total_state_total_state less_eq_full_total_stateI total_state_greater_equiv)
 
-  show "\<omega> \<ge> \<omega>'"
-    unfolding plus_Some_full_total_state_eq[OF Sum]
-    apply (rule less_eq_full_total_stateI)
-       apply simp
-      apply simp
-    using less_eq_add_masks plus_Some_full_total_state_eq[OF Sum] \<open>\<omega> \<succeq> \<omega>'\<close>
-          greater_full_total_state_total_state total_state_greater_equiv
-     apply blast
-    by simp
-qed
-*)
 
 lemma full_total_state_gte_implies_succ:
   assumes "\<omega> \<ge> \<omega>'"
