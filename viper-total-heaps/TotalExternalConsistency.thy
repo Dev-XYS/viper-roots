@@ -140,7 +140,7 @@ inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a tot
    consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p"
 | SatAll:
   "\<lbrakk> \<And>pred_id vs q nm'. Some (q, nm') = get_fnm_total \<phi> (pred_id,vs) \<Longrightarrow>
-       consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm' \<rparr>) (pred_id,vs) (pos2p q)
+       consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm' \<rparr>) (pred_id,vs) (Rep_posreal q)
    \<rbrakk> \<Longrightarrow>
    consistent_external ctxt \<phi>"
 

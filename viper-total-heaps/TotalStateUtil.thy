@@ -28,7 +28,7 @@ fun add_to_lpm_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow
 
 fun rm_from_lpm_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
   where "rm_from_lpm_nm nm lp p = upd_fnm_nm nm ((get_fnm_nm nm)( lp :=
-           option_fold (\<lambda>lpm. if p \<ge> Rep_posreal (fst lpm) then None else Some (Abs_posreal (Rep_posreal (fst lpm) - p), (1 - Rep_posreal (fst lpm) / p) *\<^sub>s snd lpm)) None (get_fnm_nm nm lp) ))"
+           option_fold (\<lambda>lpm. if p \<ge> Rep_posreal (fst lpm) then None else Some (Abs_posreal (Rep_posreal (fst lpm) - p), (1 - p / Rep_posreal (fst lpm)) *\<^sub>s snd lpm)) None (get_fnm_nm nm lp) ))"
 
 (*
 fun upd_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"

@@ -1131,7 +1131,7 @@ lemma nm_frac_mp_frac:
 
 lemma nm_mult_lpm:
   assumes "Some (p\<^sub>f,nm\<^sub>f) = get_fnm_nm (f *\<^sub>s nm) lp"
-  obtains p' nm' where "Some (p',nm') = get_fnm_nm nm lp \<and> pos2p p\<^sub>f = f * pos2p p' \<and> nm\<^sub>f = f *\<^sub>s nm'"
+  obtains p' nm' where "Some (p',nm') = get_fnm_nm nm lp \<and> Rep_posreal p\<^sub>f = f * Rep_posreal p' \<and> nm\<^sub>f = f *\<^sub>s nm'"
   using assms
   apply (cases nm)
   apply (simp add: scale_nested_mask_def)
@@ -1168,13 +1168,13 @@ next
     assume lpm\<^sub>f: "Some (q\<^sub>f,nm\<^sub>f) = get_fnm_total (mult_nm_total \<phi> frac) (pid,vs)"
     obtain q nm where
       lpm: "Some (q,nm) = get_fnm_total \<phi> (pid,vs)" and
-      q\<^sub>f: "pos2p q\<^sub>f = frac * pos2p q" and
+      q\<^sub>f: "Rep_posreal q\<^sub>f = frac * Rep_posreal q" and
       nm\<^sub>f: "nm\<^sub>f = frac *\<^sub>s nm"
       using nm_mult_lpm[OF lpm\<^sub>f[simplified]]
       apply simp
       by metis
 
-    show "consistent_external_wrt_ploc ctxt (mult_nm_total \<phi> frac\<lparr> get_nm_total := nm\<^sub>f \<rparr>) (pid,vs) (pos2p q\<^sub>f)"
+    show "consistent_external_wrt_ploc ctxt (mult_nm_total \<phi> frac\<lparr> get_nm_total := nm\<^sub>f \<rparr>) (pid,vs) (Rep_posreal q\<^sub>f)"
       using IH(2)[OF lpm]
       by (simp add: q\<^sub>f nm\<^sub>f)
   qed
@@ -1567,7 +1567,7 @@ proof
   assume lpm: "Some (r,nm') = get_fnm_total \<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 + NM mh\<^sub>2 fnm\<^sub>2 \<rparr> (pid,vs)"
   show "consistent_external_wrt_ploc ctxt
           (\<lparr> get_hh_total = hh, get_nm_total = NM mh\<^sub>1 fnm\<^sub>1 + NM mh\<^sub>2 fnm\<^sub>2 \<rparr>\<lparr> get_nm_total := nm' \<rparr>)
-          (pid,vs) (pos2p r)"
+          (pid,vs) (Rep_posreal r)"
   proof (cases "fnm\<^sub>1 (pid,vs)")
     case lpm\<^sub>1: None
     show ?thesis
@@ -1604,7 +1604,7 @@ proof
         using lpm[unfolded plus_nested_mask_def, simplified, folded plus_nested_mask_def]
         by (auto simp: pfun_comb_def lpm\<^sub>1 lpm\<^sub>2)
       then show ?thesis
-        apply (simp add: pos2p_add_distr[symmetric])
+        apply (simp add: plus_posreal.rep_eq)
         apply (rule assms(1)[of "Some lpm\<^sub>1" "Some lpm\<^sub>2", simplified])
            apply (metis lpm\<^sub>1 range_eqI)
           apply (metis lpm\<^sub>2 range_eqI)

@@ -96,7 +96,7 @@ next
     fix pid vs q\<^sub>s nm\<^sub>s
     assume lpm\<^sub>s: "Some (q\<^sub>s, nm\<^sub>s) = get_fnm_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) (pid,vs)"
     show "consistent_external_wrt_ploc ctxt
-            (\<phi>\<lparr> get_nm_total := nm_exh, get_nm_total := nm\<^sub>s \<rparr>) (pid,vs) (pos2p q\<^sub>s)"
+            (\<phi>\<lparr> get_nm_total := nm_exh, get_nm_total := nm\<^sub>s \<rparr>) (pid,vs) (Rep_posreal q\<^sub>s)"
     proof (cases "get_fnm_total_full \<omega>' (pid,vs)")
       case None
       have "Some (q\<^sub>s, nm\<^sub>s) = get_fnm_total_full \<omega> (pid,vs)"
@@ -111,37 +111,40 @@ next
       obtain q\<^sub>a nm\<^sub>a where
         lpm\<^sub>a: "get_fnm_total_full \<omega> (pid,vs) = Some (q\<^sub>a, nm\<^sub>a)" and
         "q\<^sub>a \<ge> q\<^sub>e" and
-        "nm\<^sub>e = (pos2p (q\<^sub>e / q\<^sub>a)) *\<^sub>s nm\<^sub>a"
+        "nm\<^sub>e = (Rep_posreal (q\<^sub>e / q\<^sub>a)) *\<^sub>s nm\<^sub>a"
         using exhale_fraction[OF assms(6) Some[simplified \<open>lpm = _\<close>]]
         by blast
-      hence nm\<^sub>a_extcons: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm\<^sub>a \<rparr>) (pid,vs) (pos2p q\<^sub>a)"
+      hence nm\<^sub>a_extcons: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm\<^sub>a \<rparr>) (pid,vs) (Rep_posreal q\<^sub>a)"
         using SatAll_case[OF assms(5)]
         by (metis assms(4) full_total_state.select_convs(3) get_fnm_total.simps get_fnm_total_full.simps)
 
       have "q\<^sub>e + q\<^sub>s = q\<^sub>a" and "nm\<^sub>e + nm\<^sub>s = nm\<^sub>a"
         using nm_plus_lpm_plus_Some_Some[OF assms(7), of "(pid,vs)"]
         by (metis (mono_tags, lifting) Some lpm\<^sub>s lpm\<^sub>a \<open>lpm = _\<close> get_fnm_total.simps get_fnm_total_full.simps get_nm_total_full.simps total_state_update_nm_read)+
-      have "nm\<^sub>e + (pos2p ((q\<^sub>a - q\<^sub>e) / q\<^sub>a)) *\<^sub>s nm\<^sub>a = nm\<^sub>a"
+      have "nm\<^sub>e + (Rep_posreal ((q\<^sub>a - q\<^sub>e) / q\<^sub>a)) *\<^sub>s nm\<^sub>a = nm\<^sub>a"
         apply (subst \<open>nm\<^sub>e = _\<close>)
-        apply (subgoal_tac "pos2p (q\<^sub>e / q\<^sub>a) + pos2p ((q\<^sub>a - q\<^sub>e) / q\<^sub>a) = 1")
+        apply (subgoal_tac "Rep_posreal (q\<^sub>e / q\<^sub>a) + Rep_posreal ((q\<^sub>a - q\<^sub>e) / q\<^sub>a) = 1")
          apply (metis preal_semimodule_class.scale_one scale_add_left)
-        apply (subst pos2p_add_distr[of "q\<^sub>e / q\<^sub>a" "(q\<^sub>a - q\<^sub>e) / q\<^sub>a"])
-        apply (simp add: pos2p_def posreal_to_real)
-        by (metis Rep_posreal Rep_posreal_inverse Rep_preal_inverse \<open>q\<^sub>e + q\<^sub>s = q\<^sub>a\<close> add_diff_cancel_left' add_divide_distrib div_self mem_Collect_eq one_preal_def plus_posreal.rep_eq positive_real_preal zero_preal.rep_eq)
-      hence "nm\<^sub>s = (pos2p ((q\<^sub>a - q\<^sub>e) / q\<^sub>a)) *\<^sub>s nm\<^sub>a"
-        using \<open>nm\<^sub>e + nm\<^sub>s = nm\<^sub>a\<close> by force
+        apply (subst plus_posreal.rep_eq[symmetric])
+        unfolding field_divide_inverse_posreal[of q\<^sub>e q\<^sub>a] field_divide_inverse_posreal[of "q\<^sub>a - q\<^sub>e" q\<^sub>a]
+        unfolding comm_semiring_class.distrib[symmetric]
+        by (metis PosReal.padd_cancellative Rep_posreal_inverse \<open>q\<^sub>e + q\<^sub>s = q\<^sub>a\<close> \<open>q\<^sub>e \<le> q\<^sub>a\<close> add.commute field_inverse_posreal greater_minus_plus less_eq_posreal.rep_eq minus_posreal_def mult.commute one_posreal.rep_eq plus_posreal.rep_eq)
+        
+      hence "nm\<^sub>s = (Rep_posreal ((q\<^sub>a - q\<^sub>e) / q\<^sub>a)) *\<^sub>s nm\<^sub>a"
+        using \<open>nm\<^sub>e + nm\<^sub>s = nm\<^sub>a\<close>
+        by force
       have "q\<^sub>s = q\<^sub>a - q\<^sub>e"
         using Rep_posreal_inverse \<open>q\<^sub>e + q\<^sub>s = q\<^sub>a\<close> minus_posreal_def plus_posreal.rep_eq
-        by force
+        by (metis PosReal.padd_cancellative \<open>q\<^sub>e \<le> q\<^sub>a\<close> add.commute greater_minus_plus less_eq_posreal.rep_eq)
       show ?thesis
-        using fraction_consistent_external(1)[OF assms(8) nm\<^sub>a_extcons, of "pos2p (q\<^sub>s / q\<^sub>a)"]
-        apply (subgoal_tac "pos2p (q\<^sub>s / q\<^sub>a) * pos2p q\<^sub>a = pos2p q\<^sub>s")
+        using fraction_consistent_external(1)[OF assms(8) nm\<^sub>a_extcons, of "Rep_posreal (q\<^sub>s / q\<^sub>a)"]
+        apply (subgoal_tac "Rep_posreal (q\<^sub>s / q\<^sub>a) * Rep_posreal q\<^sub>a = Rep_posreal q\<^sub>s")
          apply simp
          apply (subst \<open>q\<^sub>s = _\<close>)
          apply (subst \<open>nm\<^sub>s = _\<close>)
         using \<open>q\<^sub>s = q\<^sub>a - q\<^sub>e\<close>
          apply fastforce
-        by (smt (verit, ccfv_threshold) Rep_posreal Rep_preal_inverse divide_posreal.rep_eq mem_Collect_eq nonzero_eq_divide_eq pos2p_def preal_to_real(12) times_preal.rep_eq)
+        by (metis field_divide_inverse_posreal field_inverse_posreal mult.assoc mult.right_neutral times_posreal.rep_eq)
     qed
   qed
 qed
@@ -166,23 +169,23 @@ lemma extcons_preserved_by_add_to_lpm_nonzero:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
       and "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm \<rparr> lp p"
       and "p > 0"
-    shows "consistent_external ctxt (get_total_full (add_to_lpm_nonzero_total_full \<omega> lp (p2pos p) nm))"
+    shows "consistent_external ctxt (get_total_full (add_to_lpm_nonzero_total_full \<omega> lp (Abs_posreal p) nm))"
 proof
   fix pid vs q nm'
-  assume lpm: "Some (q, nm') = get_fnm_total (get_total_full (add_to_lpm_nonzero_total_full \<omega> lp (p2pos p) nm)) (pid,vs)"
+  assume lpm: "Some (q, nm') = get_fnm_total (get_total_full (add_to_lpm_nonzero_total_full \<omega> lp (Abs_posreal p) nm)) (pid,vs)"
   show "consistent_external_wrt_ploc ctxt
-          (get_total_full (add_to_lpm_nonzero_total_full \<omega> lp (p2pos p) nm) \<lparr>get_nm_total := nm'\<rparr>)
-          (pid,vs) (pos2p q)"
+          (get_total_full (add_to_lpm_nonzero_total_full \<omega> lp (Abs_posreal p) nm) \<lparr>get_nm_total := nm'\<rparr>)
+          (pid,vs) (Rep_posreal q)"
   proof (cases "(pid,vs) = lp")
     case True
     show ?thesis
     proof (cases "get_fnm_total_full \<omega> lp")
       case None
-      hence "pos2p q = p \<and> nm' = nm"
+      hence "Rep_posreal q = p \<and> nm' = nm"
         using True lpm
         apply simp
-        using assms(3) p2pos_pos2p_id
-        by blast
+        using assms(3)
+        by (simp add: Abs_posreal_inverse)
       then show ?thesis
         apply simp
         by (metis (full_types) True assms(2) get_hh_total_full.simps old.unit.exhaust total_state.surjective total_state.update_convs(2))
@@ -191,11 +194,11 @@ proof
       obtain p_orig nm_orig where
         "lpm_orig = (p_orig, nm_orig)"
         by fastforce
-      hence "pos2p q = pos2p p_orig + p \<and> nm' = nm_orig + nm"
+      hence "Rep_posreal q = Rep_posreal p_orig + p \<and> nm' = nm_orig + nm"
         using True lpm Some
         apply simp
-        by (smt (verit, del_insts) Rep_posreal assms(3) eq_onp_same_args mem_Collect_eq p2pos_pos2p_id plus_posreal.rep_eq plus_preal.abs_eq pos2p_def)
-      moreover have "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_orig \<rparr> lp (pos2p p_orig)"
+        by (simp add: Abs_posreal_inverse assms(3) plus_posreal.rep_eq)
+      moreover have "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_orig \<rparr> lp (Rep_posreal p_orig)"
         by (metis Some True \<open>lpm_orig = _\<close> assms(1) consistent_external.cases get_fnm_total_full.simps get_hh_total_full.simps total_state.cases total_state.simps(1) total_state.update_convs(2))
       ultimately show ?thesis
         apply simp
@@ -220,10 +223,10 @@ proof -
   obtain \<phi>_inh q where
     inh_extcons: "consistent_external_wrt_ploc ctxt \<phi>_inh lp q" and
     hh_same: "get_hh_total \<phi>_inh = get_hh_total_full \<omega>" and
-    \<omega>': "\<omega>' = (if q = 0 then \<omega> else add_to_lpm_nonzero_total_full \<omega> lp (p2pos q) (get_nm_total \<phi>_inh))"
+    \<omega>': "\<omega>' = (if q = 0 then \<omega> else add_to_lpm_nonzero_total_full \<omega> lp (Abs_posreal q) (get_nm_total \<phi>_inh))"
     using iffD1[OF mem_Collect_eq assms(1)[simplified inhale_perm_single_pred_def]]
     by blast
-  consider (InhZero) "\<omega>' = \<omega>" | (InhNonZero) "\<omega>' = add_to_lpm_nonzero_total_full \<omega> lp (p2pos q) (get_nm_total \<phi>_inh)"
+  consider (InhZero) "\<omega>' = \<omega>" | (InhNonZero) "\<omega>' = add_to_lpm_nonzero_total_full \<omega> lp (Abs_posreal q) (get_nm_total \<phi>_inh)"
     using \<omega>'
     by argo
   thus ?thesis
@@ -324,26 +327,22 @@ proof
   fix pid vs p' nm'
   assume "Some (p', nm') = get_fnm_total (get_total_full \<omega>') (pid,vs)"
   then obtain p nm where
-    nm'_nm: "get_fnm_total_full \<omega> (pid,vs) = Some (p, nm) \<and> nm' = (pos2p (p' / p)) *\<^sub>s nm"
+    nm'_nm: "get_fnm_total_full \<omega> (pid,vs) = Some (p, nm) \<and> nm' = (Rep_posreal (p' / p)) *\<^sub>s nm"
     using exhale_fraction[OF assms(2)]
     by force
-  hence extcons_old: "consistent_external_wrt_ploc ctxt (get_total_full \<omega>\<lparr>get_nm_total := nm\<rparr>) (pid,vs) (pos2p p)"
+  hence extcons_old: "consistent_external_wrt_ploc ctxt (get_total_full \<omega>\<lparr>get_nm_total := nm\<rparr>) (pid,vs) (Rep_posreal p)"
     using assms(1) consistent_external.cases
     by fastforce
   have 1: "\<And>nm. (get_total_full \<omega>)\<lparr> get_nm_total := nm \<rparr> = (get_total_full \<omega>')\<lparr> get_nm_total := nm \<rparr>"
     apply (rule total_state.equality)
     using assms(2) exhale_only_changes_total_state_aux
     by fastforce+
-  have 2: "pos2p p' / pos2p p = pos2p (p' / p)"
-    apply (simp add: pos2p_def preal_to_real posreal_to_real)
-    by (smt (verit) Rep_posreal Rep_preal_inverse divide_preal.rep_eq mem_Collect_eq preal_to_real(12))
-  have 3: "pos2p p' / pos2p p * pos2p p = pos2p p'"
-    by (metis (mono_tags, lifting) Rep_preal_inverse divide_preal.rep_eq nonzero_eq_divide_eq pos2p_gt_0 pperm_pgt_pnone times_preal.rep_eq zero_preal.abs_eq)
-  show "consistent_external_wrt_ploc ctxt (get_total_full \<omega>'\<lparr>get_nm_total := nm'\<rparr>) (pid,vs) (pos2p p')"
-    using fraction_consistent_external(1)[OF assms(3) extcons_old, of "pos2p p' / pos2p p",
-            simplified, simplified 1 3, simplified 2]
-    using nm'_nm
-    by force
+  have 2: "Rep_posreal p' / Rep_posreal p * Rep_posreal p = Rep_posreal p'"
+    by (metis Rep_posreal Rep_preal_inverse divide_eq_eq divide_preal.rep_eq mem_Collect_eq pperm_pgt_pnone times_preal.rep_eq zero_preal_def)
+  show "consistent_external_wrt_ploc ctxt (get_total_full \<omega>'\<lparr>get_nm_total := nm'\<rparr>) (pid,vs) (Rep_posreal p')"
+    using fraction_consistent_external(1)[OF assms(3) extcons_old, of "Rep_posreal p' / Rep_posreal p",
+            simplified, unfolded 1 2, unfolded divide_posreal.rep_eq[symmetric]] nm'_nm
+    by fast
 qed
 
 definition differ_only_in_0_perm_locs where
@@ -369,14 +368,14 @@ proof (standard, intro impI)
   assume IH:
          "\<And>pid vs q nm'. Some (q, nm') = get_fnm_total \<phi> (pid,vs) \<Longrightarrow>
             \<forall>\<phi>''. differ_only_in_0_perm_locs (\<phi>\<lparr> get_nm_total := nm' \<rparr>) \<phi>'' \<longrightarrow>
-                  consistent_external_wrt_ploc ctxt \<phi>'' (pid,vs) (pos2p q)"
+                  consistent_external_wrt_ploc ctxt \<phi>'' (pid,vs) (Rep_posreal q)"
      and diff_only: "differ_only_in_0_perm_locs \<phi> \<phi>'"
   show "consistent_external ctxt \<phi>'"
   proof
     fix pid vs q nm'
     assume lpm: "Some (q, nm') = get_fnm_total \<phi>' (pid,vs)"
     with IH have "\<forall>\<phi>''. differ_only_in_0_perm_locs (\<phi>\<lparr> get_nm_total := nm' \<rparr>) \<phi>'' \<longrightarrow>
-                        consistent_external_wrt_ploc ctxt \<phi>'' (pid,vs) (pos2p q)"
+                        consistent_external_wrt_ploc ctxt \<phi>'' (pid,vs) (Rep_posreal q)"
       using diff_only differ_only_in_0_perm_locs_def
       by (metis get_fnm_total.simps)
     moreover have "differ_only_in_0_perm_locs (\<phi>\<lparr> get_nm_total := nm' \<rparr>) (\<phi>'\<lparr> get_nm_total := nm' \<rparr>)"
@@ -384,7 +383,7 @@ proof (standard, intro impI)
        apply (simp add: differ_only_in_0_perm_locs_def)
        apply (meson diff_only differ_only_in_0_perm_locs_def nm_loc_sum.elims(2))
       by (metis diff_only differ_only_in_0_perm_locs_def get_fnm_total.simps lpm padd_pos preal_gte_padd sub_mask_smaller)
-    ultimately show "consistent_external_wrt_ploc ctxt (\<phi>'\<lparr> get_nm_total := nm' \<rparr>) (pid,vs) (pos2p q)"
+    ultimately show "consistent_external_wrt_ploc ctxt (\<phi>'\<lparr> get_nm_total := nm' \<rparr>) (pid,vs) (Rep_posreal q)"
       by blast
   qed
 qed
@@ -465,10 +464,10 @@ proof -
     have "get_fnm_total \<phi> (pid,vs) = Some (q, nm')"
       using lpm
       by simp
-    hence extcons_nm: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr>get_nm_total := nm'\<rparr>) (pid,vs) (pos2p q)"
+    hence extcons_nm: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr>get_nm_total := nm'\<rparr>) (pid,vs) (Rep_posreal q)"
       using consistent_external.cases[OF assms(1)]
       by metis
-    show "consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pid,vs) (pos2p q)"
+    show "consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pid,vs) (Rep_posreal q)"
       using extcons_preserved_by_field_assignment_helper(1)[of loc "\<phi>\<lparr>get_nm_total := nm'\<rparr>", OF _ assms(4) extcons_nm, of v]
       apply simp
       by (metis \<open>nm_loc_sum loc nm' pos_perm_class.pnone\<close> nm_loc_sum.simps total_state.simps(4) total_state.surjective total_state.update_convs(2))
@@ -519,17 +518,17 @@ proof -
       "mh = get_mh_nm nm" and
       "fnm = get_fnm_nm nm" and
       "Some (p\<^sub>p, pnm) = fnm (pid,vs)" and
-      "p = pos2p p\<^sub>p" and
+      "p = Rep_posreal p\<^sub>p" and
       "Abs_preal q > 0" and
       "Abs_preal q \<le> p" and
-      "fnm' = fnm( (pid,vs) := if p = Abs_preal q then None else Some (p2pos (p - Abs_preal q), ((p - Abs_preal q) / p) *\<^sub>s pnm) )" and
+      "fnm' = fnm( (pid,vs) := if p = Abs_preal q then None else Some (Abs_posreal (p - Abs_preal q), ((p - Abs_preal q) / p) *\<^sub>s pnm) )" and
       "nm'_sub = NM mh fnm'" and
       "nm' = nm'_sub + (Abs_preal q / p) *\<^sub>s pnm"
       using shift_up_case
       by (smt (verit) \<open>0 \<le> q\<close> positive_real_preal shift)
 
     have pnm_extcons_wrt_ploc: "consistent_external_wrt_ploc ctxt (get_total_full \<omega>\<lparr> get_nm_total := pnm \<rparr>) (pid,vs) p"
-      using SatAll_case \<open>Some (p\<^sub>p, pnm) = fnm (pid, vs)\<close> \<open>fnm = _\<close> \<open>p = pos2p p\<^sub>p\<close> assms(1) nm
+      using SatAll_case \<open>Some (p\<^sub>p, pnm) = fnm (pid, vs)\<close> \<open>fnm = _\<close> \<open>p = Rep_posreal p\<^sub>p\<close> assms(1) nm
       by fastforce
     hence pnm_extcons: "consistent_external ctxt (get_total_full \<omega>\<lparr> get_nm_total := pnm \<rparr>)"
       using consistent_external_wrt_ploc.cases
@@ -541,20 +540,20 @@ proof -
     proof -
       fix pid' vs' q\<^sub>s nm\<^sub>s
       assume lpm: "Some (q\<^sub>s, nm\<^sub>s) = fnm' (pid',vs')"
-      show "consistent_external_wrt_ploc ctxt (get_total_full \<omega>\<lparr> get_nm_total := nm\<^sub>s \<rparr>) (pid',vs') (pos2p q\<^sub>s)"
+      show "consistent_external_wrt_ploc ctxt (get_total_full \<omega>\<lparr> get_nm_total := nm\<^sub>s \<rparr>) (pid',vs') (Rep_posreal q\<^sub>s)"
       proof (cases "(pid',vs') = (pid,vs)")
         case True
-        have "q\<^sub>s = p2pos (p - Abs_preal q)" and "nm\<^sub>s = ((p - Abs_preal q) / p) *\<^sub>s pnm"
+        have "q\<^sub>s = Abs_posreal (p - Abs_preal q)" and "nm\<^sub>s = ((p - Abs_preal q) / p) *\<^sub>s pnm"
           using lpm[simplified \<open>fnm' = _\<close> True, simplified]
           by (meson not_None_eq old.prod.inject option.inject)+
         show ?thesis
           apply (simp add: True \<open>q\<^sub>s = _\<close> \<open>nm\<^sub>s = _\<close>)
           apply (subgoal_tac "p - Abs_preal q > 0")
-           apply (simp add: p2pos_pos2p_id)
+           apply (simp add: Abs_posreal_inverse)
            apply (subgoal_tac "(p - Abs_preal q) / p * p = p - Abs_preal q")
           using fraction_consistent_external(1)[OF assms(3) pnm_extcons_wrt_ploc, of "(p - Abs_preal q) / p", simplified]
             apply presburger
-           apply (metis PosReal.field_divide_inverse PosReal.field_inverse \<open>p = pos2p p\<^sub>p\<close> mult.assoc mult.right_neutral order_less_irrefl pos2p_gt_0) 
+           apply (metis PosReal.field_divide_inverse PosReal.field_inverse \<open>Abs_preal q \<le> p\<close> \<open>0 < Abs_preal q\<close> linorder_not_less mult.assoc mult.right_neutral)
           using True \<open>Abs_preal q \<le> p\<close> \<open>fnm' = _\<close> lpm minus_preal_gte preal_not_0_gt_0 greater_minus_plus
           by fastforce
       next
@@ -595,7 +594,7 @@ proof -
     red_exh: "red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal (Abs_preal p)) pbody) \<omega>0 (RNormal \<omega>1')" and
     "\<omega>1 = \<omega>\<lparr> get_total_full := get_total_full \<omega>1' \<rparr>" and
     nm_exh: "get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0" and
-    "\<omega>' = add_to_lpm_total_full \<omega>1 (pid,vs) (if Abs_preal p = 0 then None else Some (p2pos (Abs_preal p), nm_exh))"
+    "\<omega>' = add_to_lpm_total_full \<omega>1 (pid,vs) (if Abs_preal p = 0 then None else Some (Abs_posreal (Abs_preal p), nm_exh))"
     apply (rule FoldRelNormal_case[OF fold_rel])
     by simp
 
@@ -617,7 +616,7 @@ proof -
       by blast
   next
     case False
-    hence "\<omega>' = add_to_lpm_nonzero_total_full \<omega>1 (pid,vs) (p2pos (Abs_preal p)) nm_exh"
+    hence "\<omega>' = add_to_lpm_nonzero_total_full \<omega>1 (pid,vs) (Abs_posreal (Abs_preal p)) nm_exh"
       using \<open>\<omega>' = _\<close>
       by simp
     thus ?thesis

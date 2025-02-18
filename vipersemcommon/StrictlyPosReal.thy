@@ -80,6 +80,30 @@ instance proof qed
 end
 
 
+instantiation posreal :: one
+begin
+
+lift_definition one_posreal :: "posreal" is "1"
+  by (simp add: pperm_pnone_pgt)
+
+instance proof qed
+
+end
+
+
+instantiation posreal :: comm_monoid_mult
+begin
+
+instance proof
+  fix a :: posreal
+  show "1 * a = a"
+    using Rep_posreal_inject one_posreal.rep_eq times_posreal.rep_eq
+    by fastforce
+qed
+
+end
+
+
 instantiation posreal :: inverse
 begin
 
@@ -98,6 +122,7 @@ lemmas posreal_to_preal =
   less_posreal.rep_eq
   plus_posreal.rep_eq
   minus_posreal_def
+  times_posreal.rep_eq
   divide_posreal.rep_eq
   Abs_posreal_inverse
   Rep_posreal_inverse
@@ -134,8 +159,25 @@ lemma pos2p_mult:
   by (metis Abs_posreal_cases Abs_posreal_inverse dual_order.order_iff_strict mem_Collect_eq preal_to_real(12) times_posreal.rep_eq times_preal.rep_eq)
 *)
 
+
+subsection \<open>Some Lemmas\<close>
+
 lemma posreal_id:
   shows "a * Abs_posreal 1 = a"
   by (metis Abs_posreal_inverse Rep_posreal_inject mem_Collect_eq mult.right_neutral pperm_pnone_pgt times_posreal.rep_eq zero_neq_one)
+
+lemma field_inverse_posreal:
+  fixes a :: posreal
+  shows "(1 / a) * a = 1"
+  apply (simp add: posreal_to_preal)
+  by (metis Rep_posreal Rep_preal_inject divide_posreal.rep_eq divide_preal.rep_eq mem_Collect_eq nonzero_eq_divide_eq pperm_pgt_pnone times_posreal.rep_eq times_preal.rep_eq zero_preal.rep_eq)
+
+lemma field_divide_inverse_posreal:
+  fixes a b :: posreal
+  shows "a / b = a * (1 / b)"
+  apply (simp add: posreal_to_preal preal_to_real)
+  using field_divide_inverse divide_preal.rep_eq one_posreal.rep_eq
+  by auto
+
 
 end

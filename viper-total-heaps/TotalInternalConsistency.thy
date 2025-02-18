@@ -238,8 +238,9 @@ proof (induction A arbitrary: \<omega> \<omega>')
         apply standard
         apply simp
         apply (subgoal_tac "\<And>x. Rep_posreal x \<le> Abs_preal 0 = False")
+         apply standard+
          apply simp
-         apply (smt (verit, del_insts) Rep_posreal_inverse Rep_preal_inverse add.commute add_0 all_pos div_by_0 divide_preal.rep_eq fst_conv greater_minus_plus not_None_eq old.prod.exhaust option_fold.simps(1) option_fold.simps(2) preal_semimodule_class.scale_one snd_conv zero_preal.rep_eq)
+         apply (smt (verit, del_insts) Rep_posreal_inverse Rep_preal_inverse add.commute add_0 all_pos div_0 divide_preal.rep_eq fst_conv greater_minus_plus not_None_eq option_fold.simps(1) option_fold.simps(2) preal_semimodule_class.scale_one snd_conv surj_pair zero_preal.rep_eq)
         using Rep_posreal linorder_not_less zero_preal_def
         by auto
       then show ?thesis
@@ -269,7 +270,7 @@ proof (induction A arbitrary: \<omega> \<omega>')
         apply standard
         apply (subgoal_tac "\<And>x. Rep_posreal x \<le> Abs_preal 0 = False")
          apply simp
-         apply (smt (verit, del_insts) Rep_posreal_inverse Rep_preal_inverse add.commute add_0 all_pos div_by_0 divide_preal.rep_eq fst_conv greater_minus_plus not_None_eq old.prod.exhaust option_fold.simps(1) option_fold.simps(2) preal_semimodule_class.scale_one snd_conv zero_preal.rep_eq)
+         apply (smt (verit, del_insts) Rep_posreal_inverse Rep_preal_inverse add.commute add_0 all_pos div_0 divide_preal.rep_eq fst_conv greater_minus_plus not_None_eq option_fold.simps(1) option_fold.simps(2) preal_semimodule_class.scale_one snd_conv surj_pair zero_preal.rep_eq)
         using Rep_posreal linorder_not_less zero_preal_def
         by auto
       ultimately show ?thesis

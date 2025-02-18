@@ -606,8 +606,7 @@ proof -
     using all_pos antisym assms minus_preal.abs_eq zero_preal_def
      apply fastforce
     apply simp
-    using pos2p_p2pos_id
-    by (smt (verit, best) "2" antisym comp_apply dual_order.refl get_mp_nm.simps get_mp_total.simps get_mp_total_full.simps minus_preal.abs_eq minus_preal_gte option_fold.simps(1) p2pos_pos2p_id pperm_pnone_pgt zero_preal.abs_eq)
+    by (smt (verit, ccfv_SIG) "2" Abs_posreal_inverse comp_apply dual_order.eq_iff get_mp_nm.simps get_mp_total.simps get_mp_total_full.simps mem_Collect_eq minus_preal.abs_eq minus_preal_gte option_fold.simps(1) preal_not_0_gt_0 zero_preal_def)
 qed
 
 lemma mh_sub_twice:

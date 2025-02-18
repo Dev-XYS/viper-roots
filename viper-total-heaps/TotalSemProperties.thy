@@ -1698,7 +1698,33 @@ lemma rm_from_lpm_total_full_inverse:
   apply (rule exI[of _ "((Rep_posreal p' + p\<^sub>d) / (Rep_posreal p')) *\<^sub>s nm'"])
 proof (intro conjI)
   show "get_fnm_total_full \<omega> lp = Some (Abs_posreal (Rep_posreal p' + p\<^sub>d), ((Rep_posreal p' + p\<^sub>d) / (Rep_posreal p')) *\<^sub>s nm')"
-    sorry
+  proof -
+    obtain p nm where
+      lpm: "get_fnm_total_full \<omega> lp = Some (p,nm)" and
+      "p\<^sub>d < Rep_posreal p" and
+      "p' = Abs_posreal (Rep_posreal p - p\<^sub>d)" and
+      "nm' = (1 - p\<^sub>d / Rep_posreal p) *\<^sub>s nm"
+      using arg_cong[OF assms(1)[simplified], of "\<lambda>\<omega>. get_fnm_total_full \<omega> lp", unfolded assms(2), simplified]
+      apply (cases "get_fnm_total_full \<omega> lp"; simp)
+      by (metis Pair_inject leI option.discI option.inject prod.collapse)
+    show ?thesis
+      unfolding lpm
+      apply (rule arg_cong[where ?f=Some])
+      apply standard+
+      unfolding \<open>p' = _\<close>
+       apply (metis Abs_posreal_inverse Rep_posreal_inverse \<open>p\<^sub>d < _\<close> add_0 all_pos greater_minus_plus mem_Collect_eq nless_le)
+      unfolding \<open>nm' = _\<close> preal_semimodule_class.scale_scale
+      apply (subgoal_tac "(Rep_posreal (Abs_posreal (Rep_posreal p - p\<^sub>d)) + p\<^sub>d) / Rep_posreal (Abs_posreal (Rep_posreal p - p\<^sub>d)) * (1 - p\<^sub>d / Rep_posreal p) = 1")
+       apply (simp add: preal_semimodule_class.scale_one)
+      apply (subgoal_tac "Rep_posreal (Abs_posreal (Rep_posreal p - p\<^sub>d)) + p\<^sub>d = Rep_posreal p")
+       apply (subgoal_tac "pos_perm_class.pwrite - p\<^sub>d / Rep_posreal p = Rep_posreal (Abs_posreal (Rep_posreal p - p\<^sub>d)) / (Rep_posreal p)")
+        apply (simp_all add: posreal_to_preal preal_to_real)
+      using \<open>p\<^sub>d < Rep_posreal p\<close> divide_preal.rep_eq less_eq_preal.rep_eq less_preal.rep_eq minus_preal.rep_eq one_preal.rep_eq plus_preal.rep_eq times_preal.rep_eq
+        apply fastforce
+       apply (metis Rep_posreal Rep_preal_inverse add.commute add_diff_cancel_left' all_pos diff_divide_distrib diff_ge_0_iff_ge div_self divide_le_eq_1_pos linorder_neqE_linordered_idom linorder_not_less mem_Collect_eq prat_non_negative zero_preal.rep_eq)
+      using Abs_posreal_inverse \<open>p\<^sub>d < Rep_posreal p\<close> less_eq_preal.rep_eq less_preal.rep_eq minus_preal.rep_eq zero_preal.rep_eq
+      by auto
+  qed
 
   show "p' \<le> Abs_posreal (Rep_posreal p' + p\<^sub>d)"
     by (metis Abs_posreal_inverse Rep_posreal less_eq_posreal.rep_eq mem_Collect_eq padd_pgte padd_pos pperm_pnone_pgt)
@@ -1714,7 +1740,7 @@ qed
 lemma exhale_fraction:
   assumes "red_exhale ctxt StateCons \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
       and "get_fnm_total_full \<omega>' lp = Some (p', nm')"
-    shows "\<exists>p nm. get_fnm_total_full \<omega> lp = Some (p, nm) \<and> p \<ge> p' \<and> nm' = (pos2p (p' / p)) *\<^sub>s nm"
+    shows "\<exists>p nm. get_fnm_total_full \<omega> lp = Some (p, nm) \<and> p \<ge> p' \<and> nm' = (Rep_posreal (p' / p)) *\<^sub>s nm"
   using assms
 proof (induction A arbitrary: \<omega> \<omega>' p' nm')
   case (Atomic atm)
@@ -1724,7 +1750,7 @@ proof (induction A arbitrary: \<omega> \<omega>' p' nm')
     hence "\<omega>' = \<omega>"
       by (metis Atomic.prems(1) atomic_assert.disc(1) exhale_pure_normal_same is_pure.simps(1))
     then show ?thesis
-      by (metis Atomic.prems(2) div_self divide_posreal.rep_eq one_preal_def order_refl pos2p_def pos2p_gt_0 pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
+      by (metis (mono_tags, lifting) Atomic.prems(2) Rep_posreal Rep_preal_inverse div_self divide_posreal.rep_eq divide_preal.rep_eq mem_Collect_eq one_preal.rep_eq order_refl pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
   next
     case (Acc e_r f perm)
     hence "get_fnm_total_full \<omega> = get_fnm_total_full \<omega>'"
@@ -1747,7 +1773,7 @@ proof (induction A arbitrary: \<omega> \<omega>' p' nm')
         by simp
     qed
     then show ?thesis
-      by (metis Atomic.prems(2) div_self divide_posreal.rep_eq one_preal_def order_refl pos2p_def pos2p_gt_0 pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
+      by (metis (mono_tags, lifting) Atomic.prems(2) Rep_posreal Rep_preal_inverse div_self divide_posreal.rep_eq divide_preal.rep_eq mem_Collect_eq one_preal.rep_eq order_refl pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
   next
     case (AccPredicate pid e_args perm)
     show ?thesis
@@ -1770,7 +1796,7 @@ proof (induction A arbitrary: \<omega> \<omega>' p' nm')
         using arg_cong[OF exh_if_total_normal_2[OF res[symmetric], unfolded exhale_pred_def], of "\<lambda>\<omega>. get_fnm_total_full \<omega> lp"] Atomic.prems(2)
           apply simp
          apply order
-        by (metis div_self divide_posreal.rep_eq one_preal_def pos2p_def pos2p_gt_0 pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
+      by (metis (mono_tags, lifting) Rep_posreal Rep_preal_inverse div_self divide_posreal.rep_eq divide_preal.rep_eq mem_Collect_eq one_preal.rep_eq pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
     next
       case Wildcard
       obtain mp v_args q where
@@ -1789,7 +1815,7 @@ proof (induction A arbitrary: \<omega> \<omega>' p' nm')
         using arg_cong[OF exh_if_total_normal_2[OF res[symmetric], unfolded exhale_pred_def], of "\<lambda>\<omega>. get_fnm_total_full \<omega> lp"] Atomic.prems(2)
           apply simp
          apply order
-        by (metis div_self divide_posreal.rep_eq one_preal_def pos2p_def pos2p_gt_0 pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
+      by (metis (mono_tags, lifting) Rep_posreal Rep_preal_inverse div_self divide_posreal.rep_eq divide_preal.rep_eq mem_Collect_eq one_preal.rep_eq pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
     qed
   qed
 next
@@ -1814,7 +1840,7 @@ next
     show ?thesis
       apply (rule exI[of _ p'])
       apply (rule exI[of _ nm'])
-      by (metis IH.prems(2) \<open>\<omega>' = \<omega>\<close> div_self divide_posreal.rep_eq one_preal_def order_refl pos2p_def pos2p_gt_0 pperm_pgt_pnone preal_semimodule_class.scale_one zero_preal.abs_eq)
+      by (metis IH.prems(2) PosReal.field_divide_inverse PosReal.field_inverse Rep_posreal \<open>\<omega>' = \<omega>\<close> divide_posreal.rep_eq dual_order.eq_iff leD mem_Collect_eq mult.commute preal_semimodule_class.scale_one)
   qed
 next
   case IH: (Star A B)
@@ -1826,13 +1852,13 @@ next
   from IH(2)[OF redB IH(4)] obtain p\<^sub>A nm\<^sub>A where
     lpm\<^sub>A: "get_fnm_total_full \<omega>\<^sub>A lp = Some (p\<^sub>A, nm\<^sub>A)" and
     "p' \<le> p\<^sub>A" and
-    "nm' = pos2p (p' / p\<^sub>A) *\<^sub>s nm\<^sub>A"
+    "nm' = Rep_posreal (p' / p\<^sub>A) *\<^sub>s nm\<^sub>A"
     by blast
 
   from IH(1)[OF redA lpm\<^sub>A] obtain p nm where
     lpm: "get_fnm_total_full \<omega> lp = Some (p, nm)" and
     "p\<^sub>A \<le> p" and
-    "nm\<^sub>A = pos2p (p\<^sub>A / p) *\<^sub>s nm"
+    "nm\<^sub>A = Rep_posreal (p\<^sub>A / p) *\<^sub>s nm"
     by blast
 
   show ?case
@@ -1842,8 +1868,12 @@ next
       apply fact
     using \<open>p' \<le> p\<^sub>A\<close> \<open>p\<^sub>A \<le> p\<close>
      apply order
-    using \<open>nm' = _\<close>[unfolded \<open>nm\<^sub>A = _\<close> preal_semimodule_class.scale_scale pos2p_mult]
-    by (metis divide_posreal.rep_eq nonzero_eq_divide_eq pos2p_def pos2p_gt_0 pperm_pgt_pnone times_divide_eq_right times_posreal.rep_eq zero_preal_def)
+    using \<open>nm' = _\<close>[unfolded \<open>nm\<^sub>A = _\<close> preal_semimodule_class.scale_scale]
+    apply (subgoal_tac "Rep_posreal (p' / p\<^sub>A) * Rep_posreal (p\<^sub>A / p) = Rep_posreal (p' / p)")
+     apply argo
+    apply (thin_tac _)
+    apply (simp add: posreal_to_preal preal_to_real)
+    by (smt (z3) Rep_posreal divide_cancel_right divide_divide_eq_right divide_posreal.rep_eq divide_preal.rep_eq divide_preal_def map_fun_apply mem_Collect_eq nonzero_mult_div_cancel_right pperm_pgt_pnone times_preal.rep_eq zero_preal_def)
 qed (auto elim: red_exhale.cases)+
 
 
