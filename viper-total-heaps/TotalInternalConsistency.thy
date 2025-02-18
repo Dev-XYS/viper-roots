@@ -33,13 +33,13 @@ proof (cases "q > 0")
     "mh = get_mh_nm nm" and
     "fnm = get_fnm_nm nm" and
     lpm: "Some (p\<^sub>p, pnm) = fnm (pid,vs)" and
-    "p = pos2p p\<^sub>p" and
+    "p = Rep_posreal p\<^sub>p" and
     "q \<le> p" and
-    fnm': "fnm' = fnm( (pid,vs) := if p = q then None else Some (p2pos (p - q), ((p - q) / p) *\<^sub>s pnm) )" and
+    fnm': "fnm' = fnm( (pid,vs) := if p = q then None else Some (Abs_posreal (p - q), ((p - q) / p) *\<^sub>s pnm) )" and
     "nm'_sub = NM mh fnm'" and
     "nm' = nm'_sub + (q / p) *\<^sub>s pnm"
     using True pperm_pgt_pnone
-    by (fastforce elim: shift_up.cases)
+    by (auto elim: shift_up.cases)
 
   from iffD1[OF nm_loc_sum'.simps
       subst[OF nm_get_eq[of nm],
@@ -61,8 +61,7 @@ proof (cases "q > 0")
     apply (simp add: preal_to_real iffD1[OF less_eq_preal.rep_eq \<open>q \<le> p\<close>])
     apply (subgoal_tac "Rep_preal p \<noteq> 0")
      apply (metis (no_types, opaque_lifting) cancel_ab_semigroup_add_class.diff_right_commute cancel_comm_monoid_add_class.diff_cancel left_diff_distrib' nonzero_mult_div_cancel_left times_divide_eq_right verit_minus_simplify(3))
-    using \<open>p = pos2p p\<^sub>p\<close> pos2p_gt_0 pperm_pgt_pnone preal_to_real(10) zero_preal.rep_eq
-    by fastforce
+    by (metis Rep_preal_inverse True \<open>q \<le> p\<close> linorder_not_less zero_preal_def)
 
   have pf'_each: "\<forall>lp. option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf' lp)) (pf' lp = 0) (fnm' lp)"
   proof
@@ -237,10 +236,11 @@ proof (induction A arbitrary: \<omega> \<omega>')
          apply standard
          apply simp
         apply standard
-        apply (subgoal_tac "\<And>x. pos2p x \<le> Abs_preal 0 = False")
+        apply simp
+        apply (subgoal_tac "\<And>x. Rep_posreal x \<le> Abs_preal 0 = False")
          apply simp
-         apply (smt (verit, ccfv_threshold) Rep_preal_inverse all_pos divide_preal.rep_eq division_ring_divide_zero minus_preal.abs_eq not_None_eq option_fold.simps(1) option_fold.simps(2) pos2p_p2pos_id preal_semimodule_class.scale_one surjective_pairing zero_preal.rep_eq)
-        using linorder_not_le pos2p_gt_0 zero_preal_def
+         apply (smt (verit, del_insts) Rep_posreal_inverse Rep_preal_inverse add.commute add_0 all_pos div_by_0 divide_preal.rep_eq fst_conv greater_minus_plus not_None_eq old.prod.exhaust option_fold.simps(1) option_fold.simps(2) preal_semimodule_class.scale_one snd_conv zero_preal.rep_eq)
+        using Rep_posreal linorder_not_less zero_preal_def
         by auto
       then show ?thesis
         using exh_if_total.elims[OF \<open>RNormal \<omega>' = _\<close>[symmetric], simplified]
@@ -267,10 +267,10 @@ proof (induction A arbitrary: \<omega> \<omega>')
          apply standard
          apply simp
         apply standard
-        apply (subgoal_tac "\<And>x. pos2p x \<le> Abs_preal 0 = False")
+        apply (subgoal_tac "\<And>x. Rep_posreal x \<le> Abs_preal 0 = False")
          apply simp
-         apply (smt (verit, ccfv_threshold) Rep_preal_inverse all_pos divide_preal.rep_eq division_ring_divide_zero minus_preal.abs_eq not_None_eq option_fold.simps(1) option_fold.simps(2) pos2p_p2pos_id preal_semimodule_class.scale_one surjective_pairing zero_preal.rep_eq)
-        using linorder_not_le pos2p_gt_0 zero_preal_def
+         apply (smt (verit, del_insts) Rep_posreal_inverse Rep_preal_inverse add.commute add_0 all_pos div_by_0 divide_preal.rep_eq fst_conv greater_minus_plus not_None_eq old.prod.exhaust option_fold.simps(1) option_fold.simps(2) preal_semimodule_class.scale_one snd_conv zero_preal.rep_eq)
+        using Rep_posreal linorder_not_less zero_preal_def
         by auto
       ultimately show ?thesis
         using exh_if_total.elims[OF \<open>RNormal \<omega>' = _\<close>[symmetric], simplified]
@@ -293,7 +293,7 @@ proof -
     exh: "red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal p) pred_body) \<omega>0 (RNormal \<omega>1')" and
     \<omega>1: "\<omega>1 = \<omega>\<lparr> get_total_full := get_total_full \<omega>1' \<rparr>" and
     nm_sub: "get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0" and
-    \<omega>': "\<omega>' = add_to_lpm_total_full \<omega>1 (pred_id,vs) (if p = 0 then None else Some (p2pos p, nm_exh))"
+    \<omega>': "\<omega>' = add_to_lpm_total_full \<omega>1 (pred_id,vs) (if p = 0 then None else Some (Abs_posreal p, nm_exh))"
     apply (rule FoldRelNormal_case[OF assms(1)])
     by simp
 

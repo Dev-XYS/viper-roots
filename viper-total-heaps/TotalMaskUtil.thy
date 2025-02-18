@@ -36,7 +36,7 @@ termination
 subsection \<open>Mask Multiplication\<close>
 
 function (sequential) nested_mask_multiply :: "preal \<Rightarrow> 'a nested_mask \<Rightarrow> 'a nested_mask" where
-  "nested_mask_multiply p (NM mh fnm) = NM (mul_mask p mh) ((\<lambda>nm. if p = 0 then None else (map_option (\<lambda>lpm. (fst lpm * Abs_posreal (Rep_preal p), nested_mask_multiply p (snd lpm))) nm)) \<circ> fnm)"
+  "nested_mask_multiply p (NM mh fnm) = NM (mul_mask p mh) ((\<lambda>nm. if p = 0 then None else (map_option (\<lambda>lpm. (fst lpm * Abs_posreal p, nested_mask_multiply p (snd lpm))) nm)) \<circ> fnm)"
   by (pat_completeness) auto
 termination
   apply (relation "{} <*lex*> nested_mask_rel")

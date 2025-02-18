@@ -1677,7 +1677,7 @@ proof -
     using fun_cong[OF conjunct2[OF *[unfolded plus_nested_mask_def nm_\<omega> nm_\<omega>' nm_\<omega>\<^sub>d, simplified]],
                    of lp, simplified pfun_comb_def, simplified]
          apply (auto simp: all_pos)
-    by (metis padd_pgte pos2p_add_distr)
+    by (simp add: padd_pgte plus_posreal.rep_eq)
 qed
 
 
@@ -1690,34 +1690,24 @@ lemma exhale_pure_normal_same:
   by (induction) (auto elim: exh_if_total.elims)
 
 
-lemma pos2p_le_implies_le:
-  assumes "pos2p a \<le> pos2p b"
-  shows "a \<le> b"
-  by (metis Rep_posreal assms eq_onp_same_args less_eq_posreal.rep_eq less_eq_preal.abs_eq mem_Collect_eq order.strict_iff_order pos2p_def)
-
-
 lemma rm_from_lpm_total_full_inverse:
   assumes "\<omega>' = rm_from_lpm_total_full \<omega> lp p\<^sub>d"
       and "get_fnm_total_full \<omega>' lp = Some (p',nm')"
-    shows "\<exists>p nm. get_fnm_total_full \<omega> lp = Some (p,nm) \<and> p \<ge> p' \<and> nm' = (pos2p (p' / p)) *\<^sub>s nm"
-  apply (rule exI[of _ "p2pos (pos2p p' + p\<^sub>d)"])
-  apply (rule exI[of _ "((pos2p p' + p\<^sub>d) / p\<^sub>d) *\<^sub>s nm'"])
+    shows "\<exists>p nm. get_fnm_total_full \<omega> lp = Some (p,nm) \<and> p \<ge> p' \<and> nm' = (Rep_posreal (p' / p)) *\<^sub>s nm"
+  apply (rule exI[of _ "Abs_posreal (Rep_posreal p' + p\<^sub>d)"])
+  apply (rule exI[of _ "((Rep_posreal p' + p\<^sub>d) / (Rep_posreal p')) *\<^sub>s nm'"])
 proof (intro conjI)
-  show "get_fnm_total_full \<omega> lp = Some (p2pos (pos2p p' + p\<^sub>d), ((pos2p p' + p\<^sub>d) / p\<^sub>d) *\<^sub>s nm')" sorry
-
-  show "p' \<le> p2pos (pos2p p' + p\<^sub>d)"
-    apply (rule pos2p_le_implies_le)
-    apply (subst p2pos_pos2p_id)
-     apply (metis padd_pos pos2p_gt_0 preal_not_0_gt_0)
-    using padd_pgte
-    by blast
-
-  show "nm' = pos2p (p' / p2pos (pos2p p' + p\<^sub>d)) *\<^sub>s ((pos2p p' + p\<^sub>d) / p\<^sub>d) *\<^sub>s nm'"
-    apply (subst preal_semimodule_class.scale_scale)
-    apply (subgoal_tac "pos2p (p' / p2pos (pos2p p' + p\<^sub>d)) * ((pos2p p' + p\<^sub>d) / p\<^sub>d) = 1")
-     apply (simp add: preal_semimodule_class.scale_one)
-    apply (simp add: pos2p_def p2pos_def)
+  show "get_fnm_total_full \<omega> lp = Some (Abs_posreal (Rep_posreal p' + p\<^sub>d), ((Rep_posreal p' + p\<^sub>d) / (Rep_posreal p')) *\<^sub>s nm')"
     sorry
+
+  show "p' \<le> Abs_posreal (Rep_posreal p' + p\<^sub>d)"
+    by (metis Abs_posreal_inverse Rep_posreal less_eq_posreal.rep_eq mem_Collect_eq padd_pgte padd_pos pperm_pnone_pgt)
+
+  show "nm' = Rep_posreal (p' / Abs_posreal (Rep_posreal p' + p\<^sub>d)) *\<^sub>s ((Rep_posreal p' + p\<^sub>d) / (Rep_posreal p')) *\<^sub>s nm'"
+    apply (subst preal_semimodule_class.scale_scale)
+    apply (subgoal_tac "Rep_posreal (p' / Abs_posreal (Rep_posreal p' + p\<^sub>d)) * ((Rep_posreal p' + p\<^sub>d) / (Rep_posreal p')) = 1")
+     apply (simp add: preal_semimodule_class.scale_one)
+    by (smt (verit, ccfv_threshold) Abs_posreal_inverse Rep_posreal Rep_preal_inverse div_self divide_eq_eq divide_posreal.rep_eq divide_preal.rep_eq mem_Collect_eq one_preal_def padd_pos preal_not_0_gt_0 times_divide_eq_right times_preal.rep_eq zero_preal.rep_eq)
 qed
 
 

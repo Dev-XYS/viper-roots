@@ -36,7 +36,7 @@ inductive fold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarr
      red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal q) pbody) \<omega>0 (RNormal \<omega>1');
      \<omega>1 = \<omega>\<lparr> get_total_full := get_total_full \<omega>1' \<rparr>;
      get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0;
-     \<omega>' = add_to_lpm_total_full \<omega>1 (pid,vs) (if q = 0 then None else Some (p2pos q, nm_exh))
+     \<omega>' = add_to_lpm_total_full \<omega>1 (pid,vs) (if q = 0 then None else Some (Abs_posreal q, nm_exh))
    \<rbrakk> \<Longrightarrow>
    fold_rel ctxt pid vs q \<omega> (RNormal \<omega>')"
 | FoldRelFailure:

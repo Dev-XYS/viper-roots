@@ -144,7 +144,7 @@ proof (induct nm arbitrary: p)
           (frac \<noteq> 0 \<longrightarrow>
              option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf' lp))
                          (pf' lp = 0)
-                         (map_option (\<lambda>lpm. (fst lpm * Abs_posreal (Rep_preal frac), frac *\<^sub>s snd lpm))
+                         (map_option (\<lambda>lpm. (fst lpm * Abs_posreal frac, frac *\<^sub>s snd lpm))
                          (fnm lp)))"
       apply (cases "fnm lp")
        apply (simp_all)

@@ -423,11 +423,10 @@ proof
       apply (cases "get_nm_total \<phi>")
       apply (cases "frac = 0")
        apply simp_all
-       apply (simp add: pos2p_def)
-       apply (simp add: preal_to_real posreal_to_real)
+       apply (simp add: preal_to_real posreal_to_preal)
       using times_preal.rep_eq zero_preal.rep_eq
        apply force
-      by (smt (verit, ccfv_threshold) Abs_posreal_inverse Rep_posreal Rep_preal_inverse mem_Collect_eq mult.commute pos2p_def prat_non_negative preal_to_real(12) times_posreal.rep_eq times_preal.rep_eq zero_preal.rep_eq)
+      by (simp add: Abs_posreal_inverse mult.commute pperm_pnone_pgt times_posreal.rep_eq)
   qed
 qed
 
@@ -669,7 +668,7 @@ next
     using mp_non_zero_obtain_nm_loc[OF *] 2
     by fastforce
   obtain p where
-    4: "p = pos2p p\<^sub>p"
+    4: "p = Rep_posreal p\<^sub>p"
     by auto
   have 5: "q > 0"
     using False preal_not_0_gt_0
@@ -679,7 +678,7 @@ next
     by (metis "2" "3" "4" comp_apply fst_conv option_fold.simps(1))
   hence 6: "q \<le> p"
     using assms
-    by (simp add: pos2p_def)
+    by blast
   show ?thesis
     using ShiftNonZero[OF 1 2 3 4 5 6]
     by blast
@@ -879,8 +878,7 @@ proof
     apply (cases "fnm\<^sub>1 lp"; cases "fnm\<^sub>2 lp")
        apply (simp_all add: add_masks_def plus_nested_mask_def pfun_comb_def)
        apply (simp_all add: \<open>nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1\<close> \<open>nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2\<close>)
-    apply (simp add: pos2p_def preal_to_real posreal_to_real)
-    by (smt (verit) Rep_posreal mem_Collect_eq Abs_preal_inverse)
+    by (simp add: preal_to_real posreal_to_preal)
 qed
 
 

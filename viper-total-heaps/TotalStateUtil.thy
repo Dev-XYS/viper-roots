@@ -8,7 +8,7 @@ begin
 subsection \<open>Nested Mask Getters and Setters\<close>
 
 fun get_mp_nm :: "'a nested_mask \<Rightarrow> 'a predicate_mask"
-  where "get_mp_nm nm = (option_fold (pos2p \<circ> fst) 0) \<circ> (get_fnm_nm nm)"
+  where "get_mp_nm nm = (option_fold (Rep_posreal \<circ> fst) 0) \<circ> (get_fnm_nm nm)"
 
 fun get_nm_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> 'a nested_mask option"
   where "get_nm_loc_nm nm loc = map_option snd (get_fnm_nm nm loc)"
@@ -28,7 +28,7 @@ fun add_to_lpm_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow
 
 fun rm_from_lpm_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
   where "rm_from_lpm_nm nm lp p = upd_fnm_nm nm ((get_fnm_nm nm)( lp :=
-           option_fold (\<lambda>lpm. if p \<ge> pos2p (fst lpm) then None else Some (p2pos (pos2p (fst lpm) - p), (1 - pos2p (fst lpm) / p) *\<^sub>s snd lpm)) None (get_fnm_nm nm lp) ))"
+           option_fold (\<lambda>lpm. if p \<ge> Rep_posreal (fst lpm) then None else Some (Abs_posreal (Rep_posreal (fst lpm) - p), (1 - Rep_posreal (fst lpm) / p) *\<^sub>s snd lpm)) None (get_fnm_nm nm lp) ))"
 
 (*
 fun upd_mp_loc_nm :: "'a nested_mask \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a nested_mask"
@@ -297,10 +297,10 @@ inductive shift_up :: "predicate_ident \<Rightarrow> ('a val list) \<Rightarrow>
   "\<lbrakk> mh = get_mh_nm nm;
      fnm = get_fnm_nm nm;
      Some (p\<^sub>p, pnm) = fnm (pred_id,vs);
-     p = pos2p p\<^sub>p;
+     p = Rep_posreal p\<^sub>p;
      q > 0;
      q \<le> p;
-     fnm' = fnm( (pred_id,vs) := if p = q then None else Some (p2pos (p - q), ((p - q) / p) *\<^sub>s pnm) );
+     fnm' = fnm( (pred_id,vs) := if p = q then None else Some (Abs_posreal (p - q), ((p - q) / p) *\<^sub>s pnm) );
      nm'_sub = NM mh fnm';
      nm' = nm'_sub + (q / p) *\<^sub>s pnm \<rbrakk> \<Longrightarrow>
      shift_up pred_id vs q nm nm'"
@@ -316,7 +316,7 @@ lemma shift_up_perm_sufficient:
   shows "q \<le> get_mp_nm nm (pid,vs)"
   using assms[simplified shift_up.simps]
   apply simp
-  by (metis (no_types, opaque_lifting) all_pos comp_def fst_conv option_fold.simps(1))
+  by (metis all_pos comp_apply fst_conv option_fold.simps(1))
 
 
 end

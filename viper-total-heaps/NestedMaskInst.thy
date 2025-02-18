@@ -169,10 +169,11 @@ proof
                  apply (simp_all add: pfun_comb_def)
           using *
                apply argo+
-             apply (smt (verit) Rep_posreal fst_conv mem_Collect_eq plus_posreal.rep_eq)+
+             apply (smt (verit) Rep_posreal Rep_preal_inverse fst_conv mem_Collect_eq plus_posreal.rep_eq plus_preal.rep_eq pperm_pgt_pnone zero_preal.abs_eq)
+            apply (metis Rep_posreal add_0 fst_conv mem_Collect_eq plus_posreal.rep_eq pos_perm_class.padd_cancellative pperm_pgt_pnone)
           using *
-           apply fastforce
-          by (metis * NM.IH Rep_posreal_inject add_right_imp_eq option.set_intros plus_nested_mask_def plus_posreal.rep_eq range_eqI snds.intros surjective_pairing)
+           apply force
+          by (metis * NM.IH PosReal.padd_cancellative option.set_intros plus_nested_mask_def plus_posreal.rep_eq Rep_posreal_inject[symmetric] prod_eqI rangeI snds.intros)
         then show ?thesis
           using NM
           by meson
@@ -209,13 +210,6 @@ lemma mul_mask_1:
   shows "mul_mask 1 m = m"
   apply standard
   by (simp add: mul_mask_def)
-
-lemma mul_right_abspos_repp_1_id:
-  shows "x * Abs_posreal (Rep_preal 1) = x"
-  apply (simp add: preal_to_real posreal_to_real)
-  apply (subst times_posreal.rep_eq)
-  using Abs_posreal_inverse
-  by force
 
 
 subsubsection \<open>Instantiation\<close>
@@ -273,7 +267,7 @@ proof
        apply simp
        apply (case_tac "fnm lp"; simp)
        apply (intro conjI)
-        apply (metis distrib_left p2pos_def p2pos_pos2p_id pos2p_add_distr pos2p_p2pos_id pperm_pnone_pgt)
+        apply (metis distrib_left eq_onp_same_args plus_posreal.abs_eq pperm_pnone_pgt)
        apply (metis range_eqI snds.intros)
       using padd_pos
       by blast
@@ -293,8 +287,7 @@ proof
          apply (simp add: preal_to_real(10) times_preal.rep_eq zero_preal.rep_eq)+
       apply (case_tac "fnm lp"; simp)
       apply (intro conjI)
-       apply (simp add: preal_to_real posreal_to_real)
-       apply (smt (verit) Abs_posreal_inverse Rep_posreal_inverse mem_Collect_eq mult.assoc mult.commute prat_non_negative times_posreal.rep_eq)
+       apply (metis (full_types) Abs_posreal_inverse map_fun_apply mem_Collect_eq mult.assoc mult.commute pperm_pnone_pgt times_posreal_def zero_preal.rep_eq)
       by (metis range_eqI snds.intros)
   qed
 
@@ -308,7 +301,7 @@ proof
       apply simp
       apply (case_tac "fnm lp")
        apply simp_all
-      apply (subst mul_right_abspos_repp_1_id)
+      apply (subst posreal_id)
       by (metis range_eqI snds.intros split_pairs)
   qed
 qed
@@ -423,8 +416,9 @@ subsection \<open>Lemmas that do not belong to instantiations\<close>
 lemma posreal_add_greater:
   fixes x y :: posreal
   shows "x + y > x"
-  using Rep_posreal less_posreal.rep_eq plus_posreal.rep_eq
-  by force
+  apply (simp add: posreal_to_preal preal_to_real)
+  using Rep_posreal less_preal.rep_eq zero_preal.rep_eq
+  by fastforce
 
 \<comment> \<open>This lemma could be used to instantiate some useful type class.\<close>
 lemma nm_sum_is_bigger:

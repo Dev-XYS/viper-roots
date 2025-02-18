@@ -5,7 +5,10 @@ theory StrictlyPosReal
 begin
 
 
-typedef posreal = "{ r :: real | r. r > 0 }" by fastforce
+typedef posreal = "{ r :: preal | r. r > 0 }"
+  apply (rule exI[of _ 1])
+  using preal_not_0_gt_0
+  by fastforce
 
 
 setup_lifting type_definition_posreal
@@ -13,21 +16,24 @@ setup_lifting type_definition_posreal
 instantiation posreal :: comm_semiring
 begin
 
-lift_definition times_posreal :: "posreal \<Rightarrow> posreal \<Rightarrow> posreal" is "(*)" by simp
+lift_definition times_posreal :: "posreal \<Rightarrow> posreal \<Rightarrow> posreal" is "(*)"
+  by (simp add: less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq)
 
-lift_definition plus_posreal :: "posreal \<Rightarrow> posreal \<Rightarrow> posreal" is "(+)" by simp
+lift_definition plus_posreal :: "posreal \<Rightarrow> posreal \<Rightarrow> posreal" is "(+)"
+  by (simp add: less_preal.rep_eq plus_preal.rep_eq zero_preal.rep_eq)
 
 instance proof
   fix a b c :: posreal
 
   show "a * b * c = a * (b * c)"
-    using Rep_posreal_inject times_posreal.rep_eq by fastforce
+    using Rep_posreal_inject ab_semigroup_mult_class.mult_ac(1) times_posreal.rep_eq
+    by fastforce
 
   show "a * b = b * a"
     by (metis (mono_tags) Rep_posreal_inject mult.commute times_posreal.rep_eq)
 
   show "a + b + c = a + (b + c)"
-    using Rep_posreal_inject plus_posreal.rep_eq by fastforce
+    by (metis (mono_tags) group_cancel.add1 map_fun_apply plus_posreal.rep_eq plus_posreal_def)
 
   show "a + b = b + a"
     by (metis (mono_tags) Rep_posreal_inject add.commute plus_posreal.rep_eq)
@@ -77,7 +83,8 @@ end
 instantiation posreal :: inverse
 begin
 
-lift_definition divide_posreal :: "posreal \<Rightarrow> posreal \<Rightarrow> posreal" is "(/)" by simp
+lift_definition divide_posreal :: "posreal \<Rightarrow> posreal \<Rightarrow> posreal" is "(/)"
+  by (simp add: less_preal.rep_eq divide_preal.rep_eq zero_preal.rep_eq)
 
 instance proof qed
 
@@ -86,7 +93,7 @@ end
 
 subsection \<open>\<^typ>\<open>posreal\<close> to \<^typ>\<open>real\<close>\<close>
 
-lemmas posreal_to_real =
+lemmas posreal_to_preal =
   less_eq_posreal.rep_eq
   less_posreal.rep_eq
   plus_posreal.rep_eq
@@ -99,17 +106,7 @@ lemmas posreal_to_real =
 
 subsection \<open>Arithmetic Operations between \<^typ>\<open>posreal\<close> and \<^typ>\<open>preal\<close>\<close>
 
-(* definition posreal_times_preal :: "posreal \<Rightarrow> preal \<Rightarrow> posreal" *)
-
-(* definition posreal_divides_preal :: "preal \<Rightarrow> posreal \<Rightarrow> posreal" (infixl "'/\<^sub>p" 70) where
-  "a /\<^sub>p b = Abs_posreal (Rep_preal a / Rep_posreal b)" *)
-
-definition pos2p :: "posreal \<Rightarrow> preal" where
-  "pos2p a = Abs_preal (Rep_posreal a)"
-
-definition p2pos :: "preal \<Rightarrow> posreal" where
-  "p2pos a = Abs_posreal (Rep_preal a)"
-
+(*
 lemma pos2p_gt_0:
   shows "pos2p a > 0"
   using Rep_posreal pos2p_def positive_real_preal pperm_pnone_pgt
@@ -135,6 +132,10 @@ lemma pos2p_mult:
   shows "pos2p a * pos2p b = pos2p (a * b)"
   apply (simp add: pos2p_def posreal_to_real preal_to_real)
   by (metis Abs_posreal_cases Abs_posreal_inverse dual_order.order_iff_strict mem_Collect_eq preal_to_real(12) times_posreal.rep_eq times_preal.rep_eq)
+*)
 
+lemma posreal_id:
+  shows "a * Abs_posreal 1 = a"
+  by (metis Abs_posreal_inverse Rep_posreal_inject mem_Collect_eq mult.right_neutral pperm_pnone_pgt times_posreal.rep_eq zero_neq_one)
 
 end

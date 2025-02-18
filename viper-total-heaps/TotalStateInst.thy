@@ -191,11 +191,9 @@ proof
     using mple
      apply auto[1]
     apply (insert mple)
-    apply (simp add: pos2p_def)
     apply (simp add: less_eq_preal_def)
     apply (insert Abs_preal_inverse)
-    apply simp
-    by (metis Abs_posreal_cases Rep_posreal_cases Rep_posreal_inverse dual_order.order_iff_strict less_eq_posreal.rep_eq mem_Collect_eq)
+    by (simp add: less_eq_posreal.rep_eq less_eq_preal.rep_eq)
 qed
 
 lemma less_eq_total_stateI:
@@ -428,7 +426,7 @@ instance proof
           apply (rule neq_by_fun[of "\<lambda>f. f lp"])
           apply (cases c_nm)
           apply (simp add: pfun_comb_def c_nm_def[symmetric])
-          by (smt (verit, best) Rep_posreal mem_Collect_eq plus_posreal.rep_eq)
+          by (simp add: order_less_imp_not_eq posreal_add_greater)
         thus ?thesis
           using c_c
           by contradiction
@@ -664,7 +662,7 @@ proof
           apply (simp add: pfun_comb_def)
           apply (cases "get_fnm_total x lp")
            apply simp_all
-          by (smt (verit, ccfv_SIG) Rep_posreal mem_Collect_eq plus_posreal.rep_eq split_pairs)
+          by (metis fst_conv nless_le posreal_add_greater)
         thus ?thesis
           using x_c
           by contradiction
