@@ -284,7 +284,7 @@ proof
       apply standard
       apply (rename_tac lp)
       apply (cases "a = 0"; cases "b = 0"; simp)
-         apply (simp add: preal_to_real(10) times_preal.rep_eq zero_preal.rep_eq)+
+         apply (simp add: Rep_preal_inject[symmetric] times_preal.rep_eq zero_preal.rep_eq)+
       apply (case_tac "fnm lp"; simp)
       apply (intro conjI)
        apply (metis (full_types) Abs_posreal_inverse map_fun_apply mem_Collect_eq mult.assoc mult.commute pperm_pnone_pgt times_posreal_def zero_preal.rep_eq)

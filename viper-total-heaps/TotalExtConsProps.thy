@@ -149,7 +149,7 @@ next
   have "get_mp_total_full (mult_nm_total_full \<omega>_def frac) (pred_id, vs) = 0"
     using IH(3)
     apply simp
-    by (metis comp_apply get_mp_nm.simps mult_zero_right nm_multiply_mp_value preal_to_real(10) times_preal.rep_eq zero_preal.rep_eq)
+    by (metis comp_apply get_mp_nm.simps mult_zero_right nm_multiply_mp_value Rep_preal_inject[symmetric] times_preal.rep_eq zero_preal.rep_eq)
   show ?case
     apply (simp del: mult_nm_total_full.simps)
     by (metis (mono_tags, lifting) IH.IH(2) IH.prems RedUnfoldingDefNoPred \<open>get_mp_total_full (mult_nm_total_full \<omega>_def frac) (pred_id, vs) = pos_perm_class.pnone\<close> option.simps(9) sub_pure_exp_total.simps(9) supported_sub_expr_supported)
@@ -405,7 +405,7 @@ proof -
   next
     case False
     hence "Rep_preal p \<noteq> 0" and "Rep_preal p > 0"
-      using preal_to_real(10) zero_preal.rep_eq
+      using Rep_preal_inject[symmetric] zero_preal.rep_eq
        apply force
       using False PosReal.ppos.rep_eq gr_0_is_ppos pperm_pnone_pgt
       by blast
@@ -510,7 +510,7 @@ proof -
   next
     case False
     hence "Rep_preal p \<noteq> 0" and "Rep_preal p > 0"
-      using preal_to_real(10) zero_preal.rep_eq
+      using Rep_preal_inject zero_preal.rep_eq
        apply force
       using False PosReal.ppos.rep_eq gr_0_is_ppos pperm_pnone_pgt
       by blast

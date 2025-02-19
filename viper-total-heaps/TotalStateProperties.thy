@@ -1,7 +1,7 @@
 section \<open>Basic State Properties and Instantiations\<close>
 
 theory TotalStateProperties
-  imports TotalStateUtil TotalStateInst
+  imports TotalStateUtil TotalStateInst "HOL-Library.Rewrite"
 begin
 
 
@@ -424,8 +424,6 @@ proof
       apply (cases "frac = 0")
        apply simp_all
        apply (simp add: preal_to_real posreal_to_preal)
-      using times_preal.rep_eq zero_preal.rep_eq
-       apply force
       by (simp add: Abs_posreal_inverse mult.commute pperm_pnone_pgt times_posreal.rep_eq)
   qed
 qed
@@ -684,6 +682,7 @@ next
     by blast
 qed
 
+
 lemma shift_up_exists_obtain:
   assumes "q \<le> get_mp_nm nm (pid,vs)"
       and "q \<noteq> 0"
@@ -691,12 +690,97 @@ lemma shift_up_exists_obtain:
   using assms(1) assms(2) shift_up_exists
   by blast
 
+
 lemma shift_up_frac:
     fixes frac :: preal
   assumes "frac > 0"
-      and "shift_up pid vs q nm nm'"
-    shows "shift_up pid vs (frac * q) (frac *\<^sub>s nm) (frac *\<^sub>s nm')"
-  sorry
+      and "shift_up pid vs q nm nm\<^sub>u"
+    shows "shift_up pid vs (frac * q) (frac *\<^sub>s nm) (frac *\<^sub>s nm\<^sub>u)"
+proof (cases "q = 0")
+  case True
+  then show ?thesis
+    by (metis Rep_preal_inverse ShiftZero assms(2) mult_eq_0_iff pperm_pgt_pnone shift_up.cases times_preal.rep_eq zero_preal.rep_eq)
+next
+  case False
+  from assms(2) obtain mh fnm p\<^sub>p pnm p fnm\<^sub>u nm\<^sub>u_sub where
+    "mh = get_mh_nm nm" and
+    "fnm = get_fnm_nm nm"
+    "Some (p\<^sub>p, pnm) = fnm (pid,vs)" and
+    "p = Rep_posreal p\<^sub>p" and
+    "q > 0" and
+    "q \<le> p" and
+    "fnm\<^sub>u = fnm( (pid,vs) := if p = q then None else Some (Abs_posreal (p - q), ((p - q) / p) *\<^sub>s pnm) )" and
+    "nm\<^sub>u_sub = NM mh fnm\<^sub>u" and
+    "nm\<^sub>u = nm\<^sub>u_sub + (q / p) *\<^sub>s pnm"
+    apply (rule shift_up_case)
+    by (simp_all add: False)
+
+  hence "nm = NM mh fnm"
+    using nm_get_eq
+    by blast
+
+  have "frac \<noteq> 0"
+    using assms(1)
+    by blast
+
+  define p\<^sub>p' where "p\<^sub>p' = Abs_posreal frac * p\<^sub>p"
+  define pnm' where "pnm' = frac *\<^sub>s pnm"
+  have 1: "Some (p\<^sub>p', pnm') = get_fnm_nm (frac *\<^sub>s nm) (pid, vs)"
+    unfolding p\<^sub>p'_def pnm'_def scale_nested_mask_def \<open>nm = _\<close>
+    apply simp
+    by (metis (no_types, lifting) \<open>Some (p\<^sub>p, pnm) = fnm (pid, vs)\<close> \<open>frac \<noteq> 0\<close> map_option_eq_Some mult.commute split_pairs)
+
+  have 2: "frac * q / Rep_posreal (Abs_posreal frac * p\<^sub>p) * frac = frac * (q / p)"
+    unfolding \<open>p = _\<close>
+    apply (simp add: posreal_to_preal preal_to_real)
+    using Abs_posreal_inverse assms(1)
+    by auto
+
+  show ?thesis
+    apply standard
+            apply simp
+           apply simp
+          apply fact
+         apply simp
+    using \<open>q > 0\<close> assms(1) less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq
+        apply auto[1]
+       apply (metis Abs_posreal_inverse \<open>p = Rep_posreal p\<^sub>p\<close> \<open>q \<le> p\<close> assms(1) distrib_left mem_Collect_eq p\<^sub>p'_def padd_pgte preal_gte_padd times_posreal.rep_eq)
+      apply simp
+     apply simp
+    unfolding \<open>nm\<^sub>u = _\<close> \<open>fnm\<^sub>u = _\<close> \<open>nm\<^sub>u_sub = _\<close> p\<^sub>p'_def pnm'_def
+    unfolding preal_semimodule_class.scale_add_right
+    unfolding preal_semimodule_class.scale_scale 2
+    apply (rule arg_cong[where ?f="\<lambda>x. x + (frac * (q / p)) *\<^sub>s pnm"])
+    apply (rewrite in "\<hole> = _" scale_nested_mask_def)
+    unfolding nested_mask_multiply.simps
+    apply standard+
+     apply (simp add: mul_mask_def scale_nested_mask_def \<open>nm = _\<close>)
+    apply standard
+    apply (rename_tac lp)
+    apply (case_tac "lp = (pid,vs)"; case_tac "p = q")
+       apply (simp_all add: \<open>frac \<noteq> 0\<close>)
+    using Abs_posreal_inverse \<open>p = Rep_posreal p\<^sub>p\<close> assms(1) times_posreal.rep_eq
+       apply auto[1]
+    unfolding scale_nested_mask_def[symmetric]
+      apply standard+
+       apply (simp add: posreal_to_preal preal_to_real \<open>p = _\<close>)
+    using Abs_posreal_inverse assms(1) less_preal.rep_eq zero_preal.rep_eq
+       apply force
+      apply standard+
+       apply (simp add: posreal_to_preal preal_to_real \<open>p = _\<close>)
+    using assms(1)
+       apply (smt (verit) Abs_posreal_inverse \<open>p = _\<close> \<open>q \<le> p\<close> less_eq_preal.rep_eq less_preal.rep_eq mem_Collect_eq minus_preal.rep_eq mult.commute mult_pos_pos right_diff_distrib' times_preal.rep_eq zero_preal.rep_eq)
+    unfolding preal_semimodule_class.scale_scale
+      apply (rule arg_cong[where ?f="\<lambda>x. x *\<^sub>s pnm"])
+    unfolding \<open>p = _\<close>
+      apply (subst mult.commute)
+      apply (rule arg_cong[where ?f="\<lambda>x. x * frac"])
+      apply (simp add: posreal_to_preal preal_to_real)
+      apply (metis Abs_posreal_inverse \<open>p = _\<close> \<open>q \<le> p\<close> assms(1) less_eq_preal.rep_eq mem_Collect_eq mult_divide_mult_cancel_left_if mult_eq_0_iff mult_left_mono prat_non_negative right_diff_distrib')
+    unfolding scale_nested_mask_def
+    using \<open>frac \<noteq> pos_perm_class.pnone\<close> \<open>nm = NM mh fnm\<close>
+    by auto
+qed
 
 
 subsection \<open>Shifting stores\<close>

@@ -222,6 +222,7 @@ lemmas preal_to_real =
   plus_preal.rep_eq
   zero_preal.rep_eq
   one_preal.rep_eq
+  times_preal.rep_eq
   divide_preal.rep_eq
   Rep_preal_inject[symmetric]
   Rep_preal_inverse
@@ -489,7 +490,7 @@ lemma greater_minus_plus:
   fixes a b :: preal
   assumes "a \<ge> b"
   shows "a - b + b = a"
-  using assms minus_preal.rep_eq plus_preal.rep_eq preal_to_real(10) by auto
+  using assms minus_preal.rep_eq plus_preal.rep_eq preal_to_real(11) by auto
 
 instantiation preal :: pos_perm
 begin

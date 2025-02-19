@@ -473,7 +473,7 @@ proof -
     by (metis assms(1) nm_loc_sum'.elims(2) nm_loc_sum.simps)
   show ?thesis
     apply (rule exI[of _ "Abs_preal (pf lp)"])
-    by (smt (verit, ccfv_threshold) \<open>nm = NM mh fnm\<close> \<open>pf has_sumA Rep_preal s - Rep_preal (mh loc) \<and> (\<forall>lp. option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf lp)) (pf lp = 0) (fnm lp))\<close> assms(2) get_fnm_nm.simps has_Some_iff has_sumA_nonneg_ge_one_real less_eq_preal.rep_eq mem_Collect_eq nm_loc_sum'_nonneg nm_loc_sum.elims(3) option_fold.simps(1) prat_non_negative preal_to_real(12) snd_conv)
+    by (smt (verit, ccfv_threshold) \<open>nm = NM mh fnm\<close> \<open>pf has_sumA Rep_preal s - Rep_preal (mh loc) \<and> (\<forall>lp. option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf lp)) (pf lp = 0) (fnm lp))\<close> assms(2) get_fnm_nm.simps has_Some_iff has_sumA_nonneg_ge_one_real less_eq_preal.rep_eq mem_Collect_eq nm_loc_sum'_nonneg nm_loc_sum.elims(3) option_fold.simps(1) prat_non_negative Abs_preal_inverse snd_conv)
 qed
 
 

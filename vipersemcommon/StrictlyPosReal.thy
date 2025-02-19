@@ -124,6 +124,7 @@ lemmas posreal_to_preal =
   minus_posreal_def
   times_posreal.rep_eq
   divide_posreal.rep_eq
+  one_posreal.rep_eq
   Abs_posreal_inverse
   Rep_posreal_inverse
   Rep_posreal_inject[symmetric]
@@ -169,15 +170,13 @@ lemma posreal_id:
 lemma field_inverse_posreal:
   fixes a :: posreal
   shows "(1 / a) * a = 1"
-  apply (simp add: posreal_to_preal)
-  by (metis Rep_posreal Rep_preal_inject divide_posreal.rep_eq divide_preal.rep_eq mem_Collect_eq nonzero_eq_divide_eq pperm_pgt_pnone times_posreal.rep_eq times_preal.rep_eq zero_preal.rep_eq)
+  apply (simp add: posreal_to_preal preal_to_real)
+  by (metis Rep_posreal Rep_preal_inverse mem_Collect_eq pperm_pgt_pnone zero_preal.abs_eq)
 
 lemma field_divide_inverse_posreal:
   fixes a b :: posreal
   shows "a / b = a * (1 / b)"
-  apply (simp add: posreal_to_preal preal_to_real)
-  using field_divide_inverse divide_preal.rep_eq one_posreal.rep_eq
-  by auto
+  by (simp add: posreal_to_preal preal_to_real)
 
 
 end
