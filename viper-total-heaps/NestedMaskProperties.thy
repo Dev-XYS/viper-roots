@@ -480,11 +480,23 @@ qed
 subsection \<open>Sum of a smaller state\<close>
 
 lemma has_sumA_nonneg_smaller:
+    fixes S :: real
   assumes "f has_sumA S"
-      and "g \<ge> (\<lambda>_. 0)"
-      and "g \<le> f"
+      and "\<And>x. g x \<ge> 0"
+      and "\<And>x. g x \<le> f x"
     shows "\<exists>S'. g has_sumA S' \<and> S' \<le> S"
-  sorry
+proof -
+  from assms(1) have "f abs_summable_on UNIV"
+    using summable_on_def summable_on_iff_abs_summable_on_real
+    by blast
+  hence "g abs_summable_on UNIV"
+    by (metis assms(2) assms(3) summable_on_comparison_test summable_on_iff_abs_summable_on_real)
+  moreover have "\<And>x. g x = norm (g x)"
+    by (simp add: assms(2))
+  ultimately show ?thesis
+    by (metis assms has_sum_mono summable_on_comparison_test summable_on_def)
+qed
+
 
 lemma nm_loc_sum_smaller:
   assumes "nm_loc_sum loc nm s"
@@ -561,7 +573,7 @@ proof (induction nm arbitrary: nm' s)
 
   obtain pf'_sum where "pf' has_sumA pf'_sum" and
     "pf'_sum \<le> Rep_preal s - Rep_preal (mh loc)"
-    using has_sumA_nonneg_smaller[OF pf_sum] pf'_nn pf'_le_pf
+    using has_sumA_nonneg_smaller[OF pf_sum pf'_nn pf'_le_pf]
     by (meson le_funI)
   hence "pf'_sum \<ge> 0"
     using has_sum_nonneg pf'_nn
