@@ -372,7 +372,7 @@ proof
       using IH[unfolded \<open>y = _\<close> less_eq_nested_mask_def, simplified]
        apply (metis (no_types, lifting) old.prod.exhaust option_fold.simps(1) option_fold.simps(2))
       using IH[unfolded \<open>y = _\<close> less_eq_nested_mask_def nested_mask_le.simps]
-      by (metis (no_types, lifting) dual_order.eq_iff elem_set option_fold.simps(1) prod_eq_iff rangeI snds.intros)
+      by (smt (verit, del_insts) option_fold.simps(1) order_less_imp_not_less)
   qed
 
   thus "(x < y) = (x \<le> y \<and> \<not> y \<le> x)"
@@ -385,7 +385,7 @@ proof
     then show ?case
       unfolding less_eq_nested_mask_def
       apply simp
-      by (metis (no_types, lifting) dual_order.refl option.exhaust option_fold.simps(1) option_fold.simps(2) range_eqI snds.intros)
+      by (smt (verit, del_insts) not_None_eq option_fold.simps(1) option_fold.simps(2))
   qed
 
   show "x \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z"
@@ -404,7 +404,17 @@ proof
          apply (metis (no_types, lifting) IH.prems(1) \<open>y = _\<close> less_eq_nested_mask_def nested_mask_le.simps option_fold.simps(1) option_fold.simps(2))
         apply (metis (no_types, lifting) IH.prems(1) \<open>y = _\<close> less_eq_nested_mask_def nested_mask_le.simps option_fold.simps(1) option_fold.simps(2))
        apply (metis (no_types, lifting) IH.prems(2) \<open>y = _\<close> \<open>z = _\<close> less_eq_nested_mask_def nested_mask_le.simps option_fold.simps(1) option_fold.simps(2))
-      by (smt (verit, ccfv_threshold) IH.IH IH.prems(1) IH.prems(2) \<open>y = _\<close> \<open>z = _\<close> less_eq_nested_mask_def nested_mask_le.simps option.set_intros option_fold.simps(1) order.trans rangeI snds.simps)
+      apply (rename_tac lpm\<^sub>x lpm\<^sub>y lpm\<^sub>z)
+      apply (case_tac "lpm\<^sub>x = lpm\<^sub>y"; case_tac "lpm\<^sub>y = lpm\<^sub>z")
+         apply simp_all
+        apply (smt (verit) IH.prems(2) NestedMaskInst.less_eq_nested_mask_def \<open>y = _\<close> \<open>z = _\<close> nested_mask_le.simps option_fold.simps(1))
+       apply (smt (verit) IH.prems(1) NestedMaskInst.less_eq_nested_mask_def \<open>y = _\<close> \<open>z = _\<close> nested_mask_le.simps option_fold.simps(1))
+      apply (rule disjI2)
+      apply (subgoal_tac "fst lpm\<^sub>x < fst lpm\<^sub>y \<and> nested_mask_le (snd lpm\<^sub>x) (snd lpm\<^sub>y)")
+       apply (subgoal_tac "fst lpm\<^sub>y < fst lpm\<^sub>z \<and> nested_mask_le (snd lpm\<^sub>y) (snd lpm\<^sub>z)")
+        apply (metis (no_types, opaque_lifting) IH.IH NestedMaskInst.less_eq_nested_mask_def option.set_intros order_less_trans rangeI snds.simps)
+       apply (smt (verit, best) IH.prems(2) \<open>y = NM mh\<^sub>y fnm\<^sub>y\<close> \<open>z = NM mh\<^sub>z fnm\<^sub>z\<close> less_eq_nested_mask_def nested_mask_le.simps option_fold.simps(1))
+      by (smt (verit, del_insts) IH.prems(1) \<open>y = NM mh\<^sub>y fnm\<^sub>y\<close> less_eq_nested_mask_def nested_mask_le.simps option_fold.simps(1))
   qed
 qed
 
@@ -442,13 +452,122 @@ proof (induction x arbitrary: y z)
        apply (metis (no_types, lifting) * combine_options_simps(2) nested_mask.inject option.distinct(1) pfun_comb_def)
     using *
       apply (simp add: pfun_comb_def)
-     apply (metis (no_types, lifting) * combine_options_simps(2) dual_order.refl less_eq_nested_mask_def nested_mask.inject option.inject pfun_comb_def)
+     apply (metis (no_types, lifting) * combine_options_simps(2) nested_mask.inject option.inject pfun_comb_def)
+    apply (rename_tac lpm\<^sub>x lpm\<^sub>y lpm\<^sub>z)
+    apply (case_tac "lpm\<^sub>x = lpm\<^sub>y")
+     apply argo
+    apply (rule disjI2)
     apply (intro conjI)
     using arg_cong[where ?f=get_fnm_nm, OF *, simplified]
      apply (simp add: pfun_comb_def)
-     apply (metis dual_order.order_iff_strict fstI posreal_add_greater)
+    using posreal_add_greater
+     apply force
     using arg_cong[where ?f=get_fnm_nm, OF *, simplified] IH(1)
     by (metis (mono_tags, lifting) combine_options_simps(3) less_eq_nested_mask_def option.inject option.set_intros pfun_comb_def plus_nested_mask_def range_eqI snd_conv snds.intros)
+qed
+
+
+lemma nm_bigger_has_sum:
+    fixes x y z :: "'a nested_mask"
+  assumes "y \<le> x"
+    shows "\<exists>z. x = y + z"
+  using assms
+proof (induction x arbitrary: y)
+  case IH: (NM mh\<^sub>x fnm\<^sub>x)
+  obtain mh\<^sub>y fnm\<^sub>y where "y = NM mh\<^sub>y fnm\<^sub>y"
+    using nm_get_eq
+    by blast
+
+  define mh\<^sub>z where "mh\<^sub>z = (\<lambda>l. mh\<^sub>x l - mh\<^sub>y l)"
+  moreover from assms(1) have "\<And>l. mh\<^sub>y l \<le> mh\<^sub>x l"
+    by (metis IH.prems \<open>y = _\<close> le_funD less_eq_nested_mask_def nested_mask_le.simps)
+  ultimately have "mh\<^sub>x = add_masks mh\<^sub>y mh\<^sub>z"
+    apply simp
+    apply standard
+    apply (simp add: add_masks_def)
+    by (metis add.commute greater_minus_plus)
+
+  have "\<And>lp. \<exists>lpm\<^sub>z. combine_options
+                      (\<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, nested_mask_merge (snd lpm\<^sub>1) (snd lpm\<^sub>2)))
+                      (fnm\<^sub>y lp) lpm\<^sub>z = fnm\<^sub>x lp" (is "\<And>lp. ?P lp")
+  proof -
+    fix lp
+    show "?P lp"
+    proof (cases "fnm\<^sub>x lp")
+      case None
+      show ?thesis
+      proof (cases "fnm\<^sub>y lp")
+        case None
+        then show ?thesis
+          by auto
+      next
+        case (Some a)
+        then show ?thesis
+          using None IH(2)[unfolded \<open>y = _\<close> less_eq_nested_mask_def, simplified]
+          by (metis (no_types, lifting) option_fold.simps(1) option_fold.simps(2) prod.collapse)
+      qed
+    next
+      case (Some lpm\<^sub>x)
+      show ?thesis
+      proof (cases "fnm\<^sub>y lp")
+        case None
+        show ?thesis
+          apply (rule exI[of _ "fnm\<^sub>x lp"])
+          by (simp add: None)
+      next
+        case (Some lpm\<^sub>y)
+        show ?thesis
+        proof (cases "lpm\<^sub>x = lpm\<^sub>y")
+          case True
+          show ?thesis
+            apply (rule exI[of _ None])
+            by (simp add: \<open>fnm\<^sub>x lp = _\<close> \<open>fnm\<^sub>y lp = _\<close> True)
+        next
+          case False
+          hence *: "fst lpm\<^sub>y < fst lpm\<^sub>x \<and> snd lpm\<^sub>y \<le> snd lpm\<^sub>x"
+            using spec[OF conjunct2[OF IH(2)[unfolded \<open>y = _\<close> less_eq_nested_mask_def nested_mask_le.simps]],
+                       of lp, unfolded \<open>fnm\<^sub>x lp = _\<close> \<open>fnm\<^sub>y lp = _\<close>, simplified,
+                       folded less_eq_nested_mask_def]
+            by simp
+          have "\<exists>nm\<^sub>z. snd lpm\<^sub>x = snd lpm\<^sub>y + nm\<^sub>z"
+            apply (rule IH(1)[of "fnm\<^sub>x lp" "lpm\<^sub>x" "snd lpm\<^sub>x" "snd lpm\<^sub>y"])
+               apply simp
+            unfolding \<open>fnm\<^sub>x lp = _\<close>
+              apply simp
+             apply (simp add: snds.intros)
+            by (simp add: *)
+          then obtain nm\<^sub>z where "snd lpm\<^sub>x = snd lpm\<^sub>y + nm\<^sub>z"
+            by blast
+
+          show ?thesis
+            apply (rule exI[of _ "Some (fst lpm\<^sub>x - fst lpm\<^sub>y, nm\<^sub>z)"])
+            apply (simp add: \<open>fnm\<^sub>x lp = _\<close> \<open>fnm\<^sub>y lp = _\<close>)
+            apply standard
+             apply simp_all
+            using conjunct1[OF *]
+             apply (simp add: posreal_to_preal preal_to_real)
+            using Abs_posreal_inverse conjunct1[OF *] gr_0_is_ppos less_posreal.rep_eq minus_preal.rep_eq ppos.rep_eq
+             apply auto[1]
+            by (simp add: \<open>snd lpm\<^sub>x = snd lpm\<^sub>y + nm\<^sub>z\<close> plus_nested_mask_def)
+        qed
+      qed
+    qed
+  qed
+  then obtain fnm\<^sub>z where
+    "\<And>lp. combine_options
+             (\<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, nested_mask_merge (snd lpm\<^sub>1) (snd lpm\<^sub>2)))
+             (fnm\<^sub>y lp) (fnm\<^sub>z lp) = fnm\<^sub>x lp"
+    by meson
+  hence "fnm\<^sub>x = (fnm\<^sub>y +\<lparr> \<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, nested_mask_merge (snd lpm\<^sub>1) (snd lpm\<^sub>2)) \<rparr>+ fnm\<^sub>z)"
+    unfolding pfun_comb_def
+    by fastforce
+
+  show ?case
+    apply (rule exI[of _ "NM mh\<^sub>z fnm\<^sub>z"])
+    unfolding \<open>y = _\<close> plus_nested_mask_def
+    apply simp
+    apply (intro conjI)
+    by fact+
 qed
 
 

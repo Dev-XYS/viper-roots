@@ -941,6 +941,23 @@ proof -
 qed
 *)
 
+
+lemma succ_full_total_stateI':
+  assumes "get_total_full \<omega> \<succeq> get_total_full \<omega>'"
+      and "get_store_total \<omega> = get_store_total \<omega>'"
+      and "get_trace_total \<omega> = get_trace_total \<omega>'"
+      and "full_total_state.more \<omega> = full_total_state.more \<omega>'"
+    shows "\<omega> \<succeq> \<omega>'"
+proof -
+  from assms(1) obtain \<phi>\<^sub>d where "get_total_full \<omega>' \<oplus> \<phi>\<^sub>d = Some (get_total_full \<omega>)"
+    by (metis greater_def)
+  thus ?thesis
+    unfolding greater_def plus_full_total_state_ext_def
+    by (metis (no_types, lifting) Some_Some_ifD assms(2) assms(3) assms(4) defined_def full_total_state.select_convs(1) full_total_state.select_convs(2) full_total_state.select_convs(4) full_total_state.simps(3) full_total_state.simps(7) full_total_state.surjective option.sel)
+qed
+
+
+
 lemma greater_full_total_state_total_state:
   assumes "\<omega> \<succeq> \<omega>'"
   shows "get_total_full \<omega> \<succeq> get_total_full \<omega>'"
@@ -995,58 +1012,40 @@ lemma full_total_state_greater_mask:
   using greater_full_total_state_total_state[OF assms] total_state_greater_mask
   by auto
 
+
+lemma nested_mask_greater_equiv:
+  fixes x y :: "'a nested_mask"
+  shows "(\<exists>z. y + z = x) \<longleftrightarrow> x \<ge> y"
+  apply standard
+  using nm_sum_is_bigger
+   apply blast
+  using nm_bigger_has_sum
+  by auto
+
+
 lemma total_state_greater_equiv:
   shows "(\<phi> :: 'a total_state) \<succeq> \<phi>' \<longleftrightarrow> \<phi> \<ge> \<phi>'"
-  sorry
-(*
 proof
-  assume "\<omega> \<succeq> \<omega>'"
+  assume "\<phi> \<succeq> \<phi>'"
 
-  from this obtain \<omega>2 where Sum: "\<omega>' \<oplus> \<omega>2 = Some \<omega>"
+  from this obtain \<phi>\<^sub>d where Sum: "\<phi>' \<oplus> \<phi>\<^sub>d = Some \<phi>"
     by (auto simp add: greater_def)
 
-  show "\<omega> \<ge> \<omega>'"
-    unfolding plus_Some_total_state_eq[OF Sum]
-    by (rule less_eq_total_stateI) (simp_all add: less_eq_add_masks)
+  thus "\<phi> \<ge> \<phi>'"
+    unfolding less_eq_total_state_ext_def
+    using nested_mask_greater_equiv
+    by (metis option.sel plus_total_state_ext_def total_state.select_convs(2) total_state.surjective total_state.update_convs(2) total_state_plus_defined)
 next
-  assume *: "\<omega> \<ge> \<omega>'"
+  assume "\<phi> \<ge> \<phi>'"
 
-  let ?mh2 = "\<lambda>l. get_mh_total \<omega> l - get_mh_total \<omega>' l"
-  let ?mp2 = "\<lambda>l. get_mp_total \<omega> l - get_mp_total \<omega>' l"
+  then obtain nm\<^sub>d where "get_nm_total \<phi>' + nm\<^sub>d = get_nm_total \<phi>"
+    using less_eq_total_stateD nested_mask_greater_equiv
+    by blast
 
-  have MhEq: "get_mh_total \<omega> = add_masks (get_mh_total \<omega>') ?mh2"
-    unfolding add_masks_def
-  proof
-    fix hl
-    have "get_mh_total \<omega> hl \<ge> get_mh_total \<omega>' hl"
-    using less_eq_total_stateD[OF *]
-    by (simp add: le_funD)
-
-    thus "get_mh_total \<omega> hl = padd (get_mh_total \<omega>' hl) (get_mh_total \<omega> hl - get_mh_total \<omega>' hl)"
-      by (simp add:Rep_preal_inject[symmetric] minus_preal.rep_eq plus_preal.rep_eq)
-  qed
-
-  have MpEq: "get_mp_total \<omega> = add_masks (get_mp_total \<omega>') ?mp2"
-    unfolding add_masks_def
-  proof
-    fix hl
-    have "get_mp_total \<omega> hl \<ge> get_mp_total \<omega>' hl"
-    using less_eq_total_stateD[OF *]
-    by (simp add: le_funD)
-
-    thus "get_mp_total \<omega> hl = padd (get_mp_total \<omega>' hl) (get_mp_total \<omega> hl - get_mp_total \<omega>' hl)"
-      by (simp add:Rep_preal_inject[symmetric] minus_preal.rep_eq plus_preal.rep_eq)
-  qed
-
-  have "Some \<omega> = \<omega>' \<oplus> (\<omega> \<lparr> get_mh_total := ?mh2, get_mp_total := ?mp2 \<rparr>)"
-    unfolding plus_total_state_ext_def
-    using MhEq MpEq less_eq_total_stateD[OF *]
-    by (auto simp: mask_plus_Some)
-
-  thus "\<omega> \<succeq> \<omega>'"
-    by (auto simp add: greater_def)
+  thus "\<phi> \<succeq> \<phi>'"
+    unfolding greater_def plus_total_state_ext_def
+    by (metis \<open>\<phi>' \<le> \<phi>\<close> less_eq_total_stateD total_state.select_convs(1) total_state.select_convs(3) total_state.surjective total_state.update_convs(2))
 qed
-*)
 
 
 lemma full_total_state_succ_implies_gte:
@@ -1059,8 +1058,6 @@ lemma full_total_state_gte_implies_succ:
   assumes "\<omega> \<ge> \<omega>'"
       and TraceEq: "get_trace_total \<omega> = get_trace_total \<omega>'"
     shows "(\<omega> :: 'a full_total_state) \<succeq> \<omega>'"
-  sorry
-(*
 proof -
   from \<open>\<omega> \<ge> \<omega>'\<close> have "get_total_full \<omega> \<ge> get_total_full \<omega>'"
     using less_eq_full_total_state_ext_def
@@ -1070,11 +1067,9 @@ proof -
     by (simp add: total_state_greater_equiv)
 
   thus "\<omega> \<succeq> \<omega>'"
-    using TraceEq less_eq_full_total_stateD
-    using assms(1) less_eq_full_total_stateD_2 succ_full_total_stateI total_state_greater_mask
-    by fastforce
+    using \<open>\<omega> \<ge> \<omega>'\<close>[unfolded less_eq_full_total_state_ext_def]
+    by (simp add: TraceEq succ_full_total_stateI')
 qed
-*)
 
 
 subsubsection \<open>Lemmas\<close>
