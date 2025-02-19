@@ -181,7 +181,7 @@ proof
   assume "nested_mask_le nm1 nm2"
      and [simp]: "nm1 = NM mh\<^sub>1 fnm\<^sub>1"
      and [simp]: "nm2 = NM mh\<^sub>2 fnm\<^sub>2"
-  hence mple: "option_fold (\<lambda>lpm\<^sub>1. option_fold (\<lambda>lpm\<^sub>2. fst lpm\<^sub>1 \<le> fst lpm\<^sub>2 \<and> nested_mask_le (snd lpm\<^sub>1) (snd lpm\<^sub>2)) False (fnm\<^sub>2 lp)) True (fnm\<^sub>1 lp)"
+  hence mple: "option_fold (\<lambda>lpm\<^sub>1. option_fold (\<lambda>lpm\<^sub>2. lpm\<^sub>1 = lpm\<^sub>2 \<or> fst lpm\<^sub>1 < fst lpm\<^sub>2 \<and> nested_mask_le (snd lpm\<^sub>1) (snd lpm\<^sub>2)) False (fnm\<^sub>2 lp)) True (fnm\<^sub>1 lp)"
     using nested_mask_le.simps
     by blast
   show "get_mp_nm nm1 lp \<le> get_mp_nm nm2 lp"
@@ -193,7 +193,8 @@ proof
     apply (insert mple)
     apply (simp add: less_eq_preal_def)
     apply (insert Abs_preal_inverse)
-    by (simp add: less_eq_posreal.rep_eq less_eq_preal.rep_eq)
+    using less_posreal.rep_eq less_preal.rep_eq
+    by auto
 qed
 
 lemma less_eq_total_stateI:

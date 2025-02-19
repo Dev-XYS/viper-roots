@@ -479,11 +479,113 @@ qed
 
 subsection \<open>Sum of a smaller state\<close>
 
+lemma has_sumA_nonneg_smaller:
+  assumes "f has_sumA S"
+      and "g \<ge> (\<lambda>_. 0)"
+      and "g \<le> f"
+    shows "\<exists>S'. g has_sumA S' \<and> S' \<le> S"
+  sorry
+
 lemma nm_loc_sum_smaller:
   assumes "nm_loc_sum loc nm s"
       and "nm' \<le> nm"
     shows "\<exists>s'. s' \<le> s \<and> nm_loc_sum loc nm' s'"
-  sorry
+  using assms
+proof (induction nm arbitrary: nm' s)
+  case IH: (NM mh fnm)
+  obtain mh' fnm' where "nm' = NM mh' fnm'"
+    using nm_get_eq
+    by blast
+
+  from IH(2)[unfolded nm_loc_sum.simps nm_loc_sum'.simps] obtain pf where
+    "Rep_preal (mh loc) \<le> Rep_preal s" and
+    pf_sum: "pf has_sumA Rep_preal s - Rep_preal (mh loc)" and
+    pf: "\<And>lp. option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf lp)) (pf lp = 0) (fnm lp)"
+    by blast
+
+  hence pf_nn: "\<And>lp. pf lp \<ge> 0"
+    by (smt (verit) has_Some_iff nm_loc_sum'_nonneg)
+
+  have "\<And>lp. \<exists>s''. option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) s'') (s'' = 0) (fnm' lp) \<and> s'' \<le> pf lp" (is "\<And>lp. ?P lp")
+  proof -
+    fix lp
+    show "?P lp"
+    proof (cases "fnm' lp")
+      case None
+      show ?thesis
+        apply (rule exI[of _ 0])
+        by (simp add: pf_nn None)
+    next
+      case (Some lpm')
+      obtain lpm where "fnm lp = Some lpm"
+        using spec[OF conjunct2[OF IH(3)[unfolded less_eq_nested_mask_def \<open>nm' = _\<close> nested_mask_le.simps]],
+                   of lp, unfolded Some, simplified]
+        by (meson has_Some_iff)
+
+      show ?thesis
+      proof (cases "lpm = lpm'")
+        case True
+        then show ?thesis
+          by (metis Some pf \<open>fnm lp = Some lpm\<close> order_refl)
+      next
+        case False
+        hence "snd lpm' \<le> snd lpm"
+          using spec[OF conjunct2[OF IH(3)[unfolded less_eq_nested_mask_def \<open>nm' = _\<close> nested_mask_le.simps]],
+                     of lp, unfolded Some, simplified]
+          by (simp add: \<open>fnm lp = Some lpm\<close> less_eq_nested_mask_def)
+        have lpm_sum: "nm_loc_sum loc (snd lpm) (Abs_preal (pf lp))"
+          by (metis Abs_preal_inverse \<open>fnm lp = Some lpm\<close> mem_Collect_eq nm_loc_sum.elims(3) option_fold.simps(1) pf pf_nn)
+        then obtain s'' where "s'' \<le> Abs_preal (pf lp)" and "nm_loc_sum loc (snd lpm') s''"
+          using IH(1)[OF _ _ _ lpm_sum, of "fnm lp" lpm "snd lpm'"]
+          by (metis \<open>fnm lp = Some lpm\<close> \<open>snd lpm' \<le> snd lpm\<close> elem_set rangeI snds.intros)
+        show ?thesis
+          apply (rule exI[of _ "Rep_preal s''"])
+          apply (intro conjI)
+          unfolding Some
+           apply simp
+          unfolding nm_loc_sum.simps[symmetric]
+           apply fact
+          using Abs_preal_inverse \<open>s'' \<le> Abs_preal (pf lp)\<close> less_eq_preal.rep_eq pf_nn
+          by auto
+      qed
+    qed
+  qed
+
+  then obtain pf' where
+    pf': "\<forall>lp. option_fold (\<lambda>lpm. nm_loc_sum' loc (snd lpm) (pf' lp)) (pf' lp = 0) (fnm' lp)" and
+    pf'_le_pf: "\<And>lp. pf' lp \<le> pf lp"
+    by metis
+
+  hence pf'_nn: "\<And>lp. pf' lp \<ge> 0"
+    by (smt (verit, best) has_Some_iff nm_loc_sum'_nonneg)
+
+  obtain pf'_sum where "pf' has_sumA pf'_sum" and
+    "pf'_sum \<le> Rep_preal s - Rep_preal (mh loc)"
+    using has_sumA_nonneg_smaller[OF pf_sum] pf'_nn pf'_le_pf
+    by (meson le_funI)
+  hence "pf'_sum \<ge> 0"
+    using has_sum_nonneg pf'_nn
+    by blast
+
+  moreover have "\<And>l. mh' l \<le> mh l"
+    using IH(3)[unfolded less_eq_nested_mask_def \<open>nm' = _\<close> nested_mask_le.simps]
+    by (simp add: le_funD)
+  ultimately have "Abs_preal pf'_sum + mh' loc \<le> s"
+    using \<open>pf'_sum \<le> _\<close> \<open>pf'_sum \<ge> 0\<close>
+    by (smt (verit) Abs_preal_inverse less_eq_preal.rep_eq mem_Collect_eq plus_preal.rep_eq)
+
+  show ?case
+    apply (rule exI[of _ "Abs_preal pf'_sum + mh' loc"])
+    apply (intro conjI)
+     apply fact
+    unfolding nm_loc_sum.simps \<open>nm' = _\<close> nm_loc_sum'.simps
+    apply (intro conjI)
+     apply (simp add: plus_preal.rep_eq prat_non_negative)
+    apply (rule exI[of _ pf'])
+    apply (intro conjI)
+     apply (simp add: \<open>pf' has_sumA pf'_sum\<close> plus_preal.rep_eq \<open>pf'_sum \<ge> 0\<close> Abs_preal_inverse)
+    by fact
+qed
 
 
 end
