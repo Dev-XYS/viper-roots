@@ -7,10 +7,126 @@ begin
 
 subsection \<open>Expression Evaluation Properties\<close>
 
+inductive_cases RedResult_case: "ctxt, \<omega>_def \<turnstile> \<langle>Result; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+
+lemma eval_binop_with_True:
+  assumes "eval_binop False v1 bop v2 = BinopNormal v"
+    shows "eval_binop True v1 bop v2 = BinopNormal v"
+  using assms
+  apply (cases v1; cases v2; simp; cases bop; simp)
+  by (meson binop_result.distinct(5) binop_result.inject)+
+
+
+lemma eval_with_None_helper:
+  assumes "\<And>e v. e \<in> set es \<Longrightarrow>
+                  ctxt, \<omega>_def\<^sub>1 \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow>
+                  ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t Val v"
+      and "red_pure_exps_total ctxt \<omega>_def\<^sub>1 es \<omega>\<^sub>1 (Some vs)"
+    shows "red_pure_exps_total ctxt \<omega>_def\<^sub>2 es \<omega>\<^sub>2 (Some vs)"
+  using assms
+proof (induction es arbitrary: vs)
+  case Nil
+  then show ?case
+    using RedExpListNil red_exp_list_failure_Nil
+    by blast
+next
+  case IH: (Cons e es)
+  then obtain v res where
+    "ctxt, \<omega>_def\<^sub>1 \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t Val v" and
+    es_eval\<^sub>1: "red_pure_exps_total ctxt \<omega>_def\<^sub>1 es \<omega>\<^sub>1 res" and
+    "Some vs = map_option (\<lambda>vs. (v#vs)) res"
+    by (auto elim: RedExpListCons_case)
+  then obtain vs' where "res = Some vs'"
+    by fastforce
+  show ?case
+    apply (rule RedExpListCons)
+      apply (rule IH(2))
+       apply simp
+      apply fact
+     apply (rule IH(1))
+    using IH(2)
+      apply force
+     apply (rule es_eval\<^sub>1[unfolded \<open>res = _\<close>])
+    by (simp add: \<open>Some vs = _\<close> \<open>res = _\<close>)
+qed
+
+
 lemma eval_with_None:
   assumes "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
-    shows "ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
-  sorry
+  shows "ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+  using assms
+proof (induction e arbitrary: \<omega>\<^sub>0 \<omega> v)
+  case (ELit l)
+  then show ?case
+    by (metis RedLit RedLit_case)
+next
+  case (Var x)
+  then show ?case
+    by (meson RedVar RedVar_case)
+next
+  case IH: (Unop uop e)
+  then obtain v' where
+    "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v'" and
+    "eval_unop uop v' = BinopNormal v"
+    by (auto elim: RedUnop_case)
+  show ?case
+    apply (rule RedUnop)
+     apply (rule IH(1))
+    by fact+
+next
+  case IH: (Binop e1 bop e2)
+  then show ?case
+    using eval_binop_with_True is_none_code(2)
+    by (smt (verit, ccfv_threshold) RedBinop_case is_none_code(2) red_exp_intros(4) red_exp_intros(5))
+next
+  case (CondExp cond e1 e2)
+  then show ?case
+    by (fastforce elim: RedCondExpFalse RedCondExpTrue RedCondExp_case)
+next
+  case IH: (FieldAcc e f)
+  then show ?case
+    by (fastforce intro: RedField_no_def_normalI elim: RedField_case)
+next
+  case IH: (Old lbl e)
+  then obtain \<phi> \<omega>_def' where
+    "get_trace_total \<omega> lbl = Some \<phi>" and
+    "\<omega>_def' = map_option (\<lambda>\<omega>_def_val. \<omega>_def_val\<lparr> get_total_full := \<phi> \<rparr>) (Some \<omega>\<^sub>0)" and
+    e_eval: "ctxt, \<omega>_def' \<turnstile> \<langle>e; \<omega>\<lparr> get_total_full := \<phi> \<rparr>\<rangle> [\<Down>]\<^sub>t Val v"
+    by (auto elim: RedOld_case)
+  show ?case
+    apply (rule RedOld)
+      apply fact
+     apply simp
+    using IH.IH \<open>\<omega>_def' = _\<close> e_eval
+    by auto
+next
+  case IH: (Perm e f)
+  then show ?case
+    by (fastforce intro: RedPerm RedPermNull elim: RedPerm_case)  (* This is concise. Learn why it works. *)
+next
+  case Result
+  then show ?case
+    by (meson RedResult RedResult_case)
+next
+  case IH: (Unfolding pid es ubody)
+  obtain vs perm nm' \<omega>'_def where
+    "red_pure_exps_total ctxt (Some \<omega>\<^sub>0) es \<omega> (Some vs)" and
+    "perm = get_mp_total_full \<omega>\<^sub>0 (pid,vs)" and
+    "perm > 0" and
+    "shift_up pid vs (perm / Abs_preal 2) (get_nm_total_full \<omega>\<^sub>0) nm'" and
+    "\<omega>'_def = upd_nm_total_full \<omega>\<^sub>0 nm'" and
+    "ctxt, Some \<omega>'_def \<turnstile> \<langle>ubody; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+    apply (rule RedUnfoldingDef_case[OF IH(3)])
+    by simp
+  hence "red_pure_exps_total ctxt None es \<omega> (Some vs)"
+    using IH.IH(1) eval_with_None_helper
+    by blast
+  show ?case
+    apply (rule RedUnfolding)
+     apply fact
+    apply (rule IH(2))
+    by fact
+qed (fastforce elim: red_pure_exp_total.cases)+
 
 
 lemma eval_with_same_store_same_hh:
