@@ -16,6 +16,12 @@ lemma eval_binop_with_True:
   apply (cases v1; cases v2; simp; cases bop; simp)
   by (meson binop_result.distinct(5) binop_result.inject)+
 
+lemma eval_binop_with_True_no_type_error:
+  assumes "eval_binop False v1 bop v2 \<noteq> BinopTypeFailure"
+    shows "eval_binop True v1 bop v2 \<noteq> BinopTypeFailure"
+  using assms
+  by (cases v1; cases v2; simp; cases bop; simp)
+
 
 lemma eval_with_None_helper:
   assumes "\<And>e v. e \<in> set es \<Longrightarrow>
@@ -677,24 +683,66 @@ qed
 
 \<comment> \<open>Helper lemmas\<close>
 
-lemma eval_exhale_sat_helper:
-  assumes "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
-      and "no_perm_pure_exp e"
-      and "no_old_pure_exp e"
-    shows "ctxt, None \<turnstile> \<langle>e; \<lparr> get_store_total = get_store_total \<omega>,
-                              get_trace_total = \<lambda>x. None,
-                              get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>\<rangle>
-           [\<Down>]\<^sub>t Val v"
-  sorry
+lemma eval_exhale_sat_helper_helper:
+  shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t r \<Longrightarrow>
+         no_perm_pure_exp e \<Longrightarrow>
+         no_old_pure_exp e \<Longrightarrow>
+         get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2 \<Longrightarrow>
+         get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2 \<Longrightarrow>
+         r = Val v \<Longrightarrow>
+         ctxt, None \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t r"
+    and "red_pure_exps_total ctxt \<omega>_def es \<omega>\<^sub>1 rs \<Longrightarrow>
+         list_all no_perm_pure_exp es \<Longrightarrow>
+         list_all no_old_pure_exp es \<Longrightarrow>
+         get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2 \<Longrightarrow>
+         get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2 \<Longrightarrow>
+         rs = Some vs \<Longrightarrow>
+         red_pure_exps_total ctxt None es \<omega>\<^sub>2 rs"
+proof (induction arbitrary: \<omega>_def \<omega>\<^sub>2 v and \<omega>_def \<omega>\<^sub>2 vs rule: red_pure_exp_inducts)
+  case IH: (RedBinop \<omega>_def e1 \<omega> v1 e2 v2 bop v)
+  show ?case
+    apply (rule RedBinop)
+       apply (rule IH(2))
+    using IH.prems(1-4) apply force+
+      apply (rule IH(4))
+    using IH.prems(1-4) apply force+
+     apply fact
+    by (metis (full_types) IH.hyps(2) eval_binop_with_True is_none_code(1))
+next
+  case (RedField \<omega>_def e \<omega>\<^sub>1 a f v\<^sub>1)
+  then show ?case
+    by (metis (full_types) RedField_no_def_normalI extended_val.distinct(1) pure_exp_pred.simps pure_exp_pred_rec.simps(6))
+next
+  case (RedUnfolding es \<omega> vs ubody v pred_id)
+  then show ?case
+    by (fastforce intro: red_pure_exp_intros)
+next
+  case (RedUnfoldingDef \<omega>_def es \<omega> vs perm pred_id nm' \<omega>'_def ubody v)
+  then show ?case
+    by (fastforce intro: RedUnfolding)
+next
+  case (RedExpListCons \<omega>_def e \<omega> v es res res')
+  then show ?case
+    by (metis list.pred_inject(2) map_option_eq_Some red_pure_exps_total.simps)
+qed (auto intro: red_pure_exp_intros)
 
-lemma eval_multi_exhale_sat_helper:
-  assumes "red_pure_exps_total ctxt \<omega>_def es \<omega> (Some vs)"
-  shows "red_pure_exps_total ctxt None es
+
+lemma eval_exhale_sat_helper:
+  shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow>
+         no_perm_pure_exp e \<Longrightarrow>
+         no_old_pure_exp e \<Longrightarrow>
+         ctxt, None \<turnstile> \<langle>e; \<lparr> get_store_total = get_store_total \<omega>,
+                            get_trace_total = \<lambda>x. None,
+                            get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>\<rangle> [\<Down>]\<^sub>t Val v"
+    and "red_pure_exps_total ctxt \<omega>_def es \<omega> (Some vs) \<Longrightarrow>
+         list_all no_perm_pure_exp es \<Longrightarrow>
+         list_all no_old_pure_exp es \<Longrightarrow>
+         red_pure_exps_total ctxt None es
            \<lparr> get_store_total = get_store_total \<omega>,
              get_trace_total = \<lambda>x. None,
-             get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
-         (Some vs)"
-  sorry
+             get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr> (Some vs)"
+  using eval_exhale_sat_helper_helper
+  by fastforce+
 
 
 subsection \<open>Relation between exhale and sat\<close>
@@ -764,7 +812,7 @@ proof (induction arbitrary: \<omega>')
     by blast+
   show ?case
     apply standard
-    using IH eval_exhale_sat_helper
+    using IH eval_exhale_sat_helper(1)
          apply fastforce+
     using 1
       apply blast
@@ -784,7 +832,7 @@ next
     by blast+
   show ?case
     apply standard
-    using IH(2,5,6) eval_exhale_sat_helper
+    using IH(2,5,6) eval_exhale_sat_helper(1)
         apply fastforce+
     using IH(1,4) dec_mh_mh_diff 1 IH.hyps(3) \<omega>' is_singleton_mh.simps
      apply blast
@@ -796,11 +844,13 @@ next
    and \<omega>': "\<omega>' = exhale_pred \<omega> (pred_id, v_args) (Abs_preal p)"
     using IH.prems(1) exh_if_total_normal exh_if_total_normal_2
     by blast+
+  from IH(5) have es_sup: "list_all no_perm_pure_exp e_args \<and> list_all no_old_pure_exp e_args"
+    by simp
   show ?case
     apply standard
-    using eval_multi_exhale_sat_helper[OF IH(2)]
+    using eval_exhale_sat_helper(2)[OF IH(2)] es_sup
         apply blast
-    using IH(5) eval_exhale_sat_helper[OF IH(3)]
+    using IH(5) eval_exhale_sat_helper(1)[OF IH(3)]
        apply simp
       apply (simp add: 1)
     using IH.hyps(1) \<omega>' exhale_mh_diff
@@ -814,9 +864,11 @@ next
    and \<omega>': "\<omega>' = exhale_pred \<omega> (pred_id, v_args) q"
     using IH.prems(1) IH.hyps(3) exh_if_total_normal exh_if_total_normal_2
     by blast+
+  from IH(5) have es_sup: "list_all no_perm_pure_exp e_args \<and> list_all no_old_pure_exp e_args"
+    by simp
   show ?case
     apply standard
-    using eval_multi_exhale_sat_helper[OF IH(2)]
+    using eval_exhale_sat_helper(2)[OF IH(2)] es_sup
       apply blast
     using IH.hyps(1) \<omega>' exhale_mh_diff
      apply blast
@@ -826,7 +878,7 @@ next
   case IH: (ExhPure e \<omega> b)
   show ?case
     apply standard
-    using eval_exhale_sat_helper[OF IH(1)] IH.prems(1) IH.prems(2) exh_if_total_normal
+    using eval_exhale_sat_helper(1)[OF IH(1)] IH.prems(1) IH.prems(2) exh_if_total_normal
       apply fastforce
     using IH.prems(1) exh_if_total_normal_2 same_mh_diff
      apply blast
@@ -871,7 +923,8 @@ next
   case IH: (ExhImpFalse e \<omega> A)
   show ?case
     apply standard
-    using IH.hyps IH.prems(2) eval_exhale_sat_helper apply force
+    using IH.hyps IH.prems(2) eval_exhale_sat_helper
+      apply force
      apply (metis IH.prems(1) result_total.inject same_mh_diff)
     by (metis IH.prems(1) result_total.inject same_mp_diff)
 next
