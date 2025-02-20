@@ -166,14 +166,100 @@ lemma red_exp_condexp_sub_failure:
   using assms
   by (simp add: RedExpListFailure assms)+
 
+
+inductive_cases RedCondExp_elim: "ctxt, \<omega>_def \<turnstile> \<langle>CondExp cond e1 e2; \<omega>\<rangle> [\<Down>]\<^sub>t r"
+inductive_cases RedUnop_elim: "ctxt, \<omega>_def \<turnstile> \<langle>Unop uop e; \<omega>\<rangle> [\<Down>]\<^sub>t r"
+inductive_cases RedBinop_elim: "ctxt, \<omega>_def \<turnstile> \<langle>Binop e1 bop e2; \<omega>\<rangle> [\<Down>]\<^sub>t r"
+inductive_cases RedFieldAcc_elim: "ctxt, \<omega>_def \<turnstile> \<langle>FieldAcc e f; \<omega>\<rangle> [\<Down>]\<^sub>t r"
+inductive_cases RedOld_elim: "ctxt, \<omega>_def \<turnstile> \<langle>Old lbl e; \<omega>\<rangle> [\<Down>]\<^sub>t r"
+inductive_cases RedPerm_elim: "ctxt, \<omega>_def \<turnstile> \<langle>Perm e f; \<omega>\<rangle> [\<Down>]\<^sub>t r"
+inductive_cases RedUnfolding_elim: "ctxt, \<omega>_def \<turnstile> \<langle>Unfolding pid es ubody; \<omega>\<rangle> [\<Down>]\<^sub>t r"
+
+
+lemma shift_up_deterministic:
+  assumes "shift_up pid vs p nm nm\<^sub>1"
+      and "shift_up pid vs p nm nm\<^sub>2"
+    shows "nm\<^sub>1 = nm\<^sub>2"
+  by (smt (verit) Pair_inject assms option.inject pperm_pgt_pnone shift_up.simps)
+
+
+lemma eval_single_eval_list_helper:
+  assumes "\<And>e r\<^sub>1 r\<^sub>2. e \<in> set es \<Longrightarrow>
+                     ctxt, \<omega>_def\<^sub>1 \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t r\<^sub>1 \<Longrightarrow>
+                     ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t r\<^sub>2 \<Longrightarrow> r\<^sub>1 = r\<^sub>2"
+      and "red_pure_exps_total ctxt \<omega>_def\<^sub>1 es \<omega>\<^sub>1 rs\<^sub>1"
+      and "red_pure_exps_total ctxt \<omega>_def\<^sub>2 es \<omega>\<^sub>2 rs\<^sub>2"
+    shows "rs\<^sub>1 = rs\<^sub>2"
+  using assms
+proof (induction es arbitrary: rs\<^sub>1 rs\<^sub>2)
+  case Nil
+  then show ?case
+    using RedExpListNil red_exp_list_failure_Nil
+    by blast
+next
+  case IH: (Cons e es)
+  then show ?case
+    by (safe elim!: RedExpListConsGeneral_case; simp; fastforce)
+qed
+
+
+lemma eval_is_deterministic_single:
+  assumes "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r\<^sub>1"
+      and "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r\<^sub>2"
+    shows "r\<^sub>1 = r\<^sub>2"
+  using assms
+proof (induction e arbitrary: \<omega>_def \<omega> r\<^sub>1 r\<^sub>2)
+  case IH: (Unop uop e)
+  then show ?case
+    by (safe elim!: RedUnop_elim; simp; fastforce elim: red_pure_exps_total_singleton)
+next
+  case IH: (Binop e1 bop e2)
+  then show ?case
+    by (safe elim!: RedBinop_elim; simp; fastforce elim: red_pure_exps_total_singleton)
+next
+  case IH: (CondExp cond e1 e2)
+  then show ?case
+    by (safe elim!: RedCondExp_elim; simp; blast elim: red_pure_exps_total_singleton)
+next
+  case (FieldAcc e f)
+  then show ?case
+    by (safe elim!: RedFieldAcc_elim; simp; blast elim: red_pure_exps_total_singleton)
+next
+  case (Old lbl e)
+  then show ?case
+    by (safe elim!: RedOld_elim; simp; blast elim: red_pure_exps_total_singleton)
+next
+  case (Perm e f)
+  then show ?case
+    by (safe elim!: RedPerm_elim; simp; blast elim: red_pure_exps_total_singleton)
+next
+  case IH: (Unfolding pid es ubody)
+  show ?case
+  proof (cases \<omega>_def)
+    case None
+    show ?thesis
+      using IH[unfolded \<open>\<omega>_def = _\<close>] eval_single_eval_list_helper
+      by (smt (verit, best) RedUnfolding_elim option.distinct(1) sub_pure_exp_total.simps(9))
+  next
+    case (Some \<omega>\<^sub>0)
+    then show ?thesis
+      using IH
+      apply (safe elim!: RedUnfolding_elim; simp)
+      by (metis eval_single_eval_list_helper order_less_le option.sel option.distinct(1) shift_up_deterministic)+
+  qed
+qed (fastforce intro: red_pure_exp_intros elim: red_pure_exp_total.cases)+
+
+
 lemma eval_is_deterministic:
   shows "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r\<^sub>1 \<Longrightarrow>
          ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r\<^sub>2 \<Longrightarrow>
-         r\<^sub>1 = r\<^sub>2" and
-        "red_pure_exps_total ctxt \<omega>_def es \<omega> rs\<^sub>1 \<Longrightarrow>
+         r\<^sub>1 = r\<^sub>2"
+    and "red_pure_exps_total ctxt \<omega>_def es \<omega> rs\<^sub>1 \<Longrightarrow>
          red_pure_exps_total ctxt \<omega>_def es \<omega> rs\<^sub>2 \<Longrightarrow>
          rs\<^sub>1 = rs\<^sub>2"
-  sorry
+  using eval_is_deterministic_single eval_single_eval_list_helper
+  by blast+
+
 
 subsubsection \<open>Main lemmas\<close>
 
