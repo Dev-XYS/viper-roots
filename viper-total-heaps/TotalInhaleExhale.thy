@@ -157,7 +157,7 @@ inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f Wildcard)) \<omega>
      (exh_if_total (mh (a,f) \<noteq> 0 \<and> r \<noteq> Null)
-                   (upd_mh_loc_total_full \<omega> (a,f) (mh (a,f) - q)))"
+                   (dec_mh_loc_total_full \<omega> (a,f) q))"
 
 \<comment>\<open>exhale acc(P(es), p)\<close>
 \<comment> \<open>TODO: remove the corresponding fraction of the nested mask when exhaling a predicate\<close>

@@ -1629,103 +1629,125 @@ lemmas mask_update_succ_aux_2 = succ_maskI[OF mask_update_greater_aux_2]
 *)
 
 
+lemma dec_mh_loc_total_full_smaller:
+  shows "dec_mh_loc_total_full \<omega> l p \<le> \<omega>"
+  unfolding less_eq_full_total_state_ext_def
+  apply (intro conjI; simp)
+   apply force
+  unfolding less_eq_total_state_ext_def
+  apply (intro conjI; simp)
+  unfolding less_eq_nested_mask_def
+  apply (cases "get_nm_total_full \<omega>")
+  apply (simp del: split_paired_All)
+  apply (intro conjI)
+   apply (simp add: le_funI less_eq_preal.rep_eq minus_preal.rep_eq prat_non_negative)
+  by (smt (verit) option.exhaust option_fold.simps(1) option_fold.simps(2))
+
+
+lemma nm_scale_less_eq_1:
+  fixes nm :: "'a nested_mask"
+  assumes "f \<le> 1"
+  shows "f *\<^sub>s nm \<le> nm"
+proof -
+  have "f *\<^sub>s nm + (1 - f) *\<^sub>s nm = nm"
+    by (metis add.commute assms greater_minus_plus preal_semimodule_class.scale_one scale_add_left)
+  thus ?thesis
+    by (metis nm_sum_is_bigger)
+qed
+
+lemma nm_scale_le_1:
+  assumes "f \<le> 1"
+  shows "nested_mask_le (f *\<^sub>s nm) nm"
+  using assms less_eq_nested_mask_def nm_scale_less_eq_1
+  by auto
+
+
+lemma rm_from_lpm_total_full_smaller:
+  shows "rm_from_lpm_total_full \<omega> lp p \<le> \<omega>"
+  unfolding less_eq_full_total_state_ext_def
+  apply (intro conjI; simp)
+   apply force
+  unfolding less_eq_total_state_ext_def
+  apply (intro conjI; simp)
+  unfolding less_eq_nested_mask_def
+  apply (cases "get_nm_total_full \<omega>")
+  apply (simp del: split_paired_All)
+  apply (intro allI)
+  apply (rename_tac mh fnm lp')
+  apply (case_tac "lp' = lp"; simp)
+   apply (case_tac "fnm lp"; simp)
+   apply (rename_tac lpm)
+   apply (intro impI)
+   apply (cases "p = 0")
+    apply (rule disjI1)
+    apply (metis Rep_posreal_inverse Rep_preal_inverse add.right_neutral all_pos divide_eq_0_iff divide_preal.rep_eq greater_minus_plus preal_semimodule_class.scale_one split_pairs zero_preal.rep_eq)
+   apply (rule disjI2)
+   apply (intro conjI)
+    apply (simp add: Abs_posreal_inverse PosReal.ppos.rep_eq gr_0_is_ppos less_eq_preal.rep_eq less_posreal.rep_eq minus_preal.rep_eq not_le_imp_less preal_not_0_gt_0)
+   apply (metis (full_types) all_pos minus_preal.abs_eq nm_scale_le_1 psub_smaller zero_preal_def)
+  by (smt (verit, best) option.exhaust option_fold.simps(1) option_fold.simps(2))
+
+
+lemma exhale_normal_result_smaller':
+  assumes "red_exhale ctxt StateCons \<omega>def A \<omega> (RNormal \<omega>')"
+    shows "\<omega>' \<le>  \<omega>"
+  using assms
+proof (induction A arbitrary: \<omega> \<omega>')
+  case (Atomic atm)
+  show ?case
+  proof (cases atm)
+    case (Pure _)
+    show ?thesis
+      using Atomic[unfolded Pure] ExhPure_case exh_if_total_normal_2
+      by (metis exh_if_total_normal_2 order_class.order_eq_iff result_total.distinct(5))
+  next
+    case (Acc e_r f perm)
+    show ?thesis
+    proof (cases perm)
+      case (PureExp e_p)
+      show ?thesis
+        using ExhAcc_case[OF Atomic[unfolded Acc PureExp], simplified] exh_if_total_normal_2
+        by (smt (verit) dec_mh_loc_total_full_smaller order_refl)
+    next
+      case Wildcard
+      show ?thesis
+        using Atomic[unfolded Acc Wildcard]
+        apply (safe elim!: ExhAcc_case; simp)
+        by (metis dec_mh_loc_nm.simps dec_mh_loc_total.simps dec_mh_loc_total_full.simps dec_mh_loc_total_full_smaller exh_if_total_normal_2)
+    qed
+  next
+    case (AccPredicate pid e_args perm)
+    show ?thesis
+    proof (cases perm)
+      case (PureExp e_p)
+      then show ?thesis
+        using ExhAccPred_case[OF Atomic[unfolded AccPredicate PureExp], simplified] exh_if_total_normal_2
+        by (metis exhale_pred_def rm_from_lpm_total_full_smaller)
+    next
+      case Wildcard
+      then show ?thesis
+        using ExhAccPred_case[OF Atomic[unfolded AccPredicate Wildcard], simplified] exh_if_total_normal_2
+        by (metis exhale_pred_def rm_from_lpm_total_full_smaller)
+    qed
+  qed
+next
+  case (Star A B)
+  then show ?case
+    apply (safe elim!: ExhStar_case)
+    using order.trans
+    by blast
+qed (auto elim: red_exhale.cases)
+
+
 lemma exhale_normal_result_smaller:
   assumes "red_exhale ctxt StateCons \<omega>def A \<omega> res" and
           "res = RNormal \<omega>'"
         shows "\<omega> \<succeq> \<omega>'"
-  sorry
-(*
-  using assms
-proof (induction arbitrary: \<omega>')
-  case (ExhAcc mh \<omega> e_r r e_p p a f)
-  show ?case 
-  proof (cases "r = Null")
-    case True
-    then show ?thesis 
-      using ExhAcc
-      by (auto elim: exh_if_total.elims simp: succ_refl) 
-  next
-    case False
-    with ExhAcc have SufficientPerm: "pgte (mh (a, f)) (Abs_preal p)" and
-                     "\<omega>' = update_mh_loc_total_full \<omega> (a, f) (mh (a, f) - Abs_preal p)"
-      by (auto elim: exh_if_total.elims)
-
-    show ?thesis
-    proof (subst \<open>\<omega>' = _\<close>, rule succ_full_total_stateI)
-        from SufficientPerm
-        show "get_mh_total_full \<omega> \<succeq> get_mh_total_full (update_mh_loc_total_full \<omega> (a, f) (mh (a, f) - Abs_preal p))"
-          using mask_update_succ_aux
-          unfolding \<open>mh = _\<close>
-         by fastforce
-    qed (simp_all add: succ_refl)
-  qed
-next
-  case (ExhAccWildcard mh \<omega> e_r r a q f)
-  hence "mh (a, f) \<noteq> pnone" and "\<omega>' = update_mh_total_full \<omega> (mh((a, f) := q))"
-    by (auto elim: exh_if_total.elims)
-
-  have "pgt (mh (a, f)) q" 
-    using \<open>q = _\<close> someI_ex[OF preal_exists_stricly_smaller_nonzero[OF \<open>mh (a, f) \<noteq> pnone\<close>]]
-    by blast
-
-  show ?case 
-  proof (subst \<open>\<omega>' = _\<close>, rule succ_full_total_stateI)
-    from \<open>pgt (mh (a, f)) q\<close>
-    show "get_mh_total_full \<omega> \<succeq> get_mh_total_full (update_mh_total_full \<omega> (mh((a, f) := q)))"      
-      using mask_update_succ_aux_2[OF pgt_implies_pgte]
-      unfolding  \<open>mh = _\<close>
-      by fastforce
-  qed (simp_all add: succ_refl)
-next
-  case (ExhAccPred mp \<omega> e_args v_args e_p p pred_id)
-  hence SufficientPerm: "pgte (mp (pred_id, v_args)) (Abs_preal p)" and
-        "\<omega>' = update_mp_total_full \<omega> (mp((pred_id, v_args) := mp (pred_id, v_args) - Abs_preal p))"
-    by (auto elim: exh_if_total.elims)
-
-  show ?case 
-  proof (subst \<open>\<omega>' = _\<close>, rule succ_full_total_stateI)
-    from SufficientPerm
-    show "get_mp_total_full \<omega> \<succeq> get_mp_total_full (update_mp_total_full \<omega> (mp((pred_id, v_args) := mp (pred_id, v_args) - Abs_preal p)))"
-      using mask_update_succ_aux
-      unfolding \<open>mp = _\<close>
-      by fastforce
-  qed (simp_all add: succ_refl)
-next
-  case (ExhAccPredWildcard mp \<omega> e_args v_args q pred_id)
-  hence *: "mp (pred_id, v_args) \<noteq> pnone" and 
-        "\<omega>' = update_mp_total_full \<omega> (mp((pred_id, v_args) := q))"
-    by (auto elim: exh_if_total.elims)
-
-  hence SufficientPerm: "pgt (mp (pred_id, v_args)) q"
-    using \<open>q = _\<close> someI_ex[OF preal_exists_stricly_smaller_nonzero[OF *]]
-    by blast
-
-  show ?case
-  proof (subst \<open>\<omega>' = _\<close>, rule succ_full_total_stateI)
-    from SufficientPerm
-    show "get_mp_total_full \<omega> \<succeq> get_mp_total_full (update_mp_total_full \<omega> (mp((pred_id, v_args) := q)))"
-      using mask_update_succ_aux_2[OF pgt_implies_pgte]
-      unfolding \<open>mp = _\<close>
-      by fastforce
-  qed (simp_all add: succ_refl)      
-next
-  case (ExhPure e \<omega> b)
-  then show ?case 
-    by (auto elim: exh_if_total.elims simp: succ_refl)
-next
-  case (ExhStarNormal A \<omega>1 \<omega>2 B res)
-  then show ?case 
-    using succ_trans by blast
-next
-  case (ExhImpTrue e \<omega> A res)
-  then show ?case 
-    by blast
-next
-  case (ExhImpFalse e \<omega> A)
-  then show ?case
-    by (simp add: succ_refl)
-qed (simp_all)
-*)
+  apply (rule full_total_state_gte_implies_succ)
+  using assms exhale_normal_result_smaller'
+   apply blast
+  using exhale_only_changes_total_state_aux assms
+  by fastforce
 
 
 \<comment> \<open>Almost the same as the lemma above, just extracting mh and mp.\<close>
