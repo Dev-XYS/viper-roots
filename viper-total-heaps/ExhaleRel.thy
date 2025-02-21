@@ -848,9 +848,7 @@ proof (rule rel_general_conseq_output,
   moreover have "upd_mh_loc_total_full (snd \<omega>0_\<omega>def) (the_address r,f)
                    ((get_mh_total_full (snd \<omega>0_\<omega>def) (the_address r,f)) - (Abs_preal p)) =
                  dec_mh_loc_total_full (snd \<omega>0_\<omega>def) (the_address r,f) (Abs_preal p)"
-    apply (rule full_total_state.equality; simp_all)
-    apply (rule total_state.equality; simp_all)
-    by (rule nested_mask_equality; simp_all)
+    by (rule full_total_state.equality; simp)
   ultimately show "fst \<omega>' = (if (mask_var_def Tr = mask_var Tr \<and> r \<noteq> Null) then (snd \<omega>') else (fst \<omega>0_\<omega>def)) \<and>
 
          snd \<omega>' = (if (r = Null) then (snd \<omega>0_\<omega>def) else (upd_mh_loc_total_full (snd \<omega>0_\<omega>def) (the_address r, f)
@@ -1080,7 +1078,7 @@ definition exhale_pred_acc_normal_premise
   where "exhale_pred_acc_normal_premise ctxt_vpr StateCons pred_id e_args e_p v_args v_p \<omega>0 \<omega> \<omega>' \<equiv>
            exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args e_p v_args v_p \<omega>0 \<omega> \<and>
            exhale_pred_acc_rel_perm_success ctxt_vpr StateCons \<omega> pred_id v_args v_p \<and>
-           \<omega>' = dec_mp_loc_total_full \<omega> (pred_id,v_args) (Abs_preal v_p)"
+           \<omega>' = rm_from_lpm_total_full \<omega> (pred_id,v_args) (Abs_preal v_p)"
 
 \<comment> \<open>This rule cannot be used for the exhale in unfold, since the state relation is different.\<close>
 lemma exhale_rel_pred_acc:

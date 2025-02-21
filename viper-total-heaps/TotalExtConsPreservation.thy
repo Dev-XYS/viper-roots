@@ -3,14 +3,6 @@ theory TotalExtConsPreservation
 begin
 
 
-subsection \<open>Definitions (Todo: put somewhere else)\<close>
-
-definition ctxt_pred_self_framing :: "'a total_context \<Rightarrow> bool" where
-  "ctxt_pred_self_framing ctxt \<equiv> \<forall>pid pdecl.
-     ViperLang.predicates (program_total ctxt) pid = Some pdecl \<longrightarrow>
-     pred_self_framing ctxt pdecl"
-
-
 subsection \<open>Lemmas (Todo: put somewhere else)\<close>
 
 lemma extcons_preserved_by_mh_change:

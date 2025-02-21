@@ -1,5 +1,5 @@
 theory TotalInternalConsistency
-  imports TotalFoldUnfold NestedMaskProperties TotalStateProperties
+  imports TotalFoldUnfold NestedMaskProperties TotalStateProperties TotalSemantics
 begin
 
 
@@ -22,6 +22,111 @@ definition consistent_internal_total_full where
      consistent_internal_total (get_total_full \<omega>) \<and>
      (\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> consistent_internal_total \<phi>)"
 
+
+subsection \<open>Well-formed state consistency\<close>
+
+\<comment> \<open>Putting these here is really sub-optimal. Previously, these definitions lie in \<^file>\<open>TotalSemantics.thy\<close>.
+    The reason to put it here is that only internal consistency (or simply consistency in the following
+    definition) parameterized and external consistency is not, and the well-formedness of internal
+    consistency requires external consistency.\<close>
+
+text \<open>Many of the theorems are parametrized by the state consistency. Many of the theorems require
+certain properties on the state consistency. The following well-formedness definition captures
+these properties.\<close>
+
+definition wf_total_consistency
+  where "wf_total_consistency ctxt R Rt \<equiv>
+               mono_prop_downward R \<and>
+               (\<forall>\<omega>. is_empty_total_full \<omega> \<longrightarrow> Rt (get_total_full \<omega>)) \<and>
+               (\<forall>\<omega> \<omega>' \<Lambda> stmt. R \<omega> \<longrightarrow> red_stmt_total ctxt R \<Lambda> stmt \<omega> (RNormal \<omega>') \<longrightarrow> R \<omega>') \<and>
+               \<comment>\<open>The following statement ensures that states in the body of a scope preserve consistency.\<close>
+               (\<forall>\<omega> v. R \<omega> \<longrightarrow> R (shift_and_add_state_total \<omega> v)) \<and>
+               (\<forall>\<omega>. R \<omega> \<longleftrightarrow> (Rt (get_total_full \<omega>) \<and> (\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> Rt \<phi>))) \<and>
+               (\<forall>\<omega> \<omega>' \<Lambda> stmt. consistent_external ctxt (get_total_full \<omega>) \<longrightarrow> R \<omega> \<longrightarrow>
+                              ctxt_wf_pred ctxt \<longrightarrow> ctxt_pred_self_framing ctxt \<longrightarrow>
+                              red_stmt_total ctxt R \<Lambda> stmt \<omega> (RNormal \<omega>') \<longrightarrow>
+                              consistent_external ctxt (get_total_full \<omega>'))"
+
+lemma total_consistencyI:
+  assumes "wf_total_consistency ctxt R Rt"
+      and "Rt (get_total_full \<omega>)"
+      and "\<And> lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<Longrightarrow> Rt \<phi>"
+    shows "R \<omega>"
+  using assms
+  unfolding wf_total_consistency_def
+  by blast
+
+lemma wf_total_consistency_trivial: "wf_total_consistency ctxt (\<lambda>_.True) (\<lambda>_.True)"
+  unfolding wf_total_consistency_def mono_prop_downward_def
+  oops  \<comment> \<open>Does not hold any more.\<close>
+
+lemma total_consistency_red_stmt_preserve:
+  assumes "wf_total_consistency ctxt R Rt"
+      and "R \<omega>"
+      and "red_stmt_total ctxt R \<Lambda> stmt \<omega> (RNormal \<omega>')"
+    shows "R \<omega>'"
+  using assms
+  unfolding wf_total_consistency_def
+  by blast
+
+lemma total_consistency_store_update:
+  assumes "wf_total_consistency ctxt R Rt"
+      and "R \<omega>"
+      and "get_total_full \<omega>' = get_total_full \<omega>"
+      and "get_trace_total \<omega>' = get_trace_total \<omega>"
+    shows "R \<omega>'"
+  using assms
+  unfolding wf_total_consistency_def
+  by metis
+
+lemma total_consistency_store_update_2:
+  assumes "wf_total_consistency ctxt R Rt"
+      and "R \<omega>"
+    shows "R (\<omega> \<lparr> get_store_total := \<sigma> \<rparr>)"
+  using assms total_consistency_store_update
+  by fastforce
+
+lemma total_consistency_trace_update:
+  assumes "wf_total_consistency ctxt R Rt"
+      and "R \<omega>"
+      and "get_store_total \<omega>' = get_store_total \<omega>"
+      and "get_total_full \<omega>' = get_total_full \<omega>"
+      and "\<And> lbl \<phi>. get_trace_total \<omega>' lbl = Some \<phi> \<Longrightarrow> Rt \<phi>"
+    shows "R \<omega>'"
+  using assms
+  unfolding wf_total_consistency_def
+  by simp
+
+lemma total_consistency_trace_update_2:
+  assumes "wf_total_consistency ctxt R Rt"
+      and "R \<omega>"
+      and "\<And> lbl \<phi>. t lbl = Some \<phi> \<Longrightarrow> Rt \<phi>"
+    shows "R (\<omega> \<lparr> get_trace_total := t \<rparr>)"
+  using assms
+  unfolding wf_total_consistency_def
+  by simp
+
+lemma wf_total_consistency_trace_mono_downwardD:
+  assumes "wf_total_consistency ctxt R Rt"
+  shows "mono_prop_downward R"
+  using assms
+  unfolding wf_total_consistency_def
+  by blast
+
+lemma total_consistency_red_stmt_extcons_preserve:
+  assumes "wf_total_consistency ctxt R Rt"
+      and "consistent_external ctxt (get_total_full \<omega>)"
+      and "ctxt_wf_pred ctxt"
+      and "ctxt_pred_self_framing ctxt"
+      and "R \<omega>"
+      and "red_stmt_total ctxt R \<Lambda> stmt \<omega> (RNormal \<omega>')"
+    shows "consistent_external ctxt (get_total_full \<omega>')"
+  using assms
+  unfolding wf_total_consistency_def
+  by blast
+
+
+subsection \<open>Unfold preserves internal consistency\<close>
 
 lemma shift_up_preserves_loc_sum:
   assumes "shift_up pid vs q nm nm'"
@@ -114,8 +219,6 @@ next
     by blast
 qed
 
-
-subsection \<open>Unfold preserves internal consistency\<close>
 
 lemma shift_up_preserves_internal_consistency:
   assumes "shift_up pred_id vs q nm nm'"

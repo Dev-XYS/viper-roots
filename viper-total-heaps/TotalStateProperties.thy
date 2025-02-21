@@ -355,7 +355,7 @@ lemma same_mp_diff:
 
 lemma dec_mh_mh_diff:
   assumes "p < get_mh_total_full \<omega> loc"
-  shows "get_mh_total_full \<omega> - get_mh_total_full (upd_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p)) =
+  shows "get_mh_total_full \<omega> - get_mh_total_full (dec_mh_loc_total_full \<omega> loc p) =
          singleton_mh loc p"
 proof -
   have "get_mh_total_full \<omega> loc - (get_mh_total_full \<omega> loc - p) = p"
@@ -367,7 +367,7 @@ proof -
 qed
 
 lemma dec_mh_mp_diff:
-  shows "get_mp_total_full \<omega> - get_mp_total_full (upd_mh_loc_total_full \<omega> loc (get_mh_total_full \<omega> loc - p)) =
+  shows "get_mp_total_full \<omega> - get_mp_total_full (dec_mh_loc_total_full \<omega> loc p) =
          zero_mask"
   apply simp
   using same_mp_diff

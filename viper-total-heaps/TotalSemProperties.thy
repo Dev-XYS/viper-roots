@@ -4,7 +4,7 @@ text \<open>This file contains lemmas that can be proved using only the semantic
   More complex lemmas are contained in \<open>TotalSemanticsProperties.thy\<close>.\<close>
 
 theory TotalSemProperties
-  imports TotalSemantics
+  imports TotalSemantics TotalInternalConsistency
 begin
 
 

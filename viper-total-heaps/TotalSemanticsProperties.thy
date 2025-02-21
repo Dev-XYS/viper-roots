@@ -1,7 +1,7 @@
 section \<open>Key Properties of THSem\<close>
 
 theory TotalSemanticsProperties
-  imports TotalSemProperties TotalExtConsProps TotalConsistencyInst
+  imports TotalSemProperties TotalExtConsProps
 begin
 
 
@@ -827,7 +827,7 @@ proof (induction arbitrary: \<omega>')
 next
   case IH: (ExhAccWildcard mh \<omega> e_r r a f q)
   have 1: "mh (a,f) \<noteq> 0 \<and> r \<noteq> Null"
-   and \<omega>': "\<omega>' = upd_mh_loc_total_full \<omega> (a, f) (mh (a,f) - q)"
+   and \<omega>': "\<omega>' = dec_mh_loc_total_full \<omega> (a,f) q"
     using IH.prems(1) exh_if_total_normal exh_if_total_normal_2
     by blast+
   show ?case

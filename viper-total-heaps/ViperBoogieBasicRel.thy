@@ -391,15 +391,23 @@ abbreviation zero_mask_bpl :: "ref \<times> 'a vb_field \<Rightarrow> real"
 
 lemma zero_mask_rel:
   shows "mask_rel Pr F zero_mask zero_mask zero_mask_bpl"
-  unfolding  mask_rel_def
+  unfolding mask_rel_def
   by (auto intro: if_SomeI simp: zero_preal.rep_eq zero_mask_def)
 
 lemma zero_mask_rel_2:
   assumes "is_empty_total_full \<omega>"
   shows "mask_rel Pr F (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) zero_mask_bpl"
-  using assms
-  unfolding is_empty_total_full_def is_empty_total_def zero_nested_mask_def
-  by (simp add: zero_mask_rel)
+proof -
+  have "get_mp_total_full \<omega> = zero_mask"
+    apply standard
+    using assms
+    unfolding is_empty_total_full_def is_empty_total_def zero_nested_mask_def zero_mask_def
+    by auto
+  thus ?thesis
+    using assms
+    unfolding is_empty_total_full_def is_empty_total_def zero_nested_mask_def
+    by (simp add: zero_mask_rel)
+qed
 
 fun boogie_const_val :: "boogie_const => ('a vbpl_val)"
   where
