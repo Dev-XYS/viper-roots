@@ -16,9 +16,9 @@ lemma intcons_preserved_by_update_store:
 subsection \<open>Preservation\<close>
 
 lemma intcons_preserved_by_red_inhale:
-  assumes "consistent_internal_total_full \<omega>"
-      and "red_inhale ctxt consistent_internal_total_full A \<omega> (RNormal \<omega>')"
-    shows "consistent_internal_total_full \<omega>'"
+  assumes "StateCons \<omega>"
+      and "red_inhale ctxt StateCons A \<omega> (RNormal \<omega>')"
+    shows "StateCons \<omega>'"
   using assms
 proof (induction A arbitrary: \<omega> \<omega>')
   case (Atomic atm)
@@ -34,7 +34,7 @@ proof (induction A arbitrary: \<omega> \<omega>')
     proof (cases perm)
       case (PureExp e_p)
       obtain W' r p where
-        "W' = (if r = Null then {\<omega>} else inhale_perm_single consistent_internal_total_full \<omega> (the_address r,f) (Some (Abs_preal p)))" and
+        "W' = (if r = Null then {\<omega>} else inhale_perm_single StateCons \<omega> (the_address r,f) (Some (Abs_preal p)))" and
         "th_result_rel (p \<ge> 0) (W' \<noteq> {} \<and> (p > 0 \<longrightarrow> r \<noteq> Null)) W' (RNormal \<omega>')"
         using Atomic(2)[unfolded Acc PureExp]
         by (auto elim: InhAccPerm_case)
@@ -47,12 +47,12 @@ proof (induction A arbitrary: \<omega> \<omega>')
          apply force
         using \<open>W' = _\<close>[unfolded inhale_perm_single_def]
         apply simp
-        using \<open>\<omega>' \<in> W'\<close> consistent_internal_total_def consistent_internal_total_full_def
+        using \<open>\<omega>' \<in> W'\<close>
         by blast
     next
       case Wildcard
       obtain W' r where
-        "W' = inhale_perm_single consistent_internal_total_full \<omega> (the_address r,f) None" and
+        "W' = inhale_perm_single StateCons \<omega> (the_address r,f) None" and
         "th_result_rel True (W' \<noteq> {} \<and> r \<noteq> Null) W' (RNormal \<omega>')"
         using Atomic(2)[unfolded Acc Wildcard]
         by (auto elim: InhAccWildcard_case)
@@ -62,7 +62,6 @@ proof (induction A arbitrary: \<omega> \<omega>')
       then show ?thesis
         using \<open>W' = _\<close>[unfolded inhale_perm_single_def]
         apply simp
-        using consistent_internal_total_def consistent_internal_total_full_def
         by blast
     qed
   next
@@ -71,7 +70,7 @@ proof (induction A arbitrary: \<omega> \<omega>')
     proof (cases perm)
       case (PureExp e_p)
       obtain W' v_args p where
-        "W' = inhale_perm_single_pred ctxt consistent_internal_total_full \<omega> (pid,v_args) (Some (Abs_preal p))" and
+        "W' = inhale_perm_single_pred ctxt StateCons \<omega> (pid,v_args) (Some (Abs_preal p))" and
         "th_result_rel (p \<ge> 0) (W' \<noteq> {}) W' (RNormal \<omega>')"
         using Atomic(2)[unfolded AccPredicate PureExp]
         by (auto elim: InhAccPredPerm_case)
@@ -81,12 +80,11 @@ proof (induction A arbitrary: \<omega> \<omega>')
       then show ?thesis
         using \<open>W' = _\<close>[unfolded inhale_perm_single_pred_def]
         apply simp
-        using consistent_internal_total_def consistent_internal_total_full_def
         by blast
     next
       case Wildcard
       obtain W' v_args where
-        "W' = inhale_perm_single_pred ctxt consistent_internal_total_full \<omega> (pid,v_args) None" and
+        "W' = inhale_perm_single_pred ctxt StateCons \<omega> (pid,v_args) None" and
         "th_result_rel True (W' \<noteq> {}) W' (RNormal \<omega>')"
         using Atomic(2)[unfolded AccPredicate Wildcard]
         by (auto elim: InhAccPredWildcard_case)
@@ -96,7 +94,6 @@ proof (induction A arbitrary: \<omega> \<omega>')
       then show ?thesis
         using \<open>W' = _\<close>[unfolded inhale_perm_single_pred_def]
         apply simp
-        using consistent_internal_total_def consistent_internal_total_full_def
         by blast
     qed
   qed
@@ -104,9 +101,9 @@ qed (blast elim: red_inhale.cases)+
 
 
 lemma intcons_preserved_by_red_inhale_stmt:
-  assumes "consistent_internal_total_full \<omega>"
-      and "red_stmt_total ctxt consistent_internal_total_full \<Lambda> (Inhale A) \<omega> (RNormal \<omega>')"
-    shows "consistent_internal_total_full \<omega>'"
+  assumes "StateCons \<omega>"
+      and "red_stmt_total ctxt StateCons \<Lambda> (Inhale A) \<omega> (RNormal \<omega>')"
+    shows "StateCons \<omega>'"
   using intcons_preserved_by_red_inhale assms
   by (blast elim: RedInhale_case)
 

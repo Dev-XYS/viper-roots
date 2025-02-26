@@ -46,6 +46,11 @@ lemma inhale_perm_single_elem:
   by blast
 
 
+\<comment> \<open>Internal consistency must be included in \<open>red_exhale\<close>.
+    Consider the Viper statement: \<open>inhale acc(x.f) && acc(x.f) && x.g == 1\<close>.
+    This statement succeeds in Viper (false can be proven).
+    But if we do not transition to magic in the semantics, the statement results in a failure (if there is not permission to x.g.\<close>
+
 inductive red_inhale :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool"
   for ctxt :: "'a total_context" and R :: "'a full_total_state \<Rightarrow> bool" where
 

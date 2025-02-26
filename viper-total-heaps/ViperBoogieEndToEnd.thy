@@ -412,6 +412,7 @@ proof -
     by blast
 qed
 
+
 subsection \<open>Main helper lemma for final theorem\<close>
 
 lemma end_to_end_vpr_method_correct_partial:
@@ -489,7 +490,7 @@ proof (rule allI | rule impI)+
 
   let ?\<Lambda> = "(nth_option (method_decl.args mdecl @ rets mdecl))"
   fix \<omega> rpre
-  assume 
+  assume
          StoreWellTy: "vpr_store_well_typed (absval_interp_total ctxt_vpr) (nth_option (method_decl.args mdecl @ rets mdecl)) (get_store_total \<omega>)" and
          HeapWellTy: "total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)" and
          "is_empty_total_full \<omega>" and
@@ -795,6 +796,10 @@ proof (rule allI | rule impI)+
                   using \<open>is_empty_total_full \<omega>\<close>
                   unfolding is_empty_total_full_def
                   by simp
+              next
+                show "StateCons (\<omega>\<lparr>get_store_total := get_store_total \<omega>body\<rparr>)"
+                  using StateRel WfConsistency ConsistencyEnabled state_rel_consistent total_consistency_store_update_2
+                  by blast
               qed
 
               let ?\<phi> = "get_total_full \<omega>body \<lparr> get_nm_total := 0 \<rparr>"
@@ -817,6 +822,25 @@ proof (rule allI | rule impI)+
                 show "get_trace_total \<omega>body old_label = Some (get_total_full (\<omega>pre\<lparr>get_store_total := get_store_total \<omega>body\<rparr>))"
                   using red_stmt_preserves_labels RedBodyVpr \<comment>\<open>Use that body does not overwrite the old label\<close>
                   by fastforce
+              next
+                have "StateCons ?\<omega>pre'"
+                  using Rpre_old_upd ConsistencyEnabled state_rel_consistent
+                  by blast
+                hence "StateCons \<omega>body"
+                  using RedBodyVpr WfConsistency total_consistency_red_stmt_preserve
+                  by blast
+                moreover have "\<omega>body \<succeq> upd_nm_total_full \<omega>body 0"
+                  apply (rule full_total_state_gte_implies_succ)
+                  unfolding less_eq_full_total_state_ext_def
+                   apply (intro conjI; simp)
+                    apply fastforce
+                  unfolding less_eq_total_state_ext_def
+                   apply (intro conjI; simp)
+                   apply (simp add: nm_0_le_any)
+                  by simp
+                ultimately show "StateCons (upd_nm_total_full \<omega>body 0)"
+                  using ConsistencyDownwardMono mono_prop_downwardD mono_prop_downward_ord_implies_mono_prop_downward
+                  by blast
               qed
             qed
 

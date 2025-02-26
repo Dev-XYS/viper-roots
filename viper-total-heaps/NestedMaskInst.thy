@@ -571,4 +571,10 @@ proof (induction x arbitrary: y)
 qed
 
 
+lemma nm_0_le_any:
+  fixes x :: "'a nested_mask"
+  shows "0 \<le> x"
+  by (simp add: nm_sum_is_bigger)
+
+
 end
