@@ -88,7 +88,7 @@ lemma is_empty_total_less_eq:
   by auto
 
 lemma is_empty_total_full_less_eq:
-  assumes "is_empty_total_full \<omega>" and
+  assumes "is_empty_total (get_total_full \<omega>)" and
           "get_store_total \<omega> = get_store_total \<omega>'" and
           "get_trace_total \<omega> = get_trace_total \<omega>'" and
           "get_hh_total_full \<omega> = get_hh_total_full \<omega>'" and

@@ -153,7 +153,7 @@ always has at least one failure transition. This is in-sync with the Carbon impl
      \<comment>\<open>Once full support for Viper predicates is added, then this exhale semantics needs to also
        take \<^term>\<open>R\<close> into account.\<close>
      \<omega>' \<in> havoc_locs_state ctxt \<omega>_exh
-       {loc. \<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full \<omega>) p \<and> nm_loc_sum loc (get_nm_total_full \<omega>) 0}
+       {loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full \<omega>) p) \<and> nm_loc_sum loc (get_nm_total_full \<omega>_exh) 0}
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Exhale A) \<omega> (RNormal \<omega>')"
 | RedExhaleFailure:
@@ -391,16 +391,19 @@ lemma vpr_method_correct_total_aux_normalD:
   by blast
 
 definition vpr_postcondition_framed :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> assertion \<Rightarrow> 'a total_state \<Rightarrow> 'a store \<Rightarrow> bool"
-  where "vpr_postcondition_framed ctxt R postcondition \<phi>pre \<sigma> \<equiv>
-               (\<forall>mh trace. total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total mh) \<longrightarrow>
-                     wf_mask_simple (get_mh_total mh) \<longrightarrow>
+  where "vpr_postcondition_framed ctxt StateCons postcondition \<phi>pre \<sigma> \<equiv>
+               (\<forall>\<phi> trace. total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total \<phi>) \<longrightarrow>
+                     wf_mask_simple (get_mh_total \<phi>) \<longrightarrow>
                     \<comment>\<open>old state given by state that satisfies precondition, any other available labels
                        are irrelevant, since well-formed postconditions can only have the label \<^const>\<open>old_label\<close>\<close>
                      trace old_label = Some \<phi>pre \<longrightarrow>
-                     assertion_framing_state ctxt R postcondition
+                     StateCons \<lparr> get_store_total = \<sigma>,
+                                 get_trace_total = trace,
+                                 get_total_full = \<phi> \<rparr> \<longrightarrow>
+                     assertion_framing_state ctxt StateCons postcondition
                              \<lparr> get_store_total = \<sigma>,
                                get_trace_total = trace,
-                               get_total_full = mh \<rparr>
+                               get_total_full = \<phi> \<rparr>
                 )"
 
 lemma vpr_postcondition_framed_assertion_framing_state:

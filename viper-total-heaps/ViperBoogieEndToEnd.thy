@@ -253,7 +253,8 @@ definition post_framing_rel
            (\<forall>\<omega>0 \<omega>1 ns. R0 \<omega>0 ns \<longrightarrow> get_store_total \<omega>0 = get_store_total \<omega>1 \<longrightarrow> 
                                \<comment>\<open>One could omit emptiness and instead use a separate monotonicity theorem
                                   for inhale. We do this in a separate step.\<close> 
-                               is_empty_total_full \<omega>1 \<longrightarrow>                                                             
+                               is_empty_total_full \<omega>1 \<longrightarrow>
+                               StateCons \<omega>1 \<longrightarrow>  \<comment> \<open>ForMe: Hope it makes sense.\<close>
                                total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>1) \<longrightarrow>
                                post_framing_rel_aux ctxt_vpr StateCons \<Lambda> proc_body_bpl ctxt mdecl R0 \<gamma>Pre \<omega>1 ns
                    )"
@@ -305,9 +306,9 @@ lemma post_framing_rel_aux:
                        (Inhale (method_decl.post mdecl))
                        (BigBlock name cs str tr, cont)
                        \<gamma>'" 
-shows "post_framing_rel ctxt_vpr StateCons \<Lambda> proc_body_bpl ctxt mdecl 
-                        (state_rel_well_def_same ctxt Pr StateCons (TyRep :: 'a ty_repr_bpl) Tr AuxPred)
-                        \<gamma>Pre"
+    shows "post_framing_rel ctxt_vpr StateCons \<Lambda> proc_body_bpl ctxt mdecl 
+                            (state_rel_well_def_same ctxt Pr StateCons (TyRep :: 'a ty_repr_bpl) Tr AuxPred)
+                          \<gamma>Pre"
   unfolding post_framing_rel_def
 proof (rule allI | rule impI)+
   fix \<omega>0 \<omega>1 :: "'a full_total_state "
@@ -315,7 +316,8 @@ proof (rule allI | rule impI)+
   assume "state_rel_well_def_same ctxt Pr StateCons TyRep Tr AuxPred \<omega>0 ns" (is "?R Tr \<omega>0 ns") and
          StoreSame: "get_store_total \<omega>0 = get_store_total \<omega>1" and
          HeapWellTy:  "total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>1)" and
-         IsEmpty: "is_empty_total_full \<omega>1"
+         IsEmpty: "is_empty_total_full \<omega>1" and
+         IntCons: "StateCons \<omega>1"
 
   with PropagateBpl obtain ns1 where 
     RedBpl1: "red_ast_bpl proc_body_bpl ctxt 
@@ -323,7 +325,7 @@ proof (rule allI | rule impI)+
                               ((BigBlock name (Havoc hvar' # Assign mvar' (Var zero_mask_var) # cs) str tr, cont), Normal ns1)" and
     R1: "?R Tr \<omega>0 ns1"
     unfolding red_ast_bpl_rel_def
-    by blast    
+    by blast
 
   have *: "\<And>\<omega>0 \<omega> ns hvar' hvar. state_rel Pr StateCons TyRep ((disable_consistent_state_rel_opt Tr)\<lparr>heap_var := hvar, heap_var_def := hvar'\<rparr>) AuxPred ctxt \<omega>0 \<omega> ns \<Longrightarrow> 
                     red_expr_bpl ctxt (Var zero_mask_var) ns (AbsV (AMask zero_mask_bpl))"
@@ -336,7 +338,7 @@ proof (rule allI | rule impI)+
     "StateCons \<omega>1 \<and>
        consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>1)"
     apply (intro conjI)
-    using WfConsistency[simplified wf_total_consistency_def] IsEmpty
+    using WfConsistency[simplified wf_total_consistency_def] IsEmpty IntCons
      apply blast
     using empty_consistent_external
     by (metis IsEmpty is_empty_total_def is_empty_total_full_def total_state.cases total_state.select_convs(2))
@@ -463,7 +465,7 @@ lemma end_to_end_vpr_method_correct_partial:
                            (state_rel_empty (state_rel_well_def_same ctxt (program_total ctxt_vpr) StateCons (TyRep :: 'a ty_repr_bpl) Tr AuxPred)) \<omega> ns \<and>
                            unique_constants_distinct gs unique_consts \<and>
                            axioms_sat (vbpl_absval_ty TyRep) (constants, []) (fun_interp ctxt) (global_to_nstate (state_restriction gs constants)) axioms"
-shows "vpr_method_correct_total_partial ctxt_vpr StateCons mdecl"
+    shows "vpr_method_correct_total_partial ctxt_vpr StateCons mdecl"
   unfolding vpr_method_correct_total_partial_def vpr_method_correct_total_aux_def
 proof (rule allI | rule impI)+
   text \<open>Proof setup: deconstruct relation statement\<close>
@@ -611,24 +613,25 @@ proof (rule allI | rule impI)+
       show PostFramed: "vpr_postcondition_framed ctxt_vpr StateCons (method_decl.post mdecl) (get_total_full \<omega>pre) (get_store_total \<omega>)"
         unfolding vpr_postcondition_framed_def assertion_framing_state_def
       proof (rule allI | rule impI)+
-        fix mh trace res
-        let ?\<omega>Post = "\<lparr>get_store_total = get_store_total \<omega>, get_trace_total = trace, get_total_full = mh\<rparr>"
-        let ?\<omega>PostEmpty = "empty_full_total_state (get_store_total \<omega>) trace (get_hh_total mh)"
+        fix \<phi> trace res
+        let ?\<omega>Post = "\<lparr>get_store_total = get_store_total \<omega>, get_trace_total = trace, get_total_full = \<phi>\<rparr>"
+        let ?\<omega>PostEmpty = "empty_full_total_state (get_store_total \<omega>) trace (get_hh_total \<phi>)"
         assume 
-              "total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total mh)"
+              "total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total \<phi>)"
           and TraceOldState: "trace old_label = Some (get_total_full \<omega>pre)"
+          and \<omega>preCons: "StateCons \<lparr> get_store_total = get_store_total \<omega>, get_trace_total = trace, get_total_full = \<phi> \<rparr>"
           and RedInhPost:"red_inhale ctxt_vpr StateCons (method_decl.post mdecl) ?\<omega>Post res"
 
         hence HeapWellTy: "total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full ?\<omega>PostEmpty)"
           by (simp add: empty_full_total_state_def)
-        
+
         from PostFramingRel obtain ns' \<gamma>Framing0 \<gamma>Framing1 RPostFrameStart RPostFrameEnd where 
           RedPreToFramingBpl: "red_ast_bpl proc_body_bpl ctxt (\<gamma>Pre, Normal nspre) (\<gamma>Framing0, Normal ns')" and
           "RPostFrameStart ?\<omega>PostEmpty ns'" and
           PostFramingInhRel: "stmt_rel RPostFrameStart RPostFrameEnd ctxt_vpr StateCons \<Lambda> proc_body_bpl ctxt (Inhale (method_decl.post mdecl)) \<gamma>Framing0 \<gamma>Framing1"
-          using Rpre StoreSame is_empty_empty_full_total_state  HeapWellTy
+          using Rpre StoreSame is_empty_empty_full_total_state HeapWellTy get_store_empty_full_total_state
           unfolding post_framing_rel_def post_framing_rel_aux_def
-          by (metis get_store_empty_full_total_state)
+          by (smt (verit) WfConsistency \<omega>preCons full_total_state.simps(2) get_trace_empty_full_total_state wf_total_consistency_def)
 
         show "res \<noteq> RFailure"
         proof (rule ccontr)
@@ -637,8 +640,8 @@ proof (rule allI | rule impI)+
             by simp
 
           have "?\<omega>PostEmpty \<le> ?\<omega>Post"
-            apply (rule is_empty_total_full_less_eq[OF is_empty_empty_full_total_state])
-            by (simp_all add: empty_full_total_state_def)
+            apply (rule is_empty_total_full_less_eq)
+            by (simp_all add: empty_full_total_state_def is_empty_total_def)
 
           with inhale_no_perm_downwards_mono(3) ConsistencyDownwardMono RedInhPost 
           have "red_inhale ctxt_vpr StateCons (method_decl.post mdecl) ?\<omega>PostEmpty RFailure"

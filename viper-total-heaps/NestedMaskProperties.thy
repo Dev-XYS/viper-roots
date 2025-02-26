@@ -164,7 +164,7 @@ lemma nm_loc_sum_mult:
 
 subsection \<open>Uniqueness\<close>
 
-lemma nm_loc_sum_unique:
+lemma nm_loc_sum'_unique:
   assumes "nm_loc_sum' loc nm p"
       and "nm_loc_sum' loc nm q"
     shows "p = q"
@@ -196,6 +196,15 @@ proof (induct nm arbitrary: p q)
     using has_sum_unique pf\<^sub>1 pf\<^sub>2
     by fastforce
 qed
+
+
+lemma nm_loc_sum_unique:
+  assumes "nm_loc_sum loc nm p"
+      and "nm_loc_sum loc nm q"
+    shows "p = q"
+  using assms
+  unfolding nm_loc_sum.simps
+  by (simp add: nm_loc_sum'_unique Rep_preal_inject[symmetric])
 
 
 subsection \<open>\<^const>\<open>has_sumA\<close>: sum greater than one\<close>
@@ -230,7 +239,7 @@ next
     using assms(1)
     by (blast elim: nm_loc_sum'.elims)
   hence "pf lp = q"
-    by (metis Some assms(2) nm_loc_sum_unique option_fold.simps(1))
+    by (metis Some assms(2) nm_loc_sum'_unique option_fold.simps(1))
   have "\<And>x. pf x \<ge> 0"
     by (smt (verit) has_Some_iff nm_loc_sum'_nonneg pf)
   moreover have "q \<le> p - Rep_preal (mh loc)"
@@ -298,7 +307,7 @@ proof -
   have "pf lp = q"
     apply (cases "fnm lp")
     apply (metis (mono_tags) assms(2) option_fold.simps(2) pf_split)
-    by (metis assms(2) nm_loc_sum_unique option_fold.simps(1) pf_split)
+    by (metis assms(2) nm_loc_sum'_unique option_fold.simps(1) pf_split)
 
   \<comment> \<open>part 1\<close>
   have "Rep_preal (mh loc) \<le> p - q + r"

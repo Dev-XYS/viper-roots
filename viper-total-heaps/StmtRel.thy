@@ -423,7 +423,8 @@ proof (rule stmt_rel_intro)
      "StateConsEnabled \<Longrightarrow> StateCons \<omega>' \<and>
         consistent_external ctxt_vpr (get_total_full \<omega>')"
      using total_consistency_red_stmt_preserve[OF WfConsistency] Consistent[OF _ \<open>R \<omega> ns\<close>]
-           extcons_preserved_by_red_stmt[OF _ RedStmt]
+           total_consistency_ctxt_wf[OF WfConsistency]
+           total_consistency_red_stmt_extcons_preserve[OF WfConsistency]
      by blast
 
    moreover from RedFieldAssign DomainTypeEq have "get_type (domain_type TyRep) v = \<tau>_vpr"
@@ -674,7 +675,7 @@ lemma exhale_stmt_rel:
                (\<lambda>\<omega> \<omega>'. \<comment>\<open>the current evaluation state was reached by exhaling A from the current well-definedness state\<close>
                        red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and> 
                        \<comment>\<open>the updated state is a havoc of the current evaluation state\<close>
-                       snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({loc. get_mh_total_full (fst \<omega>) loc > 0 \<and> get_mh_total_full (snd \<omega>) loc = 0}) \<and>
+                       snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 }) \<and>
                        StateCons (snd \<omega>')
                 ) (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'"
     shows "stmt_rel R R_out ctxt_vpr StateCons \<Lambda>_vpr P ctxt (Exhale A) \<gamma> \<gamma>'"
@@ -693,14 +694,14 @@ proof (rule stmt_rel_intro)
       "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>2, Normal ns2)" and "Rexh \<omega> \<omega>_exh ns2"
       using InvHolds[OF \<open>R \<omega> ns\<close>]
       by blast
-      
+
     moreover from rel_success_elim[OF UpdHavoc, where ?\<omega> = "(\<omega>,\<omega>_exh)" and ?\<omega>'="(\<omega>',\<omega>')"] RedExhale \<open>Rexh \<omega> \<omega>_exh ns2\<close> \<open>StateCons \<omega>'\<close> 
     obtain ns3 where
-      "red_ast_bpl P ctxt (\<gamma>2, Normal ns2) (\<gamma>', Normal ns3)" and "R_out \<omega>' ns3"      
-      by auto     
+      "red_ast_bpl P ctxt (\<gamma>2, Normal ns2) (\<gamma>', Normal ns3)" and "R_out \<omega>' ns3"
+      by auto
     ultimately show "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R_out \<omega>' ns'"
-    using red_ast_bpl_transitive
-    by blast
+      using red_ast_bpl_transitive
+      by blast
   qed
 next
   fix \<omega> ns \<omega>'
@@ -729,7 +730,7 @@ lemma exhale_stmt_rel_inst:
                (\<lambda>\<omega> \<omega>'. \<comment>\<open>the current evaluation state was reached by exhaling A from the current well-definedness state\<close>
                        red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and> 
                        \<comment>\<open>the updated state is a havoc of the current evaluation state\<close>
-                       snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({loc. get_mh_total_full (fst \<omega>) loc > 0 \<and> get_mh_total_full (snd \<omega>) loc = 0}) \<and>
+                       snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 }) \<and>
                        StateCons (snd \<omega>')
                 ) (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'"
     shows "stmt_rel R R_out ctxt_vpr StateCons \<Lambda>_vpr P ctxt (Exhale A) \<gamma> \<gamma>'"
@@ -751,6 +752,9 @@ lemma exhale_true_stmt_rel:
   apply (erule ExhPure_case)
   by (auto elim: red_pure_exp_total_elims exh_if_total.elims)
 
+(* Todo: move *)
+lemmas RedExhaleNormal_case' = RedExhaleNormal_case[folded nm_loc_sum.simps get_nm_total_full.simps]
+
 lemma exhale_true_stmt_rel_2:
   assumes "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> R' \<omega> ns"
   shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt (Exhale (Atomic (Pure (ELit (ViperLang.LBool True))))) \<gamma> \<gamma>"
@@ -760,19 +764,20 @@ proof (rule stmt_rel_intro)
   assume "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Exhale (Atomic (Pure (ELit (ViperLang.lit.LBool True))))) \<omega> (RNormal \<omega>')"
 
   hence "\<omega> = \<omega>'"
-  proof (rule RedExhaleNormal_case)
+  proof (rule RedExhaleNormal_case')
     fix \<omega>_exh
     assume RedExh: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (Pure (ELit (ViperLang.lit.LBool True)))) \<omega> (RNormal \<omega>_exh)"
        and HavocState: "\<omega>' \<in> havoc_locs_state ctxt_vpr \<omega>_exh
-                               { loc. 0 < get_mh_nm (get_nm_total (get_total_full \<omega>)) loc \<and>
-                                      get_mh_nm (get_nm_total (get_total_full \<omega>_exh)) loc = 0 }"
+                               { loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full \<omega>) p) \<and>
+                                      nm_loc_sum loc (get_nm_total_full \<omega>_exh) 0 }"
 
     from RedExh have "\<omega> = \<omega>_exh"
       using exhale_pure_normal_same
       by fastforce
 
     with HavocState have "\<omega>' \<in> havoc_locs_state ctxt_vpr \<omega>_exh {}"
-      by (metis (mono_tags, lifting) Collect_empty_eq less_imp_neq)
+      using nm_loc_sum_unique
+      by (smt (verit, best) dual_order.irrefl empty_Collect_eq)
 
     thus "\<omega> = \<omega>'"
       by (simp add: \<open>\<omega> = \<omega>_exh\<close> havoc_locs_state_empty)
@@ -809,7 +814,7 @@ lemma exhale_stmt_rel_inst_no_inv:
 
       and UpdHavoc: "rel_general (uncurry (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt)) (\<lambda>\<omega> ns. R (snd \<omega>) ns) 
                (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and> 
-                       snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({loc. get_mh_total_full (fst \<omega>) loc > 0 \<and> get_mh_total_full (snd \<omega>) loc = 0}) \<and>
+                       snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 }) \<and>
                        StateCons (snd \<omega>')
                 ) (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'"
     shows "stmt_rel R R ctxt_vpr StateCons \<Lambda>_vpr P ctxt (Exhale A) \<gamma> \<gamma>'"
@@ -823,7 +828,7 @@ lemma exhale_stmt_rel_inst_framing_inv:
       and ExhRel: "exhale_rel (rel_ext_eq R) (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt) (framing_exh ctxt_vpr StateCons) ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>2"
       and UpdHavoc: "rel_general (uncurry (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt)) (\<lambda>\<omega> ns. (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt) (snd \<omega>) ns) 
                (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and> 
-                       snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({loc. get_mh_total_full (fst \<omega>) loc > 0 \<and> get_mh_total_full (snd \<omega>) loc = 0}) \<and>
+                       snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 }) \<and>
                        StateCons (snd \<omega>')
                 ) (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'"
     shows "stmt_rel R (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt) ctxt_vpr StateCons \<Lambda>_vpr P ctxt (Exhale A) \<gamma> \<gamma>'"
@@ -3118,7 +3123,7 @@ proof (rule stmt_rel_intro_2)
           apply (rule total_context.equality)
           by (simp_all add: total_context.defs CtxtInterp CtxtProg)
         ultimately show ?thesis
-          using WfConsistency RedStmtVpr \<open>res = RNormal \<omega>'\<close> extcons_preserved_by_red_stmt[OF _ RedStmtVpr[simplified \<open>res = RNormal \<omega>'\<close>]]
+          using WfConsistency RedStmtVpr \<open>res = RNormal \<omega>'\<close> total_consistency_red_stmt_extcons_preserve[OF WfConsistency _ _ _ _ RedStmtVpr[simplified \<open>res = RNormal \<omega>'\<close>]]
           unfolding wf_total_consistency_def
           by (metis StateRel_ns' \<open>consistent_state_rel_opt (state_rel_opt Tr)\<close> state_rel_consistent)
       qed

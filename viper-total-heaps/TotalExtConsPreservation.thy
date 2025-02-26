@@ -401,16 +401,19 @@ proof -
   from assms(2) obtain \<omega>_exh where
     exh: "red_exhale ctxt StateCons \<omega> A \<omega> (RNormal \<omega>_exh)" and
     havoc: "\<omega>' \<in> havoc_locs_state ctxt \<omega>_exh
-      { loc. \<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full \<omega>) p \<and> nm_loc_sum loc (get_nm_total_full \<omega>) 0 }"
+      { loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full \<omega>) p) \<and> nm_loc_sum loc (get_nm_total_full \<omega>_exh) 0 }"
     by (blast elim: red_stmt_total.cases)
 
   hence "consistent_external ctxt (get_total_full \<omega>_exh)"
     using assms(1) assms(3) extcons_preserved_by_red_exhale
     by blast
 
-  thus ?thesis
-    using assms(4) extcons_preserved_by_changing_0_locs(2) havoc havoc_locs_state_same_mask
-    by (smt (verit) Collect_empty_eq havoc_locs_state_empty less_preal.rep_eq nm_loc_sum.elims(2) nm_loc_sum_unique)
+  show ?thesis
+    apply (rule extcons_preserved_by_changing_0_locs(2)[of "get_total_full \<omega>_exh"])
+    using havoc[unfolded havoc_locs_state_def havoc_locs_heap_def, simplified]
+       apply force
+    using havoc havoc_locs_state_same_mask apply fastforce
+    by fact+
 qed
 
 

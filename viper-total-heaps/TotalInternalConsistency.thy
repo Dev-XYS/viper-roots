@@ -45,7 +45,8 @@ definition wf_total_consistency
                (\<forall>\<omega> \<omega>' \<Lambda> stmt. consistent_external ctxt (get_total_full \<omega>) \<longrightarrow> R \<omega> \<longrightarrow>
                               ctxt_wf_pred ctxt \<longrightarrow> ctxt_pred_self_framing ctxt \<longrightarrow>
                               red_stmt_total ctxt R \<Lambda> stmt \<omega> (RNormal \<omega>') \<longrightarrow>
-                              consistent_external ctxt (get_total_full \<omega>'))"
+                              consistent_external ctxt (get_total_full \<omega>')) \<and>
+               ctxt_wf_pred ctxt \<and> ctxt_pred_self_framing ctxt  \<comment> \<open>These really shouldn't be here.\<close>"
 
 lemma total_consistencyI:
   assumes "wf_total_consistency ctxt R Rt"
@@ -124,6 +125,14 @@ lemma total_consistency_red_stmt_extcons_preserve:
   using assms
   unfolding wf_total_consistency_def
   by blast
+
+lemma total_consistency_ctxt_wf:
+  assumes "wf_total_consistency ctxt R Rt"
+    shows "ctxt_wf_pred ctxt"
+      and "ctxt_pred_self_framing ctxt"
+  using assms
+  unfolding wf_total_consistency_def
+  by fastforce+
 
 
 subsection \<open>Unfold preserves internal consistency\<close>
@@ -420,7 +429,7 @@ proof -
     by (metis add.commute calculation(2))
   ultimately have "s = s1 + s_exh"
     using nm_loc_sum_add nm_loc_sum_unique
-    by (metis nm_loc_sum.elims(2) Rep_preal_inject[symmetric])
+    by blast
 
   have "nm_loc_sum loc (get_nm_total_full \<omega>') (s1 + s_exh)"
     apply (simp only: \<omega>' \<omega>1)

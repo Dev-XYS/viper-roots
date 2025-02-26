@@ -55,7 +55,7 @@ lemma rel_success_elim:
   assumes "rel_general R R' Success Fail P ctxt \<gamma> \<gamma>'" and
           "R \<omega> ns" and
           "Success \<omega> \<omega>'"
-    shows   "\<exists>ns'. (red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>' ns')"
+    shows "\<exists>ns'. (red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>' ns')"
   using assms
   unfolding rel_general_def
   by blast

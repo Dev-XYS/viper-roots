@@ -84,7 +84,7 @@ text \<open>We order the arguments of an AST config such that the syntactic part
 first element s.t. one can easily construct an AST configuration from the syntactic part and the state\<close>                                                                                                                                 
 
 definition red_ast_bpl :: "ast \<Rightarrow> 'a econtext_bpl_general \<Rightarrow>'a vast_config_general \<Rightarrow> 'a vast_config_general \<Rightarrow> bool"
-  where "red_ast_bpl ctxt \<equiv> red_bigblock_small_multi ctxt"
+  where "red_ast_bpl P \<equiv> red_bigblock_small_multi P"
 
 lemma red_ast_bpl_refl: "red_ast_bpl P ctxt \<gamma> \<gamma>"
   by (simp add: red_ast_bpl_def)
