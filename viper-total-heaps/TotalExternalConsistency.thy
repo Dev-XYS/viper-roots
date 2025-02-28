@@ -6,6 +6,19 @@ theory TotalExternalConsistency
 begin
 
 
+subsection \<open>Well-typed list (Todo: move to a proper place)\<close>
+
+definition vals_well_typed :: "('a \<Rightarrow> abs_type) \<Rightarrow> ('a val) list \<Rightarrow> vtyp list \<Rightarrow> bool"
+  where "vals_well_typed A vs ts \<equiv> map (get_type A) vs = ts"
+
+lemma vals_well_typed_same_lengthD:
+  assumes "vals_well_typed A vs ts"
+  shows "length vs = length ts"
+  using assms
+  unfolding vals_well_typed_def
+  by auto
+
+
 subsection \<open>Satisfiability\<close>
 
 inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> field_mask \<Rightarrow> 'a predicate_mask \<Rightarrow> assertion \<Rightarrow> bool"
@@ -41,14 +54,18 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
      ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      p \<ge> 0;
      mh = zero_mask;
-     mp = singleton_mp (pred_id,v_args) (Abs_preal p)
+     mp = singleton_mp (pred_id,v_args) (Abs_preal p);
+     ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl)
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
 
 | SatAccPredWildcard:
   "\<lbrakk> red_pure_exps_total ctxt None e_args \<omega> (Some v_args);
      mh = zero_mask;
-     is_singleton_mp (pred_id,v_args) mp
+     is_singleton_mp (pred_id,v_args) mp;
+     ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl)
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
 
@@ -109,19 +126,6 @@ inductive_cases SatExists_case: "sat ctxt \<omega> mh mp (Exists ty A)"
 inductive_cases SatStar_case: "sat ctxt \<omega> mh mp (A && B)"
 
 
-subsection \<open>Well-typed list (Todo: move to a proper place)\<close>
-
-definition vals_well_typed :: "('a \<Rightarrow> abs_type) \<Rightarrow> ('a val) list \<Rightarrow> vtyp list \<Rightarrow> bool"
-  where "vals_well_typed A vs ts \<equiv> map (get_type A) vs = ts"
-
-lemma vals_well_typed_same_lengthD:
-  assumes "vals_well_typed A vs ts"
-  shows "length vs = length ts"
-  using assms
-  unfolding vals_well_typed_def
-  by auto
-
-
 subsection \<open>External Consistency\<close>
 
 inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> bool" and
@@ -129,8 +133,8 @@ inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a tot
           for ctxt :: "'a total_context" where
   SatStep:
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     ViperLang.predicate_decl.body pred_decl = Some pred_body;
      vals_well_typed (absval_interp_total ctxt) vs (ViperLang.predicate_decl.args pred_decl);
+     ViperLang.predicate_decl.body pred_decl = Some pred_body;
      sat ctxt
          \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
          (get_mh_total \<phi>) (get_mp_total \<phi>)

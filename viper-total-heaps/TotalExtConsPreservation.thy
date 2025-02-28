@@ -79,7 +79,7 @@ proof -
                        (get_mh_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>))
                        (get_mp_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>))
                        (syntactic_mult (Rep_preal p) pbody)"
-    using exhale_diff_sat[OF _ assms(6), of \<omega>'] assms ctxt_wf_pred_def syntactic_mult_supported
+    using exhale_diff_sat[OF assms(6), of \<omega>'] assms ctxt_wf_pred_def syntactic_mult_supported
           prat_non_negative total_state.surjective total_state.update_convs(2)
     by fastforce
 next
@@ -213,7 +213,7 @@ lemma extcons_preserved_by_inhale_perm_single_pred:
     shows "consistent_external ctxt (get_total_full \<omega>')"
 proof -
   obtain \<phi>_inh q where
-    inh_extcons: "consistent_external_wrt_ploc ctxt \<phi>_inh lp q" and
+    inh_extcons: "q > 0 \<longrightarrow> consistent_external_wrt_ploc ctxt \<phi>_inh lp q" and
     hh_same: "get_hh_total \<phi>_inh = get_hh_total_full \<omega>" and
     \<omega>': "\<omega>' = (if q = 0 then \<omega> else add_to_lpm_nonzero_total_full \<omega> lp (Abs_posreal q) (get_nm_total \<phi>_inh))"
     using iffD1[OF mem_Collect_eq assms(1)[simplified inhale_perm_single_pred_def]]

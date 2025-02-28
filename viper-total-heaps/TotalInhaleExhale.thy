@@ -22,7 +22,7 @@ definition inhale_perm_single_pred :: "'a total_context \<Rightarrow> ('a full_t
   where "inhale_perm_single_pred ctxt R \<omega> lp p_opt =
     { \<omega>'| \<omega>' \<phi>_inh q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
-            consistent_external_wrt_ploc ctxt \<phi>_inh lp q \<and>
+            (q > 0 \<longrightarrow> consistent_external_wrt_ploc ctxt \<phi>_inh lp q) \<and>
             get_hh_total \<phi>_inh = get_hh_total_full \<omega> \<and>
             \<omega>' = (if q = 0 then \<omega> else add_to_lpm_nonzero_total_full \<omega> lp (Abs_posreal q) (get_nm_total \<phi>_inh)) \<and>
             R \<omega>'
@@ -169,7 +169,9 @@ inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
 | ExhAccPred:
   "\<lbrakk> mp = get_mp_total_full \<omega>;
      red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args);
-     ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)
+     ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
+     ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl)
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt R \<omega>0 (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega>
      (exh_if_total (p \<ge> 0 \<and> mp (pred_id, v_args) \<ge> Abs_preal p)
@@ -179,7 +181,9 @@ inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
      red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args);
      \<comment>\<open>q satisfies the right-hand side if \<^prop>\<open>mp (pred_id, v_args) \<noteq> 0\<close> (thm prat_exists_strictly_smaller_nonzero).
      If \<^prop>\<open>mp (pred_id, v_args) \<noteq> 0\<close> does not hold, then the exhale fails and the value of q is irrelevant.\<close>
-     mp (pred_id, v_args) \<noteq> 0 \<Longrightarrow> q > 0 \<and> mp (pred_id, v_args) > q
+     mp (pred_id, v_args) \<noteq> 0 \<Longrightarrow> q > 0 \<and> mp (pred_id, v_args) > q;
+     ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl)
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt R \<omega>0 (Atomic (AccPredicate pred_id e_args Wildcard)) \<omega>
      (exh_if_total (mp (pred_id, v_args) \<noteq> 0)

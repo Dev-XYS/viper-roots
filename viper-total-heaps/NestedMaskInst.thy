@@ -577,4 +577,9 @@ lemma nm_0_le_any:
   by (simp add: nm_sum_is_bigger)
 
 
+lemma nm_0_mult_eq_0:
+  shows "p *\<^sub>s (0 :: 'a nested_mask) = 0"
+  by (metis add.commute add_0 add_left_cancel scale_add_right)
+
+
 end

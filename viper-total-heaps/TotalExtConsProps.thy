@@ -441,11 +441,13 @@ lemma fractionability_SatAccPred:
       and "sat ctxt \<omega> zero_mask mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
     shows "sat ctxt \<omega> zero_mask (mul_mask p mp) (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args (PureExp e_p))))"
 proof -
-  from assms(3) obtain v_args v_p where
+  from assms(3) obtain v_args v_p pred_decl where
     v_args_eval: "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)" and
     v_p_eval: "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
     v_p_pos: "v_p \<ge> 0" and
-    mp_sing: "mp = singleton_mp (pred_id,v_args) (Abs_preal v_p)"
+    mp_sing: "mp = singleton_mp (pred_id,v_args) (Abs_preal v_p)" and
+    "ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl" and
+    "vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl)"
     using SatAccPred_case
     by meson
   show ?thesis
@@ -480,7 +482,7 @@ proof -
       apply (simp add: mul_mask_def)
       apply standard
       by (metis Rep_preal_inverse eq_onp_same_args mp_sing prat_non_negative singleton_mp_multiply times_preal.abs_eq v_p_pos)
-  qed
+  qed fact+
 qed
 
 lemma fractionability_SatAccPred_Wildcard:
@@ -489,9 +491,11 @@ lemma fractionability_SatAccPred_Wildcard:
       and "sat ctxt \<omega> zero_mask mp (Atomic (AccPredicate pred_id e_args Wildcard))"
     shows "sat ctxt \<omega> zero_mask (mul_mask p mp) (syntactic_mult (Rep_preal p) (Atomic (AccPredicate pred_id e_args Wildcard)))"
 proof -
-  from assms(2) obtain v_args where
+  from assms(2) obtain v_args pred_decl where
     v_args_eval: "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)" and
-    mp_sing: "is_singleton_mp (pred_id,v_args) mp"
+    mp_sing: "is_singleton_mp (pred_id,v_args) mp" and
+    pred_decl: "ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl" and
+    v_args_ty: "vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl)"
     using SatAccPredWildcard_case
     by (metis is_singleton_mp.elims(3))
   show ?thesis
@@ -500,13 +504,15 @@ proof -
     then show ?thesis
       apply (simp add: zero_preal.rep_eq mul_mask_def)
       apply (rule SatAccPred)
-          apply (rule v_args_eval)
+            apply (rule v_args_eval)
       using RedLit[where ?l="NoPerm"]
-         apply auto[1]
-        apply simp
-       apply simp
-      apply standard
-      by (metis Rep_preal_inverse comp_apply mult_eq_0_iff singleton_mp.elims times_preal.rep_eq zero_preal.rep_eq)
+           apply auto[1]
+          apply simp
+         apply simp
+        apply standard
+        apply (metis Rep_preal_inverse comp_apply mult_eq_0_iff singleton_mp.elims times_preal.rep_eq zero_preal.rep_eq)
+       apply (rule pred_decl)
+      by (rule v_args_ty)
   next
     case False
     hence "Rep_preal p \<noteq> 0" and "Rep_preal p > 0"
@@ -527,7 +533,7 @@ proof -
         apply (simp add: mul_mask_def)
         using mp_sing
         by (metis \<open>Rep_preal p \<noteq> 0\<close> is_singleton_mp.simps less_preal.rep_eq mult_eq_0_iff pperm_pnone_pgt singleton_mp_multiply times_preal.rep_eq zero_preal.rep_eq)
-    qed
+    qed fact+
   qed
 qed
 
@@ -545,7 +551,8 @@ proof (induct A arbitrary: mh mp)
     hence e_eval: "ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" and
           mh_zero: "mh = zero_mask" and
           mp_zero: "mp = zero_mask"
-      using IH.prems(2) SatAtomic_case by blast+
+      using IH.prems(2) SatAtomic_case
+      by blast+
     show ?thesis
       apply (simp del: mult_nm_total_full.simps add: Pure)
       apply (rule SatPure)
@@ -554,7 +561,8 @@ proof (induct A arbitrary: mh mp)
         by blast
     next
       from mh_zero show "mul_mask p mh = zero_mask"
-        using zero_mh_multiply by auto
+        using zero_mh_multiply
+        by auto
     next
       from mp_zero show "mul_mask p mp = zero_mask"
         unfolding zero_mask_def
@@ -564,7 +572,8 @@ proof (induct A arbitrary: mh mp)
   next
     case (Acc e_r f perm)
     then have "mp = zero_mask"
-      using IH sat_Acc_mp_zero by fastforce
+      using IH sat_Acc_mp_zero
+      by fastforce
     show ?thesis
     proof (cases perm)
       case (PureExp e_p)
@@ -580,9 +589,11 @@ proof (induct A arbitrary: mh mp)
     then have "mh = zero_mask"
       using IH sat_AccPred_mh_zero by blast
     have "list_all no_perm_pure_exp e_args" and "list_all no_old_pure_exp e_args"
-      using AccPredicate IH.prems(1) IH.prems(2) SatAtomic_case assert_pred.elims(2) by fastforce+
+      using AccPredicate IH.prems(1) IH.prems(2) SatAtomic_case assert_pred.elims(2)
+      by fastforce+
     hence "list_all supported_pred_expr e_args"
-      using Ball_set by blast
+      using Ball_set
+      by blast
     show ?thesis
     proof (cases perm)
       case (PureExp e_p)
@@ -597,10 +608,12 @@ proof (induct A arbitrary: mh mp)
 next
   case IH: (Imp e A)
   have e_sup: "supported_pred_expr e" and A_sup: "supported_pred_body A"
-    using IH.prems(1) by force+
+    using IH.prems(1)
+    by force+
   from IH consider (True) "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
                (False) "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
-    using sat_Imp_True_or_False by fastforce
+    using sat_Imp_True_or_False
+    by fastforce
   then show ?case
   proof (cases)
     case True
@@ -623,10 +636,12 @@ next
 next
   case IH: (CondAssert e A B)
   have e_sup: "supported_pred_expr e" and A_sup: "supported_pred_body A" and B_sup: "supported_pred_body B"
-    using IH.prems(1) by force+
+    using IH.prems(1)
+    by force+
   from IH consider (True) "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
                (False) "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
-    using sat_Cond_True_or_False by fastforce
+    using sat_Cond_True_or_False
+    by fastforce
   then show ?case
   proof (cases)
     case True
@@ -646,14 +661,6 @@ next
       by (metis B_sup False IH.hyps(2) IH.prems(2) SatCond_case eval_is_deterministic(1) extended_val.inject val.inject(2))
   qed
 next
-  case (ImpureAnd A1 A2)
-  then show ?case
-    using SatImpureAnd_case by blast
-next
-  case (ImpureOr A1 A2)
-  then show ?case
-    using SatImpureOr_case by blast
-next
   case IH: (Star A B)
   then obtain mh\<^sub>1 mh\<^sub>2 mp\<^sub>1 mp\<^sub>2 where
     mh_split: "mh_split mh mh\<^sub>1 mh\<^sub>2" and
@@ -668,19 +675,7 @@ next
       apply (rule mp_split_multiply, rule mp_split)
     using sat_A sat_B IH
     by (meson assert_pred.elims(1) assert_pred_rec.simps(4))+
-next
-  case (Wand A1 A2)
-  then show ?case
-    using SatWand_case by blast
-next
-  case (ForAll x1a A)
-  then show ?case
-    using SatForAll_case by blast
-next
-  case (Exists x1a A)
-  then show ?case
-    using SatExists_case by blast
-qed
+qed (auto elim: sat.cases)
 
 
 lemma fractionabilityI:
@@ -971,19 +966,21 @@ lemma synmult_once_twice_AccPred:
       and "sat ctxt \<omega> mh mp (syntactic_mult q (syntactic_mult p (Atomic (AccPredicate pid e_args (PureExp e_p)))))"
     shows "sat ctxt \<omega> mh mp (syntactic_mult (p * q) (Atomic (AccPredicate pid e_args (PureExp e_p))))"
 proof -
-  from assms(3)[simplified] obtain v_args v_p where
+  from assms(3)[simplified] obtain v_args v_p pdecl where
     v_args: "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)" and
     v_p: "ctxt, None \<turnstile> \<langle>Binop (ELit (LPerm q)) Mult (Binop (ELit (LPerm p)) Mult e_p); \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
     v_p_nn: "v_p \<ge> 0" and
     mh: "mh = zero_mask" and
-    mp: "mp = singleton_mp (pid,v_args) (Abs_preal v_p)"
+    mp: "mp = singleton_mp (pid,v_args) (Abs_preal v_p)" and
+    "ViperLang.predicates (program_total ctxt) pid = Some pdecl" and
+    "vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pdecl)"
     by (auto elim: SatAccPred_case)
 
   show ?thesis
     apply simp
     apply (rule SatAccPred)
-        defer
-        apply (rule eval_mul_two_perms_1[of ctxt None q p e_p \<omega> "VPerm v_p", simplified, OF v_p])
+          defer
+          apply (rule eval_mul_two_perms_1[of ctxt None q p e_p \<omega> "VPerm v_p", simplified, OF v_p])
     by fact+
 qed
 
@@ -994,12 +991,14 @@ lemma synmult_once_twice_AccPredWildcard:
     shows "sat ctxt \<omega> mh mp (syntactic_mult (p * q) (Atomic (AccPredicate pid e_args Wildcard)))"
 proof (cases "p = 0")
   case True
-  from assms(3)[simplified True, simplified] obtain v_args v_p where
+  from assms(3)[simplified True, simplified] obtain v_args v_p pdecl where
     v_args: "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)" and
     v_p: "ctxt, None \<turnstile> \<langle>Binop (ELit (LPerm q)) Mult (ELit NoPerm); \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
     v_p_nn: "v_p \<ge> 0" and
     mh: "mh = zero_mask" and
-    mp: "mp = singleton_mp (pid,v_args) (Abs_preal v_p)"
+    mp: "mp = singleton_mp (pid,v_args) (Abs_preal v_p)" and
+    "ViperLang.predicates (program_total ctxt) pid = Some pdecl" and
+    "vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pdecl)"
     by (auto elim: SatAccPred_case)
 
   have "v_p = 0"
@@ -1008,12 +1007,13 @@ proof (cases "p = 0")
   show ?thesis
     apply (simp add: True)
     apply (rule SatAccPred)
-        apply fact
-       apply (rule RedLit[where ?l="NoPerm", simplified])
-      apply fast
-     apply fact
+          apply fact
+         apply (rule RedLit[where ?l="NoPerm", simplified])
+        apply fast
+       apply fact
     using \<open>v_p = 0\<close> mp
-    by force
+      apply force
+    by fact+
 next
   case False
   hence "p > 0"
@@ -1139,6 +1139,13 @@ lemma nm_mult_lpm:
    apply simp_all
   by (smt (verit) assms comp_apply fst_conv get_fnm_nm.simps get_mp_nm.simps map_option_eq_Some nm_multiply_mp_value option_fold.simps(1) prod.collapse snd_conv)
 
+
+lemma nm_scale_0:
+  fixes nm :: "'a nested_mask"
+  shows "0 *\<^sub>s nm = 0"
+  sorry
+
+
 lemma fraction_consistent_external:
   fixes frac :: preal
   assumes "ctxt_wf_pred ctxt"
@@ -1147,19 +1154,19 @@ lemma fraction_consistent_external:
       and "consistent_external ctxt \<phi> \<Longrightarrow>
            consistent_external ctxt (mult_nm_total \<phi> frac)"
 proof (induction rule: consistent_external_wrt_ploc_consistent_external.inducts)
-  case IH: (SatStep pred_id pred_decl pred_body vs \<phi> p)
+  case IH: (SatStep pred_id pred_decl vs pred_body p \<phi>)
   show ?case
     apply (rule SatStep)
-        defer 4
-    using IH
-        apply blast+
-    apply (subst nm_frac_mh_frac)
-    apply (subst nm_frac_mp_frac)
-    apply (rule fractionability_pq)
-    using IH.IH(1) IH.hyps assms ctxt_wf_pred_def
-     apply blast
-    using IH.IH(3)
-    by auto
+        apply fact+
+     apply (subst nm_frac_mh_frac)
+     apply (subst nm_frac_mp_frac)
+     apply (rule fractionability_pq)
+    using IH.IH(1) assms ctxt_wf_pred_def IH(3) IH.hyps
+      apply blast
+    using IH.IH(3) less_preal.rep_eq preal_not_0_gt_0 times_preal.rep_eq total_state.update_convs(2) zero_preal.rep_eq
+     apply fastforce
+    using IH.IH(5)
+    by blast
 next
   case IH: (SatAll \<phi>)
   show ?case
@@ -1328,11 +1335,13 @@ proof -
     mp\<^sub>1: "mp\<^sub>1 = singleton_mp (pid,v_args) (Abs_preal v_p\<^sub>1)"
     by (auto elim: SatAccPred_case)
 
-  with assms(2)[simplified] obtain v_p\<^sub>2 where
+  with assms(2)[simplified] obtain v_p\<^sub>2 pdecl where
     v_p\<^sub>2: "ctxt, None \<turnstile> \<langle>Binop (ELit (LPerm q)) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p\<^sub>2)" and
     "v_p\<^sub>2 \<ge> 0" and
     "mh\<^sub>2 = zero_mask" and
-    mp\<^sub>2: "mp\<^sub>2 = singleton_mp (pid,v_args) (Abs_preal v_p\<^sub>2)"
+    mp\<^sub>2: "mp\<^sub>2 = singleton_mp (pid,v_args) (Abs_preal v_p\<^sub>2)" and
+    "ViperLang.predicates (program_total ctxt) pid = Some pdecl" and
+    "vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pdecl)"
     using eval_is_deterministic(2)
     by (blast elim: SatAccPred_case)
 
@@ -1365,13 +1374,14 @@ proof -
   show ?thesis
     apply simp
     apply (rule SatAccPred)
-        apply fact+
+          apply fact+
     using \<open>0 \<le> v_p\<^sub>1\<close> \<open>0 \<le> v_p\<^sub>2\<close>
-      apply auto[1]
-     apply (simp add: \<open>mh\<^sub>1 = _\<close> \<open>mh\<^sub>2 = _\<close> add_masks_zero_mask)
-    apply (simp add: plus_preal.abs_eq[symmetric, of v_p\<^sub>1 v_p\<^sub>2, simplified eq_onp_def, simplified, OF \<open>v_p\<^sub>1 \<ge> 0\<close> \<open>v_p\<^sub>2 \<ge> 0\<close>])
-    apply standard+
-    by (simp add: add_masks_def mp\<^sub>1 mp\<^sub>2)
+        apply auto[1]
+       apply (simp add: \<open>mh\<^sub>1 = _\<close> \<open>mh\<^sub>2 = _\<close> add_masks_zero_mask)
+      apply (simp add: plus_preal.abs_eq[symmetric, of v_p\<^sub>1 v_p\<^sub>2, simplified eq_onp_def, simplified, OF \<open>v_p\<^sub>1 \<ge> 0\<close> \<open>v_p\<^sub>2 \<ge> 0\<close>])
+      apply standard+
+      apply (simp add: add_masks_def mp\<^sub>1 mp\<^sub>2)
+    by fact+
 qed
 
 
@@ -1413,10 +1423,12 @@ next
     hence "p + q \<noteq> 0"
       by linarith
 
-    from assms(1)[simplified, simplified \<open>p \<noteq> 0\<close> \<open>p > 0\<close>, simplified] obtain v_args where
+    from assms(1)[simplified, simplified \<open>p \<noteq> 0\<close> \<open>p > 0\<close>, simplified] obtain v_args pdecl where
       v_args: "red_pure_exps_total ctxt None e_args \<omega> (Some v_args)" and
       "mh\<^sub>1 = zero_mask" and
-      mp\<^sub>1: "is_singleton_mp (pid,v_args) mp\<^sub>1"
+      mp\<^sub>1: "is_singleton_mp (pid,v_args) mp\<^sub>1" and
+      "ViperLang.predicates (program_total ctxt) pid = Some pdecl" and
+      "vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pdecl)"
       by (fastforce elim: SatAccPredWildcard_case)
 
     with assms(2)[simplified, simplified \<open>q \<noteq> 0\<close> \<open>q > 0\<close>, simplified] have
@@ -1428,15 +1440,16 @@ next
     show ?thesis
       apply (simp add: \<open>p + q > 0\<close> \<open>p + q \<noteq> 0\<close>)
       apply (rule SatAccPredWildcard)
-        apply fact+
-       apply (simp add: \<open>mh\<^sub>1 = _\<close> \<open>mh\<^sub>2 = _\<close> add_masks_zero_mask)
-      apply simp
-      apply (rule exI[of _ "mp\<^sub>1 (pid,v_args) + mp\<^sub>2 (pid,v_args)"])
-      apply (intro conjI)
-       apply (metis is_singleton_mp.simps mp\<^sub>1 padd_pos pperm_pnone_pgt singleton_mp.simps)
-      apply standard
-      apply (simp add: add_masks_def)
-      by (metis mp\<^sub>2 add.comm_neutral is_singleton_mp.simps mp\<^sub>1 singleton_mp.simps)
+          apply fact+
+         apply (simp add: \<open>mh\<^sub>1 = _\<close> \<open>mh\<^sub>2 = _\<close> add_masks_zero_mask)
+        apply simp
+        apply (rule exI[of _ "mp\<^sub>1 (pid,v_args) + mp\<^sub>2 (pid,v_args)"])
+        apply (intro conjI)
+         apply (metis is_singleton_mp.simps mp\<^sub>1 padd_pos pperm_pnone_pgt singleton_mp.simps)
+        apply standard
+        apply (simp add: add_masks_def)
+        apply (metis mp\<^sub>2 add.comm_neutral is_singleton_mp.simps mp\<^sub>1 singleton_mp.simps)
+      by fact+
   qed
 qed
 

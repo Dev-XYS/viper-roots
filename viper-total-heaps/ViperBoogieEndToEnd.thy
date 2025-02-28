@@ -2061,7 +2061,7 @@ proof -
   have "(vbpl_absval_ty_opt T ((AHeap hb))) = Some (THeapId T, [])"
     by simp
 
-  moreover from type_of_val_not_dummy[OF FieldTy2] 
+  moreover from type_of_val_not_dummy[OF FieldTy2]
   have "field_ty_fun_opt T f = Some (TFieldId T, [\<tau>, \<tau>'])"
     by simp
     
@@ -2073,7 +2073,7 @@ qed
 lemma heap_upd_ty_preserved_2_basic:
   assumes OldHeap: "type_of_vbpl_val (ty_repr_basic A) (AbsV (AHeap hb)) = TConSingle ''HeapType''"
       and FieldTy2: "type_of_vbpl_val (ty_repr_basic A) (AbsV (AField f)) = TCon ''Field'' [\<tau>, \<tau>']"
-      and  NewVal: "type_of_vbpl_val (ty_repr_basic A) v = \<tau>'"
+      and NewVal: "type_of_vbpl_val (ty_repr_basic A) v = \<tau>'"
     shows "type_of_vbpl_val (ty_repr_basic A) (AbsV (AHeap (hb ((r,f) \<mapsto> v)))) = TConSingle ''HeapType''"
   using heap_upd_ty_preserved_2[OF wf_ty_repr_basic]
   unfolding ty_repr_basic_def
