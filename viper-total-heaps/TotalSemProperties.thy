@@ -3013,10 +3013,21 @@ lemma inhale_perm_single_Some_non_empty_preserve:
       and InhPermSingle1: "inhale_perm_single R \<omega> lh (Some p) \<noteq> {}"
     shows "inhale_perm_single R \<omega>' lh (Some p) \<noteq> {}"
 proof -
-  have SufficientPerm: "1 \<ge> (get_mh_total_full \<omega> lh + p)"
+  obtain \<omega>\<^sub>i where "\<omega>\<^sub>i = upd_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + p) \<and> R \<omega>\<^sub>i"
     using InhPermSingle1
     unfolding inhale_perm_single_def
     by fastforce
+
+  hence "wf_mask_simple (get_mh_total_full \<omega>\<^sub>i)"
+    using WfConsistent[unfolded wf_total_consistency_def]
+    by (metis get_mh_total_full.simps)
+
+  moreover have "get_mh_total_full \<omega>\<^sub>i lh = get_mh_total_full \<omega> lh + p"
+    using \<open>\<omega>\<^sub>i = _ \<and> _\<close>
+    by fastforce
+
+  ultimately have SufficientPerm: "1 \<ge> (get_mh_total_full \<omega> lh + p)"
+    by (metis wf_mask_simple_def)
 
   let ?\<omega>0 = "(upd_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + p))"
   have "?\<omega>0 \<in> inhale_perm_single R \<omega> lh (Some p)"
@@ -3036,10 +3047,6 @@ proof -
       by auto
   next
     show "option_fold ((=) p) (p \<noteq> 0) (Some p)"
-      by simp
-  next
-    show "1 \<ge> (get_mh_total_full \<omega>' lh + p)"
-      using SufficientPerm OnlyStoreDifferent
       by simp
   qed
   then show ?thesis 
@@ -3291,17 +3298,6 @@ proof (induction arbitrary: \<omega>2 rule: red_inhale.inducts)
               thus "R (\<omega>Elem\<lparr>get_store_total := get_store_total \<omega>2\<rparr>)"
                 using total_consistency_store_update[OF WfConsistent]
                 by auto
-            qed
-          next
-            show "1 \<ge> get_mh_total_full \<omega>2 (a, f) + Abs_preal p"
-            proof -
-              from \<open>\<omega>Elem \<in> _\<close>
-              have "1 \<ge> get_mh_total_full \<omega> (a, f) + Abs_preal p"
-                unfolding \<open>W' = _\<close> inhale_perm_single_def \<open>r = _\<close>
-                by simp
-              thus ?thesis
-                using InhAcc
-                by simp
             qed
           qed simp
         qed

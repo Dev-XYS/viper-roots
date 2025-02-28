@@ -33,13 +33,12 @@ lemma extcons_state_can_be_inhaled_assertion:
       and SameStore: "get_store_total \<omega> = get_store_total \<omega>\<^sub>0"
       and Framed: "assertion_framing_state ctxt StateCons A \<omega>"
       and SupPred: "supported_pred_body A"
-      and FinalMaskWf: "wf_mask_simple (get_mh_total_full (add_to_nm_total_full \<omega> nm))" \<comment> \<open>Should not be here. A workaround.\<close>
       and FinalIntCons: "StateCons (add_to_nm_total_full \<omega> nm)"
       and WfCons: "mono_prop_downward StateCons"
       and WfCtxt: "ctxt_wf_pred ctxt"
     shows "red_inhale ctxt StateCons A \<omega> (RNormal (add_to_nm_total_full \<omega> nm))"
 
-  using Sat mh_nm mp_nm ExtCons \<omega>hh SameStore Framed SupPred FinalMaskWf FinalIntCons
+  using Sat mh_nm mp_nm ExtCons \<omega>hh SameStore Framed SupPred FinalIntCons
 proof (induction A arbitrary: \<omega> nm)
 
   case IH: (SatAcc e_r r e_p p a mh f mp)
@@ -96,9 +95,6 @@ proof (induction A arbitrary: \<omega> nm)
       using False IH.hyps(5) IH.prems(1) by presburger
     have fnm: "get_fnm_nm nm = (\<lambda>_. None)"
       by (metis (mono_tags, lifting) IH.hyps(6) IH.prems(2) Rep_posreal comp_eq_dest_lhs get_mp_nm.simps mem_Collect_eq option.exhaust_sel option_fold.simps(1) preal_not_0_gt_0 zero_mask_def)
-    have mask_wf: "get_mh_total_full \<omega> (the_address r, f) + Abs_preal p \<le> 1"
-      using spec[OF IH(14)[simplified wf_mask_simple_def], simplified, simplified add_masks_def]
-      by (metis IH.hyps(3) get_mh_total.simps get_mh_total_full.simps mh singleton_mh.elims)
     have intcons: "StateCons (upd_mh_loc_total_full \<omega> (the_address r, f) (get_mh_total_full \<omega> (the_address r, f) + Abs_preal p))"
     proof -
       have "upd_mh_loc_total_full \<omega> (the_address r, f) (get_mh_total_full \<omega> (the_address r, f) + Abs_preal p) =
@@ -112,10 +108,10 @@ proof (induction A arbitrary: \<omega> nm)
         apply simp
         by (metis (no_types, lifting) combine_options_simps(2) fnm get_fnm_nm.simps pfun_comb_def)
       thus ?thesis
-        using IH.prems(9) by presburger
+        using IH.prems(8) by presburger
     qed
     show "th_result_rel (0 \<le> p) (W \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null)) W (RNormal (add_to_nm_total_full \<omega> nm))"
-      apply (simp add: IH(4) W_def inhale_perm_single_def False mask_wf[simplified] intcons[simplified])
+      apply (simp add: IH(4) W_def inhale_perm_single_def False intcons[simplified])
       apply (rule THResultNormal)
       apply (rule Set.CollectI)
       apply (intro conjI)
@@ -135,7 +131,7 @@ proof (induction A arbitrary: \<omega> nm)
        apply (simp add: pfun_comb_def)
       using fnm
        apply fastforce
-      by (metis IH.prems(9) add_to_nm_total.elims add_to_nm_total_full.simps plus_nested_mask_def)
+      by (metis IH.prems(8) add_to_nm_total.elims add_to_nm_total_full.simps plus_nested_mask_def)
   qed
 
 next
@@ -170,8 +166,6 @@ next
     apply (intro conjI)
     using \<open>is_singleton_mh (a, f) (get_mh_nm nm)\<close>
        apply fastforce
-    using spec[OF IH(13)[simplified wf_mask_simple_def], simplified, simplified add_masks_def] IH.hyps(2)
-      apply auto[1]
      apply (rule full_total_state.equality, simp_all)
      apply (rule total_state.equality, simp_all)
      apply (rule nested_mask_equality, simp_all; standard)
@@ -183,7 +177,7 @@ next
      apply (simp add: pfun_comb_def)
     using \<open>get_fnm_nm nm = (\<lambda>_. None)\<close>
      apply auto[1]
-    by (metis IH.prems(9) add_to_nm_total.elims add_to_nm_total_full.simps plus_nested_mask_def)
+    by (metis IH.prems(8) add_to_nm_total.elims add_to_nm_total_full.simps plus_nested_mask_def)
   hence "W \<noteq> {}"
     by fast
 
@@ -278,7 +272,7 @@ next
       apply (rule total_state.equality; simp)
     using IH.hyps(3) \<open>p = 0 \<Longrightarrow> nm = 0\<close> positive_real_preal
       apply fastforce
-    using IH.prems(9)
+    using IH.prems(8)
      apply auto[1]
     apply (intro impI)
     apply (intro conjI)
@@ -299,7 +293,7 @@ next
     unfolding plus_nested_mask_def
      apply simp
      apply (case_tac "lp = (pred_id,v_args)"; case_tac "fnm lp"; simp add: pfun_comb_def)
-    by (metis IH.prems(9) add_to_nm_total.elims add_to_nm_total_full.simps plus_nested_mask_def)
+    by (metis IH.prems(8) add_to_nm_total.elims add_to_nm_total_full.simps plus_nested_mask_def)
 
   show ?case
     apply (rule InhAccPred[where ?W'=W])
@@ -388,7 +382,7 @@ next
     unfolding plus_nested_mask_def
      apply simp
      apply (case_tac "lp = (pred_id,v_args)"; case_tac "fnm lp"; simp add: pfun_comb_def)
-    by (metis IH.prems(9) add_to_nm_total.elims add_to_nm_total_full.simps plus_nested_mask_def)
+    by (metis IH.prems(8) add_to_nm_total.elims add_to_nm_total_full.simps plus_nested_mask_def)
 
   show ?case
     apply (rule InhAccPredWildcard[where ?W'=W])
@@ -598,11 +592,6 @@ next
     using \<open>nm\<^sub>1 + nm\<^sub>2 = nm\<close> ab_semigroup_add_class.add_ac(1)
     by blast
 
-  have A_mask_wf: "valid_heap_mask (get_mh_total_full (add_to_nm_total_full \<omega> nm\<^sub>1))"
-    using IH(14)
-    apply (simp add: wf_mask_simple_def add_masks_def)
-    by (smt (verit, ccfv_threshold) PosReal.padd_mono \<open>nm\<^sub>1 + nm\<^sub>2 = nm\<close> add_masks_def dual_order.trans get_mh_nm__merge plus_nested_mask_def pos_perm_class.greater_sum_both pos_perm_class.sum_larger)
-
   have "add_to_nm_total_full \<omega> nm \<succeq> add_to_nm_total_full \<omega> nm\<^sub>1"
     apply (simp add: greater_def)
     apply (rule exI[of _ "upd_nm_total_full \<omega> nm\<^sub>2"])
@@ -611,16 +600,16 @@ next
      apply (metis (no_types, lifting) \<open>nm\<^sub>1 + nm\<^sub>2 = nm\<close> ab_semigroup_add_class.add_ac(1) option.sel plus_total_state_ext_def total_state.ext_inject total_state.surjective total_state.update_convs(2))
     by (simp add: defined_def plus_total_state_ext_def)
   hence A_mask_intcons: "StateCons (add_to_nm_total_full \<omega> nm\<^sub>1)"
-    using IH(15) WfCons mono_prop_downwardD
+    using IH(14) WfCons mono_prop_downwardD
     by blast
 
   show ?case
     apply (rule InhStarNormal[where ?\<omega>''=\<omega>\<^sub>A])
     unfolding \<open>\<omega>\<^sub>A = _\<close>
     using IH(5)[of nm\<^sub>1 \<omega>]
-    apply (metis A_mask_intcons A_mask_wf A_sup IH.prems(4) IH.prems(5) IH.prems(6) \<open>mp\<^sub>1 = _\<close> assertion_framing_star get_mh_nm.simps nm\<^sub>1 nm\<^sub>1_cons)
+    apply (metis A_mask_intcons A_sup IH.prems(4) IH.prems(5) IH.prems(6) \<open>mp\<^sub>1 = _\<close> assertion_framing_star get_mh_nm.simps nm\<^sub>1 nm\<^sub>1_cons)
     using IH(6)[of nm\<^sub>2 \<omega>\<^sub>A, OF _ _ nm\<^sub>2_cons] 1
-    by (metis A_mask_intcons A_mask_wf A_sup B_sup IH.IH(1) IH.prems(4) IH.prems(5) IH.prems(6) IH.prems(8) IH.prems(9) \<omega>\<^sub>A_def \<open>mp\<^sub>1 = _\<close> \<open>mp\<^sub>2 = _\<close> assertion_framing_star get_mh_nm.simps inhale_only_changes_mask nm\<^sub>1 nm\<^sub>1_cons nm\<^sub>2)
+    by (metis A_mask_intcons A_sup B_sup IH.IH(1) IH.prems(4) IH.prems(5) IH.prems(6) IH.prems(8) \<omega>\<^sub>A_def \<open>mp\<^sub>1 = _\<close> \<open>mp\<^sub>2 = _\<close> assertion_framing_star get_mh_nm.simps inhale_only_changes_mask nm\<^sub>1 nm\<^sub>1_cons nm\<^sub>2)
 
 next
   case IH: (SatImpTrue e mh mp A)
@@ -640,7 +629,7 @@ next
       apply (rule InhImpTrue)
       using Val \<open>v\<^sub>2 = VBool True\<close> res
        apply blast
-      using IH(3)[OF IH(4-8)] A_sup Val \<open>v\<^sub>2 = VBool True\<close> assertion_framing_imp res IH.prems(6,8,9)
+      using IH(3)[OF IH(4-8)] A_sup Val \<open>v\<^sub>2 = VBool True\<close> assertion_framing_imp res IH.prems(6,8)
       by blast
   next
     case VFailure
@@ -699,7 +688,7 @@ next
       apply (rule InhCondAssertTrue)
       using Val \<open>v\<^sub>2 = VBool True\<close> res
        apply blast
-      using IH(3)[OF IH(4-8)] A_sup Val \<open>v\<^sub>2 = VBool True\<close> assertion_framing_cond_assert_true res IH.prems(6,8,9)
+      using IH(3)[OF IH(4-8)] A_sup Val \<open>v\<^sub>2 = VBool True\<close> assertion_framing_cond_assert_true res IH.prems(6,8)
       by blast
   next
     case VFailure
@@ -725,7 +714,7 @@ next
       apply (rule InhCondAssertFalse)
       using Val \<open>v\<^sub>2 = VBool False\<close> res
        apply blast
-      by (metis B_sup IH.IH IH.prems(1-6,8,9) Val \<open>v\<^sub>2 = VBool False\<close> assertion_framing_cond_assert_false res)
+      by (metis B_sup IH.IH IH.prems(1-6,8) Val \<open>v\<^sub>2 = VBool False\<close> assertion_framing_cond_assert_false res)
   next
     case VFailure
     then show ?thesis
@@ -742,7 +731,6 @@ lemma extcons_state_can_be_inhaled:
       and ExtCons: "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = hh, get_nm_total = nm \<rparr> (pid,vs) p"
       and \<omega>hh: "get_hh_total_full \<omega> = hh"
       and \<omega>Store: "get_store_total \<omega> = nth_option vs"
-      and FinalMaskWf: "wf_mask_simple (get_mh_total_full (add_to_nm_total_full \<omega> nm))" \<comment> \<open>Should not be here. A workaround.\<close>
       and FinalIntCons: "StateCons (add_to_nm_total_full \<omega> nm)"
       and WfCons: "wf_total_consistency ctxt StateCons StateCons_t"
       and WfCtxt: "ctxt_wf_pred ctxt"
@@ -761,14 +749,14 @@ proof -
     by auto
   ultimately show ?thesis
     using \<omega>Store \<omega>hh extcons_state_can_be_inhaled_assertion FinalIntCons wf_total_consistency_trace_mono_downwardD[OF WfCons]
-    by (metis FinalMaskWf SupPred WfCtxt full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps prat_non_negative syntactic_mult_supported total_state.select_convs(1))
+    by (metis SupPred WfCtxt full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps prat_non_negative syntactic_mult_supported total_state.select_convs(1))
 qed
 
 
 subsection \<open>Inhale Simulates Unfold\<close>
 
 lemma inhale_simulates_unfold:
-  assumes Unfold: "unfold_rel ctxt pid vs p \<phi> \<phi>'"
+  assumes Unfold: "unfold_rel ctxt pid vs q \<phi> \<phi>'"
       and ExtCons: "consistent_external ctxt \<phi>"
       and WfCons: "wf_total_consistency ctxt StateCons StateCons_t"
       and IntCons: "StateCons_t \<phi>"
@@ -776,22 +764,23 @@ lemma inhale_simulates_unfold:
       and PredBody: "ViperLang.predicate_decl.body pdecl = Some pbody"
       and CtxtWfPred: "ctxt_wf_pred ctxt"
       and SelfFraming: "\<And>q. assertion_self_framing_store ctxt StateCons (syntactic_mult q pbody) (nth_option vs)"
-      and "\<phi>\<^sub>d = rm_from_lpm_total \<phi> (pid,vs) p"
+      and "\<phi>\<^sub>d = rm_from_lpm_total \<phi> (pid,vs) q"
       and "\<And>\<omega>. StateCons \<omega> \<Longrightarrow> valid_heap_mask (get_mh_total_full \<omega>)"
       and "(\<forall>lbl \<phi>. trace lbl = Some \<phi> \<longrightarrow> StateCons_t \<phi>)"
-    shows "red_inhale ctxt StateCons (syntactic_mult (Rep_preal p) pbody)
+      and AmountPos: "q > 0"  \<comment> \<open>It is okay because Viper checks if the unfolding amount is positive.\<close>
+    shows "red_inhale ctxt StateCons (syntactic_mult (Rep_preal q) pbody)
                       \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr>
              (RNormal \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>' \<rparr>)"
 proof -
   from assms(1)
   obtain nm nm' where
-    "shift_up pid vs p nm nm'"
+    "shift_up pid vs q nm nm'"
     "get_nm_total \<phi> = nm"
     "get_nm_total \<phi>' = nm'"
     "get_hh_total \<phi>' = get_hh_total \<phi>"
     by (blast elim: unfold_rel.cases)
 
-  then obtain mh fnm p\<^sub>p pnm p fnm\<^sub>u nm\<^sub>u_sub where
+  obtain mh fnm p\<^sub>p pnm p fnm\<^sub>u nm\<^sub>u_sub where
     "mh = get_mh_nm nm" and
     "fnm = get_fnm_nm nm"
     "Some (p\<^sub>p, pnm) = fnm (pid,vs)" and
@@ -800,70 +789,23 @@ proof -
     "q \<le> p" and
     "fnm\<^sub>u = fnm( (pid,vs) := if p = q then None else Some (Abs_posreal (p - q), ((p - q) / p) *\<^sub>s pnm) )" and
     "nm\<^sub>u_sub = NM mh fnm\<^sub>u" and
-    "nm\<^sub>u = nm\<^sub>u_sub + (q / p) *\<^sub>s pnm"
+    "nm' = nm\<^sub>u_sub + (q / p) *\<^sub>s pnm"
+    apply (rule shift_up_case[OF \<open>shift_up _ _ _ _ _\<close>])
+    using AmountPos
+    by blast+
 
-  then obtain mh mp fnm pnm' pp mp' fnm' nm\<^sub>d where
-    "nm = NM mh mp fnm" and
-    "pnm' = fnm (pid,vs)" and
-    "pp = mp (pid,vs)" and
-    "p \<le> pp" and
-    "p \<noteq> 0" and
-    mp': "mp' = mp( (pid,vs) := pp - p )" and
-    fnm': "fnm' = fnm( (pid,vs) := if pp = p then None else ((pp - p) / pp) *\<^sub>s pnm' )" and
-    nm\<^sub>d: "nm\<^sub>d = NM mh mp' fnm'" and
-    nm': "Some nm' = Some nm\<^sub>d + (p / pp) *\<^sub>s pnm'"
-    by (blast elim: shift_up.cases)
-
-  then obtain pnm where "Some pnm = pnm'"
-    by (metis ExtCons SatAll_case \<open>get_nm_total \<phi> = nm\<close> all_pos get_fnm_nm.simps get_mp_nm.simps option.exhaust_sel order_antisym)
-  hence "Some pnm = fnm (pid, vs)"
-    by (simp add: \<open>pnm' = fnm (pid, vs)\<close>)
-  have "\<not> p / pp = pos_perm_class.pnone"
-    using \<open>p \<le> pp\<close> \<open>p \<noteq> pos_perm_class.pnone\<close> divide_preal.rep_eq preal_not_0_gt_0 preal_to_real(10) zero_preal.rep_eq
-    by auto
-  hence nm'_direct: "nm' = nm\<^sub>d  + (p / pp) *\<^sub>s pnm"
-    using nm'
-    by (metis \<open>Some pnm = pnm'\<close> combine_options_simps(3) option.inject option.map(2) plus_option_def scale_option_def)
-
-  define nm\<^sub>s where "nm\<^sub>s = (p / pp) *\<^sub>s pnm"
+  define nm\<^sub>s where "nm\<^sub>s = (q / p) *\<^sub>s pnm"
 
   \<comment> \<open>The shifted part is external consistent w.r.t. the predicate.\<close>
-  have pnm_cons: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := pnm \<rparr>) (pid,vs) pp"
-    using ExtCons SatAll_case \<open>Some pnm = fnm (pid, vs)\<close> \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> \<open>pp = mp (pid, vs)\<close> get_fnm_nm.simps
+  have pnm_cons: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := pnm \<rparr>) (pid,vs) p"
+    using ExtCons SatAll_case \<open>Some (p\<^sub>p, pnm) = fnm (pid,vs)\<close> \<open>fnm = get_fnm_nm nm\<close> \<open>get_nm_total \<phi> = nm\<close> \<open>p = Rep_posreal p\<^sub>p\<close>
     by fastforce
-  have "0 < p / pp"
-    using \<open>p \<le> pp\<close> \<open>p \<noteq> 0\<close>
-    apply (simp add: preal_to_real)
-    by (metis divide_pos_pos order_antisym order_le_imp_less_or_eq prat_non_negative)
-  moreover hence "p / pp * pp = p"
-    apply (simp add: preal_to_real)
-    using divide_preal.rep_eq less_preal.rep_eq times_preal.rep_eq zero_preal.rep_eq
-    by auto
-  moreover have "\<lparr> get_hh_total = get_hh_total \<phi>, get_nm_total = nm\<^sub>s \<rparr> = \<phi>\<lparr> get_nm_total := nm\<^sub>s \<rparr>"
-    by simp
-  ultimately have
-    ShiftExtCons: "consistent_external_wrt_ploc ctxt \<lparr>get_hh_total = get_hh_total \<phi>, get_nm_total = nm\<^sub>s\<rparr> (pid, vs) p"
-    using fraction_consistent_external(1)[of "p / pp", OF _ CtxtWfPred pnm_cons] nm\<^sub>s_def
-    by (metis mult_nm_total.elims total_state.ext_inject total_state.surjective total_state.update_convs(2))
-
-  have "fnm (pid,vs) = Some pnm"
-    using \<open>Some pnm = fnm (pid, vs)\<close>
-    by force
-  have "get_nm_total \<phi>\<^sub>d = nm\<^sub>d"
-    apply (simp add: nm\<^sub>d \<open>\<phi>\<^sub>d = _\<close>)
-    apply (rule nested_mask_equality)
-      apply simp_all
-      apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(8))
-     apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(8))
-    using \<open>pp = mp (pid, vs)\<close> mp'
-     apply fastforce
-    apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>nm = NM mh mp fnm\<close> assms(8))
-    apply standard
-    using \<open>pnm' = fnm (pid, vs)\<close>
-    using \<open>pp = mp (pid, vs)\<close> fnm'
-     apply presburger
-    using \<open>pnm' = fnm (pid, vs)\<close> \<open>pp = mp (pid, vs)\<close> fnm'
-    by presburger
+  have
+    ShiftExtCons: "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = get_hh_total \<phi>, get_nm_total = nm\<^sub>s \<rparr> (pid,vs) q"
+    using fraction_consistent_external(1)[OF CtxtWfPred pnm_cons, of "q / p"]
+    unfolding nm\<^sub>s_def
+    apply simp
+    by (metis (mono_tags, lifting) AmountPos Rep_preal_inverse \<open>q \<le> p\<close> divide_preal.rep_eq leD map_fun_apply nonzero_eq_divide_eq old.unit.exhaust times_preal_def total_state.surjective total_state.update_convs(2) zero_preal.abs_eq)
 
   have 1: "add_to_nm_total_full
           \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr> nm\<^sub>s =
@@ -873,8 +815,35 @@ proof -
       apply (simp add: \<open>get_hh_total \<phi>' = get_hh_total \<phi>\<close> PredBody)
       apply (simp add: assms(9))
      apply (rule nested_mask_equality)
-       apply simp_all
-    by (simp add: \<open>get_nm_total \<phi>' = nm'\<close> \<open>get_nm_total \<phi>\<^sub>d = nm\<^sub>d\<close> nm'_direct nm\<^sub>s_def)+
+      apply simp_all
+    unfolding \<open>\<phi>\<^sub>d = _\<close>
+     apply standard
+     apply (simp add: add_masks_def)
+     apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>get_nm_total \<phi>' = nm'\<close> \<open>mh = get_mh_nm nm\<close> \<open>nm' = nm\<^sub>u_sub + (q / p) *\<^sub>s pnm\<close> \<open>nm\<^sub>u_sub = NM mh fnm\<^sub>u\<close> add_masks_def nm\<^sub>s_def)
+    unfolding \<open>\<phi>\<^sub>d = _\<close> \<open>get_nm_total \<phi> = nm\<close> \<open>get_nm_total \<phi>' = nm'\<close> nm\<^sub>s_def
+      \<open>fnm = get_fnm_nm nm\<close>[symmetric] \<open>nm' = _\<close> \<open>nm\<^sub>u_sub = _\<close> \<open>fnm\<^sub>u = _\<close>
+    apply (rule arg_cong[where ?f=get_fnm_nm])
+    apply (rule arg_cong[where ?f="\<lambda>nm. nm + (q / p) *\<^sub>s pnm"])
+    apply (rule nested_mask_equality)
+     apply (simp add: \<open>get_nm_total \<phi> = nm\<close> \<open>mh = get_mh_nm nm\<close>)
+    apply standard
+    apply (rename_tac lp)
+    apply (case_tac "lp = (pid,vs)"; simp)
+     apply (cases "p = q"; simp)
+    unfolding \<open>get_nm_total \<phi> = nm\<close> \<open>fnm = get_fnm_nm nm\<close>[symmetric] \<open>Some (p\<^sub>p, pnm) = fnm (pid,vs)\<close>[symmetric]
+      apply (simp add: \<open>p = Rep_posreal p\<^sub>p\<close>)
+    unfolding \<open>get_nm_total \<phi> = nm\<close> \<open>fnm = get_fnm_nm nm\<close>[symmetric] \<open>Some (p\<^sub>p, pnm) = fnm (pid,vs)\<close>[symmetric]
+     apply simp
+    unfolding \<open>p = Rep_posreal p\<^sub>p\<close>[symmetric]
+     apply (intro conjI)
+      apply (simp add: \<open>q \<le> p\<close> nle_le)
+     apply (intro impI)
+     apply (intro conjI)
+      apply simp
+     apply (rule arg_cong[where ?f="\<lambda>nm. nm *\<^sub>s pnm"])
+     apply (simp add: preal_to_real)
+     apply (smt (verit, del_insts) add_divide_distrib div_self less_divide_eq_1 prat_non_negative)
+    by simp
 
   have Framed: "\<And>q. assertion_framing_state ctxt StateCons (syntactic_mult q pbody)
                       \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr>"
@@ -883,30 +852,24 @@ proof -
 
   have 2: "get_hh_total_full \<lparr>get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>'\<rparr> = get_hh_total \<phi>"
     apply simp
-    using \<open>get_hh_total \<phi>' = get_hh_total \<phi>\<close> by auto
+    using \<open>get_hh_total \<phi>' = get_hh_total \<phi>\<close>
+    by auto
 
   have final_intcons: "StateCons_t \<phi>'"
-    using WfCons[simplified wf_total_consistency_def]
-  proof -
-    have f1: "(\<forall>f. (StateCons f \<or> (\<exists>cs t. \<not> StateCons_t t \<and> get_trace_total f cs = Some t) \<or> \<not> StateCons_t (get_total_full f)) \<and> ((\<forall>cs t. StateCons_t t \<or> Some t \<noteq> get_trace_total f cs) \<and> StateCons_t (get_total_full f) \<or> \<not> StateCons f)) \<and> (\<forall>f v. StateCons (shift_and_add_state_total f v) \<or> \<not> StateCons f) \<and> (\<forall>f fa fb s. StateCons fa \<or> \<not> red_stmt_total ctxt StateCons fb s f (RNormal fa) \<or> \<not> StateCons f) \<and> (\<forall>f. StateCons f \<or> \<not> is_empty_total_full f) \<and> mono_prop_downward StateCons"
-      by (smt (z3) \<open>mono_prop_downward StateCons \<and> (\<forall>\<omega>. is_empty_total_full \<omega> \<longrightarrow> StateCons \<omega>) \<and> (\<forall>\<omega> \<omega>' \<Lambda> stmt. StateCons \<omega> \<longrightarrow> red_stmt_total ctxt StateCons \<Lambda> stmt \<omega> (RNormal \<omega>') \<longrightarrow> StateCons \<omega>') \<and> (\<forall>\<omega> v. StateCons \<omega> \<longrightarrow> StateCons (shift_and_add_state_total \<omega> v)) \<and> (\<forall>\<omega>. StateCons \<omega> = (StateCons_t (get_total_full \<omega>) \<and> (\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> StateCons_t \<phi>)))\<close>)
-    have "\<exists>u f t. is_empty_total_full \<lparr>get_store_total = f, get_trace_total = \<lambda>cs. Some \<phi>', get_total_full = t, \<dots> = u::unit\<rparr>"
-      by (metis empty_full_total_state_def is_empty_empty_full_total_state)
-    then show ?thesis
-      using f1 by (metis (no_types) full_total_state.select_convs(2))
-  qed
+    using WfCons[simplified wf_total_consistency_def] IntCons Unfold
+    by blast
 
   show ?thesis
     apply (rule extcons_state_can_be_inhaled[OF PredDecl PredBody _ Framed ShiftExtCons, simplified 1])
-    using CtxtWfPred PredBody PredDecl ctxt_wf_pred_def apply blast
+    using CtxtWfPred PredBody PredDecl ctxt_wf_pred_def
+         apply blast
         apply (simp add: assms(9))
        apply simp
-      apply simp
     using final_intcons WfCons[simplified wf_total_consistency_def]
-      apply (metis assms(10) assms(11) full_total_state.select_convs(2) full_total_state.select_convs(3) get_mh_total.simps get_mh_total_full.elims)
-     apply (simp add: WfCons[simplified wf_total_consistency_def] assms(11) final_intcons)
+      apply (metis assms(11) full_total_state.select_convs(2) full_total_state.select_convs(3))
     using WfCons
-    by simp
+     apply simp
+    by fact
 qed
 
 
@@ -1166,8 +1129,7 @@ lemma extcons_pred_well_typed:
 proof -
   obtain \<phi>' where "consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) (get_mp_total \<phi> (pid,vs))"
     using SatAll_case[OF assms(1)]
-    sorry
-    (* by (metis assms(2) get_mp_total.simps option.exhaust preal_not_0_gt_0) *)
+    by (metis Abs_posreal_inverse assms(2) get_mp_total.simps mem_Collect_eq obtain_lpm_from_mp)
   thus ?thesis
     by (metis SatStep_case assms(3) assms(4) option.sel)
 qed

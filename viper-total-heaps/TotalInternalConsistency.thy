@@ -46,6 +46,8 @@ definition wf_total_consistency
                               ctxt_wf_pred ctxt \<longrightarrow> ctxt_pred_self_framing ctxt \<longrightarrow>
                               red_stmt_total ctxt R \<Lambda> stmt \<omega> (RNormal \<omega>') \<longrightarrow>
                               consistent_external ctxt (get_total_full \<omega>')) \<and>
+               (\<forall>\<phi>. Rt \<phi> \<longrightarrow> wf_mask_simple (get_mh_total \<phi>)) \<and>
+               (\<forall>\<phi> pid vs q \<phi>'. Rt \<phi> \<longrightarrow> unfold_rel ctxt pid vs q \<phi> \<phi>' \<longrightarrow> Rt \<phi>') \<and>  \<comment> \<open>Basically the same as the preservation under statement reduction, but stated only on \<^typ>\<open>'a total_state\<close>.\<close>
                ctxt_wf_pred ctxt \<and> ctxt_pred_self_framing ctxt  \<comment> \<open>These really shouldn't be here.\<close>"
 
 lemma total_consistencyI:

@@ -1143,7 +1143,7 @@ lemma nm_mult_lpm:
 lemma nm_scale_0:
   fixes nm :: "'a nested_mask"
   shows "0 *\<^sub>s nm = 0"
-  sorry
+  by (metis add_0 add_right_imp_eq scale_add_left)
 
 
 lemma fraction_consistent_external:

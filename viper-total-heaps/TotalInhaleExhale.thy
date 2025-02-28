@@ -12,7 +12,7 @@ definition inhale_perm_single :: "('a full_total_state \<Rightarrow> bool) \<Rig
   where "inhale_perm_single R \<omega> lh p_opt =
     { \<omega>'| \<omega>' q.
             option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
-            get_mh_total_full \<omega> lh + q \<le> 1 \<and>  \<comment> \<open>There can be at most 1 field permission\<close>
+            \<comment> \<open>get_mh_total_full \<omega> lh + q \<le> 1 \<and>  \<comment> \<open>There can be at most 1 field permission\<close>\<close>
             \<comment> \<open>Included in internal consistency, but keeping it for backward compatibility.\<close>
             \<omega>' = upd_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + q) \<and>
             R \<omega>'
@@ -38,9 +38,8 @@ lemma inhale_perm_single_nonempty:
 lemma inhale_perm_single_elem:
   assumes "\<omega>' = upd_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + q)" and
           "R \<omega>'" and
-          "option_fold ((=) q) (q \<noteq> 0) p_opt" and
-          "1 \<ge> (get_mh_total_full \<omega> lh + q)"
-        shows "\<omega>' \<in> inhale_perm_single R \<omega> lh p_opt"
+          "option_fold ((=) q) (q \<noteq> 0) p_opt"
+    shows "\<omega>' \<in> inhale_perm_single R \<omega> lh p_opt"
   using assms
   unfolding inhale_perm_single_def
   by blast

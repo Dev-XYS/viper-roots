@@ -494,7 +494,8 @@ lemma inhale_rel_field_acc_upd_rel:
                    "new_perm = (mask_read_bpl (Lang.Var m_bpl) e_rcv_bpl e_f_bpl [TConSingle (TNormalFieldId TyRep), \<tau>_bpl]) \<guillemotleft>Lang.Add\<guillemotright> (Var temp_perm)" and
     MaskVar: "m_bpl = mask_var Tr " and
     FieldRelSingle: "field_rel_single Pr TyRep Tr f_vpr e_f_bpl \<tau>_bpl" and
-    RcvRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr (AuxPred(temp_perm \<mapsto> pred_eq (RealV p))) ctxt) ctxt_vpr ctxt e_rcv_vpr e_rcv_bpl"
+    RcvRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr (AuxPred(temp_perm \<mapsto> pred_eq (RealV p))) ctxt) ctxt_vpr ctxt e_rcv_vpr e_rcv_bpl" and
+    WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
   shows "rel_general R 
                   (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt)
                   (\<lambda> \<omega> \<omega>'. inhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f_vpr e_p p r \<omega> \<omega>')
@@ -561,9 +562,16 @@ next
     unfolding inhale_acc_normal_premise_def 
     by blast+
 
-  from InhPremise have AtMostWritePerm: "r \<noteq> Null \<Longrightarrow> 1 \<ge> ?p'" 
+  have \<omega>'_eq:"r \<noteq> Null \<Longrightarrow> \<omega>' = upd_mh_loc_total_full \<omega> (the_address r, f_vpr) (get_mh_total_full \<omega> (the_address r, f_vpr) + Abs_preal p) \<and> StateCons \<omega>'"
+    using InhPremise
     unfolding inhale_acc_normal_premise_def inhale_perm_single_def
-    by force
+    by simp
+  hence "r \<noteq> Null \<Longrightarrow> get_mh_total_full \<omega>' (the_address r, f_vpr) \<le> 1"
+    using WfCons[unfolded wf_total_consistency_def]
+    by (metis get_mh_total_full.elims wf_mask_simple_def)
+  hence AtMostWritePerm: "r \<noteq> Null \<Longrightarrow> 1 \<ge> ?p'"
+    using \<omega>'_eq
+    by fastforce
 
   have
        LookupTempPerm: "lookup_var (var_context ctxt) ns temp_perm = Some (RealV p)"
