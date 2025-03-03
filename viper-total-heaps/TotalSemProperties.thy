@@ -2068,10 +2068,41 @@ qed
 
 lemma plus_diff_full_total_state_upd_aux_1:
   assumes "\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'"
-      and "\<omega>' = dec_mh_loc_total_full \<omega> l p"
-      and "get_mh_total_full \<omega> l \<ge> p"
-    shows "\<omega>_inh' = upd_mh_loc_total_full \<omega>_inh l (get_mh_total_full \<omega>_inh l + p)"
-  sorry
+      and "\<omega>' = dec_mh_loc_total_full \<omega> lh p"
+      and "get_mh_total_full \<omega> lh \<ge> p"
+    shows "\<omega>_inh' = upd_mh_loc_total_full \<omega>_inh lh (get_mh_total_full \<omega>_inh lh + p)"
+proof -
+  have "\<omega>_inh' = upd_nm_total_full \<omega>_inh (get_nm_total_full \<omega>_inh + get_nm_total_full (\<omega> \<ominus> \<omega>'))"
+    using assms(1) plus_Some_full_total_state_eq
+    by blast
+
+  let ?nm = "NM (\<lambda>l. if l = lh then p else 0) Map.empty"
+  have "get_nm_total_full \<omega>' + ?nm = get_nm_total_full \<omega>"
+    sorry
+  have "Some \<omega> = \<omega>' \<oplus> upd_nm_total_full \<omega> ?nm"
+    unfolding plus_full_total_state_ext_def plus_total_state_ext_def
+    apply (auto split: if_split simp: \<open>\<omega>' = _\<close>)
+     apply (rule full_total_state.equality; simp)
+     apply (rule total_state.equality; simp)
+     apply (rule nested_mask_equality; rule ext)
+      apply (simp add: add_masks_def)
+    using assms(3) greater_minus_plus apply auto[1]
+     apply (cases "get_nm_total_full \<omega>", simp add: pfun_comb_def plus_nested_mask_def)
+    sorry
+
+  have "\<omega> \<succeq> \<omega>'" sorry
+  have "get_nm_total_full (\<omega> \<ominus> \<omega>') = NM (\<lambda>l. if l = lh then p else 0) Map.empty"
+    sorry
+
+  show ?thesis
+    unfolding \<open>\<omega>_inh' = _\<close> \<open>get_nm_total_full (\<omega> \<ominus> \<omega>') = _\<close>
+    apply (rule full_total_state.equality; simp)
+    apply (rule total_state.equality; simp)
+    apply (rule nested_mask_equality; simp)
+     apply (rule ext, simp add: add_masks_def)
+    apply (rule ext, cases "get_nm_total_full \<omega>_inh"; simp add: plus_nested_mask_def pfun_comb_def)
+    done
+qed
 
 lemma plus_diff_full_total_state_upd_aux_2:
   assumes "\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'"

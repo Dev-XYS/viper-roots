@@ -821,24 +821,22 @@ proof
     by (simp add: core_fun core_preal_def)
 qed
 
-(*
+
 lemma plus_Some_total_state_eq:
   assumes "\<phi> \<oplus> \<phi>' = Some \<phi>sum"
-  shows "\<phi>sum = \<phi> \<lparr> get_mh_total := add_masks (get_mh_total \<phi>) (get_mh_total \<phi>'),
-                    get_mp_total := add_masks (get_mp_total \<phi>) (get_mp_total \<phi>') \<rparr>"
+  shows "\<phi>sum = \<phi>\<lparr> get_nm_total := get_nm_total \<phi> + get_nm_total \<phi>' \<rparr>"
   using assms
   unfolding plus_total_state_ext_def
   by (simp split: if_split_asm add: mask_plus_Some)
-*
+
 
 lemma plus_Some_full_total_state_eq:
   assumes "\<omega> \<oplus> \<omega>' = Some \<omega>sum"
-  shows "\<omega>sum = update_m_total_full \<omega> (add_masks (get_mh_total_full \<omega>) (get_mh_total_full \<omega>'))
-                                      (add_masks (get_mp_total_full \<omega>) (get_mp_total_full \<omega>'))"
+  shows "\<omega>sum = upd_nm_total_full \<omega> (get_nm_total_full \<omega> + get_nm_total_full \<omega>')"
   using assms
   unfolding plus_full_total_state_ext_def defined_def
   by (fastforce split: if_split_asm dest: plus_Some_total_state_eq)
-*)
+
 
 lemma plus_total_state_zero_mask:
   assumes "get_hh_total \<phi> = get_hh_total \<phi>' \<and> total_state.more \<phi> = total_state.more \<phi>'" and
