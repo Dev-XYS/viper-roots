@@ -173,7 +173,6 @@ text \<open>\<^const>\<open>framing_exh\<close> expresses an exhale relation inv
       since we can exhale at most \<^term>\<open>\<omega>\<close>. This is required to prove that \<^const>\<open>framing_exh\<close> is an exhale
       invariant.\<close>
 
-(*
 lemma framing_exh_is_assertion_red_invariant_exh:
   assumes MonoStateCons: "mono_prop_downward StateCons"
   shows "is_exh_rel_invariant ctxt_vpr StateCons (\<lambda>A. no_perm_assertion A \<and> no_unfolding_assertion A)
@@ -269,7 +268,7 @@ next
 
   assume FramingExh: "framing_exh ctxt_vpr StateCons (assert.Imp e A) \<omega>def \<omega>" and
          ConstrainedExp: "no_perm_pure_exp e \<and> no_unfolding_pure_exp e" and
-         RedCond: "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+         RedCond: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
 
   from FramingExh obtain \<omega>inh \<omega>sum
     where \<omega>def_valid: "StateCons \<omega>def" "valid_heap_mask (get_mh_total_full \<omega>def)" and
@@ -282,20 +281,16 @@ next
   hence "\<omega>def \<succeq> \<omega>inh" and "\<omega>def \<succeq> \<omega>"
     by (metis commutative greater_equiv succ_trans)+
 
-  hence "get_h_total_full \<omega>inh = get_h_total_full \<omega>"
-    using full_total_state_greater_only_mask_changed
-    by metis
-
   with RedCond ConstrainedExp
-  have "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+  have "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
     by (metis \<open>(\<omega>def::'a::type full_total_state) \<succeq> (\<omega>::'a::type full_total_state)\<close> \<open>(\<omega>def::'a::type full_total_state) \<succeq> (\<omega>inh::'a::type full_total_state)\<close> full_total_state_greater_only_mask_changed red_pure_exp_only_differ_on_mask(1))
 
-  with \<open>\<omega>def \<succeq> \<omega>inh\<close> have "ctxt_vpr, StateCons, Some \<omega>inh \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t Val (VBool True) \<or>
-                           ctxt_vpr, StateCons, Some \<omega>inh \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t VFailure"
+  with \<open>\<omega>def \<succeq> \<omega>inh\<close> have "ctxt_vpr, Some \<omega>inh \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t Val (VBool True) \<or>
+                           ctxt_vpr, Some \<omega>inh \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t VFailure"
     using ConstrainedExp red_pure_exp_different_def_state
     by blast
     
-  hence "ctxt_vpr, StateCons, Some \<omega>inh \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+  hence "ctxt_vpr, Some \<omega>inh \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
     using AssertionFraming inh_imp_failure
     unfolding assertion_framing_state_def
     by blast
@@ -313,7 +308,7 @@ next
 
   assume FramingExh: "framing_exh ctxt_vpr StateCons (assert.CondAssert e A B) \<omega>def \<omega>" and
          ConstrainedExp: "no_perm_pure_exp e \<and> no_unfolding_pure_exp e" and
-         RedCond: "ctxt_vpr, StateCons, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
+         RedCond: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
 
   from FramingExh obtain \<omega>inh \<omega>sum
     where \<omega>def_valid: "StateCons \<omega>def" "valid_heap_mask (get_mh_total_full \<omega>def)" and
@@ -325,10 +320,6 @@ next
 
   hence "\<omega>def \<succeq> \<omega>inh" and "\<omega>def \<succeq> \<omega>"
     by (metis commutative greater_equiv succ_trans)+
- 
-  hence "get_h_total_full \<omega>inh = get_h_total_full \<omega>"
-    using full_total_state_greater_only_mask_changed
-    by metis
 
   with RedCond ConstrainedExp
   have "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e;\<omega>inh\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
@@ -350,7 +341,7 @@ next
     unfolding framing_exh_def
     by (metis (full_types))
 qed
-*)
+
 
 text \<open>The following lemma shows that \<^const>\<open>framing_exh\<close> can be used to omit well-definedness checks
       on direct subexpressions of an assertion\<close>

@@ -1157,6 +1157,8 @@ lemma unfold_stmt_rel:
     shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Unfold pred_id e_args (PureExp e_p)) \<gamma> \<gamma>'"
   sorry
 
+
+\<^cancel>\<open>
 lemma unfold_stmt_rel':
   assumes PredDecl: "ViperLang.predicates (program_total ctxt_vpr) pred_id = Some pred_decl"
       and PredArgs: "ViperLang.predicate_decl.args pred_decl = ty_args"
@@ -1316,6 +1318,7 @@ next
       by blast
   qed
 qed
+\<close>
 
 (*
 lemma unfold_exhale_rel_rel:
