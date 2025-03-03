@@ -2072,39 +2072,6 @@ lemma plus_diff_full_total_state_upd_aux_1:
       and "get_mh_total_full \<omega> l \<ge> p"
     shows "\<omega>_inh' = upd_mh_loc_total_full \<omega>_inh l (get_mh_total_full \<omega>_inh l + p)"
   sorry
-(* proof -
-  let ?p' = "get_mh_total_full \<omega>_inh l + (get_mh_total_full \<omega> l - p)"
-  from \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>
-  have "\<omega>_inh' = update_m_total_full \<omega>_inh (add_masks (get_mh_total_full \<omega>_inh) (get_mh_total_full (\<omega> \<ominus> \<omega>')))
-                                           (add_masks (get_mp_total_full \<omega>_inh) (get_mp_total_full (\<omega> \<ominus> \<omega>')))"
-    using plus_Some_full_total_state_eq
-    by blast
-  moreover have "(add_masks (get_mp_total_full \<omega>_inh) (get_mp_total_full (\<omega> \<ominus> \<omega>'))) = (get_mp_total_full \<omega>_inh)"
-  proof -
-    have "get_mp_total_full (\<omega> \<ominus> \<omega>') = zero_mask"
-      apply (simp only: minus_full_total_state_mask[OF \<open>\<omega> \<succeq> \<omega>'\<close>])
-      by (simp add: \<open>\<omega>' = _\<close> minus_masks_empty)
-
-    thus ?thesis
-      by (simp add: add_masks_zero_mask)
-  qed
-  moreover have "add_masks (get_mh_total_full \<omega>_inh) (get_mh_total_full (\<omega> \<ominus> \<omega>')) =  
-                           (get_mh_total_full \<omega>_inh)( l := ?p')" (is "?lhs = ?rhs")
-  proof -
-    have *: "get_mh_total_full (\<omega> \<ominus> \<omega>') = get_mh_total_full \<omega> - (get_mh_total_full \<omega>)(l := p)"
-      apply (simp only: minus_full_total_state_mask[OF \<open>\<omega> \<succeq> \<omega>'\<close> ])
-      by (simp add: \<open>\<omega>' =_\<close>)
-
-    show ?thesis
-      unfolding add_masks_def
-      apply (subst *, standard)
-      apply (case_tac "hl = l")
-       apply simp
-      by (metis (mono_tags, lifting) add_masks_def add_masks_zero_mask fun_upd_other minus_apply minus_masks_empty)
-  qed
-  ultimately show ?thesis
-    by simp    
-qed *)
 
 lemma plus_diff_full_total_state_upd_aux_2:
   assumes "\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'"

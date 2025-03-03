@@ -28,7 +28,7 @@ abbreviation var_ctxt_bpl where
 
 
 abbreviation state_rel_initial where 
-  "state_rel_initial A Pr ctxt w ns \<equiv> (state_rel_def_same Pr (\<lambda> _.True) (ty_repr_basic A) tr_vpr_bpl_0 Map.empty ctxt w ns)"
+  "state_rel_initial A Pr ctxt w ns \<equiv> (state_rel_def_same Pr consistent_internal_total_full (ty_repr_basic A) tr_vpr_bpl_0 Map.empty ctxt w ns)"
 
 
 abbreviation type_interp_bpl where 
@@ -84,7 +84,7 @@ val stmt_body_hints = (AtomicHint (InhaleHint {inhale_stmt_rel_thm = @{thm inhal
 
 lemma method_rel_proof : 
 
-shows "(method_rel (state_rel_empty (state_rel_initial (absval_interp_total ctxt_vpr) global_data_vpr.vpr_prog ectxt)) (state_rel_initial (absval_interp_total ctxt_vpr) global_data_vpr.vpr_prog ectxt) ctxt_vpr (\<lambda> _.True) var_ctxt_viper P ectxt method_decls.foo_decl (convert_ast_to_program_point foo_before_ast_to_cfg_prog.proc_body))"
+shows "(method_rel (state_rel_empty (state_rel_initial (absval_interp_total ctxt_vpr) global_data_vpr.vpr_prog ectxt)) (state_rel_initial (absval_interp_total ctxt_vpr) global_data_vpr.vpr_prog ectxt) ctxt_vpr consistent_internal_total_full var_ctxt_viper P ectxt method_decls.foo_decl (convert_ast_to_program_point foo_before_ast_to_cfg_prog.proc_body))"
 apply ((unfold method_rel_def))
 apply ((rule exI))
 apply ((intro conjI))

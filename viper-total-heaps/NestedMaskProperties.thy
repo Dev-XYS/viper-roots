@@ -609,4 +609,12 @@ proof (induction nm arbitrary: nm' s)
 qed
 
 
+subsection \<open>Top level mask is smaller than the sum\<close>
+
+lemma mh_le_nm_loc_sum:
+  assumes "nm_loc_sum loc nm s"
+  shows "get_mh_nm nm loc \<le> s"
+  by (metis assms less_eq_preal.rep_eq nm_get_eq nm_loc_sum'.simps nm_loc_sum.elims(2))
+
+
 end

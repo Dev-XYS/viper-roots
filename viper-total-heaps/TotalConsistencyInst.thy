@@ -20,7 +20,9 @@ lemma wf_total_consistency_internal:
        apply blast
   using extcons_preserved_by_red_stmt
       apply blast
-  subgoal sorry
+  subgoal
+    unfolding consistent_internal_total_def consistent_internal_def wf_mask_simple_def
+    by (metis get_mh_total.simps mh_le_nm_loc_sum order_trans)
   using unfold_preserves_internal_consistency_total
     apply blast
   by fact+
