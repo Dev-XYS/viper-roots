@@ -1022,7 +1022,7 @@ lemma nested_mask_greater_equiv:
 
 
 lemma total_state_greater_equiv:
-  shows "(\<phi> :: 'a total_state) \<succeq> \<phi>' \<longleftrightarrow> \<phi> \<ge> \<phi>'"
+  shows "(\<phi> :: ('a,'b) total_state_scheme) \<succeq> \<phi>' \<longleftrightarrow> \<phi> \<ge> \<phi>'"
 proof
   assume "\<phi> \<succeq> \<phi>'"
 
@@ -1047,7 +1047,7 @@ qed
 
 
 lemma full_total_state_succ_implies_gte:
-  assumes "(\<omega> :: 'a full_total_state) \<succeq> \<omega>'"
+  assumes "(\<omega> :: ('a,'b) full_total_state_scheme) \<succeq> \<omega>'"
   shows "\<omega> \<ge> \<omega>'"
   by (metis assms full_total_state_greater_only_mask_changed greater_full_total_state_total_state less_eq_full_total_stateI total_state_greater_equiv)
 
@@ -1055,7 +1055,7 @@ lemma full_total_state_succ_implies_gte:
 lemma full_total_state_gte_implies_succ:
   assumes "\<omega> \<ge> \<omega>'"
       and TraceEq: "get_trace_total \<omega> = get_trace_total \<omega>'"
-    shows "(\<omega> :: 'a full_total_state) \<succeq> \<omega>'"
+    shows "(\<omega> :: ('a,'b) full_total_state_scheme) \<succeq> \<omega>'"
 proof -
   from \<open>\<omega> \<ge> \<omega>'\<close> have "get_total_full \<omega> \<ge> get_total_full \<omega>'"
     using less_eq_full_total_state_ext_def
@@ -1173,6 +1173,47 @@ lemma mono_prop_downward_ord_implies_mono_prop_downward:
   using assms full_total_state_succ_implies_gte
   unfolding mono_prop_downward_ord_def mono_prop_downward_def
   by blast
+
+
+subsection \<open>Cores\<close>
+
+lemma any_larger_than_core_total:
+    fixes x y :: "('a,'b) total_state_scheme"
+  assumes "get_hh_total x = get_hh_total y"
+      and "total_state.more x = total_state.more y"
+    shows "x \<succeq> |y|"
+  apply (rule total_state_greater_equiv[THEN iffD2])
+  unfolding core_total_state_ext_def less_eq_total_state_ext_def
+  by (simp add: assms nm_0_le_any)
+
+lemma any_larger_than_core_total_full:
+    fixes x y :: "('a,'b) full_total_state_scheme"
+  assumes "get_hh_total_full x = get_hh_total_full y"
+      and "get_store_total x = get_store_total y"
+      and "get_trace_total x = get_trace_total y"
+      and "full_total_state.more x = full_total_state.more y"
+    shows "x \<succeq> |y|"
+  apply (rule full_total_state_gte_implies_succ)
+  unfolding core_full_total_state_ext_def less_eq_full_total_state_ext_def
+   apply (simp add: assms)
+   apply (intro conjI)
+    apply force
+  using any_larger_than_core_total assms(1) total_state_greater_equiv
+   apply fastforce
+  by (simp add: assms)
+
+
+subsection \<open>I don't know where to put these lemmas.\<close>
+
+lemma obtain_lpm_from_mp:
+  assumes "get_mp_nm nm lp > 0"
+  obtains nm' where "get_fnm_nm nm lp = Some (Abs_posreal (get_mp_nm nm lp), nm')"
+  using assms
+  apply simp
+  apply (cases "get_fnm_nm nm lp"; simp)
+  using Rep_posreal_inverse
+  by force
+
 
 subsection \<open>valid mask (TODO: move to ViperLang?)\<close>
 

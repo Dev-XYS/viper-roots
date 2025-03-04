@@ -13,16 +13,6 @@ lemma get_mp_0_implies_fnm_None:
   by (metis Rep_posreal comp_apply mem_Collect_eq option.exhaust_sel option_fold.simps(1) pperm_pgt_pnone)
 
 
-lemma obtain_lpm_from_mp:
-  assumes "get_mp_nm nm lp > 0"
-  obtains nm' where "get_fnm_nm nm lp = Some (Abs_posreal (get_mp_nm nm lp), nm')"
-  using assms
-  apply simp
-  apply (cases "get_fnm_nm nm lp"; simp)
-  using Rep_posreal_inverse
-  by force
-
-
 lemma extcons_state_can_be_inhaled_assertion:
   assumes Sat: "sat ctxt \<omega>\<^sub>0 mh mp A"
       and mh_nm: "mh = get_mh_nm nm"

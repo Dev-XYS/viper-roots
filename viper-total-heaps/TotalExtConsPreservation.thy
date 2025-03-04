@@ -121,7 +121,7 @@ next
         unfolding field_divide_inverse_posreal[of q\<^sub>e q\<^sub>a] field_divide_inverse_posreal[of "q\<^sub>a - q\<^sub>e" q\<^sub>a]
         unfolding comm_semiring_class.distrib[symmetric]
         by (metis PosReal.padd_cancellative Rep_posreal_inverse \<open>q\<^sub>e + q\<^sub>s = q\<^sub>a\<close> \<open>q\<^sub>e \<le> q\<^sub>a\<close> add.commute field_inverse_posreal greater_minus_plus less_eq_posreal.rep_eq minus_posreal_def mult.commute one_posreal.rep_eq plus_posreal.rep_eq)
-        
+
       hence "nm\<^sub>s = (Rep_posreal ((q\<^sub>a - q\<^sub>e) / q\<^sub>a)) *\<^sub>s nm\<^sub>a"
         using \<open>nm\<^sub>e + nm\<^sub>s = nm\<^sub>a\<close>
         by force
@@ -388,7 +388,7 @@ lemma extcons_preserved_by_changing_0_locs:
            consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) p"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
            consistent_external ctxt \<phi>'"
-  using assms differ_only_in_0_perm_locs_def extcons_preserved_by_changing_0_locs' 
+  using assms differ_only_in_0_perm_locs_def extcons_preserved_by_changing_0_locs'
   by blast+
 
 lemma extcons_preserved_by_red_stmt_exhale:
@@ -775,5 +775,733 @@ next
     using RedSkip_case
     by blast
 qed
+
+
+subsection \<open>Relationship between inhale and exhale (Todo: Put somewhere else)\<close>
+
+lemma plus_diff_full_total_state_upd_aux_1:
+  assumes "\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'"
+      and "\<omega>' = dec_mh_loc_total_full \<omega> lh p"
+      and "get_mh_total_full \<omega> lh \<ge> p"
+    shows "\<omega>_inh' = upd_mh_loc_total_full \<omega>_inh lh (get_mh_total_full \<omega>_inh lh + p)"
+proof -
+  have "\<omega>_inh' = upd_nm_total_full \<omega>_inh (get_nm_total_full \<omega>_inh + get_nm_total_full (\<omega> \<ominus> \<omega>'))"
+    using assms(1) plus_Some_full_total_state_eq
+    by blast
+
+  let ?nm = "NM (\<lambda>l. if l = lh then p else 0) Map.empty"
+
+  have "get_nm_total_full \<omega>' + ?nm = get_nm_total_full \<omega>"
+    unfolding \<open>\<omega>' = _\<close>
+    apply (cases "get_nm_total_full \<omega>", simp)
+    unfolding plus_nested_mask_def
+    apply simp
+    apply (intro conjI; rule ext)
+     apply (simp add: add_masks_def)
+    using assms(3) greater_minus_plus apply force
+    by (simp add: pfun_comb_def)
+  have "Some (get_total_full \<omega>) = get_total_full \<omega>' \<oplus> upd_nm_total (get_total_full \<omega>) ?nm"
+    unfolding plus_total_state_ext_def
+    apply (auto split: if_split)
+    using \<open>get_nm_total_full \<omega>' + ?nm = get_nm_total_full \<omega>\<close>
+     apply auto[1]
+    unfolding \<open>\<omega>' = _\<close>
+    by simp
+  have "Some \<omega> = \<omega>' \<oplus> upd_nm_total_full \<omega> ?nm"
+    unfolding plus_full_total_state_ext_def plus_total_state_ext_def
+    apply (auto split: if_split)
+             apply (rule full_total_state.equality; simp)
+    using \<open>get_nm_total_full \<omega>' + ?nm = get_nm_total_full \<omega>\<close>
+             apply fastforce
+    using \<open>Some (get_total_full \<omega>) = get_total_full \<omega>' \<oplus> upd_nm_total (get_total_full \<omega>) ?nm\<close> defined_def
+            apply fastforce
+    unfolding \<open>\<omega>' = _\<close>
+    by auto
+
+  have "upd_nm_total_full \<omega> ?nm \<succeq> |\<omega>'|"
+    apply (rule any_larger_than_core_total_full)
+    unfolding \<open>\<omega>' = _\<close>
+    by simp_all
+
+  have "\<omega> \<ominus> \<omega>' = upd_nm_total_full \<omega> ?nm"
+    using \<open>Some \<omega> = \<omega>' \<oplus> upd_nm_total_full \<omega> ?nm\<close> \<open>upd_nm_total_full \<omega> ?nm \<succeq> |\<omega>'|\<close> addition_bigger core_is_smaller core_sum minusI
+    by fastforce
+
+  hence "get_nm_total_full (\<omega> \<ominus> \<omega>') = ?nm"
+    by auto
+
+  show ?thesis
+    unfolding \<open>\<omega>_inh' = _\<close> \<open>get_nm_total_full (\<omega> \<ominus> \<omega>') = _\<close>
+    apply (rule full_total_state.equality; simp)
+    apply (rule total_state.equality; simp)
+    apply (rule nested_mask_equality; simp)
+     apply (rule ext, simp add: add_masks_def)
+    apply (rule ext, cases "get_nm_total_full \<omega>_inh"; simp add: plus_nested_mask_def pfun_comb_def)
+    done
+qed
+
+lemma plus_diff_full_total_state_upd_aux_2:
+  assumes "\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'"
+      and "\<omega>' = exhale_pred \<omega> lp p"
+      and "get_mp_total_full \<omega> lp \<ge> p"
+      and "consistent_external ctxt (get_total_full \<omega>)"
+      and "ctxt_wf_pred ctxt"
+    shows "\<exists>\<phi>_inh. (p > 0 \<longrightarrow> consistent_external_wrt_ploc ctxt \<phi>_inh lp p) \<and>
+                   get_hh_total \<phi>_inh = get_hh_total_full \<omega>_inh \<and>
+                   \<omega>_inh' = (if p = 0 then \<omega>_inh else add_to_lpm_nonzero_total_full \<omega>_inh lp (Abs_posreal p) (get_nm_total \<phi>_inh))"
+proof (cases "p = 0")
+  case True
+  have "\<omega> = \<omega>'"
+    unfolding \<open>\<omega>' = _\<close> exhale_pred_def
+    apply simp
+    apply (rule full_total_state.equality; simp)
+    apply (rule total_state.equality; simp)
+    apply (rule nested_mask_equality; simp)
+    apply (rule ext)
+    apply (rename_tac l)
+    apply (cases "get_fnm_total_full \<omega> lp"; simp)
+    unfolding \<open>p = 0\<close>
+    by (metis Rep_posreal Rep_posreal_inverse Rep_preal_inverse add.right_neutral all_pos divide_eq_0_iff divide_preal.rep_eq greater_minus_plus linorder_not_less mem_Collect_eq preal_semimodule_class.scale_one prod.collapse zero_preal.rep_eq)
+  hence "\<omega>_inh = \<omega>_inh'"
+    by (metis assms(1) full_total_state_defined_core_same_2 option.sel plus_minus_empty)
+  then show ?thesis
+    using \<open>p = 0\<close>
+    by auto
+next
+  case False
+  hence "p > 0"
+    using preal_not_0_gt_0
+    by blast
+
+  then obtain nm where lpm: "Some (Abs_posreal (get_mp_total_full \<omega> lp),nm) = get_fnm_total_full \<omega> lp"
+    by (metis assms(3) get_fnm_total.simps get_fnm_total_full.simps get_mp_total.simps get_mp_total_full.simps obtain_lpm_from_mp order_less_le_trans)
+
+  have "\<omega>_inh' = upd_nm_total_full \<omega>_inh (get_nm_total_full \<omega>_inh + get_nm_total_full (\<omega> \<ominus> \<omega>'))"
+    using assms(1) plus_Some_full_total_state_eq
+    by blast
+
+  let ?nm = "NM (\<lambda>_. 0) (\<lambda>l. if l = lp then Some (Abs_posreal p, (p / get_mp_total_full \<omega> lp) *\<^sub>s nm) else None)"
+
+  have "get_nm_total_full \<omega>' + ?nm = get_nm_total_full \<omega>"
+    unfolding \<open>\<omega>' = _\<close>
+    apply (cases "get_nm_total_full \<omega>", simp add: exhale_pred_def)
+    apply (rename_tac mh fnm)
+    unfolding plus_nested_mask_def
+    apply simp
+    apply (intro conjI; rule ext)
+     apply (simp add: add_masks_def)
+    apply (rename_tac l)
+    apply (case_tac "l = lp")
+     apply (case_tac "fnm lp"; simp add: pfun_comb_def)
+    using \<open>Some (Abs_posreal (get_mp_total_full \<omega> lp), nm) = get_fnm_total_full \<omega> lp\<close>
+      apply auto[1]
+     apply (intro impI | intro conjI)+
+      apply (metis Abs_posreal_inverse PosReal.field_divide_inverse PosReal.field_inverse \<open>Some (Abs_posreal (get_mp_total_full \<omega> lp), nm) = get_fnm_total_full \<omega> lp\<close> \<open>pos_perm_class.pnone < p\<close> assms(3) dual_order.order_iff_strict get_fnm_nm.simps get_fnm_total.simps get_fnm_total_full.simps leD mem_Collect_eq mult.commute option.sel order.strict_trans2 preal_semimodule_class.scale_one split_pairs)
+     apply (smt (verit, del_insts) Abs_posreal_inverse Rep_posreal_inject \<open>Some (Abs_posreal (get_mp_total_full \<omega> lp), nm) = get_fnm_total_full \<omega> lp\<close> \<open>pos_perm_class.pnone < p\<close> divide_preal.rep_eq get_fnm_nm.simps get_fnm_total.simps get_fnm_total_full.simps greater_minus_plus le_divide_eq_1 less_eq_preal.rep_eq mem_Collect_eq minus_preal.abs_eq one_preal.rep_eq option.sel plus_nested_mask_def plus_posreal.rep_eq positive_real_preal prat_non_negative preal_not_0_gt_0 preal_semimodule_class.scale_one scale_add_left split_pairs)
+    by (simp add: pfun_comb_def)
+  have "Some (get_total_full \<omega>) = get_total_full \<omega>' \<oplus> upd_nm_total (get_total_full \<omega>) ?nm"
+    unfolding plus_total_state_ext_def
+    apply (auto split: if_split)
+    using \<open>get_nm_total_full \<omega>' + ?nm = get_nm_total_full \<omega>\<close>
+     apply auto[1]
+    unfolding \<open>\<omega>' = _\<close>
+    by (simp add: exhale_pred_def)
+  have "Some \<omega> = \<omega>' \<oplus> upd_nm_total_full \<omega> ?nm"
+    unfolding plus_full_total_state_ext_def plus_total_state_ext_def
+    apply (auto split: if_split)
+           apply (rule full_total_state.equality; simp)
+    using \<open>get_nm_total_full \<omega>' + ?nm = get_nm_total_full \<omega>\<close>
+           apply fastforce
+          prefer 4
+          apply (simp add: \<open>Some (get_total_full \<omega>) = _\<close> total_state_plus_defined)
+         prefer 3
+    using \<open>Some (get_total_full \<omega>) = _\<close> defined_def
+         apply fastforce
+        prefer 5
+        apply (simp add: \<open>Some (get_total_full \<omega>) = _\<close> total_state_plus_defined)
+    unfolding \<open>\<omega>' = _\<close>[unfolded exhale_pred_def]
+    by auto
+
+  have "upd_nm_total_full \<omega> ?nm \<succeq> |\<omega>'|"
+    apply (rule any_larger_than_core_total_full)
+    unfolding \<open>\<omega>' = _\<close>[unfolded exhale_pred_def]
+    by simp_all
+
+  have "\<omega> \<ominus> \<omega>' = upd_nm_total_full \<omega> ?nm"
+    using \<open>Some \<omega> = \<omega>' \<oplus> upd_nm_total_full \<omega> ?nm\<close> \<open>upd_nm_total_full \<omega> ?nm \<succeq> |\<omega>'|\<close> addition_bigger core_is_smaller core_sum minusI
+    by fastforce
+
+  hence "get_nm_total_full (\<omega> \<ominus> \<omega>') = ?nm"
+    by auto
+
+  let ?\<phi> = "get_total_full \<omega>_inh\<lparr> get_nm_total := (p / get_mp_total_full \<omega> lp) *\<^sub>s nm \<rparr>"
+
+  have nm_extcons: "consistent_external_wrt_ploc ctxt (get_total_full \<omega>\<lparr> get_nm_total := nm \<rparr>) lp (get_mp_total_full \<omega> lp)"
+    using SatAll_case[OF assms(4)] lpm
+    by (metis Abs_posreal_inverse False all_pos assms(3) get_fnm_total.simps get_fnm_total_full.simps mem_Collect_eq order_antisym_conv pperm_pnone_pgt surj_pair)
+  obtain pid vs where "lp = (pid,vs)"
+    by fastforce
+  have *: "get_total_full \<omega>\<lparr> get_nm_total := nm \<rparr> = get_total_full \<omega>_inh\<lparr> get_nm_total := nm \<rparr>"
+    apply (rule total_state.equality; simp)
+    using assms(1) minus_full_total_state_only_mask_different_2 by fastforce
+  have "consistent_external_wrt_ploc ctxt ?\<phi> lp p"
+    using fraction_consistent_external(1)[OF assms(5) nm_extcons[unfolded \<open>lp = _\<close> *], where ?frac="p / get_mp_total_full \<omega> lp"]
+    unfolding \<open>lp = _\<close>[symmetric]
+    apply (simp del: get_mp_total_full.simps)
+    by (metis False PosReal.field_divide_inverse PosReal.field_inverse all_pos assms(3) mult.left_commute mult.right_neutral order_antisym_conv)
+
+  show ?thesis
+    apply (rule exI[of _ ?\<phi>])
+    unfolding \<open>\<omega>_inh' = _\<close> \<open>get_nm_total_full (\<omega> \<ominus> \<omega>') = _\<close>
+    apply (intro conjI)
+    using \<open>consistent_external_wrt_ploc ctxt ?\<phi> lp p\<close>
+      apply blast
+     apply simp
+    apply (simp add: \<open>p \<noteq> 0\<close>)
+    apply (rule full_total_state.equality; simp)
+    apply (rule total_state.equality; simp)
+    apply (rule nested_mask_equality; simp)
+     apply (rule ext, simp add: add_masks_def)
+    apply (rule ext, rename_tac l)
+    apply (case_tac "l = lp"; simp; cases "get_nm_total_full \<omega>_inh"; rename_tac mh fnm; simp)
+     apply (case_tac "fnm lp"; simp add: plus_nested_mask_def pfun_comb_def)
+    apply (simp add: plus_nested_mask_def pfun_comb_def)
+    done
+qed
+
+
+lemma exhale_inhale_normal:
+  assumes RedExh: "red_exhale ctxt StateCons \<omega>def A \<omega> res"
+      and "res = RNormal \<omega>'"
+      and "mono_prop_downward StateCons"
+      and "no_perm_assertion A \<and> no_unfolding_assertion A"
+      and "assertion_framing_state ctxt StateCons A \<omega>_inh"
+      and "\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'"
+      and ValidInh': "StateCons \<omega>_inh' \<and> valid_heap_mask (get_mh_total_full \<omega>_inh')"
+      and "consistent_external ctxt (get_total_full \<omega>)"
+      and "ctxt_wf_pred ctxt"
+    shows "red_inhale ctxt StateCons A \<omega>_inh (RNormal \<omega>_inh')"
+  using assms exhale_normal_result_smaller[OF RedExh[simplified \<open>res = _\<close>], OF HOL.refl]
+proof (induction arbitrary: \<omega>_inh \<omega>_inh' \<omega>')
+  case (ExhAcc mh \<omega> e_r r e_p p a f)
+  let ?A = "Acc e_r f (PureExp e_p)"
+  note AssertionFramed = \<open>assertion_framing_state ctxt StateCons (Atomic ?A) \<omega>_inh\<close>
+
+  have SubExp: "[e_r, e_p] = sub_expressions_atomic ?A"
+    by simp
+  have SubExpConstraint: "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) [e_r, e_p]"
+    using ExhAcc
+    by (simp add: assert_pred_atomic_subexp)
+
+  note OnlyMaskChanged = minus_full_total_state_only_mask_different_2[OF \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>]
+
+  have *: "list_all2 (\<lambda>e v. ctxt, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) [e_r, e_p] [VRef r, VPerm p]"
+    using ExhAcc
+    by blast
+
+  have RedRefInh: "ctxt, Some \<omega>_inh \<turnstile> \<langle>e_r;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
+       RedPermInh: "ctxt, Some \<omega>_inh \<turnstile> \<langle>e_p;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+    using red_pure_exp_sub_exp_atomic_change_state[OF * OnlyMaskChanged SubExp SubExpConstraint AssertionFramed]
+    by auto
+
+  show ?case
+  proof (cases "r = Null")
+    case True
+    hence "\<omega> = \<omega>'"
+      using ExhAcc(5)
+      by (simp add: exh_if_total_normal_2)
+
+    have "\<omega>_inh' = \<omega>_inh"
+      using \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>[simplified \<open>\<omega> = \<omega>'\<close>]
+            full_total_state_defined_core_same_2 plus_minus_empty
+      by (metis option.sel)
+
+    show ?thesis
+      apply (rule InhAcc[OF RedRefInh RedPermInh])
+       apply simp
+      using \<open>\<omega>_inh' = \<omega>_inh\<close> \<open>r = Null\<close> ExhAcc.prems(1) THResultNormal \<open>\<omega> = \<omega>'\<close> exh_if_total_normal
+      by fastforce
+  next
+    case False
+    from this obtain a where "r = Address a"
+      using ref.exhaust by blast
+
+    hence PermConditions: "0 \<le> p \<and> mh (a, f) \<ge> Abs_preal p" and
+                          "\<omega>' = dec_mh_loc_total_full \<omega> (a, f) (Abs_preal p)"
+      using \<open>r = Address a\<close> ExhAcc
+      by (auto elim: exh_if_total.elims)
+
+    let ?loc = "(a,f)"
+    let ?p' = "get_mh_total_full \<omega>_inh (a,f) + Abs_preal p"
+    have "\<omega>_inh' = upd_mh_loc_total_full \<omega>_inh ?loc ?p'" (is "_ = ?upd_\<omega>_inh")
+    proof -
+      let ?mh_af = "(get_mh_total_full \<omega> (a, f))"
+      have "\<omega>_inh' = upd_mh_loc_total_full \<omega>_inh ?loc (get_mh_total_full \<omega>_inh ?loc + Abs_preal p)"
+        using plus_diff_full_total_state_upd_aux_1[OF \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close> \<open>\<omega>' = _\<close>]
+              \<open>mh = _\<close> PermConditions
+        by blast
+
+      thus ?thesis
+        using PermConditions
+        unfolding \<open>mh = _\<close>
+        by (simp add: PosReal.pgte.rep_eq less_eq_preal.rep_eq minus_preal_gte)
+    qed
+
+    hence "get_mh_total_full \<omega>_inh' ?loc = get_mh_total_full \<omega>_inh ?loc + Abs_preal p"
+      by simp
+
+    hence PermConstraint': "1 \<ge> get_mh_total_full \<omega>_inh ?loc + Abs_preal p"
+      using ExhAcc.prems(6)
+      unfolding wf_mask_simple_def
+      by metis
+
+    let ?W = "inhale_perm_single StateCons \<omega>_inh ?loc (Some (Abs_preal p))"
+
+    from ExhAcc have "StateCons \<omega>_inh'"
+      by simp
+
+    have "\<omega>_inh' \<in> ?W"
+      unfolding inhale_perm_single_def
+      using \<open>StateCons \<omega>_inh'\<close> \<open>\<omega>_inh' = _\<close> PermConstraint'
+      by auto
+
+    show ?thesis
+     apply (rule InhAcc[OF RedRefInh RedPermInh])
+       apply simp
+      apply (rule THResultNormal_alt)
+      using PermConditions \<open>r = _\<close>
+      using \<open>\<omega>_inh' \<in> ?W\<close> \<open>r = _\<close>
+      by auto
+  qed
+next
+  case (ExhAccWildcard mh \<omega> e_r r a f q)
+  let ?loc = "(a,f)"
+  from ExhAccWildcard have "mh ?loc \<noteq> 0" and "\<omega>' = dec_mh_loc_total_full \<omega> ?loc q"
+    by (auto elim: exh_if_total.elims)
+
+  with ExhAccWildcard have "r = Address a"
+    using exh_if_total_normal ref.exhaust_sel
+    by blast
+
+  have "mh ?loc > q"
+    using ExhAccWildcard.hyps(4) \<open>mh (a, f) \<noteq> 0\<close> \<open>r = Address a\<close>
+    by blast
+
+  let ?A = "Acc e_r f Wildcard"
+  note AssertionFramed = \<open>assertion_framing_state ctxt StateCons (Atomic ?A) \<omega>_inh\<close>
+
+  have SubExp: "[e_r] = sub_expressions_atomic ?A"
+    by simp
+  have SubExpConstraint: "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) [e_r]"
+    using ExhAccWildcard
+    by (simp add: assert_pred_atomic_subexp)
+
+  note OnlyMaskChanged = minus_full_total_state_only_mask_different_2[OF \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>]
+
+  have *: "list_all2 (\<lambda>e v. ctxt, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) [e_r] [VRef r]"
+    using ExhAccWildcard
+    by blast
+
+  have RedRefInh: "ctxt, Some \<omega>_inh \<turnstile> \<langle>e_r;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+    using red_pure_exp_sub_exp_atomic_change_state[OF * OnlyMaskChanged SubExp SubExpConstraint AssertionFramed]
+    by auto
+
+  show ?case
+  proof -
+    let ?p' = "get_mh_total_full \<omega>_inh ?loc + q"
+    have "\<omega>_inh' = upd_mh_loc_total_full \<omega>_inh ?loc ?p'" (is "_ = ?upd_\<omega>_inh")
+      using plus_diff_full_total_state_upd_aux_1[OF \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close> \<open>\<omega>' = _\<close>]
+            ExhAccWildcard.hyps(1) \<open>q < mh (a, f)\<close>
+      by auto
+
+    from ExhAccWildcard have "StateCons \<omega>_inh'" and ValidMaskInh': "valid_heap_mask (get_mh_total_full \<omega>_inh')"
+      by simp_all
+
+    have PermConstraint': "1 \<ge> ?p'"
+      using valid_heap_maskD[OF ValidMaskInh', of "?loc"]
+      unfolding \<open>\<omega>_inh' = _\<close>
+      by (simp add: pgte_gte)
+
+    from \<open>mh ?loc > q\<close> have "get_mh_total_full \<omega> ?loc - q \<noteq> 0"
+      unfolding \<open>mh = _\<close>
+      by (metis add_0 greater_minus_plus less_le_not_le)
+
+    let ?W = "inhale_perm_single StateCons \<omega>_inh ?loc None"
+
+    have "\<omega>_inh' \<in> ?W"
+      unfolding inhale_perm_single_def
+      using \<open>StateCons \<omega>_inh'\<close>
+            \<open>get_mh_total_full \<omega> ?loc - q \<noteq> 0\<close>
+            PermConstraint'
+            \<open>\<omega>_inh' = _\<close>
+            ExhAccWildcard.hyps(4) ExhAccWildcard.prems(1) exh_if_total_normal preal_not_0_gt_0
+      by auto
+
+    show ?thesis
+      apply (rule InhAccWildcard[OF RedRefInh, simplified \<open>r = _\<close>])
+       apply simp
+      apply (rule THResultNormal_alt)
+      using \<open>\<omega>_inh' \<in> ?W\<close> \<open>r = _\<close>
+      by auto
+  qed
+next
+  case (ExhAccPred mp \<omega> e_args v_args e_p p pred_id)
+  let ?A = "AccPredicate pred_id e_args (PureExp e_p)"
+  note AssertionFramed = \<open>assertion_framing_state ctxt StateCons (Atomic ?A) \<omega>_inh\<close>
+
+  have SubExp: "e_args@[e_p] = sub_expressions_atomic ?A"
+    by simp
+  hence SubExpConstraint: "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) (e_args@[e_p])"
+    using ExhAccPred
+  proof (simp add: assert_pred_atomic_subexp del: pure_exp_pred.simps)
+    from ExhAccPred have "list_all (\<lambda>e. no_perm_pure_exp e) e_args \<and> list_all (\<lambda>e. no_unfolding_pure_exp e) e_args"
+      by (simp add: assert_pred_atomic_subexp del: pure_exp_pred.simps)
+    thus "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) e_args"
+      by (simp add: list_all_length)
+  qed
+
+  note OnlyMaskChanged = minus_full_total_state_only_mask_different_2[OF \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>]
+
+  have *: "list_all2 (\<lambda>e v. ctxt, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) (e_args@[e_p]) (v_args@[VPerm p])"
+    using ExhAccPred red_pure_exps_total_list_all2
+    by (metis list.ctr_transfer(1) list.rel_inject(2) list_all2_appendI)
+
+  have RedArgsInh: "red_pure_exps_total ctxt (Some \<omega>_inh) e_args \<omega>_inh (Some v_args)" and
+       RedPermInh: "ctxt, Some \<omega>_inh \<turnstile> \<langle>e_p;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+  proof -
+    note Aux = red_pure_exp_sub_exp_atomic_change_state[OF * OnlyMaskChanged SubExp SubExpConstraint AssertionFramed]
+    show "ctxt, Some \<omega>_inh \<turnstile> \<langle>e_p;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+      using Aux
+      by (metis (no_types, lifting) ExhAccPred.hyps(2) append_eq_append_conv list_all2_Cons list_all2_append2 list_all2_lengthD red_pure_exps_total_list_all2)
+
+    show "red_pure_exps_total ctxt (Some \<omega>_inh) e_args \<omega>_inh (Some v_args) "
+    proof -
+      from Aux have "list_all2 (\<lambda>e v. ctxt, Some \<omega>_inh \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val v) e_args v_args"
+        by (meson ExhAccPred.hyps(2) list_all2_append list_all2_conv_all_nth red_pure_exps_total_list_all2)
+      thus ?thesis
+        by (auto intro: list_all2_red_pure_exps_total)
+    qed
+  qed
+
+  show ?case
+  proof -
+    let ?loc = "(pred_id, v_args)"
+    have PermConditions: "0 \<le> p \<and> mp ?loc \<ge> Abs_preal p" and
+                         "\<omega>' = exhale_pred \<omega> (pred_id, v_args) (Abs_preal p)"
+      using ExhAccPred
+      by (auto elim: exh_if_total.elims)
+
+    from ExhAccPred have "StateCons \<omega>_inh'"
+      by simp
+
+    let ?W = "inhale_perm_single_pred ctxt StateCons \<omega>_inh ?loc (Some (Abs_preal p))"
+
+    obtain \<phi>_inh where \<phi>_inh:
+      "(Abs_preal p > 0 \<longrightarrow> consistent_external_wrt_ploc ctxt \<phi>_inh ?loc (Abs_preal p)) \<and>
+       get_hh_total \<phi>_inh = get_hh_total_full \<omega>_inh \<and>
+       \<omega>_inh' = (if Abs_preal p = 0 then \<omega>_inh else add_to_lpm_nonzero_total_full \<omega>_inh ?loc (Abs_posreal (Abs_preal p)) (get_nm_total \<phi>_inh))"
+      using plus_diff_full_total_state_upd_aux_2[OF ExhAccPred(10) \<open>\<omega>' = _\<close> PermConditions[THEN conjunct2, unfolded \<open>mp = _\<close>] ExhAccPred(12,13)]
+      by blast
+
+    have "\<omega>_inh' \<in> ?W"
+      unfolding inhale_perm_single_pred_def
+      apply (rule CollectI)
+      apply (rule exI[of _ \<omega>_inh'])
+      apply (rule exI[of _ \<phi>_inh])
+      apply (rule exI[of _ "Abs_preal p"])
+      using \<open>StateCons \<omega>_inh'\<close> \<phi>_inh
+      by simp
+
+    show ?thesis
+     apply (rule InhAccPred[OF RedArgsInh RedPermInh])
+       apply simp
+      apply (rule THResultNormal_alt)
+      using PermConditions \<open>\<omega>_inh' \<in> ?W\<close>
+      by auto
+  qed
+next
+  case (ExhAccPredWildcard mp \<omega> e_args v_args pred_id q pred_decl)
+  let ?A = "AccPredicate pred_id e_args Wildcard"
+  note AssertionFramed = \<open>assertion_framing_state ctxt StateCons (Atomic ?A) \<omega>_inh\<close>
+
+  have SubExp: "e_args = sub_expressions_atomic ?A"
+    by simp
+  hence SubExpConstraint: "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) e_args"
+    using ExhAccPredWildcard
+  proof (simp add: assert_pred_atomic_subexp del: pure_exp_pred.simps)
+    from ExhAccPredWildcard have "list_all (\<lambda>e. no_perm_pure_exp e) e_args \<and> list_all (\<lambda>e. no_unfolding_pure_exp e) e_args"
+      by (simp add: assert_pred_atomic_subexp del: pure_exp_pred.simps)
+    thus "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) e_args"
+      by (simp add: list_all_length)
+  qed
+
+  note OnlyMaskChanged = minus_full_total_state_only_mask_different_2[OF \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>]
+
+  have *: "list_all2 (\<lambda>e v. ctxt, Some \<omega>def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) e_args v_args"
+    using ExhAccPredWildcard red_pure_exps_total_list_all2
+    by blast
+
+  from red_pure_exp_sub_exp_atomic_change_state[OF * OnlyMaskChanged SubExp SubExpConstraint AssertionFramed]
+  have RedArgsInh: "red_pure_exps_total ctxt (Some \<omega>_inh) e_args \<omega>_inh (Some v_args)"
+    using list_all2_red_pure_exps_total
+    by blast
+
+  show ?case
+  proof -
+    let ?loc = "(pred_id, v_args)"
+
+    have "mp ?loc \<noteq> 0" and "\<omega>' = exhale_pred \<omega> ?loc q"
+      using ExhAccPredWildcard
+      by (auto elim: exh_if_total.elims)
+
+    have "mp ?loc \<ge> q"
+      using ExhAccPredWildcard.hyps(3) \<open>mp (pred_id, v_args) \<noteq> pos_perm_class.pnone\<close>
+      by fastforce
+
+    obtain \<phi>_inh where \<phi>_inh:
+      "(q > 0 \<longrightarrow> consistent_external_wrt_ploc ctxt \<phi>_inh ?loc q) \<and>
+       get_hh_total \<phi>_inh = get_hh_total_full \<omega>_inh \<and>
+       \<omega>_inh' = (if q = 0 then \<omega>_inh else add_to_lpm_nonzero_total_full \<omega>_inh ?loc (Abs_posreal q) (get_nm_total \<phi>_inh))"
+      using plus_diff_full_total_state_upd_aux_2[OF ExhAccPredWildcard(10) \<open>\<omega>' = _\<close> \<open>mp ?loc \<ge> q\<close>[unfolded \<open>mp = _\<close>] ExhAccPredWildcard(12,13)]
+      by blast
+
+    from ExhAccPredWildcard have "StateCons \<omega>_inh'"
+      by simp
+
+    let ?W = "inhale_perm_single_pred ctxt StateCons \<omega>_inh ?loc None"
+
+    have "\<omega>_inh' \<in> ?W"
+      unfolding inhale_perm_single_pred_def
+      apply (rule CollectI)
+      apply (rule exI[of _ \<omega>_inh'])
+      apply (rule exI[of _ \<phi>_inh])
+      apply (rule exI[of _ q])
+      using \<open>StateCons \<omega>_inh'\<close> \<phi>_inh
+             ExhAccPredWildcard.hyps(3) \<open>mp (pred_id, v_args) \<noteq> pos_perm_class.pnone\<close>
+      by force
+
+    show ?thesis
+      apply (rule InhAccPredWildcard[OF RedArgsInh])
+       apply simp
+      apply (rule THResultNormal_alt)
+      using \<open>\<omega>_inh' \<in> ?W\<close>
+      by auto
+  qed
+next
+  case (ExhPure e \<omega> b)
+  hence "b = True"
+    using exh_if_total_normal exh_if_total_normal_2 by blast
+
+  from ExhPure have "\<omega>' = \<omega>"
+    by (auto elim: exh_if_total.elims)
+  hence "\<omega>_inh' = \<omega>_inh"
+    using \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>
+    by (metis full_total_state_defined_core_same_2 option.inject plus_minus_empty)
+
+  note OnlyMaskChanged = minus_full_total_state_only_mask_different_2[OF \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>]
+  with ExhPure have RedAux: "ctxt, Some \<omega>def \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+    using red_pure_exp_only_differ_on_mask
+    unfolding \<open>b = True\<close>
+    by fastforce
+
+  have "ctxt, Some \<omega>_inh \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+  proof -
+    have "\<not> ctxt, Some \<omega>_inh \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t VFailure"
+      using \<open>assertion_framing_state ctxt StateCons (Atomic (Pure e)) \<omega>_inh\<close>
+      unfolding assertion_framing_state_def
+      by (metis ExhPure.prems(4) RedExpListFailure assertion_framing_state_sub_exps_not_failure sub_expressions_atomic.simps(1))
+
+    thus ?thesis
+      using red_pure_exp_different_def_state(1)[OF RedAux] ExhPure
+      by auto
+  qed
+
+  then show ?case
+    by (auto intro: inh_pure_normal simp: \<open>\<omega>_inh' = \<omega>_inh\<close>)
+next
+  case (ExhStarNormal A \<omega> \<omega>'' B res)
+  hence "\<omega> \<succeq> \<omega>''" and "\<omega>'' \<succeq> \<omega>'"
+    by (simp_all add: exhale_normal_result_smaller)
+
+  note AssertionFraming = \<open>assertion_framing_state ctxt StateCons (A && B) \<omega>_inh\<close>
+  hence AssertionFramingA: "assertion_framing_state ctxt StateCons A \<omega>_inh"
+    using assertion_framing_star
+    by blast
+
+  from ExhStarNormal have ConstraintA: "no_perm_assertion A \<and> no_unfolding_assertion A" and
+                          ConstraintB: "no_perm_assertion B \<and> no_unfolding_assertion B"
+    by simp_all
+
+  have "\<omega> \<ominus> \<omega>' \<succeq> \<omega> \<ominus> \<omega>''"
+    using \<open>\<omega>'' \<succeq> \<omega>'\<close> \<open>\<omega> \<succeq> \<omega>''\<close> minus_greater
+    by blast
+
+  moreover from this obtain \<omega>_inh'' where \<omega>_inh''_Some: "\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>'') = Some \<omega>_inh''"
+    using \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>
+    by (metis commutative compatible_smaller)
+
+  ultimately have "\<omega>_inh' \<succeq> \<omega>_inh''"
+    using \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>
+    by (metis (full_types) addition_bigger commutative)
+
+  hence \<omega>_inh''_valid: "StateCons \<omega>_inh'' \<and> valid_heap_mask (get_mh_total_full \<omega>_inh'')"
+    using \<open>StateCons \<omega>_inh' \<and> valid_heap_mask (get_mh_total_full \<omega>_inh')\<close>
+          \<open>mono_prop_downward StateCons\<close>[simplified mono_prop_downward_def] valid_heap_mask_downward_mono
+          full_total_state_greater_mask
+    by blast
+
+  have RedInhA: "red_inhale ctxt StateCons A \<omega>_inh (RNormal \<omega>_inh'')"
+    using ExhStarNormal.IH(1)[OF _ \<open>mono_prop_downward StateCons\<close> ConstraintA AssertionFramingA \<omega>_inh''_Some \<omega>_inh''_valid] ExhStarNormal.prems
+          \<open>\<omega> \<succeq> \<omega>''\<close>
+    by simp
+
+  with AssertionFraming have AssertionFramingB: "assertion_framing_state ctxt StateCons B \<omega>_inh''"
+    using assertion_framing_star
+    by blast
+
+  have \<omega>_inh'_Some2: "\<omega>_inh'' \<oplus> (\<omega>'' \<ominus> \<omega>') = Some \<omega>_inh'"
+    using \<omega>_inh''_Some \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close> \<open>\<omega>'' \<succeq> \<omega>'\<close>
+    by (smt (z3) \<open>\<omega> \<succeq> \<omega>''\<close> asso1 commutative minus_and_plus minus_equiv_def)
+
+  have "consistent_external ctxt (get_total_full \<omega>'')"
+    using extcons_preserved_by_red_exhale ExhStarNormal
+    by blast
+
+  hence "red_inhale ctxt StateCons B \<omega>_inh'' (RNormal \<omega>_inh')"
+  using ExhStarNormal.IH(2)[OF _ \<open>mono_prop_downward StateCons\<close> ConstraintB AssertionFramingB \<omega>_inh'_Some2 ] ExhStarNormal.prems
+          \<open>\<omega>'' \<succeq> \<omega>'\<close>
+  by simp
+
+  then show ?case
+  using RedInhA
+  by (fastforce intro: InhStarNormal)
+next
+  case (ExhStarFailure A \<omega> B)
+  then show ?case by simp \<comment>\<open>contradiction\<close>
+next
+  case (ExhImpTrue e \<omega> A res)
+  with minus_full_total_state_only_mask_different_2[OF \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>]
+  have RedAux: "ctxt, Some \<omega>def \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+    using red_pure_exp_only_differ_on_mask
+    by fastforce
+
+  note AssertionFraming = \<open>assertion_framing_state ctxt StateCons (assert.Imp e A) \<omega>_inh\<close>
+
+  have RedExpInh: "ctxt, Some \<omega>_inh \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+  proof -
+    have "\<not> ctxt, Some \<omega>_inh \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t VFailure"
+      using AssertionFraming
+      unfolding assertion_framing_state_def
+      using inh_imp_failure by blast
+
+    thus ?thesis
+      using red_pure_exp_different_def_state(1)[OF RedAux] ExhImpTrue
+      by auto
+  qed
+
+  hence "assertion_framing_state ctxt StateCons A \<omega>_inh"
+    using assertion_framing_imp AssertionFraming
+    by blast
+
+  hence "red_inhale ctxt StateCons A \<omega>_inh (RNormal \<omega>_inh')"
+    using ExhImpTrue
+    by auto
+
+  thus ?case
+    using RedExpInh
+    by (auto intro: red_inhale_intros)
+next
+  case (ExhImpFalse e \<omega> A)
+  hence "\<omega>_inh' = \<omega>_inh"
+    by (metis full_total_state_defined_core_same_2 option.inject plus_minus_empty result_total.inject)
+
+  have "ctxt, Some \<omega>_inh \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+  proof -
+    have RedAux: "ctxt, Some \<omega>def \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+      using ExhImpFalse minus_full_total_state_only_mask_different_2[OF \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>]
+            red_pure_exp_only_differ_on_mask
+      by fastforce
+
+    have "\<not> (ctxt, Some \<omega>_inh \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t VFailure)"
+      using \<open>assertion_framing_state ctxt StateCons (assert.Imp e A) \<omega>_inh\<close> inh_imp_failure
+      unfolding assertion_framing_state_def
+      by blast
+
+    thus ?thesis
+      using red_pure_exp_different_def_state(1)[OF RedAux] ExhImpFalse
+      by auto
+  qed
+
+  then show ?case
+    by (auto intro: red_inhale_intros simp: \<open>\<omega>_inh' = \<omega>_inh\<close>)
+next
+  case (ExhCondTrue e \<omega> A res B)
+  with minus_full_total_state_only_mask_different_2[OF \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>]
+  have RedAux: "ctxt, Some \<omega>def \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+    using red_pure_exp_only_differ_on_mask
+    by fastforce
+
+  note AssertionFraming = \<open>assertion_framing_state ctxt StateCons (assert.CondAssert e A B) \<omega>_inh\<close>
+
+  have RedExpInh: "ctxt, Some \<omega>_inh \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+  proof -
+    have "\<not> ctxt, Some \<omega>_inh \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t VFailure"
+      using AssertionFraming
+      unfolding assertion_framing_state_def
+      using inh_cond_assert_failure by blast
+
+    thus ?thesis
+      using red_pure_exp_different_def_state(1)[OF RedAux] ExhCondTrue
+      by auto
+  qed
+
+  hence "assertion_framing_state ctxt StateCons A \<omega>_inh"
+    using assertion_framing_cond_assert_true AssertionFraming
+    by blast
+
+  hence "red_inhale ctxt StateCons A \<omega>_inh (RNormal \<omega>_inh')"
+    using ExhCondTrue
+    by auto
+
+  thus ?case
+    using RedExpInh
+    by (auto intro: red_inhale_intros)
+next
+  case (ExhCondFalse e \<omega> B res A)
+  with minus_full_total_state_only_mask_different_2[OF \<open>\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'\<close>]
+  have RedAux: "ctxt, Some \<omega>def \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    using red_pure_exp_only_differ_on_mask
+    by fastforce
+
+  note AssertionFraming = \<open>assertion_framing_state ctxt StateCons (assert.CondAssert e A B) \<omega>_inh\<close>
+
+  have RedExpInh: "ctxt, Some \<omega>_inh \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+  proof -
+    have "\<not> ctxt, Some \<omega>_inh \<turnstile> \<langle>e;\<omega>_inh\<rangle> [\<Down>]\<^sub>t VFailure"
+      using AssertionFraming
+      unfolding assertion_framing_state_def
+      using inh_cond_assert_failure by blast
+
+    thus ?thesis
+      using red_pure_exp_different_def_state(1)[OF RedAux] ExhCondFalse
+      by auto
+  qed
+
+  hence "assertion_framing_state ctxt StateCons B \<omega>_inh"
+    using assertion_framing_cond_assert_false AssertionFraming
+    by blast
+
+  hence "red_inhale ctxt StateCons B \<omega>_inh (RNormal \<omega>_inh')"
+    using ExhCondFalse
+    by auto
+
+  thus ?case
+    using RedExpInh
+    by (auto intro: red_inhale_intros)
+next
+  case (ExhSubExpFailure A \<omega>)
+  then show ?case by simp \<comment>\<open>contradiction\<close>
+qed
+
 
 end

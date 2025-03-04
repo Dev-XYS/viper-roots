@@ -242,6 +242,8 @@ next
               full_total_state_greater_mask[OF \<open>\<omega>def \<succeq> \<omega>_inh'\<close>]
           by blast          
       qed
+    next
+      show "consistent_external ctxt_vpr (get_total_full \<omega>)" sorry
     qed (simp)
 
     hence AssertionFramingA2: "assertion_framing_state ctxt_vpr StateCons A2 \<omega>_inh'"
