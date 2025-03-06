@@ -612,8 +612,8 @@ definition state_rel0 :: "ViperLang.program \<Rightarrow>
             some consistent Viper state via multiple intermediate Viper states that may not be 
             consistent (in such a case one can temporarily disable the state consistency)\<close> 
             ((consistent_state_rel_opt (state_rel_opt Tr)) \<longrightarrow> StateCons \<omega>def \<and> StateCons \<omega> \<and>
-                consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>def) \<and>
-                consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>)) \<and>
+                consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>def) \<and>
+                consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>)) \<and>
          \<comment>\<open>type interpretation must be the expected one\<close>
            (A = vbpl_absval_ty TyRep) \<and>
          \<comment>\<open>Store relation (only Viper variables, auxiliaries are not included)\<close>
@@ -963,8 +963,8 @@ lemma state_rel0_consistent:
   assumes "state_rel0 Pr StateCons A \<Lambda> TyRep Tr AuxPred \<omega>def \<omega> ns"
       and "consistent_state_rel_opt (state_rel_opt Tr)"
   shows "StateCons \<omega>def \<and> StateCons \<omega> \<and>
-           consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>def) \<and>
-           consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>)"
+           consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>def) \<and>
+           consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>)"
   using assms        
   unfolding state_rel0_def
   by blast
@@ -1501,7 +1501,7 @@ lemma state_rel0_store_update:
                     "Tr' = Tr\<lparr>var_translation := f\<rparr>" and
           WellDefSame: "\<omega>def = \<omega> \<and> \<omega>def' = \<omega>'" and
         Consistent: "consistent_state_rel_opt (state_rel_opt Tr') \<Longrightarrow> StateCons \<omega>' \<and>
-                       consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>')" and
+                       consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')" and
      OnlyStoreAffectedVpr: 
            "get_total_full \<omega> = get_total_full \<omega>'"  and
          (*  "get_m_total_full \<omega> = get_m_total_full \<omega>'" and*) 
@@ -1696,7 +1696,7 @@ lemma state_rel0_store_update_same_tr:
   assumes StateRel: "state_rel0 Pr StateCons A \<Lambda> TyRep Tr AuxPred \<omega>def \<omega> ns" and
           WellDefSame: "\<omega>def = \<omega> \<and> \<omega>def' = \<omega>'" and
      Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega>' \<and>
-                    consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>')" and
+                    consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')" and
      OnlyStoreAffectedVpr: 
            "get_total_full \<omega> = get_total_full \<omega>'"  and
          (*  "get_m_total_full \<omega> = get_m_total_full \<omega>'" and*) 
@@ -1717,7 +1717,7 @@ lemma state_rel_store_update_2:
   assumes StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns"
       and WellDefSame: "\<omega>def = \<omega>"
       and Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (update_var_total \<omega> x_vpr v) \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (update_var_total \<omega> x_vpr v))"
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (update_var_total \<omega> x_vpr v))"
       and  VarCtxt: "\<Lambda> = var_context ctxt"
       and VarTr: "var_translation Tr x_vpr = Some x_bpl"
       and "v' = val_rel_vpr_bpl v"
@@ -1883,8 +1883,8 @@ lemma state_rel0_heap_update:
       and UpdStates: "\<omega>def' = upd_hh_total_full \<omega>def hh'" 
                      "\<omega>' = upd_hh_total_full \<omega> hh'"
       and Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega>def' \<and> StateCons \<omega>' \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>') \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>def')"
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>') \<and>
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>def')"
       and OnlyHeapAffected: "(\<And>x. x \<notin> {hvar', hvar_def'} \<Longrightarrow> lookup_var \<Lambda> ns x = lookup_var \<Lambda> ns' x)"
       and HeapRel: "heap_var_rel Pr \<Lambda> TyRep (field_translation Tr) hvar' \<omega>' ns'"
       and HeapRelDef: "heap_var_rel Pr \<Lambda> TyRep (field_translation Tr) hvar_def' \<omega>def' ns'"
@@ -2039,7 +2039,7 @@ lemma state_rel0_heap_update_2:
     TyInterp:     "TyInterp = vbpl_absval_ty TyRep" and
     WellDefSame: "\<omega>def = \<omega> \<and> \<omega>def' = \<omega>' \<and> heap_var Tr = heap_var_def Tr" and
     Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega>' \<and>
-                   consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>')" and
+                   consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')" and
     OnlyHeapAffected: "(\<And>x. x \<noteq> heap_var Tr \<Longrightarrow> lookup_var \<Lambda> ns x = lookup_var \<Lambda> ns' x)" and
     OnlyHeapAffectedVpr: "get_store_total \<omega> = get_store_total \<omega>'" 
                          "get_nm_total_full \<omega> = get_nm_total_full \<omega>'"
@@ -2183,8 +2183,8 @@ lemma state_rel_heap_update_3:
      StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" and
      WellDefSame: "\<omega>def = \<omega> \<and> heap_var Tr = heap_var_def Tr" and
      Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega>def (addr, f_vpr) v_vpr) \<and> StateCons (upd_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr) \<and>
-                    consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_hh_loc_total_full \<omega>def (addr, f_vpr) v_vpr)) \<and>
-                    consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr))" and
+                    consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (upd_hh_loc_total_full \<omega>def (addr, f_vpr) v_vpr)) \<and>
+                    consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (upd_hh_loc_total_full \<omega> (addr, f_vpr) v_vpr))" and
      LookupHeap:  "lookup_var (var_context ctxt) ns (heap_var Tr) = Some (AbsV (AHeap hb))" and
      FieldLookup: "declared_fields Pr f_vpr = Some ty_vpr" and
      FieldTranslation: "field_translation Tr f_vpr = Some f_bpl" and
@@ -2233,7 +2233,7 @@ lemma state_rel_heap_update_2_ext:
      Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega>def (addr, f_vpr) v) \<and>
                     consistent_external (total_context.make Pr fun_interpT abs_interpT) (get_total_full (upd_hh_loc_total_full \<omega>def (addr, f_vpr) v))"
                  "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega> (addr, f_vpr) v) \<and>
-                    consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_hh_loc_total_full \<omega> (addr, f_vpr) v))" and
+                    consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (upd_hh_loc_total_full \<omega> (addr, f_vpr) v))" and
      FieldLookup: "declared_fields Pr f_vpr = Some ty_vpr" and
      FieldTranslation: "field_translation Tr f_vpr = Some f_bpl" and
      TyTranslation: "vpr_to_bpl_ty TyRep ty_vpr = Some ty_bpl" and
@@ -2342,8 +2342,8 @@ lemma state_rel0_mask_update:
           WfMaskSimple: "wf_mask_simple mh'" 
                         "wf_mask_simple (get_mh_total_full \<omega>def')" and
           Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega>' \<and> StateCons \<omega>def' \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>') \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>def')" and
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>') \<and>
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>def')" and
           MaskVarRel: "mask_var_rel Pr \<Lambda> TyRep (field_translation Tr) mvar' \<omega>' ns'"
                       "mask_var_rel Pr \<Lambda> TyRep (field_translation Tr) mvar_def' \<omega>def' ns'" and
           ShadowedGlobalsEq: "\<And>x. map_of (snd \<Lambda>) x \<noteq> None \<Longrightarrow> global_state ns' x = global_state ns x" and
@@ -2483,8 +2483,8 @@ lemma state_rel0_mask_update_general:
           WfMaskSimple: "wf_mask_simple (get_mh_nm nm')" 
                         "wf_mask_simple (get_mh_total_full \<omega>def')" and
           Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega>' \<and> StateCons \<omega>def' \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>') \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>def')" and
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>') \<and>
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>def')" and
           MaskVarRel: "mask_var_rel Pr \<Lambda> TyRep (field_translation Tr) mvar' \<omega>' ns'"
                       "mask_var_rel Pr \<Lambda> TyRep (field_translation Tr) mvar_def' \<omega>def' ns'" and
           ShadowedGlobalsEq: "\<And>x. map_of (snd \<Lambda>) x \<noteq> None \<Longrightarrow> global_state ns' x = global_state ns x" and
@@ -2623,7 +2623,7 @@ lemma state_rel0_mask_update_2:
                                "get_fnm_total_full \<omega> = get_fnm_total_full \<omega>'" and
           WfMaskSimple: "wf_mask_simple (get_mh_total_full \<omega>')" and
           Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega>' \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>')" and
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')" and
           MaskVarRel: "mask_var_rel Pr \<Lambda> TyRep (field_translation Tr) (mask_var Tr) \<omega>' ns'" and
           ShadowedGlobalsEq: "\<And>x. map_of (snd \<Lambda>) x \<noteq> None \<Longrightarrow> global_state ns' x = global_state ns x" and
           OldStateEq: "old_global_state ns' = old_global_state ns" and
@@ -2768,7 +2768,7 @@ lemma state_rel_mask_update_4:
        WellDefSame: "mask_var Tr = mask_var_def Tr \<Longrightarrow> \<omega>def' = upd_mh_loc_total_full \<omega> (addr, f_vpr) p"
                     "mask_var Tr \<noteq> mask_var_def Tr \<Longrightarrow> \<omega>def' = \<omega>def"  and
         Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_mh_loc_total_full \<omega> (addr, f_vpr) p) \<and>
-                       consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_mh_loc_total_full \<omega> (addr, f_vpr) p))" and
+                       consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (upd_mh_loc_total_full \<omega> (addr, f_vpr) p))" and
         TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and
         LookupMask: "lookup_var (var_context ctxt) ns (mask_var Tr) = Some (AbsV (AMask mb))" and
                     "1 \<ge> p" and
@@ -3012,8 +3012,8 @@ lemma state_rel_disable_consistency:
 lemma state_rel_enable_consistency:
   assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" 
       and "StateCons \<omega> \<and> StateCons \<omega>def \<and>
-             consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>) \<and>
-             consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>def)"
+             consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>) \<and>
+             consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>def)"
     shows "state_rel Pr StateCons TyRep (enable_consistent_state_rel_opt Tr) AuxPred ctxt \<omega>def \<omega> ns"
   unfolding state_rel_def state_rel0_def
   by (insert assms[simplified state_rel_def state_rel0_def]) auto
@@ -3022,8 +3022,8 @@ lemma state_rel_enable_consistency_2:
   assumes "state_rel Pr StateCons TyRep Tr' AuxPred ctxt \<omega>def \<omega> ns" 
       and "Tr' = (disable_consistent_state_rel_opt Tr)"
       and "StateCons \<omega> \<and> StateCons \<omega>def \<and>
-             consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>) \<and>
-             consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>def)"       
+             consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>) \<and>
+             consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>def)"       
     shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns"
   unfolding state_rel_def state_rel0_def
   by (insert assms[simplified state_rel_def state_rel0_def]) auto

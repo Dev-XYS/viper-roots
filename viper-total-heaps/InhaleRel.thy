@@ -611,7 +611,7 @@ next
          InhAccPremise: "inhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f_vpr e_p p r \<omega> \<omega>'" and
          "consistent_state_rel_opt (state_rel_opt Tr)"
   thus "StateCons \<omega>' \<and>
-        consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>')"
+        consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')"
     apply (intro conjI)
      apply (unfold inhale_acc_normal_premise_def inhale_perm_single_def)[1]
     using state_rel_consistent[OF StateRel[OF \<open>R \<omega> ns\<close>]]

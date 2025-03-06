@@ -87,10 +87,11 @@ lemma exhale_rel_elim_2:
   unfolding exhale_rel_def rel_vpr_aux_def rel_general_def
   by force
 
+
 subsection \<open>Exhale relation invariant\<close>
 
 definition is_exh_rel_invariant
-  where "is_exh_rel_invariant ctxt StateCons cond_assert cond_exp Q  \<equiv>
+  where "is_exh_rel_invariant ctxt StateCons cond_assert cond_exp Q \<equiv>
           (\<forall> A1 A2 \<omega>def \<omega>. Q (A1 && A2) \<omega>def \<omega> \<and> cond_assert A1 \<longrightarrow>
                   (Q A1 \<omega>def \<omega>) \<and> 
                   (\<forall>\<omega>'. red_exhale ctxt StateCons \<omega>def A1 \<omega> (RNormal \<omega>') \<longrightarrow> Q A2 \<omega>def \<omega>')) \<and>
@@ -128,12 +129,13 @@ text \<open>framing_exh instantiation\<close>
 
 definition framing_exh 
   where "framing_exh ctxt_vpr StateCons A \<omega>def \<omega> \<equiv>
-           StateCons \<omega>def \<and> 
+           StateCons \<omega>def \<and> consistent_external ctxt_vpr (get_total_full \<omega>) \<and>
            valid_heap_mask (get_mh_total_full \<omega>def) \<and>
-           (\<exists>\<omega>_inh \<omega>sum.  \<omega>_inh \<oplus> \<omega> = Some \<omega>sum \<and> \<omega>def \<succeq> \<omega>sum \<and> assertion_framing_state ctxt_vpr StateCons A \<omega>_inh)"  
+           (\<exists>\<omega>_inh \<omega>sum. \<omega>_inh \<oplus> \<omega> = Some \<omega>sum \<and> \<omega>def \<succeq> \<omega>sum \<and> assertion_framing_state ctxt_vpr StateCons A \<omega>_inh)"  
 
 lemma framing_exhI:
   assumes "StateCons \<omega>def"
+      and "consistent_external ctxt_vpr (get_total_full \<omega>)"
       and "valid_heap_mask (get_mh_total_full \<omega>def)"
       and "assertion_framing_state ctxt_vpr StateCons A \<omega>_inh"
       and "\<omega>_inh \<oplus> \<omega> = Some \<omega>sum"
@@ -147,11 +149,20 @@ lemma framing_exhI_state_rel:
   assumes StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega> \<omega> ns"
       and ConsistencyEnabled: "consistent_state_rel_opt (state_rel_opt Tr)"      
       and Framed: "assertion_framing_state ctxt_vpr StateCons A (upd_nm_total_full \<omega> 0)"
+      and PrEq: "Pr = total_context.program_total ctxt_vpr"
+      and AbsInterpEq: "domain_type TyRep = total_context.absval_interp_total ctxt_vpr"
     shows "framing_exh ctxt_vpr StateCons A \<omega> \<omega>"
-proof (rule framing_exhI[OF _ _ Framed])
+proof (rule framing_exhI[OF _ _ _ Framed])
   show "StateCons \<omega>"
     using state_rel_consistent[OF StateRel ConsistencyEnabled]
     by blast
+next
+  show "consistent_external ctxt_vpr (get_total_full \<omega>)"
+    apply (rule extcons_interp_irrelevant)
+      prefer 3
+    using state_rel_consistent[OF StateRel ConsistencyEnabled, unfolded PrEq]
+      apply blast
+    by (simp add: total_context.defs AbsInterpEq)+
 next
   show "valid_heap_mask (get_mh_total_full \<omega>)"
     using state_rel_wf_mask_simple[OF StateRel]
@@ -175,9 +186,10 @@ text \<open>\<^const>\<open>framing_exh\<close> expresses an exhale relation inv
 
 lemma framing_exh_is_assertion_red_invariant_exh:
   assumes MonoStateCons: "mono_prop_downward StateCons"
-  shows "is_exh_rel_invariant ctxt_vpr StateCons (\<lambda>A. no_perm_assertion A \<and> no_unfolding_assertion A)
-                                                 (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e)
-                                                 (framing_exh ctxt_vpr StateCons)"
+      and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
+    shows "is_exh_rel_invariant ctxt_vpr StateCons (\<lambda>A. no_perm_assertion A \<and> no_unfolding_assertion A)
+                                                   (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e)
+                                                   (framing_exh ctxt_vpr StateCons)"
 proof (rule is_exh_rel_invariant_intro)
   \<comment>\<open>Separating Conjunction 1\<close>
   fix A1 A2 \<omega>def \<omega>
@@ -195,7 +207,7 @@ next
          RedExh: "red_exhale ctxt_vpr StateCons \<omega>def A1 \<omega> (RNormal \<omega>')"
 
   from FramingExh obtain \<omega>_inh \<omega>sum
-    where \<omega>def_valid: "StateCons \<omega>def" "valid_heap_mask (get_mh_total_full \<omega>def)" and
+    where \<omega>def_valid: "StateCons \<omega>def" "consistent_external ctxt_vpr (get_total_full \<omega>)" "valid_heap_mask (get_mh_total_full \<omega>def)" and
           "\<omega>_inh \<oplus> \<omega> = Some \<omega>sum" and
           "\<omega>def \<succeq> \<omega>sum" and          
           AssertionFraming: "assertion_framing_state ctxt_vpr StateCons (A1&&A2) \<omega>_inh"
@@ -243,7 +255,13 @@ next
           by blast          
       qed
     next
-      show "consistent_external ctxt_vpr (get_total_full \<omega>)" sorry
+      show "consistent_external ctxt_vpr (get_total_full \<omega>)"
+        using \<omega>def_valid
+        by simp
+    next
+      show "ctxt_wf_pred ctxt_vpr"
+        using WfCons[unfolded wf_total_consistency_def]
+        by simp
     qed (simp)
 
     hence AssertionFramingA2: "assertion_framing_state ctxt_vpr StateCons A2 \<omega>_inh'"
@@ -260,6 +278,11 @@ next
       show "\<exists>\<omega>_inh \<omega>sum. \<omega>_inh \<oplus> \<omega>' = Some \<omega>sum \<and> \<omega>def \<succeq> \<omega>sum \<and> assertion_framing_state ctxt_vpr StateCons A2 \<omega>_inh"
         apply (rule exI[where ?x=\<omega>_inh'], rule exI[where ?x=\<omega>sum])
         using * \<open>\<omega>def \<succeq> \<omega>sum\<close> AssertionFramingA2
+        by blast
+    next
+      show "consistent_external ctxt_vpr (get_total_full \<omega>')"
+        using \<omega>def_valid
+        using RedExh WfCons extcons_preserved_by_red_exhale total_consistency_ctxt_wf(1)
         by blast
     qed (insert \<omega>def_valid, auto)
   qed
@@ -458,9 +481,9 @@ lemma exhale_rel_star_0:
     apply (rule ExhRelA2[simplified exhale_rel_def])
   by (fastforce elim: ExhStar_case)+
 
-lemma exhale_rel_star: 
+lemma exhale_rel_star:
   assumes Invariant1: "\<And> \<omega>def \<omega>. Q (A1 && A2) \<omega>def \<omega> \<Longrightarrow> Q A1 \<omega>def \<omega>"
-      and Invariant2: "\<And> \<omega>def \<omega>. Q (A1 && A2) \<omega>def \<omega> \<Longrightarrow> 
+      and Invariant2: "\<And> \<omega>def \<omega>. Q (A1 && A2) \<omega>def \<omega> \<Longrightarrow>
                                   (\<And>\<omega>'. red_exhale ctxt_vpr StateCons \<omega>def A1 \<omega> (RNormal \<omega>') \<Longrightarrow> Q A2 \<omega>def \<omega>')"
       and ExhRelA1: "exhale_rel R R Q ctxt_vpr StateCons P ctxt A1 \<gamma>1 \<gamma>2"
       and ExhRelA2: "exhale_rel R R Q ctxt_vpr StateCons P ctxt A2 \<gamma>2 \<gamma>3"
@@ -469,7 +492,7 @@ lemma exhale_rel_star:
   using assms 
   by auto
 
-lemma exhale_rel_star_2: 
+lemma exhale_rel_star_2:
   assumes Invariant: "is_exh_rel_invariant ctxt_vpr StateCons cond_assert cond_exp Q"
       and Cond: "cond_assert A1"
       and ExhRelA1: "exhale_rel R R Q ctxt_vpr StateCons P ctxt A1 \<gamma>1 \<gamma>2"
@@ -482,7 +505,7 @@ lemma exhale_rel_star_2:
 
 lemma exhale_rel_imp:
   assumes Invariant: "\<And>\<omega>def \<omega>. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>cond; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<Longrightarrow> Q (assert.Imp cond A) \<omega>def \<omega> \<Longrightarrow> Q A \<omega>def \<omega>"
-      and ExpWfRel: 
+      and ExpWfRel:
           "expr_wf_rel (\<lambda> \<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> Q (assert.Imp cond A) \<omega>def \<omega>) ctxt_vpr StateCons P ctxt cond 
            \<gamma>1
            (if_bigblock name (Some (cond_bpl)) (thn_hd # thn_tl) [empty_else_block], KSeq next cont)" 
@@ -931,7 +954,7 @@ next
          ConsOn: "consistent_state_rel_opt (state_rel_opt Tr)"
 
   show "StateCons (snd \<omega>0_\<omega>def') \<and>
-          consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (snd \<omega>0_\<omega>def'))"
+          consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (snd \<omega>0_\<omega>def'))"
     apply (intro conjI)
     using exhale_normal_result_smaller[OF exhale_acc_normal_red_exhale[OF conjunct2[OF Aux]]]
           state_rel_consistent[OF StateRel[OF \<open>R _ _\<close>] ConsOn]
@@ -948,7 +971,7 @@ next
       apply (rule nested_mask_equality; simp_all)
       using Aux[simplified exhale_acc_normal_premise_def \<open>r \<noteq> Null\<close>, simplified]
       by simp+
-    ultimately show "consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (snd \<omega>0_\<omega>def'))"
+    ultimately show "consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (snd \<omega>0_\<omega>def'))"
       using state_rel_consistent[OF StateRel[OF \<open>R _ _\<close>] ConsOn]
       by (metis extcons_preserved_by_mh_change)
   qed

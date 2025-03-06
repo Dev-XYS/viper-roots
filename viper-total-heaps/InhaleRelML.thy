@@ -203,7 +203,8 @@ ML \<open>
     (Rmsg' "inh field acc upd 3" (assm_full_simp_solved_with_thms_tac @{thms read_mask_concrete_def ty_repr_basic_def} ctxt) ctxt) THEN'
     (Rmsg' "inh field acc upd 4" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
     (Rmsg' "inh field acc field rel" (#field_rel_single_tac info ctxt) ctxt) THEN'
-    (Rmsg' "inh field acc upd rcv rel" ((exp_rel_tac exp_rel_info ctxt) |> SOLVED') ctxt)
+    (Rmsg' "inh field acc upd rcv rel" ((exp_rel_tac exp_rel_info ctxt) |> SOLVED') ctxt) THEN'
+    (Rmsg' "inh field acc upd wf statecons" (resolve_tac ctxt [#consistency_wf_thm info]) ctxt)
 
   fun atomic_inhale_field_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) inh_field_acc_hint =
     case inh_field_acc_hint of

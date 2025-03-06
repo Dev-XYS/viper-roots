@@ -114,7 +114,7 @@ lemma mask_upd_rel:
    StateRel: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow>
                            state_rel Pr StateCons TyRep Tr AuxPred ctxt (fst \<omega>) (snd \<omega>) ns" and     
     Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> (\<And> \<omega> \<omega>' ns a. R \<omega> ns \<Longrightarrow> Success \<omega> \<omega>' \<Longrightarrow> r = Address a \<Longrightarrow> StateCons (snd \<omega>') \<and>
-                   consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (snd \<omega>')))" and
+                   consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (snd \<omega>')))" and
     WfTyRep:  "wf_ty_repr_bpl TyRep" and
     TyInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and
     MaskUpdateWf: "mask_update_wf TyRep ctxt mask_upd_bpl" and
@@ -258,7 +258,7 @@ lemma mask_upd_rel_2:
                            state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega> ns" and  
     Consistent: "\<And> \<omega> \<omega>' ns a. R \<omega> ns \<Longrightarrow> Success \<omega> \<omega>' \<Longrightarrow> r = Address a \<Longrightarrow>
                     consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega>' \<and>
-                      consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>')" and
+                      consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')" and
     WfTyRep:  "wf_ty_repr_bpl TyRep" and
     MaskVarDefSame: "mask_var_def Tr = mask_var Tr" and
     TyInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and
@@ -772,8 +772,8 @@ lemma mask_var_upd_red_ast_bpl_propagate:
           WfMask:         "wf_mask_simple mh'" and
           Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> 
                        StateCons (upd_mh_total_full \<omega> mh') \<and> StateCons (upd_mh_total_full \<omega>def mh') \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_mh_total_full \<omega> mh')) \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_mh_total_full \<omega>def mh'))" and
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (upd_mh_total_full \<omega> mh')) \<and>
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (upd_mh_total_full \<omega>def mh'))" and
           TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and          
           Disj: "mvar' \<notin> ({heap_var Tr, heap_var_def Tr} \<union>
                       (ran (var_translation Tr)) \<union>
@@ -839,8 +839,8 @@ lemma mask_var_upd_red_ast_bpl_propagate_general:
           WfMask:         "wf_mask_simple (get_mh_nm nm')" and
           Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> 
                        StateCons (upd_nm_total_full \<omega> nm') \<and> StateCons (upd_nm_total_full \<omega>def nm') \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_nm_total_full \<omega> nm')) \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_nm_total_full \<omega>def nm'))" and
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (upd_nm_total_full \<omega> nm')) \<and>
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (upd_nm_total_full \<omega>def nm'))" and
           TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and          
           Disj: "mvar' \<notin> ({heap_var Tr, heap_var_def Tr} \<union>
                       (ran (var_translation Tr)) \<union>
@@ -906,8 +906,8 @@ lemma heap_var_eval_def_havoc_upd_red_ast_bpl_propagate:
           LookupDeclNewVar: "lookup_var_decl (var_context ctxt) hvar' = Some (TConSingle (THeapId TyRep), None)" and
           Consistent: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> 
                        StateCons (upd_hh_total_full \<omega>def hh') \<and> StateCons (upd_hh_total_full \<omega> hh') \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_hh_total_full \<omega>def hh')) \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_hh_total_full \<omega> hh'))" and 
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (upd_hh_total_full \<omega>def hh')) \<and>
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (upd_hh_total_full \<omega> hh'))" and 
           WfTyRep: "wf_ty_repr_bpl TyRep" and
           TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and
           TotalHeapWellTy: "total_heap_well_typed Pr (domain_type TyRep) hh'" and
@@ -983,7 +983,7 @@ lemma post_framing_propagate_aux:
           StoreSame: "get_store_total \<omega>0 = get_store_total \<omega>1" and
           WfMask: "wf_mask_simple (get_mh_total_full \<omega>1)" and
           Consistent: "StateCons \<omega>1 \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>1)" and
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>1)" and
           HeapWellTy: "total_heap_well_typed Pr (domain_type TyRep) (get_hh_total_full \<omega>1)" and
           LookupDeclHeap: "lookup_var_decl (var_context ctxt) hvar' = Some (TConSingle (THeapId TyRep), None)" and
           LookupTyMask: "lookup_var_ty (var_context ctxt) mvar' = Some (TConSingle (TMaskId TyRep))" and

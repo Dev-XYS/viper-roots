@@ -336,7 +336,7 @@ proof (rule allI | rule impI)+
 
   have cons_both:
     "StateCons \<omega>1 \<and>
-       consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>1)"
+       consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>1)"
     apply (intro conjI)
     using WfConsistency[simplified wf_total_consistency_def] IsEmpty IntCons
      apply blast
@@ -842,7 +842,7 @@ proof (rule allI | rule impI)+
                   using ConsistencyDownwardMono mono_prop_downwardD mono_prop_downward_ord_implies_mono_prop_downward
                   by blast
               qed
-            qed
+            qed (auto simp: DomainType)
 
             with stmt_rel_failure_elim[OF PostExhRel]
             obtain c' where "snd c' = Failure" and 
@@ -1469,7 +1469,7 @@ lemma init_state_in_state_relation:
           "is_empty_total_full \<omega>" and
           ViperHeapWellTy: "total_heap_well_typed ((program_total ctxt_vpr)) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)" and
           WfMask: "wf_mask_simple (get_mh_total_full \<omega>)" and
-          Consistent: "StateCons \<omega> \<and> consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>)" and
+          Consistent: "StateCons \<omega> \<and> consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (domain_type T)) (get_total_full \<omega>)" and
          TyInterp: "type_interp ctxt = vbpl_absval_ty T" and
           DomainTy:  "domain_type T = absval_interp_total ctxt_vpr" and
           "ns = \<lparr> old_global_state = initial_global_state T (fst (var_context ctxt)) (program_total ctxt_vpr) Tr \<omega>,
@@ -1668,7 +1668,7 @@ proof -
     qed
   next  
     show "aux_vars_pred_sat (var_context ctxt) Map.empty ns"
-      by (simp add: aux_vars_pred_sat_def)  
+      by (simp add: aux_vars_pred_sat_def)
   qed (insert assms DisjSimp, auto)
 qed
 

@@ -1707,4 +1707,159 @@ lemma empty_consistent_external:
   by simp
 
 
+subsection \<open>Other Lemmas\<close>
+
+lemma eval_fun_interp_irrelevant:
+  assumes "total_context.program_total ctxt1 = total_context.program_total ctxt2"
+      and "total_context.absval_interp_total ctxt1 = total_context.absval_interp_total ctxt2"
+    shows "ctxt1, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t res \<Longrightarrow> ctxt2, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t res"
+      and "red_pure_exps_total ctxt1 \<omega>_def es \<omega> rs \<Longrightarrow> red_pure_exps_total ctxt2 \<omega>_def es \<omega> rs"
+  (* by (induction rule: red_pure_exp_inducts; (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps); auto simp: assms) *)
+proof (induction rule: red_pure_exp_inducts)
+  case (RedLit \<omega>_def l uu)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedVar \<omega> n v \<omega>_def)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedResult \<omega> v \<omega>_def)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedBinopLazy \<omega>_def e1 \<omega> v1 bop v e2)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedBinop \<omega>_def e1 \<omega> v1 e2 v2 bop v)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedBinopRightFailure \<omega>_def e1 \<omega> v1 e2 bop)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedBinopOpFailure \<omega>_def e1 \<omega> v1 e2 v2 bop)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedUnop \<omega>_def e \<omega> v unop v')
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedCondExpTrue \<omega>_def e1 \<omega> e2 r e3)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedCondExpFalse \<omega>_def e1 \<omega> e3 r e2)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedOld \<omega> l \<phi> \<omega>_def' \<omega>_def e v)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedOldFailure \<omega> l \<omega>_def e)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedField \<omega>_def e \<omega> a f v)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedFieldNullFailure \<omega>_def e \<omega> f)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedPermNull \<omega>_def e \<omega> f)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedPerm \<omega>_def e \<omega> a f v)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedUnfolding es \<omega> vs ubody v pred_id)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedUnfoldingDefNoPred \<omega>_def es \<omega> vs pred_id ubody)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedUnfoldingDef \<omega>_def es \<omega> vs perm pred_id nm' \<omega>'_def ubody v)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedSubFailure e' \<omega>_def \<omega>)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedExpListCons \<omega>_def e \<omega> v es res res')
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedExpListFailure \<omega>_def e \<omega> es)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+next
+  case (RedExpListNil \<omega>_def \<omega>)
+  then show ?case
+    apply (subst red_pure_exps_total.simps | subst red_pure_exp_total.simps)
+    by (auto simp: assms)
+qed
+
+
+lemma sat_fun_interp_irrelevant:
+  assumes "total_context.program_total ctxt1 = total_context.program_total ctxt2"
+      and "total_context.absval_interp_total ctxt1 = total_context.absval_interp_total ctxt2"
+      and "sat ctxt1 \<omega> mh mp A"
+    shows "sat ctxt2 \<omega> mh mp A"
+  using assms(3)
+  by (induction rule: sat.inducts; subst sat.simps; metis assms(1-2) eval_fun_interp_irrelevant)
+
+
+lemma extcons_interp_irrelevant:
+  assumes "total_context.program_total ctxt1 = total_context.program_total ctxt2"
+      and "total_context.absval_interp_total ctxt1 = total_context.absval_interp_total ctxt2"
+    shows "consistent_external_wrt_ploc ctxt1 \<phi> (pid,vs) p \<Longrightarrow> consistent_external_wrt_ploc ctxt2 \<phi> (pid,vs) p"
+      and "consistent_external ctxt1 \<phi> \<Longrightarrow> consistent_external ctxt2 \<phi>"
+proof (induction rule: extcons_inducts)
+  case IH: (SatStep pred_id pred_decl vs pred_body \<phi> p)
+  show ?case
+    apply (rule SatStep)
+    using IH assms sat_fun_interp_irrelevant
+    by auto
+next
+  case IH: (SatAll \<phi>)
+  show ?case
+    apply (rule SatAll)
+    using IH assms
+    by auto
+qed
+
+
 end

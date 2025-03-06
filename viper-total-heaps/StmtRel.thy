@@ -203,7 +203,7 @@ subsection \<open>Variable assignment relation\<close>
 lemma var_assign_rel:
   assumes WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and Consistent: "StateConsEnabled \<Longrightarrow> (\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and>
-                         consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>))"
+                         consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>))"
       and VprTy: "\<Lambda>_vpr x_vpr = Some ty"
       and TyRelWf: "type_interp_rel_wf (absval_interp_total ctxt_vpr) (type_interp ctxt) Trep"
       and EmptyRtype: "rtype_interp ctxt = []"
@@ -216,7 +216,7 @@ lemma var_assign_rel:
                            get_type (absval_interp_total ctxt_vpr) v = ty \<Longrightarrow>
                            type_of_val (type_interp ctxt) (val_rel_vpr_bpl v) = ty_bpl \<Longrightarrow>   
                            (StateConsEnabled \<Longrightarrow> StateCons (update_var_total \<omega> x_vpr v) \<and>
-                              consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (update_var_total \<omega> x_vpr v))) \<Longrightarrow>                       
+                              consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (update_var_total \<omega> x_vpr v))) \<Longrightarrow>                       
                            R (update_var_total \<omega> x_vpr v) (update_var (var_context ctxt) ns x_bpl (val_rel_vpr_bpl v))"
       and ExpRel: "exp_rel_vpr_bpl (rel_ext_eq R) ctxt_vpr ctxt e_vpr e_bpl"
           
@@ -267,7 +267,7 @@ proof (cases rule: stmt_rel_intro)
     moreover have "?R_ext \<omega>' \<omega>' ?ns''"
     proof -
       have "StateConsEnabled \<Longrightarrow> StateCons (update_var_total \<omega> x_vpr v) \<and>
-              consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (update_var_total \<omega> x_vpr v))"
+              consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (update_var_total \<omega> x_vpr v))"
         using RedVpr Consistent WfConsistency \<open>R \<omega> ns\<close> \<open>\<omega>' = _\<close> total_consistency_red_stmt_preserve
               extcons_preserved_by_red_stmt
         by fastforce
@@ -330,7 +330,7 @@ next
      and "get_type (absval_interp_total ctxt_vpr) v = ty"
      and TypeOfValBpl: "type_of_val (type_interp ctxt) (val_rel_vpr_bpl v) = ty_bpl"
      and ConsistentUpdState: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (update_var_total \<omega> x_vpr v) \<and>
-           consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (\<lambda>_. undefined))  (get_total_full (update_var_total \<omega> x_vpr v))"
+           consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (domain_type TyRep))  (get_total_full (update_var_total \<omega> x_vpr v))"
 
   note StateRelInst = \<open>R \<omega> ns\<close>[simplified StateRel]
 
@@ -343,7 +343,7 @@ next
   fix \<omega> ns
   assume "R \<omega> ns"
   thus "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega> \<and>
-          consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None)  (\<lambda>_. undefined)) (get_total_full \<omega>)"
+          consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>)"
     using StateRel state_rel_consistent
     by blast
 qed (insert assms, simp_all)
@@ -580,12 +580,12 @@ proof (rule field_assign_rel[OF WfConsistency, where ?\<tau>_vpr = "the (declare
                                (AbsV (AHeap (hb( (Address addr,f_bpl_val) \<mapsto> (val_rel_vpr_bpl v) ))))
                          )"
 
-  have "ctxt_vpr = total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (\<lambda>_. undefined)"
+  have "ctxt_vpr = total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (domain_type TyRep)"
     apply (rule total_context.equality)
-    by (simp_all add: total_context.defs CtxtInterp)
+    by (simp_all add: total_context.defs CtxtInterp assms(5))
   hence ConsistentUpdState':
     "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega> (addr,f_vpr) v) \<and>
-       consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (upd_hh_loc_total_full \<omega> (addr,f_vpr) v))"
+       consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (domain_type TyRep)) (get_total_full (upd_hh_loc_total_full \<omega> (addr,f_vpr) v))"
     using ConsistentUpdState
     by force
 
@@ -618,9 +618,9 @@ next
   fix \<omega> ns
   assume "R \<omega> ns"
 
-  moreover have "ctxt_vpr = total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (\<lambda>_. undefined)"
+  moreover have "ctxt_vpr = total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (domain_type TyRep)"
     apply (rule total_context.equality)
-    by (simp_all add: total_context.defs CtxtInterp)
+    by (simp_all add: total_context.defs CtxtInterp assms(5))
 
   ultimately show "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega> \<and>
           consistent_external ctxt_vpr (get_total_full \<omega>)"
@@ -846,7 +846,7 @@ lemma exhale_stmt_rel_finish:
           "id_on_known_locs_name = FunMap FIdenticalOnKnownLocs" and
           TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and
           "StateCons \<omega>' \<and>
-             consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>')" and
+             consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')" and
           "\<omega>' \<in> havoc_locs_state ctxt_vpr \<omega> ({loc. get_mh_total_full (\<omega>0 ) loc > 0 \<and> get_mh_total_full \<omega> loc = 0})" and
           "hvar = heap_var Tr" and
           "mvar = mask_var Tr" and
@@ -1274,7 +1274,7 @@ proof (rule state_rel_store_update[OF StateRel])
   qed
 next
   show "consistent_state_rel_opt (state_rel_opt (Tr\<lparr>var_translation := f'\<rparr>)) \<Longrightarrow> StateCons \<omega> \<and>
-          consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>)"
+          consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>)"
     using state_rel_consistent StateRel
     by fastforce
 next
@@ -3047,7 +3047,7 @@ proof (rule stmt_rel_intro_2)
 
     show "consistent_state_rel_opt (state_rel_opt (Tr\<lparr>var_translation := var_tr'\<rparr>)) \<Longrightarrow>
             StateCons (shift_and_add_state_total \<omega> v) \<and>
-            consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full (shift_and_add_state_total \<omega> v))"
+            consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full (shift_and_add_state_total \<omega> v))"
       using WfConsistency state_rel_consistent[OF StateRelImp[OF \<open>R \<omega> ns'\<close>]]
       unfolding wf_total_consistency_def
       by simp
@@ -3113,15 +3113,15 @@ proof (rule stmt_rel_intro_2)
       qed
 
       show "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega>' \<and>
-              consistent_external (total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)) (get_total_full \<omega>')" (is "?ConsOpt \<Longrightarrow> _")
+              consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')" (is "?ConsOpt \<Longrightarrow> _")
       proof -
         assume ?ConsOpt
         hence "StateCons \<omega>"
           using state_rel_consistent[OF StateRel_ns']
           by simp
-        moreover have "ctxt_vpr = total_context.make Pr (\<lambda>_. None) (\<lambda>_. undefined)"
+        moreover have "ctxt_vpr = total_context.make Pr (\<lambda>_. None) (domain_type TyRep)"
           apply (rule total_context.equality)
-          by (simp_all add: total_context.defs CtxtInterp CtxtProg)
+          by (simp_all add: total_context.defs CtxtInterp CtxtProg DomainTyRep)
         ultimately show ?thesis
           using WfConsistency RedStmtVpr \<open>res = RNormal \<omega>'\<close> total_consistency_red_stmt_extcons_preserve[OF WfConsistency _ _ _ _ RedStmtVpr[simplified \<open>res = RNormal \<omega>'\<close>]]
           unfolding wf_total_consistency_def
