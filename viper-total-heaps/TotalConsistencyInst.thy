@@ -5,6 +5,11 @@ begin
 
 subsection \<open>Internal Consistency Wellfoundness\<close>
 
+lemma mono_prop_downward_ord_consistent_internal_total_full:
+  shows "mono_prop_downward_ord consistent_internal_total_full"
+  sorry
+
+
 lemma wf_total_consistency_internal:
   assumes "ctxt_wf_pred ctxt"
       and "ctxt_pred_self_framing ctxt"

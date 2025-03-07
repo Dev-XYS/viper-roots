@@ -12,7 +12,7 @@ abbreviation type_interp_bpl where
 
 
 definition ctxt_vpr where 
-  "ctxt_vpr  = (total_context.make global_data_vpr.vpr_prog (\<lambda> _.None) (\<lambda> _.undefined))"
+  "ctxt_vpr = (total_context.make global_data_vpr.vpr_prog (\<lambda> _.None) (\<lambda> _.undefined))"
 
 
 lemma program_total_eq : 

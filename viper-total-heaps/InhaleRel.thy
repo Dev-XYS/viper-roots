@@ -668,31 +668,6 @@ next
 qed
 
 
-subsection \<open>Predicates\<close>
-
-definition inhale_pred_normal_premise
-  where "inhale_pred_normal_premise ctxt StateCons pred_id ty_args e_args e_p vs p \<omega> \<omega>' \<equiv>
-       vals_well_typed (absval_interp_total ctxt) vs ty_args \<and>
-       red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some vs) \<and>
-       ctxt, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and>
-       p \<ge> 0 \<and>
-       (let W' = inhale_perm_single_pred ctxt StateCons \<omega> (pred_id, vs) (Some (Abs_preal p)) in
-         (W' \<noteq> {} \<and> \<omega>' \<in> W'))"
-
-lemma inhale_predicate_acc_rel:
-  assumes   WfSubexp: "exprs_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega> ns \<and> \<omega>def = \<omega> \<and> Q (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega>) 
-                         ctxt_vpr StateCons P ctxt (e_args @ [e_p]) \<gamma> \<gamma>2"
-      and PosPermRel: "\<And>p. rel_general R (R' p)
-                         (\<lambda> \<omega> \<omega>'. \<omega> = \<omega>' \<and> (ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VPerm p)) \<and> p \<ge> 0))
-                         (\<lambda> \<omega>. (ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VPerm p)) \<and> p < 0))
-                         P ctxt \<gamma>2 \<gamma>3"
-      and  UpdInhRel: "\<And>vs p. rel_general (R' p) R \<comment>\<open>Here, the simulation needs to revert back to R\<close>
-                         (inhale_pred_normal_premise ctxt_vpr StateCons pred_id tys_args e_args e_p vs p)
-                         (\<lambda> \<omega>. False) P ctxt \<gamma>3 \<gamma>'" 
-    shows "inhale_rel R Q ctxt_vpr StateCons P ctxt (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<gamma> \<gamma>'"
-  sorry
-
-
 subsection \<open>Misc\<close>
 
 lemma inhale_rel_refl:

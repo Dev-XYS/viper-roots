@@ -1842,7 +1842,7 @@ lemma sat_fun_interp_irrelevant:
   by (induction rule: sat.inducts; subst sat.simps; metis assms(1-2) eval_fun_interp_irrelevant)
 
 
-lemma extcons_interp_irrelevant:
+lemma extcons_fun_interp_irrelevant:
   assumes "total_context.program_total ctxt1 = total_context.program_total ctxt2"
       and "total_context.absval_interp_total ctxt1 = total_context.absval_interp_total ctxt2"
     shows "consistent_external_wrt_ploc ctxt1 \<phi> (pid,vs) p \<Longrightarrow> consistent_external_wrt_ploc ctxt2 \<phi> (pid,vs) p"

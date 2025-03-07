@@ -158,7 +158,7 @@ proof (rule framing_exhI[OF _ _ _ Framed])
     by blast
 next
   show "consistent_external ctxt_vpr (get_total_full \<omega>)"
-    apply (rule extcons_interp_irrelevant)
+    apply (rule extcons_fun_interp_irrelevant)
       prefer 3
     using state_rel_consistent[OF StateRel ConsistencyEnabled, unfolded PrEq]
       apply blast
