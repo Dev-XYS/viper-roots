@@ -92,8 +92,8 @@ fun add_to_nm_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a nested_mask
 fun mult_nm_total :: "('a, 'b) total_state_scheme \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
   where "mult_nm_total \<phi> p = \<phi>\<lparr> get_nm_total := p *\<^sub>s get_nm_total \<phi> \<rparr>"
 
-fun add_to_lpm_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> posreal \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) total_state_scheme"
-  where "add_to_lpm_total \<phi> lp p nm' = upd_nm_total \<phi> (add_to_lpm_nonzero_nm (get_nm_total \<phi>) lp p nm')"
+fun add_to_lpm_nonzero_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> posreal \<Rightarrow> 'a nested_mask \<Rightarrow> ('a, 'b) total_state_scheme"
+  where "add_to_lpm_nonzero_total \<phi> lp p nm' = upd_nm_total \<phi> (add_to_lpm_nonzero_nm (get_nm_total \<phi>) lp p nm')"
 
 fun rm_from_lpm_total :: "('a, 'b) total_state_scheme \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> ('a, 'b) total_state_scheme"
   where "rm_from_lpm_total \<phi> lp p = upd_nm_total \<phi> (rm_from_lpm_nm (get_nm_total \<phi>) lp p)"

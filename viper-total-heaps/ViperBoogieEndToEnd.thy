@@ -644,7 +644,7 @@ proof (rule allI | rule impI)+
             apply (rule is_empty_total_full_less_eq)
             by (simp_all add: empty_full_total_state_def is_empty_total_def)
 
-          with inhale_no_perm_downwards_mono(3) ConsistencyDownwardMono RedInhPost 
+          with inhale_no_perm_downwards_mono ConsistencyDownwardMono RedInhPost 
           have "red_inhale ctxt_vpr StateCons (method_decl.post mdecl) ?\<omega>PostEmpty RFailure"
             using is_empty_empty_full_total_state \<open>res = _\<close>  VprNoPermSupportedSpec supported_assertion_no_unfolding
             by blast

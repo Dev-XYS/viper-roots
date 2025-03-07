@@ -284,15 +284,66 @@ lemma update_mh_loc_nm_mono:
   using assms(1)[simplified less_eq_nested_mask_def]
   by (simp add: assms(2) le_funD le_funI)
 
-(*
-lemma update_mp_loc_nm_mono:
-  assumes "nm1 \<le> nm2" and "p1 \<le> p2"
-  shows "upd_mp_loc_nm nm1 lp p1 \<le> upd_mp_loc_nm nm2 lp p2"
-  apply (cases nm1, cases nm2)
-  apply (simp add: less_eq_nested_mask_def)
-  using assms(1)[simplified less_eq_nested_mask_def]
-  by (simp add: assms(2) le_funD le_funI)
-*)
+
+lemma nm_plus_mono:
+  fixes nm :: "'a nested_mask"
+  assumes "nm\<^sub>1 \<le> nm\<^sub>2"
+  shows "nm\<^sub>1 + nm \<le> nm\<^sub>2 + nm"
+  using assms
+proof (induction nm\<^sub>1 arbitrary: nm\<^sub>2)
+  case IH: (NM mh\<^sub>1 fnm\<^sub>1)
+  obtain mh fnm where "nm = NM mh fnm"
+    using nm_get_eq
+    by blast
+  obtain mh\<^sub>2 fnm\<^sub>2 where "nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2"
+    using nm_get_eq
+    by blast
+  show ?case
+    unfolding \<open>nm = _\<close> \<open>nm\<^sub>2 = _\<close> plus_nested_mask_def less_eq_nested_mask_def
+    apply (simp del: split_paired_All)
+    apply (intro conjI)
+    using IH.prems[unfolded \<open>nm\<^sub>2 = _\<close> less_eq_nested_mask_def, simplified]
+     apply (simp add: PosReal.padd_mono add_masks_def le_fun_def)
+    apply (intro allI)
+    apply (rename_tac l)
+    apply (case_tac "fnm l"; case_tac "fnm\<^sub>1 l"; case_tac "fnm\<^sub>2 l"; simp add: pfun_comb_def;
+           cut_tac x="l" in IH.prems[unfolded \<open>nm\<^sub>2 = _\<close> less_eq_nested_mask_def nested_mask_le.simps, THEN conjunct2, THEN spec]; simp)
+     apply (metis (no_types, opaque_lifting) add.commute less_eq_nested_mask_def nm_sum_is_bigger plus_nested_mask_def posreal_add_greater)
+    apply (erule disj_forward)
+     apply auto[1]
+    apply (intro conjI)
+     apply (simp add: less_posreal.rep_eq plus_posreal.rep_eq less_preal.rep_eq plus_preal.rep_eq)
+    unfolding less_eq_nested_mask_def[symmetric] plus_nested_mask_def[symmetric]
+    using IH.IH
+    by (metis add.commute group_cancel.add1 nm_bigger_has_sum nm_sum_is_bigger)
+qed
+
+lemma add_to_lpm_nonzero_nm_mono:
+  assumes "nm\<^sub>1 \<le> nm\<^sub>2"
+  shows "add_to_lpm_nonzero_nm nm\<^sub>1 lp p nm' \<le> add_to_lpm_nonzero_nm nm\<^sub>2 lp p nm'"
+proof -
+  obtain mh\<^sub>1 fnm\<^sub>1 where "nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1"
+    using nm_get_eq
+    by blast
+  obtain mh\<^sub>2 fnm\<^sub>2 where "nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2"
+    using nm_get_eq
+    by blast
+  show ?thesis
+    unfolding less_eq_nested_mask_def \<open>nm\<^sub>1 = _\<close> \<open>nm\<^sub>2 = _\<close>
+    apply (simp del: split_paired_All)
+    apply (intro conjI)
+    using \<open>nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1\<close> \<open>nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2\<close> assms less_eq_nested_maskD
+     apply fastforce
+    apply (intro allI)
+    apply (rename_tac l)
+    apply (case_tac "fnm\<^sub>1 l"; case_tac "fnm\<^sub>2 l"; case_tac "l = lp";
+           cut_tac x="l" in assms[unfolded \<open>nm\<^sub>1 = _\<close> \<open>nm\<^sub>2 = _\<close> less_eq_nested_mask_def nested_mask_le.simps, THEN conjunct2, THEN spec]; simp)
+     apply (metis add.commute less_eq_nested_mask_def nm_sum_is_bigger posreal_add_greater)
+    apply (erule disj_forward)
+     apply simp
+    by (metis less_eq_nested_mask_def less_posreal.rep_eq nm_plus_mono order_eq_refl plus_posreal.rep_eq pos_perm_class.pgte_pgt)
+qed
+
 
 lemma update_mh_loc_total_mono:
   assumes "\<phi>1 \<le> \<phi>2" and "p1 \<le> p2"
@@ -302,15 +353,6 @@ lemma update_mh_loc_total_mono:
     apply (auto dest: less_eq_total_stateD)
   by (metis less_eq_total_state_ext_def upd_mh_loc_nm.elims update_mh_loc_nm_mono)
 
-(*
-lemma update_mp_loc_total_mono:
-  assumes "\<omega>1 \<le> \<omega>2" and "p1 \<le> p2"
-  shows "upd_mp_loc_total \<omega>1 l p1 \<le> upd_mp_loc_total \<omega>2 l p2"
-  apply (rule less_eq_total_stateI)
-    apply (insert assms)
-    apply (auto dest: less_eq_total_stateD)
-  by (simp add: less_eq_total_stateD update_mp_loc_nm_mono)
-*)
 
 lemma update_mh_loc_total_full_mono:
   assumes "\<omega>1 \<le> \<omega>2" and "p1 \<le> p2"
@@ -326,21 +368,22 @@ proof -
     by (fastforce dest: less_eq_full_total_stateD)+
 qed
 
-(*
-lemma update_mp_loc_total_full_mono:
-  assumes "\<omega>1 \<le> \<omega>2" and "p1 \<le> p2"
-  shows "upd_mp_loc_total_full \<omega>1 l p1 \<le> upd_mp_loc_total_full \<omega>2 l p2"
-proof -
-  have *: "upd_mp_loc_total (get_total_full \<omega>1) l p1 \<le> upd_mp_loc_total (get_total_full \<omega>2) l p2"
-    using assms update_mp_loc_total_mono less_eq_full_total_state_ext_def
-    by blast
 
-  show ?thesis
-    apply (insert assms * )
-    apply (rule less_eq_full_total_stateI2)
-    by (fastforce dest: less_eq_full_total_stateD)+
-qed
-*)
+lemma add_to_lpm_nonzero_total_full_mono:
+  assumes "\<omega>1 \<le> \<omega>2"
+  shows "add_to_lpm_nonzero_total_full \<omega>1 lp p nm \<le> add_to_lpm_nonzero_total_full \<omega>2 lp p nm"
+  apply (rule less_eq_full_total_stateI2)
+      prefer 5
+  using assms
+      apply (fastforce dest: less_eq_full_total_stateD)+
+  apply (rule less_eq_total_stateI)
+  using less_eq_full_total_stateD[OF assms]
+    apply (fastforce dest: less_eq_total_stateD)
+  using add_to_lpm_nonzero_nm_mono less_eq_full_total_stateD[OF assms]
+   apply (metis add_to_lpm_nonzero_total_full.simps full_total_state.simps(3) full_total_state.simps(7) full_total_state.surjective get_nm_total_full.simps less_eq_total_stateD total_state.simps(2) total_state.simps(5) total_state.surjective upd_nm_total_full.simps)
+  using less_eq_full_total_stateD[OF assms]
+  by (fastforce dest: less_eq_total_stateD)
+
 
 lemma less_eq_add_masks: "m1 \<le> add_masks m1 m2"
   unfolding add_masks_def le_fun_def

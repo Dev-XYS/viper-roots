@@ -46,28 +46,28 @@ lemma free_var_subexp:
   by (cases e) auto  
 
 
-(* lemma less_eq_valid_locs_subset_total_state:
+lemma less_eq_valid_locs_subset_total_state:
   assumes "\<omega> \<le> \<omega>'"
   shows "get_valid_locs \<omega> \<subseteq> get_valid_locs \<omega>'"
 proof -
   from \<open>\<omega> \<le> \<omega>'\<close> have "get_mh_total_full \<omega> \<le> get_mh_total_full \<omega>'" (is "?m \<le> ?m'")
-    using less_eq_full_total_stateD_2 
+    using less_eq_full_total_stateD_2 less_eq_nested_maskD
     by auto
 
   show ?thesis
   proof
     fix lh
     assume "lh \<in> get_valid_locs \<omega>"    
-    hence "pgt (?m lh) pnone"
+    hence "?m lh > 0"
       by (simp add: get_valid_locs_def)
 
-    hence "pgt (?m' lh) pnone"
+    hence "?m' lh > 0"
       using \<open>?m \<le> ?m'\<close>
-      by (metis le_fun_def padd_pos preal_gte_padd preal_pnone_pgt)
+      by (meson dual_order.strict_trans1 le_funE)
     thus "lh \<in> get_valid_locs \<omega>'"
       by (simp add: get_valid_locs_def)
   qed
-qed *)
+qed
 
 subsection \<open>Well-typed store\<close>
 
@@ -686,7 +686,7 @@ next
   then show ?case by simp
 qed
 
-(*
+
 text \<open>inhale preserves failure for smaller states if there is no permission introspection\<close>
 
 lemma inhale_perm_single_leq:
@@ -696,22 +696,21 @@ lemma inhale_perm_single_leq:
 proof 
   fix \<omega>1'
   assume "\<omega>1' \<in> inhale_perm_single R \<omega>1 lh p_opt"
-  from this obtain p 
-    where  "\<omega>1' = update_mh_loc_total_full \<omega>1 lh (padd (get_mh_total_full \<omega>1 lh) p)"  and
-           PermConstraint: "option_fold ((=) p) (p \<noteq> pnone) p_opt" and
-           AtMostWrite: "pgte pwrite (padd (get_mh_total_full \<omega>1 lh) p)" and
-           "R \<omega>1'"
+  from this obtain p where
+    "\<omega>1' = upd_mh_loc_total_full \<omega>1 lh (get_mh_total_full \<omega>1 lh + p)"  and
+    PermConstraint: "option_fold ((=) p) (p \<noteq> 0) p_opt" and
+    "R \<omega>1'"
     unfolding inhale_perm_single_def
     by blast
 
-  let ?\<omega>0' = "update_mh_loc_total_full \<omega>0 lh (padd (get_mh_total_full \<omega>0 lh) p)"    
+  let ?\<omega>0' = "upd_mh_loc_total_full \<omega>0 lh (get_mh_total_full \<omega>0 lh + p)"    
 
   from \<open>\<omega>0 \<le> \<omega>1\<close> have "(get_mh_total_full \<omega>0 lh) \<le> (get_mh_total_full \<omega>1 lh)"
-    using less_eq_full_total_stateD_2 
-    by (auto dest: le_funD)
+    using less_eq_full_total_stateD_2
+    by (auto dest: le_funD less_eq_nested_maskD)
 
-  hence *: "(padd (get_mh_total_full \<omega>0 lh) p) \<le> (padd (get_mh_total_full \<omega>1 lh) p)"
-    by (simp add: padd_mono)
+  hence *: "get_mh_total_full \<omega>0 lh + p \<le> get_mh_total_full \<omega>1 lh + p"
+    by (simp add: PosReal.padd_mono)
 
   hence "?\<omega>0' \<le> \<omega>1'"
     using \<open>\<omega>1' = _\<close> assms update_mh_loc_total_full_mono 
@@ -719,12 +718,10 @@ proof
 
   moreover have "?\<omega>0' \<in> inhale_perm_single R \<omega>0 lh p_opt"
     apply (rule inhale_perm_single_elem)
-       apply (rule HOL.refl)
+      apply (rule HOL.refl)
     using ConsistencyDownwardMono \<open>\<omega>1' \<in> _\<close> \<open>?\<omega>0' \<le> \<omega>1'\<close> \<open>R \<omega>1'\<close>
-      apply blast
-    apply (rule PermConstraint)
-    using AtMostWrite *
-    by (metis (no_types, opaque_lifting) PosReal.pgte_antisym PosReal.sum_larger dual_order.trans nle_le preal_gte_padd)
+     apply blast
+    by (rule PermConstraint)
 
   ultimately show "\<exists>\<omega>0'\<le>\<omega>1'. \<omega>0' \<in> inhale_perm_single R \<omega>0 lh p_opt"
     by blast   
@@ -733,79 +730,80 @@ qed
 lemma inhale_perm_single_pred_leq:
   assumes "\<omega>0 \<le> \<omega>1" and
           ConsistencyDonwardMono: "\<And> \<omega> \<omega>'. \<omega> \<le> \<omega>' \<Longrightarrow> R \<omega>' \<Longrightarrow> R \<omega>" 
-  shows "\<forall> \<omega>1' \<in> inhale_perm_single_pred R \<omega>1 lh p_opt. \<exists>\<omega>0' \<le> \<omega>1'. \<omega>0' \<in> inhale_perm_single_pred R \<omega>0 lh p_opt"
-proof 
+  shows "\<forall> \<omega>1' \<in> inhale_perm_single_pred ctxt R \<omega>1 lh p_opt. \<exists>\<omega>0' \<le> \<omega>1'. \<omega>0' \<in> inhale_perm_single_pred ctxt R \<omega>0 lh p_opt"
+proof
   fix \<omega>1'
-  assume "\<omega>1' \<in> inhale_perm_single_pred R \<omega>1 lh p_opt"
-  from this obtain p 
-    where  "\<omega>1' = update_mp_loc_total_full \<omega>1 lh (padd (get_mp_total_full \<omega>1 lh) p)"  and
-           PermConstraint: "option_fold ((=) p) (p \<noteq> pnone) p_opt"
-           "R \<omega>1'"
+  assume "\<omega>1' \<in> inhale_perm_single_pred ctxt R \<omega>1 lh p_opt"
+  from this obtain p \<phi>_inh where
+    "\<omega>1' = (if p = 0 then \<omega>1 else add_to_lpm_nonzero_total_full \<omega>1 lh (Abs_posreal p) (get_nm_total \<phi>_inh))" and
+    PermConstraint: "option_fold ((=) p) (p \<noteq> 0) p_opt" and
+    "p > 0 \<longrightarrow> consistent_external_wrt_ploc ctxt \<phi>_inh lh p" and
+    "get_hh_total \<phi>_inh = get_hh_total_full \<omega>1" and
+    "R \<omega>1'"
     unfolding inhale_perm_single_pred_def
     by blast
 
-  let ?\<omega>0' = "update_mp_loc_total_full \<omega>0 lh (padd (get_mp_total_full \<omega>0 lh) p)"    
+  let ?\<omega>0' = "if p = 0 then \<omega>0 else add_to_lpm_nonzero_total_full \<omega>0 lh (Abs_posreal p) (get_nm_total \<phi>_inh)"    
 
   from \<open>\<omega>0 \<le> \<omega>1\<close> have "(get_mp_total_full \<omega>0 lh) \<le> (get_mp_total_full \<omega>1 lh)"
-    using less_eq_full_total_stateD_2 
-    by (auto dest: le_funD)
+    using less_eq_full_total_stateD_2
+    by (metis get_mp_total.simps get_mp_total_full.simps get_nm_total_full.simps le_fun_def less_eq_nested_maskD)
 
-  hence *: "(padd (get_mp_total_full \<omega>0 lh) p) \<le> (padd (get_mp_total_full \<omega>1 lh) p)"
-    by (simp add: padd_mono)
+  hence *: "get_mp_total_full \<omega>0 lh + p \<le> get_mp_total_full \<omega>1 lh + p"
+    by (simp add: PosReal.padd_mono)
 
   hence "?\<omega>0' \<le> \<omega>1'"
-    using \<open>\<omega>1' = _\<close> assms update_mp_loc_total_full_mono 
-    by blast
+    using \<open>\<omega>1' = _\<close> assms add_to_lpm_nonzero_total_full_mono 
+    by (metis (mono_tags, lifting))
 
-  moreover have "?\<omega>0' \<in> inhale_perm_single_pred R \<omega>0 lh p_opt"
-    apply (rule inhale_perm_single_pred_elem)
-    using ConsistencyDonwardMono \<open>\<omega>1' \<in> _\<close> \<open>?\<omega>0' \<le> \<omega>1'\<close> \<open>R \<omega>1'\<close> PermConstraint
-    by auto   
+  moreover have "?\<omega>0' \<in> inhale_perm_single_pred ctxt R \<omega>0 lh p_opt"
+    unfolding inhale_perm_single_pred_def
+    apply (rule CollectI)
+    apply (rule exI[of _ ?\<omega>0'])
+    apply (rule exI[of _ \<phi>_inh])
+    apply (rule exI[of _ p])
+    apply (intro conjI)
+         apply simp
+        apply fact+
+    using \<open>get_hh_total \<phi>_inh = get_hh_total_full \<omega>1\<close> assms(1) less_eq_full_total_stateD_2
+      apply fastforce
+     apply simp
+    using ConsistencyDonwardMono \<open>R \<omega>1'\<close> calculation
+    by auto
 
-  ultimately show "\<exists>\<omega>0'\<le>\<omega>1'. \<omega>0' \<in> inhale_perm_single_pred R \<omega>0 lh p_opt"
+  ultimately show "\<exists>\<omega>0'\<le>\<omega>1'. \<omega>0' \<in> inhale_perm_single_pred ctxt R \<omega>0 lh p_opt"
     by blast   
 qed
-*)
 
-lemma inhale_no_perm_downwards_mono:
+
+lemma eval_no_perm_downwards_mono:
   assumes ConsistencyDownwardMono: "mono_prop_downward_ord R"
-  shows "ctxt, \<omega>_def1 \<turnstile> \<langle>e;\<omega>1\<rangle> [\<Down>]\<^sub>t resE \<Longrightarrow> 
-        no_perm_pure_exp e \<and> no_unfolding_pure_exp e \<Longrightarrow>
-        \<omega>2 \<le> \<omega>1 \<Longrightarrow> 
-        \<omega>_def2 \<le> \<omega>_def1 \<Longrightarrow>
-        \<omega>_def2 = None \<longleftrightarrow> \<omega>_def1 = None \<Longrightarrow> \<comment>\<open>needed since other may not need to check well-definedness in smaller state\<close>
-        (if resE = VFailure then ctxt, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure
-         else ctxt, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure \<or>
-              ctxt, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t resE)" and
-        "red_pure_exps_total ctxt \<omega>_def1 es \<omega>1 resES \<Longrightarrow> 
-         list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) es \<Longrightarrow>
-         \<omega>2 \<le> \<omega>1 \<Longrightarrow> 
-         \<omega>_def2 \<le> \<omega>_def1 \<Longrightarrow>
-         \<omega>_def2 = None \<longleftrightarrow> \<omega>_def1 = None \<Longrightarrow>
-         (if resES = None then red_pure_exps_total ctxt \<omega>_def2 es \<omega>2 None
-          else red_pure_exps_total ctxt \<omega>_def2 es \<omega>2 None \<or>
-               red_pure_exps_total ctxt \<omega>_def2 es \<omega>2 resES)" and
-        "red_inhale ctxt R A \<omega>1 res1 \<Longrightarrow> 
-              no_perm_assertion A \<and> no_unfolding_assertion A \<Longrightarrow>
-              \<omega>2 \<le> \<omega>1 \<Longrightarrow> res1 \<noteq> RMagic \<Longrightarrow> 
-              (res1 = RFailure \<longrightarrow> red_inhale ctxt R A \<omega>2 RFailure) \<and>
-              (\<forall>\<omega>1'. res1 = RNormal \<omega>1' \<longrightarrow> 
-                    (red_inhale ctxt R A \<omega>2 RFailure \<or> 
-                           (\<exists>\<omega>2'. \<omega>2' \<le> \<omega>1' \<and> 
-                           red_inhale ctxt R A \<omega>2 (RNormal \<omega>2'))
-                    )
-              )"
-  sorry
-(*
-proof (induction arbitrary: \<omega>2 \<omega>_def2 and \<omega>2 \<omega>_def2 and \<omega>2 rule: red_exp_inhale_unfold_inducts)
+    shows "ctxt, \<omega>_def1 \<turnstile> \<langle>e;\<omega>1\<rangle> [\<Down>]\<^sub>t resE \<Longrightarrow> 
+           no_perm_pure_exp e \<and> no_unfolding_pure_exp e \<Longrightarrow>
+           \<omega>2 \<le> \<omega>1 \<Longrightarrow> 
+           \<omega>_def2 \<le> \<omega>_def1 \<Longrightarrow>
+           \<omega>_def2 = None \<longleftrightarrow> \<omega>_def1 = None \<Longrightarrow>
+           (if resE = VFailure then ctxt, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure
+            else ctxt, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure \<or> ctxt, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t resE)" and
+          "red_pure_exps_total ctxt \<omega>_def1 es \<omega>1 resES \<Longrightarrow> 
+           list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) es \<Longrightarrow>
+           \<omega>2 \<le> \<omega>1 \<Longrightarrow> 
+           \<omega>_def2 \<le> \<omega>_def1 \<Longrightarrow>
+           \<omega>_def2 = None \<longleftrightarrow> \<omega>_def1 = None \<Longrightarrow>
+           (if resES = None then red_pure_exps_total ctxt \<omega>_def2 es \<omega>2 None
+            else red_pure_exps_total ctxt \<omega>_def2 es \<omega>2 None \<or> red_pure_exps_total ctxt \<omega>_def2 es \<omega>2 resES)"
+proof (induction arbitrary: \<omega>2 \<omega>_def2 and \<omega>2 \<omega>_def2 rule: red_pure_exp_inducts)
   case (RedLit \<omega>_def l uu)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros)
+  then show ?case
+    by (auto intro!: red_pure_exp_intros)
 next
   case (RedVar \<omega> n v \<omega>_def)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros dest: less_eq_full_total_stateD)
+  then show ?case
+    by (auto intro!: red_pure_exp_intros dest: less_eq_full_total_stateD)
 next
   case (RedResult \<omega> v \<omega>_def)
-  then show ?case by (auto intro!: red_exp_inhale_unfold_intros dest: less_eq_full_total_stateD)
+  then show ?case
+    by (auto intro!: red_pure_exp_intros dest: less_eq_full_total_stateD)
 next
   case (RedBinopLazy \<omega>_def e1 \<omega> v1 bop v e2)
   then show ?case 
@@ -813,8 +811,8 @@ next
     by (metis pure_exp_pred.elims(2) pure_exp_pred_rec.simps(4) red_exp_binop_sub_left_failure)
 next
   case (RedBinop \<omega>_def e1 \<omega> v1 e2 v2 bop v)
-  from this consider (E1Fail) "ctxt, R, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
-                     (E1Normal)"ctxt, R, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v1"
+  from this consider (E1Fail) "ctxt, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
+                     (E1Normal)"ctxt, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v1"
     by auto
   thus ?case 
   proof (cases)
@@ -823,15 +821,15 @@ next
       by (simp add: red_exp_binop_sub_left_failure)
   next
     case E1Normal
-    from RedBinop consider  (E2Fail) "ctxt, R, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
-                            (E2Normal)"ctxt, R, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v2"
+    from RedBinop consider  (E2Fail) "ctxt, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
+                            (E2Normal)"ctxt, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v2"
       by auto
     thus ?thesis
     proof (cases)
       case E2Fail
       then show ?thesis 
         using E1Normal
-        by (metis RedBinop.hyps(1) RedBinop.hyps(2) RedBinopRightFailure binop_result.distinct(3))
+        by (metis RedBinop.hyps(1) RedBinop.hyps(2) RedBinopRightFailure binop_result.distinct(3) binop_result.distinct_disc(1) eval_total_non_total_not_fail_same)
     next
       case E2Normal
       then show ?thesis 
@@ -841,8 +839,8 @@ next
   qed       
 next
   case (RedBinopRightFailure \<omega>_def e1 \<omega> v1 e2 bop)
-  from this consider (E1Fail) "ctxt, R, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
-                     (E1Normal)"ctxt, R, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v1"
+  from this consider (E1Fail) "ctxt, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
+                     (E1Normal)"ctxt, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v1"
     by auto
   thus ?case 
   proof (cases)
@@ -851,16 +849,16 @@ next
       by (simp add: red_exp_binop_sub_left_failure)
   next
     case E1Normal
-    from RedBinopRightFailure have "ctxt, R, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure"
+    from RedBinopRightFailure have "ctxt, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure"
       by simp
     thus ?thesis
       using E1Normal RedBinopRightFailure
-      by (auto intro: TotalExpressions.RedBinopRightFailure)
+      by (simp add: Option.is_none_def red_pure_exp_total_red_pure_exps_total.RedBinopRightFailure)
   qed
 next
   case (RedBinopOpFailure \<omega>_def e1 \<omega> v1 e2 v2 bop)
-    from this consider (E1Fail) "ctxt, R, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
-                     (E1Normal)"ctxt, R, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v1"
+    from this consider (E1Fail) "ctxt, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
+                     (E1Normal)"ctxt, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v1"
       by auto
     thus ?case
     proof (cases)
@@ -869,15 +867,16 @@ next
         by (simp add: red_exp_binop_sub_left_failure)
     next
       case E1Normal
-      from RedBinopOpFailure consider  (E2Fail) "ctxt, R, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
-                              (E2Normal)"ctxt, R, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v2"
+      from RedBinopOpFailure consider  (E2Fail) "ctxt, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
+                              (E2Normal)"ctxt, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v2"
         by auto
       thus ?thesis
       proof (cases)
         case E2Fail
         then show ?thesis 
           using E1Normal RedBinopOpFailure
-          by (auto intro!: RedBinopRightFailure)
+          apply (auto intro!: RedBinopRightFailure)
+          by blast
       next
         case E2Normal
         then show ?thesis 
@@ -887,8 +886,8 @@ next
     qed
 next
   case (RedUnop \<omega>_def e \<omega> v unop v')
-    from this consider (EFail) "ctxt, R, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
-                     (ENormal)"ctxt, R, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v"
+    from this consider (EFail) "ctxt, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
+                     (ENormal)"ctxt, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v"
       by auto
     thus ?case
     proof (cases)
@@ -903,8 +902,8 @@ next
     qed
 next
   case (RedCondExpTrue \<omega>_def e1 \<omega> e2 r e3)
-    from this consider (E1Fail) "ctxt, R, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
-                     (E1Normal)"ctxt, R, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+    from this consider (E1Fail) "ctxt, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
+                     (E1Normal)"ctxt, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
       by auto
     thus ?case
     proof (cases)
@@ -913,9 +912,9 @@ next
         by (simp add: red_exp_condexp_sub_failure)
     next
       case E1Normal
-      from this consider "r = VFailure \<and> ctxt, R, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" |
-                         "r \<noteq> VFailure \<and> ctxt, R, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" |
-                         "r \<noteq> VFailure \<and> ctxt, R, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t r"
+      from this consider "r = VFailure \<and> ctxt, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" |
+                         "r \<noteq> VFailure \<and> ctxt, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" |
+                         "r \<noteq> VFailure \<and> ctxt, \<omega>_def2 \<turnstile> \<langle>e2;\<omega>2\<rangle> [\<Down>]\<^sub>t r"
         using RedCondExpTrue
         by (fastforce split: if_split_asm)
       then show ?thesis 
@@ -923,8 +922,8 @@ next
     qed
 next
   case (RedCondExpFalse \<omega>_def e1 \<omega> e3 r e2)
-    from this consider (E1Fail) "ctxt, R, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
-                     (E1Normal)"ctxt, R, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    from this consider (E1Fail) "ctxt, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
+                     (E1Normal)"ctxt, \<omega>_def2 \<turnstile> \<langle>e1;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
       by auto
     thus ?case
     proof (cases)
@@ -933,9 +932,9 @@ next
         by (simp add: red_exp_condexp_sub_failure)
     next
       case E1Normal
-      from this consider "r = VFailure \<and> ctxt, R, \<omega>_def2 \<turnstile> \<langle>e3;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" |
-                         "r \<noteq> VFailure \<and> ctxt, R, \<omega>_def2 \<turnstile> \<langle>e3;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" |
-                         "r \<noteq> VFailure \<and> ctxt, R, \<omega>_def2 \<turnstile> \<langle>e3;\<omega>2\<rangle> [\<Down>]\<^sub>t r"
+      from this consider "r = VFailure \<and> ctxt, \<omega>_def2 \<turnstile> \<langle>e3;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" |
+                         "r \<noteq> VFailure \<and> ctxt, \<omega>_def2 \<turnstile> \<langle>e3;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" |
+                         "r \<noteq> VFailure \<and> ctxt, \<omega>_def2 \<turnstile> \<langle>e3;\<omega>2\<rangle> [\<Down>]\<^sub>t r"
         using RedCondExpFalse
         by (fastforce split: if_split_asm)
       then show ?thesis 
@@ -984,9 +983,9 @@ next
     by simp
 
   from RedOld.IH(2)[OF *** * ** ****]
-  consider "v = VFailure \<and> ctxt, R, ?\<omega>_def2' \<turnstile> \<langle>e;\<omega>2\<lparr>get_total_full := \<phi>'\<rparr>\<rangle> [\<Down>]\<^sub>t VFailure" |
-           "v \<noteq> VFailure \<and> ctxt, R, ?\<omega>_def2' \<turnstile> \<langle>e;\<omega>2\<lparr>get_total_full := \<phi>'\<rparr>\<rangle> [\<Down>]\<^sub>t v" |
-           "v \<noteq> VFailure \<and> ctxt, R, ?\<omega>_def2' \<turnstile> \<langle>e;\<omega>2\<lparr>get_total_full := \<phi>'\<rparr>\<rangle> [\<Down>]\<^sub>t VFailure"
+  consider "v = VFailure \<and> ctxt, ?\<omega>_def2' \<turnstile> \<langle>e;\<omega>2\<lparr>get_total_full := \<phi>'\<rparr>\<rangle> [\<Down>]\<^sub>t VFailure" |
+           "v \<noteq> VFailure \<and> ctxt, ?\<omega>_def2' \<turnstile> \<langle>e;\<omega>2\<lparr>get_total_full := \<phi>'\<rparr>\<rangle> [\<Down>]\<^sub>t v" |
+           "v \<noteq> VFailure \<and> ctxt, ?\<omega>_def2' \<turnstile> \<langle>e;\<omega>2\<lparr>get_total_full := \<phi>'\<rparr>\<rangle> [\<Down>]\<^sub>t VFailure"
     using \<open>(\<omega>_def2 = None) = (\<omega>_def = None)\<close>
     by (fastforce split: if_split_asm)
   thus ?case
@@ -999,8 +998,8 @@ next
     by (auto intro!: TotalExpressions.RedOldFailure dest: less_eq_full_total_stateD)
 next
   case (RedField \<omega>_def e \<omega> a f v)
-  from this consider (EFail) "ctxt, R, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
-                   (ENormal)"ctxt, R, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))"
+  from this consider (EFail) "ctxt, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
+                   (ENormal)"ctxt, \<omega>_def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))"
     by auto
   thus ?case
   proof (cases)
@@ -1022,7 +1021,7 @@ next
         using \<open>\<omega>_def2 \<le> \<omega>_def\<close>
         by (simp add: less_eq_option_def)
 
-      have "ctxt, R, None \<turnstile> \<langle>FieldAcc e f;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v"
+      have "ctxt, None \<turnstile> \<langle>FieldAcc e f;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v"
         apply (rule RedField_no_def_normalI)
       using ENormal \<open>\<omega>_def2 = _\<close>  HeapVal
       by auto
@@ -1044,7 +1043,7 @@ next
       show ?thesis
       proof (cases "(a, f) \<in> get_valid_locs \<omega>_def2_val")
         case True
-        hence "ctxt, R, Some \<omega>_def2_val \<turnstile> \<langle>FieldAcc e f;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v"
+        hence "ctxt, Some \<omega>_def2_val \<turnstile> \<langle>FieldAcc e f;\<omega>2\<rangle> [\<Down>]\<^sub>t Val v"
           by (auto intro!: RedField_def_normalI 
                    intro: ENormal[simplified \<open>\<omega>_def2 = _\<close>] HeapVal)
         then show ?thesis
@@ -1053,7 +1052,7 @@ next
           by auto
       next
         case False
-        hence "ctxt, R, Some \<omega>_def2_val \<turnstile> \<langle>FieldAcc e f;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure"
+        hence "ctxt, Some \<omega>_def2_val \<turnstile> \<langle>FieldAcc e f;\<omega>2\<rangle> [\<Down>]\<^sub>t VFailure"
           by (auto intro!: RedField_def_failureI 
                    intro: ENormal[simplified \<open>\<omega>_def2 = _\<close>] HeapVal)
         then show ?thesis 
@@ -1066,7 +1065,7 @@ next
 next
   case (RedFieldNullFailure \<omega>_def e \<omega> f)
   then show ?case 
-  by (metis pure_exp_pred.elims(2) pure_exp_pred_rec.simps(6) red_exp_field_sub_failure red_pure_exp_total_red_pure_exps_total_red_inhale_unfold_rel.RedFieldNullFailure)
+  by (metis pure_exp_pred.elims(2) pure_exp_pred_rec.simps(6) red_exp_field_sub_failure red_pure_exp_total_red_pure_exps_total.RedFieldNullFailure)
 next
   case (RedPermNull \<omega>_def e \<omega> f)
   then show ?case by simp \<comment>\<open>cannot occur\<close>
@@ -1098,26 +1097,41 @@ next
   case (RedExpListNil \<omega>_def \<omega>)
   then show ?case 
     by (simp add: TotalExpressions.RedExpListNil)
-next
+qed
+
+
+lemma inhale_no_perm_downwards_mono:
+  assumes ConsistencyDownwardMono: "mono_prop_downward_ord R"
+    shows "red_inhale ctxt R A \<omega>1 res1 \<Longrightarrow> 
+           no_perm_assertion A \<and> no_unfolding_assertion A \<Longrightarrow>
+           \<omega>2 \<le> \<omega>1 \<Longrightarrow>
+           res1 \<noteq> RMagic \<Longrightarrow> 
+           (res1 = RFailure \<longrightarrow> red_inhale ctxt R A \<omega>2 RFailure) \<and>
+           (\<forall>\<omega>1'. res1 = RNormal \<omega>1' \<longrightarrow> 
+                  (red_inhale ctxt R A \<omega>2 RFailure \<or> 
+                     (\<exists>\<omega>2'. \<omega>2' \<le> \<omega>1' \<and> red_inhale ctxt R A \<omega>2 (RNormal \<omega>2'))
+                  )
+           )"
+proof (induction arbitrary: \<omega>2 rule: red_inhale.inducts)
   case (InhAcc \<omega> e_r r e_p p W' f res)
   moreover from this have
       Leq: "Some \<omega>2 \<le> Some \<omega>" and
       SubExpConstraint: "no_perm_pure_exp e_r \<and> no_unfolding_pure_exp e_r \<and> no_perm_pure_exp e_p \<and> no_unfolding_pure_exp e_p"
     by simp_all
-  ultimately consider (RefFail) "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e_r; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
-                      (RefSuccess) "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e_r; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
-    by (metis option.discI)
+  ultimately consider (RefFail) "ctxt, Some \<omega>2 \<turnstile> \<langle>e_r; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
+                      (RefSuccess) "ctxt, Some \<omega>2 \<turnstile> \<langle>e_r; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+    by (metis assms eval_no_perm_downwards_mono(1) option.discI)
     
   thus ?case
   proof cases
     case RefFail
     thus ?thesis
-      by (auto intro!: red_exp_inhale_unfold_intros)
+      by (auto intro!: red_inhale.intros red_pure_exp_intros)
   next
     case RefSuccess
-      from Leq SubExpConstraint InhAcc consider (PermFail) "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e_p; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
-                                             (PermSuccess) "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e_p; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
-        by (metis option.discI)
+      from Leq SubExpConstraint InhAcc consider (PermFail) "ctxt, Some \<omega>2 \<turnstile> \<langle>e_p; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
+                                             (PermSuccess) "ctxt, Some \<omega>2 \<turnstile> \<langle>e_p; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+        by (metis assms eval_no_perm_downwards_mono(1) option.discI)
       then show ?thesis 
       proof cases
         case PermFail
@@ -1134,11 +1148,12 @@ next
         proof (cases "res = RFailure")
           case True
           have "red_inhale ctxt R (Atomic (Acc e_r f (PureExp e_p))) \<omega>2 RFailure"
-            apply (rule TotalExpressions.InhAcc)
+            apply (rule TotalInhaleExhale.InhAcc)
                apply (rule RefSuccess)
               apply (rule PermSuccess)
              apply blast
-            using True InhAcc.hyps THResultFailure th_result_rel_failure_2 by fastforce
+            using True InhAcc.hyps THResultFailure th_result_rel_failure_2
+            by fastforce
           thus ?thesis
             by simp            
         next
@@ -1150,12 +1165,12 @@ next
           proof (cases "r = Null")
             case True
             have "red_inhale ctxt R (Atomic (Acc e_r f (PureExp e_p))) \<omega>2 (RNormal \<omega>2)"
-              apply (rule TotalExpressions.InhAcc[OF RefSuccess PermSuccess])
+              apply (rule TotalInhaleExhale.InhAcc[OF RefSuccess PermSuccess])
                apply simp
               using InhAcc.hyps THResultNormal_alt th_result_rel_normal 
               by (fastforce split: if_split simp: \<open>r = Null\<close> \<open>res = RNormal \<omega>'\<close>)
             thus ?thesis
-              using \<open>res = _\<close> \<open>\<omega>2 \<le> _\<close> InhAcc.IH True \<open>\<omega>' \<in> W'\<close>
+              using \<open>res = _\<close> \<open>\<omega>2 \<le> _\<close> InhAcc True \<open>\<omega>' \<in> W'\<close>
               by fastforce              
           next
             case False
@@ -1163,11 +1178,11 @@ next
               using InhAcc \<open>\<omega>' \<in> W'\<close>
               by presburger
             from this obtain \<omega>'' where "\<omega>'' \<le> \<omega>'" and "\<omega>'' \<in> inhale_perm_single R \<omega>2 (the_address r, f) (Some (Abs_preal p))"
-              using \<open>\<omega>2 \<le> \<omega>\<close>  inhale_perm_single_leq ConsistencyDownwardMono[simplified mono_prop_downward_ord_def]
+              using \<open>\<omega>2 \<le> \<omega>\<close> inhale_perm_single_leq ConsistencyDownwardMono[simplified mono_prop_downward_ord_def]
               by blast
             have "red_inhale ctxt R (Atomic (Acc e_r f (PureExp e_p))) \<omega>2 (RNormal \<omega>'')"
-              apply (rule red_pure_exp_total_red_pure_exps_total_red_inhale_unfold_rel.InhAcc)
-              apply (rule RefSuccess)
+              apply (rule TotalInhaleExhale.InhAcc)
+                 apply (rule RefSuccess)
                 apply (rule PermSuccess)
                apply simp
               apply (simp add: False)
@@ -1193,9 +1208,9 @@ next
       thus "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) e_args"
         by (simp add: list_all_length)
     qed
-  ultimately consider (ArgsFail) "red_pure_exps_total ctxt R (Some \<omega>2) e_args \<omega>2 None" | 
-                      (ArgsSuccess) "red_pure_exps_total ctxt R (Some \<omega>2) e_args \<omega>2 (Some v_args)"
-    by (meson Some_Some_ifD)
+  ultimately consider (ArgsFail) "red_pure_exps_total ctxt (Some \<omega>2) e_args \<omega>2 None" | 
+                      (ArgsSuccess) "red_pure_exps_total ctxt (Some \<omega>2) e_args \<omega>2 (Some v_args)"
+    by (metis (no_types, lifting) Some_Some_ifD assms eval_no_perm_downwards_mono(2))
   thus ?case
   proof cases
     case ArgsFail
@@ -1211,9 +1226,10 @@ next
       by simp            
   next
     case ArgsSuccess
-      from Leq SubExpConstraint InhAccPred consider (PermFail) "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e_p; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
-                                             (PermSuccess) "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e_p; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
-        by (meson option.discI)
+    from Leq SubExpConstraint InhAccPred consider
+      (PermFail) "ctxt, Some \<omega>2 \<turnstile> \<langle>e_p; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
+      (PermSuccess) "ctxt, Some \<omega>2 \<turnstile> \<langle>e_p; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+      by (metis (no_types, lifting) assms eval_no_perm_downwards_mono(1) option.discI)
       then show ?thesis 
       proof cases
         case PermFail
@@ -1221,7 +1237,7 @@ next
            apply (rule InhSubExpFailure)
            apply simp+
            using ArgsSuccess PermFail
-           by (auto intro: red_pure_exps_total_append_failure_2 red_exp_inhale_unfold_intros)
+           by (auto intro: red_pure_exps_total_append_failure_2 RedExpListFailure)
          then show ?thesis 
            by simp
       next
@@ -1230,7 +1246,7 @@ next
         proof (cases "res = RFailure")
           case True
           have "red_inhale ctxt R (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega>2 RFailure"
-            apply (rule TotalExpressions.InhAccPred)
+            apply (rule TotalInhaleExhale.InhAccPred)
                apply (rule ArgsSuccess)
               apply (rule PermSuccess)
              apply blast
@@ -1242,14 +1258,14 @@ next
           with InhAccPred.hyps obtain \<omega>' where "res = RNormal \<omega>'" and "\<omega>' \<in> W'"
             by (metis \<open>res \<noteq> RMagic\<close> th_result_rel.cases)                    
 
-          hence "\<omega>' \<in> inhale_perm_single_pred R \<omega> (pred_id, v_args) (Some (Abs_preal p))"
+          hence "\<omega>' \<in> inhale_perm_single_pred ctxt R \<omega> (pred_id, v_args) (Some (Abs_preal p))"
             using InhAccPred \<open>\<omega>' \<in> W'\<close>
             by presburger
-          from this obtain \<omega>'' where "\<omega>'' \<le> \<omega>'" and "\<omega>'' \<in> inhale_perm_single_pred R \<omega>2 (pred_id, v_args) (Some (Abs_preal p))"
+          from this obtain \<omega>'' where "\<omega>'' \<le> \<omega>'" and "\<omega>'' \<in> inhale_perm_single_pred ctxt R \<omega>2 (pred_id, v_args) (Some (Abs_preal p))"
             using \<open>\<omega>2 \<le> \<omega>\<close>  inhale_perm_single_pred_leq ConsistencyDownwardMono[simplified mono_prop_downward_ord_def]
             by metis
           have "red_inhale ctxt R (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega>2 (RNormal \<omega>'')"
-            apply (rule TotalExpressions.InhAccPred[OF ArgsSuccess PermSuccess])
+            apply (rule TotalInhaleExhale.InhAccPred[OF ArgsSuccess PermSuccess])
              apply simp
             using \<open>\<omega>'' \<in> _\<close> \<open>res = RNormal \<omega>'\<close> InhAccPred.hyps
             by (auto intro: THResultNormal_alt dest: th_result_rel_normal)
@@ -1265,14 +1281,14 @@ next
       Leq: "Some \<omega>2 \<le> Some \<omega>" and
       SubExpConstraint: "no_perm_pure_exp e_r \<and> no_unfolding_pure_exp e_r"
     by simp_all
-  ultimately consider (RefFail) "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e_r; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
-                      (RefSuccess) "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e_r; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
-    by (metis option.discI)    
+  ultimately consider (RefFail) "ctxt, Some \<omega>2 \<turnstile> \<langle>e_r; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | 
+                      (RefSuccess) "ctxt, Some \<omega>2 \<turnstile> \<langle>e_r; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+    by (metis assms eval_no_perm_downwards_mono(1) option.discI)
   thus ?case
   proof cases
     case RefFail
     thus ?thesis
-      by (auto intro!: red_exp_inhale_unfold_intros)
+      by (simp add: InhSubExpFailure RedExpListFailure)
   next
     case RefSuccess
     with InhAccWildcard.hyps obtain \<omega>' where "res = RNormal \<omega>'" and "\<omega>' \<in> W'" and "r \<noteq> Null"
@@ -1283,13 +1299,12 @@ next
         using InhAccWildcard \<open>\<omega>' \<in> W'\<close>
         by argo
 
-
       from this obtain \<omega>'' where "\<omega>'' \<le> \<omega>'" and "\<omega>'' \<in> inhale_perm_single R \<omega>2 (the_address r, f) None"
         using \<open>\<omega>2 \<le> \<omega>\<close>  inhale_perm_single_leq ConsistencyDownwardMono[simplified mono_prop_downward_ord_def]
         by metis
       have "red_inhale ctxt R (Atomic (Acc e_r f Wildcard)) \<omega>2 (RNormal \<omega>'')"
-        apply (rule TotalExpressions.InhAccWildcard)
-        apply (rule RefSuccess)
+        apply (rule TotalInhaleExhale.InhAccWildcard)
+          apply (rule RefSuccess)
          apply simp
         using \<open>\<omega>'' \<in> _\<close> \<open>r \<noteq> Null\<close>
         by (auto intro: THResultNormal_alt)              
@@ -1310,9 +1325,9 @@ next
       thus "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) e_args"
         by (simp add: list_all_length)
     qed
-  ultimately consider (ArgsFail) "red_pure_exps_total ctxt R (Some \<omega>2) e_args \<omega>2 None" | 
-                      (ArgsSuccess) "red_pure_exps_total ctxt R (Some \<omega>2) e_args \<omega>2 (Some v_args)"
-    by (metis option.discI)    
+  ultimately consider (ArgsFail) "red_pure_exps_total ctxt (Some \<omega>2) e_args \<omega>2 None" | 
+                      (ArgsSuccess) "red_pure_exps_total ctxt (Some \<omega>2) e_args \<omega>2 (Some v_args)"
+    by (metis (no_types, lifting) assms eval_no_perm_downwards_mono(2) option.discI)
   thus ?case
   proof cases
     case ArgsFail
@@ -1329,8 +1344,8 @@ next
     proof (cases "res = RFailure")
       case True
       have "red_inhale ctxt R (Atomic (AccPredicate pred_id e_args Wildcard)) \<omega>2 RFailure"
-        apply (rule TotalExpressions.InhAccPredWildcard)
-           apply (rule ArgsSuccess)
+        apply (rule TotalInhaleExhale.InhAccPredWildcard)
+          apply (rule ArgsSuccess)
          apply blast
         using True InhAccPredWildcard.hyps THResultFailure th_result_rel_failure_2 by fastforce
       thus ?thesis
@@ -1340,14 +1355,14 @@ next
       with InhAccPredWildcard.hyps obtain \<omega>' where "res = RNormal \<omega>'" and "\<omega>' \<in> W'"
         by (metis \<open>res \<noteq> RMagic\<close> th_result_rel.cases)                    
 
-      hence "\<omega>' \<in> inhale_perm_single_pred R \<omega> (pred_id, v_args) None"
+      hence "\<omega>' \<in> inhale_perm_single_pred ctxt R \<omega> (pred_id, v_args) None"
         using InhAccPredWildcard \<open>\<omega>' \<in> W'\<close>
         by presburger
-      from this obtain \<omega>'' where "\<omega>'' \<le> \<omega>'" and "\<omega>'' \<in> inhale_perm_single_pred R \<omega>2 (pred_id, v_args) None"
-        using \<open>\<omega>2 \<le> \<omega>\<close>  inhale_perm_single_pred_leq ConsistencyDownwardMono[simplified mono_prop_downward_ord_def]
+      from this obtain \<omega>'' where "\<omega>'' \<le> \<omega>'" and "\<omega>'' \<in> inhale_perm_single_pred ctxt R \<omega>2 (pred_id, v_args) None"
+        using \<open>\<omega>2 \<le> \<omega>\<close> inhale_perm_single_pred_leq ConsistencyDownwardMono[simplified mono_prop_downward_ord_def]
         by metis
       have "red_inhale ctxt R (Atomic (AccPredicate pred_id e_args Wildcard)) \<omega>2 (RNormal \<omega>'')"
-        apply (rule TotalExpressions.InhAccPredWildcard[OF ArgsSuccess])
+        apply (rule TotalInhaleExhale.InhAccPredWildcard[OF ArgsSuccess])
          apply simp
         using \<open>\<omega>'' \<in> _\<close>
         by (auto intro:  THResultNormal_alt)
@@ -1362,21 +1377,20 @@ next
     by simp
   moreover from InhPure have SubConstraint: "no_perm_pure_exp e \<and> no_unfolding_pure_exp e"
     by simp
-  ultimately consider "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
-    by (metis option.discI)
+  ultimately consider "ctxt, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | "ctxt, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
+    by (metis assms eval_no_perm_downwards_mono(1) option.discI)
   thus ?case 
   proof cases
     case 1
     have "red_inhale ctxt R (Atomic (Pure e)) \<omega>2 RFailure"
       apply (rule InhSubExpFailure)
-      using 1
-      by (auto intro!: red_exp_inhale_unfold_intros)
+      by (simp add: "1" RedExpListFailure)+
     thus ?thesis
       by simp          
   next
     case 2
     then show ?thesis 
-      using InhPure.prems(2) red_pure_exp_total_red_pure_exps_total_red_inhale_unfold_rel.InhPure
+      using InhPure.prems(2) TotalInhaleExhale.InhPure
       by force
   qed   
 next
@@ -1393,8 +1407,8 @@ next
       by (simp add: list_all_length)
   qed
   ultimately show ?case 
-    using InhSubExpFailure TotalExpressions.InhSubExpFailure
-    by (metis option.discI)
+    using InhSubExpFailure TotalInhaleExhale.InhSubExpFailure
+    by (metis (no_types, lifting) assms eval_no_perm_downwards_mono(2) option.discI)
 next
   case (InhStarNormal A \<omega> \<omega>'' B res)
   moreover from this have SubAssertionConstraint: "no_perm_assertion A \<and> no_unfolding_assertion A \<and> no_perm_assertion B \<and> no_unfolding_assertion B"
@@ -1424,8 +1438,8 @@ next
     by simp
   moreover from InhImpTrue have SubConstraint: "no_perm_pure_exp e \<and> no_unfolding_pure_exp e \<and> no_perm_assertion A \<and> no_unfolding_assertion A"
     by simp
-  ultimately consider "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
-    by (metis option.discI)
+  ultimately consider "ctxt, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | "ctxt, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+    by (metis assms eval_no_perm_downwards_mono(1) option.distinct(1))
   thus ?case 
   proof cases
     case 1
@@ -1434,7 +1448,7 @@ next
   next
     case 2
     then show ?thesis 
-      using InhImpTrue TotalExpressions.InhImpTrue SubConstraint
+      using InhImpTrue TotalInhaleExhale.InhImpTrue SubConstraint
       by metis
   qed  
 next
@@ -1443,9 +1457,9 @@ next
     by simp
   moreover from InhImpFalse have SubConstraint: "no_perm_pure_exp e \<and> no_unfolding_pure_exp e"
     by simp
-  ultimately consider "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+  ultimately consider "ctxt, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | "ctxt, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
     using InhImpFalse
-    by (metis option.discI)
+    by (metis assms eval_no_perm_downwards_mono(1) option.discI)
   thus ?case 
   proof cases
     case 1
@@ -1463,8 +1477,8 @@ next
     by simp
   moreover from InhCondAssertTrue have SubConstraint: "no_perm_pure_exp e \<and> no_unfolding_pure_exp e \<and> no_perm_assertion A \<and> no_unfolding_assertion A"
     by simp
-  ultimately consider "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
-    by (metis option.discI)
+  ultimately consider "ctxt, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | "ctxt, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+    by (metis assms eval_no_perm_downwards_mono(1) option.discI)
     thus ?case 
   proof cases
     case 1
@@ -1474,7 +1488,7 @@ next
     case 2
     thus ?thesis
       using InhCondAssertTrue 
-      by (metis SubConstraint TotalExpressions.InhCondAssertTrue)
+      by (metis SubConstraint TotalInhaleExhale.InhCondAssertTrue)
   qed
 next
   case (InhCondAssertFalse \<omega> e B res A)
@@ -1482,8 +1496,8 @@ next
     by simp
   moreover from InhCondAssertFalse have SubConstraint: "no_perm_pure_exp e \<and> no_unfolding_pure_exp e \<and> no_perm_assertion B \<and> no_unfolding_assertion B"
     by simp
-  ultimately consider "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | "ctxt, R, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
-    by (metis Some_Some_ifD)
+  ultimately consider "ctxt, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t VFailure" | "ctxt, Some \<omega>2 \<turnstile> \<langle>e; \<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    by (metis assms eval_no_perm_downwards_mono(1) option.discI)
   thus ?case
   proof cases
     case 1
@@ -1493,10 +1507,10 @@ next
     case 2
     thus ?thesis
       using InhCondAssertFalse
-      by (metis SubConstraint TotalExpressions.InhCondAssertFalse)
+      by (metis SubConstraint TotalInhaleExhale.InhCondAssertFalse)
   qed
-qed (rule HOL.TrueI)+
-*)
+qed
+
 
 lemma assertion_framing_state_mono:
   assumes "mono_prop_downward_ord StateCons"
@@ -1504,7 +1518,7 @@ lemma assertion_framing_state_mono:
       and "\<omega>' \<ge> \<omega>"
       and "no_perm_assertion A \<and> no_unfolding_assertion A"
   shows "assertion_framing_state ctxt StateCons A \<omega>'"
-  using assms inhale_no_perm_downwards_mono(3)
+  using assms inhale_no_perm_downwards_mono
   unfolding assertion_framing_state_def
   by blast  
 
@@ -1981,7 +1995,7 @@ next
      apply argo
     apply (thin_tac _)
     apply (simp add: posreal_to_preal preal_to_real)
-    by (smt (z3) Rep_posreal divide_cancel_right divide_divide_eq_right divide_posreal.rep_eq divide_preal.rep_eq divide_preal_def map_fun_apply mem_Collect_eq nonzero_mult_div_cancel_right pperm_pgt_pnone times_preal.rep_eq zero_preal_def)
+    by (metis Rep_posreal mem_Collect_eq pperm_pgt_pnone preal_to_real(12) zero_preal.abs_eq)
 qed (auto elim: red_exhale.cases)+
 
 
