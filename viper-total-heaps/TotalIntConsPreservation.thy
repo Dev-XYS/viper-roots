@@ -118,7 +118,7 @@ proof -
     "\<omega>' \<in> havoc_locs_state ctxt \<omega>_exh locset"
     by (blast elim: RedExhale_case)
   hence "consistent_internal_total_full \<omega>_exh"
-    using assms(1) exhale_normal_result_smaller intcons_mono_prop_downward mono_prop_downward_def
+    using assms(1) exhale_normal_result_smaller intcons_total_full_mono_prop_downward mono_prop_downward_def
     by meson
   thus "consistent_internal_total_full \<omega>'"
     using \<open>\<omega>' \<in> _\<close>

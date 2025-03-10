@@ -473,28 +473,30 @@ lemma intcons_preserved_by_fold_rel:
 
 subsection \<open>Some Basic Properties\<close>
 
-lemma intcons_mono_prop_downward:
-  shows "mono_prop_downward consistent_internal_total_full"
+lemma intcons_total_mono_prop_downward:
+  shows "mono_prop_downward consistent_internal_total"
   unfolding mono_prop_downward_def
 proof standard+
-  fix \<omega>\<^sub>1 \<omega>\<^sub>2 :: "('a,'b) full_total_state_scheme"
-  assume *: "\<omega>\<^sub>2 \<succeq> \<omega>\<^sub>1 \<and> consistent_internal_total_full \<omega>\<^sub>2"
+  fix \<omega>\<^sub>1 \<omega>\<^sub>2 :: "('a,'b) total_state_scheme"
+  assume *: "\<omega>\<^sub>2 \<succeq> \<omega>\<^sub>1 \<and> consistent_internal_total \<omega>\<^sub>2"
   then obtain \<omega>' where "Some \<omega>\<^sub>2 = \<omega>\<^sub>1 \<oplus> \<omega>'"
     by (metis greater_def)
-  have diff: "get_nm_total_full \<omega>\<^sub>1 + get_nm_total_full \<omega>' = get_nm_total_full \<omega>\<^sub>2"
-    using Some_Some_ifD[OF \<open>Some \<omega>\<^sub>2 = _\<close>[unfolded plus_full_total_state_ext_def]]
+  have diff: "get_nm_total \<omega>\<^sub>1 + get_nm_total \<omega>' = get_nm_total \<omega>\<^sub>2"
+    using Some_Some_ifD[OF \<open>Some \<omega>\<^sub>2 = _\<close>[unfolded plus_total_state_ext_def]]
     unfolding defined_def not_None_eq
-    by (metis Some_Some_ifD \<open>Some \<omega>\<^sub>2 = \<omega>\<^sub>1 \<oplus> \<omega>'\<close> get_nm_total_full.simps option.sel plus_Some_full_total_state_total_state plus_total_state_ext_def total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
-  hence "get_nm_total_full \<omega>\<^sub>1 \<le> get_nm_total_full \<omega>\<^sub>2"
+    by (metis \<open>Some \<omega>\<^sub>2 = \<omega>\<^sub>1 \<oplus> \<omega>'\<close> option.sel plus_total_state_ext_def total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
+  hence "get_nm_total \<omega>\<^sub>1 \<le> get_nm_total \<omega>\<^sub>2"
     by (metis nm_sum_is_bigger)
-  thus "consistent_internal_total_full \<omega>\<^sub>1"
-    unfolding consistent_internal_total_full_def
-    apply (intro conjI)
-     defer
-     apply (metis * consistent_internal_total_full_def full_total_state_greater_only_mask_changed)
+  thus "consistent_internal_total \<omega>\<^sub>1"
     unfolding consistent_internal_total_def consistent_internal_def
-    by (metis * consistent_internal_def consistent_internal_total_def consistent_internal_total_full_def dual_order.trans get_nm_total_full.simps nm_loc_sum_smaller)
+    by (metis * consistent_internal_def consistent_internal_total_def dual_order.trans nm_loc_sum_smaller)
 qed
+
+
+lemma intcons_total_full_mono_prop_downward:
+  shows "mono_prop_downward consistent_internal_total_full"
+  unfolding mono_prop_downward_def
+  by (metis consistent_internal_total_full_def full_total_state_greater_only_mask_changed greater_full_total_state_total_state intcons_total_mono_prop_downward mono_prop_downwardD)
 
 
 lemma intcons_empty:
