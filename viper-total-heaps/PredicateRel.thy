@@ -5,9 +5,23 @@ begin
 
 subsection \<open>Inhale\<close>
 
+definition pred_ty_correct_premise where
+  "pred_ty_correct_premise ctxt pred_id vs \<equiv>
+     \<exists>pred_decl. program.predicates (program_total ctxt) pred_id = Some pred_decl \<and>
+                 vals_well_typed (absval_interp_total ctxt) vs (predicate_decl.args pred_decl)"
+
+
+lemma inhale_pred_non_empty_implies_well_typed:
+  assumes "inhale_perm_single_pred ctxt StateCons \<omega> (pid,vs) p_opt \<noteq> {}"
+  shows "pred_ty_correct_premise ctxt pid vs"
+  using assms[unfolded inhale_perm_single_pred_def]
+  unfolding pred_ty_correct_premise_def consistent_external_wrt_ploc.simps
+  by fastforce
+
+
 definition inhale_pred_normal_premise
-  where "inhale_pred_normal_premise ctxt StateCons pred_id ty_args e_args e_p vs p \<omega> \<omega>' \<equiv>
-       \<comment> \<open>vals_well_typed (absval_interp_total ctxt) vs ty_args \<and>\<close>
+  where "inhale_pred_normal_premise ctxt StateCons pred_id e_args e_p vs p \<omega> \<omega>' \<equiv>
+       pred_ty_correct_premise ctxt pred_id vs \<and>
        red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some vs) \<and>
        ctxt, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and>
        p \<ge> 0 \<and>
@@ -18,12 +32,14 @@ definition inhale_pred_normal_premise
 lemma inhale_predicate_acc_rel:
   assumes WfSubexp: "exprs_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega> ns \<and> \<omega>def = \<omega> \<and> Q (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega>) 
                        ctxt_vpr StateCons P ctxt (e_args @ [e_p]) \<gamma> \<gamma>2"
-      and PosPermRel: "\<And>p. rel_general R (R' p)
-                         (\<lambda> \<omega> \<omega>'. \<omega> = \<omega>' \<and> (ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VPerm p)) \<and> p \<ge> 0))
+      and PosPermRel: "\<And>vs p. rel_general R (R' vs p)
+                         (\<lambda> \<omega> \<omega>'. \<omega> = \<omega>' \<and> (ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VPerm p)) \<and> p \<ge> 0) \<and>
+                                  red_pure_exps_total ctxt_vpr (Some \<omega>) e_args \<omega> (Some vs) \<and>
+                                  pred_ty_correct_premise ctxt_vpr pred_id vs)
                          (\<lambda> \<omega>. (ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VPerm p)) \<and> p < 0))
                          P ctxt \<gamma>2 \<gamma>3"
-      and UpdInhRel: "\<And>vs p. rel_general (R' p) R \<comment>\<open>Here, the simulation needs to revert back to R\<close>
-                         (inhale_pred_normal_premise ctxt_vpr StateCons pred_id tys_args e_args e_p vs p)
+      and UpdInhRel: "\<And>vs p. rel_general (R' vs p) R \<comment>\<open>Here, the simulation needs to revert back to R\<close>
+                         (inhale_pred_normal_premise ctxt_vpr StateCons pred_id e_args e_p vs p)
                          (\<lambda> \<omega>. False) P ctxt \<gamma>3 \<gamma>'" 
     shows "inhale_rel R Q ctxt_vpr StateCons P ctxt (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<gamma> \<gamma>'"
 proof (rule inhale_rel_intro_2)
@@ -52,12 +68,13 @@ proof (rule inhale_rel_intro_2)
       by blast+
 
     with InhAccPred and \<open>res = _\<close>
-    have InhNormalPremise: "inhale_pred_normal_premise ctxt_vpr StateCons pred_id tys_args e_args e_p v_args p \<omega> \<omega>'"
+    have InhNormalPremise: "inhale_pred_normal_premise ctxt_vpr StateCons pred_id e_args e_p v_args p \<omega> \<omega>'"
       unfolding inhale_pred_normal_premise_def
-      by presburger
+      by (simp add: inhale_pred_non_empty_implies_well_typed)
 
-    from InhAccPred \<open>0 \<le> p\<close> obtain ns3 where "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>3, Normal ns3)" and "R' p \<omega> ns3"
+    from InhAccPred \<open>0 \<le> p\<close> obtain ns3 where "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>3, Normal ns3)" and "R' v_args p \<omega> ns3"
       using rel_success_elim[OF PosPermRel \<open>R \<omega> ns2\<close>] Red2 red_ast_bpl_transitive
+            \<open>W' \<noteq> {}\<close> inhale_pred_non_empty_implies_well_typed
       by blast
 
     thus "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R \<omega>' ns'"
@@ -115,14 +132,13 @@ lemma inhale_rel_pred_acc_upd_rel:
     PredFunInterp: "fun_interp ctxt ''P'' = Some (lift_fun_bpl (vbpl_absval_ty TyRep) (0, [TConSingle (TRefId TyRep)], TCon (TFieldId TyRep) [TCon ''PredicateType_P'' [], TPrim TBool]) predicate_loc_P)" and
     PredName: "pred_id = ''P''" and
     PredLookup: "ViperLang.predicates (program_total ctxt_vpr) pred_id = Some pdecl" and
-    PredTyArgsLookup: "predicate_decl.args pdecl = ty_args" and
-    PredTyArgs: "ty_args = [TRef]" and
+    PredTyArgsLookup: "predicate_decl.args pdecl = [TRef]" and
     AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep" and
     ProgEq: "program_total ctxt_vpr = Pr"
 
   shows "rel_general R
            (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt)
-           (\<lambda> \<omega> \<omega>'. inhale_pred_normal_premise ctxt_vpr StateCons pred_id ty_args [e_arg_vpr] e_p_vpr vs p \<omega> \<omega>')
+           (\<lambda> \<omega> \<omega>'. inhale_pred_normal_premise ctxt_vpr StateCons pred_id [e_arg_vpr] e_p_vpr vs p \<omega> \<omega>')
            (\<lambda> \<omega>. False) P ctxt
            (BigBlock name ((Assign m_bpl m_upd_bpl) # cs) str tr, cont)
            (BigBlock name cs str tr, cont)"
@@ -133,7 +149,7 @@ lemma inhale_rel_pred_acc_upd_rel:
 proof -
   fix \<omega> ns \<omega>'
   assume "R \<omega> ns"
-     and *: "inhale_pred_normal_premise ctxt_vpr StateCons pred_id ty_args [e_arg_vpr] e_p_vpr vs p \<omega> \<omega>'"
+     and *: "inhale_pred_normal_premise ctxt_vpr StateCons pred_id [e_arg_vpr] e_p_vpr vs p \<omega> \<omega>'"
 
   hence InitRel: "state_rel_def_same Pr StateCons TyRep Tr
                                      (AuxPred(temp_perm \<mapsto> pred_eq (RealV p))) ctxt \<omega> ns"
@@ -148,7 +164,7 @@ proof -
     by (metis One_nat_def add.right_neutral add_Suc_right inhale_pred_normal_premise_def list.size(3) list.size(4) red_pure_exps_total_Some_lengthD)
   then obtain arg where "vs = [arg]"
     by (metis One_nat_def Suc_le_eq impossible_Cons length_greater_0_conv list.exhaust list.size(3) n_not_Suc_n)
-  with * have 1: "inhale_pred_normal_premise ctxt_vpr StateCons pred_id ty_args [e_arg_vpr] e_p_vpr [arg] p \<omega> \<omega>'"
+  with * have 1: "inhale_pred_normal_premise ctxt_vpr StateCons pred_id [e_arg_vpr] e_p_vpr [arg] p \<omega> \<omega>'"
     by fast
 
   let ?ploc = "(pred_id,[arg])"
@@ -227,8 +243,9 @@ proof -
     by (metis 1 InitRel inhale_pred_normal_premise_def list.simps(3) nth_Cons_0 red_exp_list_normal_elim)
 
   have e_arg_type: "get_type (absval_interp_total ctxt_vpr) arg = TRef"
-    using 1[simplified inhale_pred_normal_premise_def vals_well_typed_def PredTyArgs]
-    by blast
+    using 1[simplified inhale_pred_normal_premise_def vals_well_typed_def, unfolded pred_ty_correct_premise_def vals_well_typed_def]
+          PredTyArgsLookup PredLookup
+    by auto
   then obtain arg_bpl where arg_bpl: "val_rel_vpr_bpl arg = AbsV (ARef arg_bpl)"
     by (metis has_type_get_type has_type_simps(8) val_rel_vpr_bpl.simps(3))
 
