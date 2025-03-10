@@ -7,7 +7,7 @@ subsection \<open>Inhale\<close>
 
 definition inhale_pred_normal_premise
   where "inhale_pred_normal_premise ctxt StateCons pred_id ty_args e_args e_p vs p \<omega> \<omega>' \<equiv>
-       vals_well_typed (absval_interp_total ctxt) vs ty_args \<and>
+       \<comment> \<open>vals_well_typed (absval_interp_total ctxt) vs ty_args \<and>\<close>
        red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some vs) \<and>
        ctxt, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and>
        p \<ge> 0 \<and>
@@ -26,12 +26,63 @@ lemma inhale_predicate_acc_rel:
                          (inhale_pred_normal_premise ctxt_vpr StateCons pred_id tys_args e_args e_p vs p)
                          (\<lambda> \<omega>. False) P ctxt \<gamma>3 \<gamma>'" 
     shows "inhale_rel R Q ctxt_vpr StateCons P ctxt (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<gamma> \<gamma>'"
-  sorry
+proof (rule inhale_rel_intro_2)
+  fix \<omega> ns res
+  assume "R \<omega> ns" and "Q (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega>"
+  hence Rext0: "state_rel_ext R \<omega> \<omega> ns"
+    by simp
+  assume RedInh: "red_inhale ctxt_vpr StateCons (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega> res"
+  thus "rel_vpr_aux R P ctxt \<gamma> \<gamma>' ns res"
+  proof (cases)
+    case (InhAccPred v_args p W')
 
+    hence "red_pure_exps_total ctxt_vpr (Some \<omega>) (e_args @ [e_p]) \<omega> (Some (v_args @ [VPerm p]))"
+      by (simp add: red_pure_exps_append_success)
+    then obtain ns2 where "R \<omega> ns2" and Red2: "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>2, Normal ns2)"
+      using InhAcc exprs_wf_rel_normal_elim[OF WfSubexp] Rext0 \<open>Q _ \<omega>\<close>
+      by blast
 
-lemma add_to_lpm_nonzero_total_full__mp:
-  shows "get_mp_total_full (add_to_lpm_nonzero_total_full nm lp p \<phi>) = (get_mp_total_full nm)(lp := get_mp_total_full nm lp + Rep_posreal p)"
-  sorry
+    show ?thesis
+    proof (rule rel_vpr_aux_intro)
+      \<comment>\<open>Normal case\<close>
+      fix \<omega>'
+      assume "res = RNormal \<omega>'"
+      hence "0 \<le> p" and "W' \<noteq> {}" and "\<omega>' \<in> W'"
+      using th_result_rel_normal InhAccPred
+      by blast+
+
+    with InhAccPred and \<open>res = _\<close>
+    have InhNormalPremise: "inhale_pred_normal_premise ctxt_vpr StateCons pred_id tys_args e_args e_p v_args p \<omega> \<omega>'"
+      unfolding inhale_pred_normal_premise_def
+      by presburger
+
+    from InhAccPred \<open>0 \<le> p\<close> obtain ns3 where "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>3, Normal ns3)" and "R' p \<omega> ns3"
+      using rel_success_elim[OF PosPermRel \<open>R \<omega> ns2\<close>] Red2 red_ast_bpl_transitive
+      by blast
+
+    thus "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R \<omega>' ns'"
+      using rel_success_elim[OF UpdInhRel _ InhNormalPremise] RedInh \<open>res = _\<close> red_ast_bpl_transitive
+      by blast
+
+    next
+      \<comment>\<open>Failure case\<close>
+      assume "res = RFailure"
+      hence "p < 0"
+        using th_result_rel_failure_2 InhAccPred
+        by fastforce
+
+      with InhAccPred show "\<exists>c'. red_ast_bpl P ctxt (\<gamma>, Normal ns) c' \<and> snd c' = Failure"
+        using rel_failure_elim[OF PosPermRel \<open>R \<omega> ns2\<close>] Red2 red_ast_bpl_transitive
+        by blast
+    qed
+  next
+    case InhSubExpFailure
+    thus ?thesis
+      unfolding rel_vpr_aux_def
+      using exprs_wf_rel_failure_elim[OF WfSubexp] \<open>R \<omega> ns\<close> \<open>Q _ \<omega>\<close>
+      by simp
+  qed
+qed
 
 
 lemma inhale_rel_pred_acc_upd_rel:

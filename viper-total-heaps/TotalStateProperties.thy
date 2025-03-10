@@ -328,6 +328,14 @@ lemma mult_nm_loc_total_full_mp_eq:
   by simp
 *)
 
+lemma add_to_lpm_nonzero_total_full__mp:
+  shows "get_mp_total_full (add_to_lpm_nonzero_total_full \<omega> lp p \<phi>) = (get_mp_total_full \<omega>)(lp := get_mp_total_full \<omega> lp + Rep_posreal p)"
+  apply (rule ext)
+  apply (rename_tac l)
+  apply (cases "get_fnm_total_full \<omega> lp"; simp)
+  using plus_posreal.rep_eq
+  by presburger
+
 
 subsection \<open>Lemmas on Mask Diff\<close>
 

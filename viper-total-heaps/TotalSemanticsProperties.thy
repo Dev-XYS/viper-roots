@@ -745,6 +745,23 @@ lemma eval_exhale_sat_helper:
   by fastforce+
 
 
+lemma red_pure_exps_append_success:
+  assumes "red_pure_exps_total ctxt \<omega>_def es \<omega> (Some rs)"
+      and "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v)"
+    shows "red_pure_exps_total ctxt \<omega>_def (es @ [e]) \<omega> (Some (rs @ [v]))"
+  using assms(1)
+proof (induction es)
+  case Nil
+  then show ?case
+    using assms(2) red_exp_list_failure_Nil red_pure_exp_total_red_pure_exps_total.RedExpListCons
+    by fastforce
+next
+  case (Cons a es)
+  then show ?case
+    by (metis assms(2) list.rel_intros(2) list_all2_Nil list_all2_appendI list_all2_red_pure_exps_total red_pure_exps_total_list_all2)
+qed
+
+
 subsection \<open>Relation between exhale and sat\<close>
 
 lemma exhale_mh_diff:
