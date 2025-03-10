@@ -1223,6 +1223,22 @@ lemma obtain_lpm_from_mp:
   by force
 
 
+lemma mh_mp_zero_implies_nm_zero:
+  assumes "get_mh_nm nm = zero_mask"
+      and "get_mp_nm nm = zero_mask"
+    shows "nm = 0"
+  unfolding zero_nested_mask_def
+  apply (rule nested_mask_equality)
+   apply (simp add: assms(1))
+  apply simp
+  apply (rule ext)
+  apply (rename_tac l)
+  apply (cut_tac ?x=l in assms(2)[THEN fun_cong])
+  apply (case_tac "get_fnm_nm nm l"; simp add: zero_mask_def)
+  using Rep_posreal pperm_pgt_pnone
+  by auto
+
+
 subsection \<open>valid mask (TODO: move to ViperLang?)\<close>
 
 abbreviation valid_heap_mask :: "preal mask \<Rightarrow> bool"

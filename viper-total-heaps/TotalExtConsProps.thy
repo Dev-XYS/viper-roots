@@ -1879,4 +1879,11 @@ next
 qed
 
 
+lemma sat_synmult_zero_is_empty:
+  assumes "sat ctxt \<omega> mh mp (syntactic_mult 0 A)"
+    shows "mh = zero_mask \<and> mp = zero_mask"
+  using assms
+  by (induction A, auto elim: sat.cases simp: synmult_0_mh_0 synmult_0_mp_0)
+
+
 end

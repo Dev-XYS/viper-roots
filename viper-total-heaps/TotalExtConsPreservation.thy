@@ -42,6 +42,7 @@ proof -
     by (metis (mono_tags, lifting) \<open>nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1\<close> \<open>nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2\<close> assms(2) assms(3) assms(4) combine_options_simps(3) get_fnm_nm.simps option.sel pfun_comb_def plus_nested_mask_def fst_conv)
 qed
 
+
 lemma nm_plus_lpm_plus_Some_None:
   assumes "nm\<^sub>1 + nm\<^sub>2 = nm"
       and "get_fnm_nm nm\<^sub>1 lp = Some (p\<^sub>1, nm'\<^sub>1)"
@@ -52,6 +53,7 @@ lemma nm_plus_lpm_plus_Some_None:
   apply (cases nm\<^sub>1, cases nm\<^sub>2)
   using assms(2,3)
   by (simp add: pfun_comb_def)
+
 
 lemma exhale_pred_body_part_extcons_wrt_ploc:
   assumes "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
@@ -84,8 +86,8 @@ proof -
           prat_non_negative total_state.surjective total_state.update_convs(2)
     by fastforce
 
-  show "p = 0 \<Longrightarrow> get_nm_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) = 0"
-    sorry
+  thus "p = 0 \<Longrightarrow> get_nm_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) = 0"
+    by (simp add: mh_mp_zero_implies_nm_zero synmult_0_mh_0 synmult_0_mp_0 zero_preal.rep_eq)
 next
   show "consistent_external ctxt (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>)"
   proof
@@ -357,8 +359,8 @@ lemma extcons_preserved_by_changing_0_locs':
   apply (rule consistent_external_wrt_ploc_consistent_external.induct)
    apply (standard, standard, standard)
         apply fast+
-     apply (smt (verit) assms ctxt_pred_self_framing_def differ_only_in_0_perm_locs_def full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps get_mh_total.simps get_mp_total.simps preal_not_0_gt_0 pred_self_framing_subst sum_0_implies_mh_zero total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
-  subgoal sorry
+     apply (metis differ_only_in_0_perm_locs_def)
+    apply (smt (verit) assms ctxt_pred_self_framing_def differ_only_in_0_perm_locs_def full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps get_mh_total.simps get_mp_total.simps preal_not_0_gt_0 pred_self_framing_subst sum_0_implies_mh_zero total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
    apply blast
 proof (standard, intro impI)
   fix \<phi> \<phi>' :: "'a total_state"
@@ -847,13 +849,16 @@ qed
 
 lemma plus_diff_full_total_state_upd_aux_2:
   assumes "\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'"
-      and "\<omega>' = exhale_pred \<omega> lp p"
-      and "get_mp_total_full \<omega> lp \<ge> p"
+      and "\<omega>' = exhale_pred \<omega> (pid,vs) p"
+      and "get_mp_total_full \<omega> (pid,vs) \<ge> p"
       and "consistent_external ctxt (get_total_full \<omega>)"
       and "ctxt_wf_pred ctxt"
-    shows "\<exists>\<phi>_inh. consistent_external_wrt_ploc ctxt \<phi>_inh lp p \<and>
+      and "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
+      and "vals_well_typed (absval_interp_total ctxt) vs (ViperLang.predicate_decl.args pdecl)"
+      and "predicate_decl.body pdecl = Some pbody"
+    shows "\<exists>\<phi>_inh. consistent_external_wrt_ploc ctxt \<phi>_inh (pid,vs) p \<and>
                    get_hh_total \<phi>_inh = get_hh_total_full \<omega>_inh \<and>
-                   \<omega>_inh' = (if p = 0 then \<omega>_inh else add_to_lpm_nonzero_total_full \<omega>_inh lp (Abs_posreal p) (get_nm_total \<phi>_inh))"
+                   \<omega>_inh' = (if p = 0 then \<omega>_inh else add_to_lpm_nonzero_total_full \<omega>_inh (pid,vs) (Abs_posreal p) (get_nm_total \<phi>_inh))"
 proof (cases "p = 0")
   case True
   have "\<omega> = \<omega>'"
@@ -864,29 +869,32 @@ proof (cases "p = 0")
     apply (rule nested_mask_equality; simp)
     apply (rule ext)
     apply (rename_tac l)
-    apply (cases "get_fnm_total_full \<omega> lp"; simp)
+    apply (cases "get_fnm_total_full \<omega> (pid,vs)"; simp)
     unfolding \<open>p = 0\<close>
     by (metis Rep_posreal Rep_posreal_inverse Rep_preal_inverse add.right_neutral all_pos divide_eq_0_iff divide_preal.rep_eq greater_minus_plus linorder_not_less mem_Collect_eq preal_semimodule_class.scale_one prod.collapse zero_preal.rep_eq)
   hence "\<omega>_inh = \<omega>_inh'"
     by (metis assms(1) full_total_state_defined_core_same_2 option.sel plus_minus_empty)
   show ?thesis
     apply (rule exI[of _ "\<lparr> get_hh_total = get_hh_total_full \<omega>_inh, get_nm_total = 0 \<rparr>"])
-    using \<open>p = 0\<close>
-    sorry
+    unfolding \<open>p = 0\<close>
+    apply simp
+    apply (intro conjI)
+     apply (simp add: assms(6) assms(7) assms(8) consistent_external_wrt_ploc_consistent_external.intros(1) empty_consistent_external)
+    by (simp add: \<open>\<omega>_inh = \<omega>_inh'\<close>)
 next
   case False
   hence "p > 0"
     using preal_not_0_gt_0
     by blast
 
-  then obtain nm where lpm: "Some (Abs_posreal (get_mp_total_full \<omega> lp),nm) = get_fnm_total_full \<omega> lp"
+  then obtain nm where lpm: "Some (Abs_posreal (get_mp_total_full \<omega> (pid,vs)),nm) = get_fnm_total_full \<omega> (pid,vs)"
     by (metis assms(3) get_fnm_total.simps get_fnm_total_full.simps get_mp_total.simps get_mp_total_full.simps obtain_lpm_from_mp order_less_le_trans)
 
   have "\<omega>_inh' = upd_nm_total_full \<omega>_inh (get_nm_total_full \<omega>_inh + get_nm_total_full (\<omega> \<ominus> \<omega>'))"
     using assms(1) plus_Some_full_total_state_eq
     by blast
 
-  let ?nm = "NM (\<lambda>_. 0) (\<lambda>l. if l = lp then Some (Abs_posreal p, (p / get_mp_total_full \<omega> lp) *\<^sub>s nm) else None)"
+  let ?nm = "NM (\<lambda>_. 0) (\<lambda>l. if l = (pid,vs) then Some (Abs_posreal p, (p / get_mp_total_full \<omega> (pid,vs)) *\<^sub>s nm) else None)"
 
   have "get_nm_total_full \<omega>' + ?nm = get_nm_total_full \<omega>"
     unfolding \<open>\<omega>' = _\<close>
@@ -897,13 +905,13 @@ next
     apply (intro conjI; rule ext)
      apply (simp add: add_masks_def)
     apply (rename_tac l)
-    apply (case_tac "l = lp")
-     apply (case_tac "fnm lp"; simp add: pfun_comb_def)
-    using \<open>Some (Abs_posreal (get_mp_total_full \<omega> lp), nm) = get_fnm_total_full \<omega> lp\<close>
+    apply (case_tac "l = (pid,vs)")
+     apply (case_tac "fnm (pid,vs)"; simp add: pfun_comb_def)
+    using \<open>Some (Abs_posreal (get_mp_total_full \<omega> (pid,vs)), nm) = get_fnm_total_full \<omega> (pid,vs)\<close>
       apply auto[1]
      apply (intro impI | intro conjI)+
-      apply (metis Abs_posreal_inverse PosReal.field_divide_inverse PosReal.field_inverse \<open>Some (Abs_posreal (get_mp_total_full \<omega> lp), nm) = get_fnm_total_full \<omega> lp\<close> \<open>pos_perm_class.pnone < p\<close> assms(3) dual_order.order_iff_strict get_fnm_nm.simps get_fnm_total.simps get_fnm_total_full.simps leD mem_Collect_eq mult.commute option.sel order.strict_trans2 preal_semimodule_class.scale_one split_pairs)
-     apply (smt (verit, del_insts) Abs_posreal_inverse Rep_posreal_inject \<open>Some (Abs_posreal (get_mp_total_full \<omega> lp), nm) = get_fnm_total_full \<omega> lp\<close> \<open>pos_perm_class.pnone < p\<close> divide_preal.rep_eq get_fnm_nm.simps get_fnm_total.simps get_fnm_total_full.simps greater_minus_plus le_divide_eq_1 less_eq_preal.rep_eq mem_Collect_eq minus_preal.abs_eq one_preal.rep_eq option.sel plus_nested_mask_def plus_posreal.rep_eq positive_real_preal prat_non_negative preal_not_0_gt_0 preal_semimodule_class.scale_one scale_add_left split_pairs)
+      apply (metis Abs_posreal_inverse PosReal.field_divide_inverse PosReal.field_inverse \<open>Some (Abs_posreal (get_mp_total_full \<omega> (pid,vs)), nm) = get_fnm_total_full \<omega> (pid,vs)\<close> \<open>pos_perm_class.pnone < p\<close> assms(3) dual_order.order_iff_strict get_fnm_nm.simps get_fnm_total.simps get_fnm_total_full.simps leD mem_Collect_eq mult.commute option.sel order.strict_trans2 preal_semimodule_class.scale_one split_pairs)
+     apply (smt (verit, del_insts) Abs_posreal_inverse Rep_posreal_inject \<open>Some (Abs_posreal (get_mp_total_full \<omega> (pid,vs)), nm) = get_fnm_total_full \<omega> (pid,vs)\<close> \<open>pos_perm_class.pnone < p\<close> divide_preal.rep_eq get_fnm_nm.simps get_fnm_total.simps get_fnm_total_full.simps greater_minus_plus le_divide_eq_1 less_eq_preal.rep_eq mem_Collect_eq minus_preal.abs_eq one_preal.rep_eq option.sel plus_nested_mask_def plus_posreal.rep_eq positive_real_preal prat_non_negative preal_not_0_gt_0 preal_semimodule_class.scale_one scale_add_left split_pairs)
     by (simp add: pfun_comb_def)
   have "Some (get_total_full \<omega>) = get_total_full \<omega>' \<oplus> upd_nm_total (get_total_full \<omega>) ?nm"
     unfolding plus_total_state_ext_def
@@ -940,19 +948,16 @@ next
   hence "get_nm_total_full (\<omega> \<ominus> \<omega>') = ?nm"
     by auto
 
-  let ?\<phi> = "get_total_full \<omega>_inh\<lparr> get_nm_total := (p / get_mp_total_full \<omega> lp) *\<^sub>s nm \<rparr>"
+  let ?\<phi> = "get_total_full \<omega>_inh\<lparr> get_nm_total := (p / get_mp_total_full \<omega> (pid,vs)) *\<^sub>s nm \<rparr>"
 
-  have nm_extcons: "consistent_external_wrt_ploc ctxt (get_total_full \<omega>\<lparr> get_nm_total := nm \<rparr>) lp (get_mp_total_full \<omega> lp)"
+  have nm_extcons: "consistent_external_wrt_ploc ctxt (get_total_full \<omega>\<lparr> get_nm_total := nm \<rparr>) (pid,vs) (get_mp_total_full \<omega> (pid,vs))"
     using SatAll_case[OF assms(4)] lpm
     by (metis Abs_posreal_inverse False all_pos assms(3) get_fnm_total.simps get_fnm_total_full.simps mem_Collect_eq order_antisym_conv pperm_pnone_pgt surj_pair)
-  obtain pid vs where "lp = (pid,vs)"
-    by fastforce
   have *: "get_total_full \<omega>\<lparr> get_nm_total := nm \<rparr> = get_total_full \<omega>_inh\<lparr> get_nm_total := nm \<rparr>"
     apply (rule total_state.equality; simp)
     using assms(1) minus_full_total_state_only_mask_different_2 by fastforce
-  have "consistent_external_wrt_ploc ctxt ?\<phi> lp p"
-    using fraction_consistent_external(1)[OF assms(5) nm_extcons[unfolded \<open>lp = _\<close> *], where ?frac="p / get_mp_total_full \<omega> lp"]
-    unfolding \<open>lp = _\<close>[symmetric]
+  have "consistent_external_wrt_ploc ctxt ?\<phi> (pid,vs) p"
+    using fraction_consistent_external(1)[OF assms(5) nm_extcons[unfolded *], where ?frac="p / get_mp_total_full \<omega> (pid,vs)"]
     apply (simp del: get_mp_total_full.simps)
     by (metis False PosReal.field_divide_inverse PosReal.field_inverse all_pos assms(3) mult.left_commute mult.right_neutral order_antisym_conv)
 
@@ -960,7 +965,7 @@ next
     apply (rule exI[of _ ?\<phi>])
     unfolding \<open>\<omega>_inh' = _\<close> \<open>get_nm_total_full (\<omega> \<ominus> \<omega>') = _\<close>
     apply (intro conjI)
-    using \<open>consistent_external_wrt_ploc ctxt ?\<phi> lp p\<close>
+    using \<open>consistent_external_wrt_ploc ctxt ?\<phi> (pid,vs) p\<close>
       apply blast
      apply simp
     apply (simp add: \<open>p \<noteq> 0\<close>)
@@ -969,8 +974,8 @@ next
     apply (rule nested_mask_equality; simp)
      apply (rule ext, simp add: add_masks_def)
     apply (rule ext, rename_tac l)
-    apply (case_tac "l = lp"; simp; cases "get_nm_total_full \<omega>_inh"; rename_tac mh fnm; simp)
-     apply (case_tac "fnm lp"; simp add: plus_nested_mask_def pfun_comb_def)
+    apply (case_tac "l = (pid,vs)"; simp; cases "get_nm_total_full \<omega>_inh"; rename_tac mh fnm; simp)
+     apply (case_tac "fnm (pid,vs)"; simp add: plus_nested_mask_def pfun_comb_def)
     apply (simp add: plus_nested_mask_def pfun_comb_def)
     done
 qed
@@ -1151,7 +1156,7 @@ next
       by auto
   qed
 next
-  case (ExhAccPred mp \<omega> e_args v_args e_p p pred_id)
+  case (ExhAccPred mp \<omega> e_args v_args e_p p pred_id pred_decl)
   let ?A = "AccPredicate pred_id e_args (PureExp e_p)"
   note AssertionFramed = \<open>assertion_framing_state ctxt StateCons (Atomic ?A) \<omega>_inh\<close>
 
@@ -1207,6 +1212,7 @@ next
        get_hh_total \<phi>_inh = get_hh_total_full \<omega>_inh \<and>
        \<omega>_inh' = (if Abs_preal p = 0 then \<omega>_inh else add_to_lpm_nonzero_total_full \<omega>_inh ?loc (Abs_posreal (Abs_preal p)) (get_nm_total \<phi>_inh))"
       using plus_diff_full_total_state_upd_aux_2[OF ExhAccPred(11) \<open>\<omega>' = _\<close> PermConditions[THEN conjunct2, unfolded \<open>mp = _\<close>] ExhAccPred(13,14)]
+      using ExhAccPred.hyps(4) ExhAccPred.hyps(5) ExhAccPred.hyps(6)
       by blast
 
     have "\<omega>_inh' \<in> ?W"
@@ -1269,6 +1275,7 @@ next
        get_hh_total \<phi>_inh = get_hh_total_full \<omega>_inh \<and>
        \<omega>_inh' = (if q = 0 then \<omega>_inh else add_to_lpm_nonzero_total_full \<omega>_inh ?loc (Abs_posreal q) (get_nm_total \<phi>_inh))"
       using plus_diff_full_total_state_upd_aux_2[OF ExhAccPredWildcard(11) \<open>\<omega>' = _\<close> \<open>mp ?loc \<ge> q\<close>[unfolded \<open>mp = _\<close>] ExhAccPredWildcard(13,14)]
+      using ExhAccPredWildcard.hyps(4) ExhAccPredWildcard.hyps(5) ExhAccPredWildcard.hyps(6)
       by blast
 
     from ExhAccPredWildcard have "StateCons \<omega>_inh'"

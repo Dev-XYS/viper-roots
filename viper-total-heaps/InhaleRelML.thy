@@ -249,7 +249,6 @@ ML \<open>
        Needs a better way to formulate this. *)
     (Rmsg' "inh pred acc upd ty interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac [ (#vpr_prog_def_thm info) ] ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd ty interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd absinterpeq" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd progeq" (resolve_tac ctxt [#vpr_program_ctxt_eq_thm info]) ctxt) (* THEN'
