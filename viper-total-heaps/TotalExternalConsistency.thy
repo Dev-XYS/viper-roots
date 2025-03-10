@@ -56,7 +56,8 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
      mh = zero_mask;
      mp = singleton_mp (pred_id,v_args) (Abs_preal p);
      ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl)
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl);
+     predicate_decl.body pred_decl = Some pred_body
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
 
@@ -65,7 +66,8 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
      mh = zero_mask;
      is_singleton_mp (pred_id,v_args) mp;
      ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl)
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl);
+     predicate_decl.body pred_decl = Some pred_body
    \<rbrakk> \<Longrightarrow>
    sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
 
@@ -135,7 +137,8 @@ inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a tot
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
      vals_well_typed (absval_interp_total ctxt) vs (ViperLang.predicate_decl.args pred_decl);
      ViperLang.predicate_decl.body pred_decl = Some pred_body;
-     sat ctxt
+     p = 0 \<Longrightarrow> get_nm_total \<phi> = 0;
+     p > 0 \<Longrightarrow> sat ctxt
          \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
          (get_mh_total \<phi>) (get_mp_total \<phi>)
          (syntactic_mult (Rep_preal p) pred_body);

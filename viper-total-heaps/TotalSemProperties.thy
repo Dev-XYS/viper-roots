@@ -737,7 +737,7 @@ proof
   from this obtain p \<phi>_inh where
     "\<omega>1' = (if p = 0 then \<omega>1 else add_to_lpm_nonzero_total_full \<omega>1 lh (Abs_posreal p) (get_nm_total \<phi>_inh))" and
     PermConstraint: "option_fold ((=) p) (p \<noteq> 0) p_opt" and
-    "p > 0 \<longrightarrow> consistent_external_wrt_ploc ctxt \<phi>_inh lh p" and
+    "consistent_external_wrt_ploc ctxt \<phi>_inh lh p" and
     "get_hh_total \<phi>_inh = get_hh_total_full \<omega>1" and
     "R \<omega>1'"
     unfolding inhale_perm_single_pred_def

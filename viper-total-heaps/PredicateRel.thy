@@ -600,8 +600,21 @@ next
      apply blast
     by (metis Rep_posreal_inverse fstI order_less_irrefl surj_pair)
 
-  have nm_pred_extcons: "p > 0 \<Longrightarrow> consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = hh, get_nm_total = nm_pred \<rparr> (pred_id,v_args) (Abs_preal p)"
-    by (metis IH.prems(3) SatAll_case \<open>get_mp_nm nm (pred_id, v_args) = Abs_preal p\<close> comp_apply get_mp_nm.simps old.prod.inject option_fold.simps(1) p_nonzero prod.collapse total_state.select_convs(2) total_state.update_convs(2))
+  have nm_pred_extcons: "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = hh, get_nm_total = nm_pred \<rparr> (pred_id,v_args) (Abs_preal p)"
+    apply (cases "p > 0")
+     apply (metis IH.prems(3) SatAll_case \<open>get_mp_nm nm (pred_id, v_args) = Abs_preal p\<close> comp_apply get_mp_nm.simps old.prod.inject option_fold.simps(1) p_nonzero prod.collapse total_state.select_convs(2) total_state.update_convs(2))
+    apply (subgoal_tac "p = 0")
+     prefer 2
+    using IH.hyps(3)
+     apply fastforce
+    apply (thin_tac _)
+    apply (rule SatStep)
+         apply (rule IH(6))
+        apply (rule IH(7))
+       apply (rule IH(8))
+      apply (simp add: p_zero)
+     apply (simp add: zero_preal_def)
+    by (simp add: empty_consistent_external p_zero)
 
   have "p = 0 \<Longrightarrow> nm = 0"
     apply (rule nested_mask_equality)
@@ -631,6 +644,8 @@ next
     apply (intro conjI)
      apply (intro impI)
      apply (intro conjI)
+    using nm_pred_extcons
+        apply auto[1]
     using IH.prems(4)
        apply auto[1]
       apply (rule full_total_state.equality; simp)
@@ -677,7 +692,7 @@ next
   then obtain r_vs where
     e_args_res: "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> r_vs"
     using eval_ok_no_type_error(2) IH(1,7,8,10) \<omega>\<^sub>0hh
-    by (metis (full_types) IH.prems(4))
+    by (metis (full_types) IH.prems(5))
   have e_args_ok: "\<And>res. red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> res \<Longrightarrow> res \<noteq> None"
     by (metis IH.prems(6) assertion_framing_state_sub_exps_not_failure red_pure_exps_total_append_failure sub_expressions_atomic.simps(3))
   have e_args_eval: "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args)"
@@ -706,8 +721,20 @@ next
     apply (cases "get_fnm_nm nm (pred_id,v_args)"; simp)
     by (metis Rep_posreal_inverse fstI order_less_irrefl surj_pair)
 
-  have nm_pred_extcons: "p > 0 \<Longrightarrow> consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = hh, get_nm_total = nm_pred \<rparr> (pred_id,v_args) p"
-    by (metis (mono_tags, lifting) IH.prems(3) comp_apply consistent_external.cases eq_fst_iff get_fnm_total.simps get_mp_nm.simps option_fold.simps(1) p p_nonzero singleton_mp.elims total_state.select_convs(2) total_state.update_convs(2))
+  have nm_pred_extcons: "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = hh, get_nm_total = nm_pred \<rparr> (pred_id,v_args) p"
+    apply (cases "p > 0")
+     apply (metis IH.prems(3) SatAll_case mem_Collect_eq p_nonzero posreal_to_preal(8) total_state.select_convs(2) total_state.update_convs(2))
+    apply (subgoal_tac "p = 0")
+     prefer 2
+     apply (simp add: \<open>0 < p\<close>)
+    apply (thin_tac _)
+    apply (rule SatStep)
+         apply (rule IH(4))
+        apply (rule IH(5))
+       apply (rule IH(6))
+      apply (simp add: p_zero)
+     apply (simp add: zero_preal_def)
+    by (simp add: empty_consistent_external p_zero)
 
   have "p \<noteq> 0 \<Longrightarrow> nm = NM zero_mask [(pred_id,v_args) \<mapsto> (Abs_posreal p, nm_pred)]"
     apply (rule nested_mask_equality)
@@ -727,13 +754,14 @@ next
     apply (rule exI[of _ "\<lparr> get_hh_total = hh, get_nm_total = nm_pred \<rparr>"])
     apply (rule exI[of _ p])
     apply (intro conjI)
-    using \<open>pos_perm_class.pnone < p\<close> apply force
+    using \<open>pos_perm_class.pnone < p\<close>
+     apply force
     apply (intro impI)
     apply (intro conjI)
+    using nm_pred_extcons
+       apply presburger
     using IH.prems(4)
-       apply auto[1]
-    using nm_pred_extcons apply presburger
-    using IH.prems(4) apply auto[1]
+      apply auto[1]
      apply (rule full_total_state.equality; simp)
      apply (rule total_state.equality; simp)
      apply (rule nested_mask_equality; simp)
@@ -1099,9 +1127,12 @@ lemma extcons_state_can_be_inhaled:
       and FinalIntCons: "StateCons (add_to_nm_total_full \<omega> nm)"
       and WfCons: "wf_total_consistency ctxt StateCons StateCons_t"
       and WfCtxt: "ctxt_wf_pred ctxt"
+      and "p > 0"
     shows "red_inhale ctxt StateCons (syntactic_mult (Rep_preal p) pbody) \<omega> (RNormal (add_to_nm_total_full \<omega> nm))"
 proof -
-  have "sat ctxt \<lparr> get_store_total = nth_option vs,
+  have
+    "p = 0 \<Longrightarrow> nm = 0" and
+    "p > 0 \<Longrightarrow> sat ctxt \<lparr> get_store_total = nth_option vs,
                    get_trace_total = Map.empty,
                    get_total_full = \<lparr> get_hh_total = hh, get_nm_total = 0 \<rparr> \<rparr>
             (get_mh_nm nm) (get_mp_nm nm)
@@ -1113,8 +1144,16 @@ proof -
     using SelfFraming
     by auto
   ultimately show ?thesis
+    apply (cases "p > 0")
     using \<omega>Store \<omega>hh extcons_state_can_be_inhaled_assertion FinalIntCons wf_total_consistency_trace_mono_downwardD[OF WfCons]
-    by (metis SupPred WfCtxt full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps prat_non_negative syntactic_mult_supported total_state.select_convs(1))
+     apply (metis SupPred WfCtxt full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps prat_non_negative syntactic_mult_supported total_state.select_convs(1))
+    apply (subgoal_tac "p = 0")
+     prefer 2
+    using preal_not_0_gt_0
+     apply blast
+    apply simp
+    using assms(11)
+    by blast
 qed
 
 
@@ -1234,7 +1273,7 @@ proof -
       apply (metis assms(11) full_total_state.select_convs(2) full_total_state.select_convs(3))
     using WfCons
      apply simp
-    by fact
+    by fact+
 qed
 
 

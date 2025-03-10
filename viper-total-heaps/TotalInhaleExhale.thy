@@ -170,7 +170,8 @@ inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
      red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args);
      ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl)
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl);
+     ViperLang.predicate_decl.body pred_decl = Some pred_body
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt R \<omega>0 (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega>
      (exh_if_total (p \<ge> 0 \<and> mp (pred_id, v_args) \<ge> Abs_preal p)
@@ -182,7 +183,8 @@ inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
      If \<^prop>\<open>mp (pred_id, v_args) \<noteq> 0\<close> does not hold, then the exhale fails and the value of q is irrelevant.\<close>
      mp (pred_id, v_args) \<noteq> 0 \<Longrightarrow> q > 0 \<and> mp (pred_id, v_args) > q;
      ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl)
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl);
+     ViperLang.predicate_decl.body pred_decl = Some pred_body
    \<rbrakk> \<Longrightarrow>
    red_exhale ctxt R \<omega>0 (Atomic (AccPredicate pred_id e_args Wildcard)) \<omega>
      (exh_if_total (mp (pred_id, v_args) \<noteq> 0)

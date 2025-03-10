@@ -66,6 +66,7 @@ lemma exhale_pred_body_part_extcons_wrt_ploc:
   apply standard
       apply (rule assms)+
 proof -
+  \<comment> \<open>First two goals are proven together.\<close>
   have "get_store_total \<omega> = nth_option vs"
     by (simp add: assms(4))
   moreover have "get_mh_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) = get_mh_total_full \<omega> - get_mh_total_full \<omega>'"
@@ -82,6 +83,9 @@ proof -
     using exhale_diff_sat[OF assms(6), of \<omega>'] assms ctxt_wf_pred_def syntactic_mult_supported
           prat_non_negative total_state.surjective total_state.update_convs(2)
     by fastforce
+
+  show "p = 0 \<Longrightarrow> get_nm_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) = 0"
+    sorry
 next
   show "consistent_external ctxt (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>)"
   proof
@@ -352,8 +356,9 @@ lemma extcons_preserved_by_changing_0_locs':
                   consistent_external ctxt \<phi>'))"
   apply (rule consistent_external_wrt_ploc_consistent_external.induct)
    apply (standard, standard, standard)
-       apply fast+
-    apply (smt (verit) assms ctxt_pred_self_framing_def differ_only_in_0_perm_locs_def full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps get_mh_total.simps get_mp_total.simps preal_not_0_gt_0 pred_self_framing_subst sum_0_implies_mh_zero total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
+        apply fast+
+     apply (smt (verit) assms ctxt_pred_self_framing_def differ_only_in_0_perm_locs_def full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps get_mh_total.simps get_mp_total.simps preal_not_0_gt_0 pred_self_framing_subst sum_0_implies_mh_zero total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
+  subgoal sorry
    apply blast
 proof (standard, intro impI)
   fix \<phi> \<phi>' :: "'a total_state"
@@ -846,7 +851,7 @@ lemma plus_diff_full_total_state_upd_aux_2:
       and "get_mp_total_full \<omega> lp \<ge> p"
       and "consistent_external ctxt (get_total_full \<omega>)"
       and "ctxt_wf_pred ctxt"
-    shows "\<exists>\<phi>_inh. (p > 0 \<longrightarrow> consistent_external_wrt_ploc ctxt \<phi>_inh lp p) \<and>
+    shows "\<exists>\<phi>_inh. consistent_external_wrt_ploc ctxt \<phi>_inh lp p \<and>
                    get_hh_total \<phi>_inh = get_hh_total_full \<omega>_inh \<and>
                    \<omega>_inh' = (if p = 0 then \<omega>_inh else add_to_lpm_nonzero_total_full \<omega>_inh lp (Abs_posreal p) (get_nm_total \<phi>_inh))"
 proof (cases "p = 0")
@@ -864,9 +869,10 @@ proof (cases "p = 0")
     by (metis Rep_posreal Rep_posreal_inverse Rep_preal_inverse add.right_neutral all_pos divide_eq_0_iff divide_preal.rep_eq greater_minus_plus linorder_not_less mem_Collect_eq preal_semimodule_class.scale_one prod.collapse zero_preal.rep_eq)
   hence "\<omega>_inh = \<omega>_inh'"
     by (metis assms(1) full_total_state_defined_core_same_2 option.sel plus_minus_empty)
-  then show ?thesis
+  show ?thesis
+    apply (rule exI[of _ "\<lparr> get_hh_total = get_hh_total_full \<omega>_inh, get_nm_total = 0 \<rparr>"])
     using \<open>p = 0\<close>
-    by auto
+    sorry
 next
   case False
   hence "p > 0"
@@ -1197,10 +1203,10 @@ next
     let ?W = "inhale_perm_single_pred ctxt StateCons \<omega>_inh ?loc (Some (Abs_preal p))"
 
     obtain \<phi>_inh where \<phi>_inh:
-      "(Abs_preal p > 0 \<longrightarrow> consistent_external_wrt_ploc ctxt \<phi>_inh ?loc (Abs_preal p)) \<and>
+      "consistent_external_wrt_ploc ctxt \<phi>_inh ?loc (Abs_preal p) \<and>
        get_hh_total \<phi>_inh = get_hh_total_full \<omega>_inh \<and>
        \<omega>_inh' = (if Abs_preal p = 0 then \<omega>_inh else add_to_lpm_nonzero_total_full \<omega>_inh ?loc (Abs_posreal (Abs_preal p)) (get_nm_total \<phi>_inh))"
-      using plus_diff_full_total_state_upd_aux_2[OF ExhAccPred(10) \<open>\<omega>' = _\<close> PermConditions[THEN conjunct2, unfolded \<open>mp = _\<close>] ExhAccPred(12,13)]
+      using plus_diff_full_total_state_upd_aux_2[OF ExhAccPred(11) \<open>\<omega>' = _\<close> PermConditions[THEN conjunct2, unfolded \<open>mp = _\<close>] ExhAccPred(13,14)]
       by blast
 
     have "\<omega>_inh' \<in> ?W"
@@ -1262,7 +1268,7 @@ next
       "(q > 0 \<longrightarrow> consistent_external_wrt_ploc ctxt \<phi>_inh ?loc q) \<and>
        get_hh_total \<phi>_inh = get_hh_total_full \<omega>_inh \<and>
        \<omega>_inh' = (if q = 0 then \<omega>_inh else add_to_lpm_nonzero_total_full \<omega>_inh ?loc (Abs_posreal q) (get_nm_total \<phi>_inh))"
-      using plus_diff_full_total_state_upd_aux_2[OF ExhAccPredWildcard(10) \<open>\<omega>' = _\<close> \<open>mp ?loc \<ge> q\<close>[unfolded \<open>mp = _\<close>] ExhAccPredWildcard(12,13)]
+      using plus_diff_full_total_state_upd_aux_2[OF ExhAccPredWildcard(11) \<open>\<omega>' = _\<close> \<open>mp ?loc \<ge> q\<close>[unfolded \<open>mp = _\<close>] ExhAccPredWildcard(13,14)]
       by blast
 
     from ExhAccPredWildcard have "StateCons \<omega>_inh'"

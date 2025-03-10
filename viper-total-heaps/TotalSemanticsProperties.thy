@@ -861,13 +861,13 @@ next
    and \<omega>': "\<omega>' = exhale_pred \<omega> (pred_id, v_args) (Abs_preal p)"
     using IH.prems(1) exh_if_total_normal exh_if_total_normal_2
     by blast+
-  from IH(7) have es_sup: "list_all no_perm_pure_exp e_args \<and> list_all no_old_pure_exp e_args"
+  from IH(8) have es_sup: "list_all no_perm_pure_exp e_args \<and> list_all no_old_pure_exp e_args"
     by simp
   show ?case
     apply standard
     using eval_exhale_sat_helper(2)[OF IH(2)] es_sup
           apply blast
-    using IH(7) eval_exhale_sat_helper(1)[OF IH(3)]
+    using IH(8) eval_exhale_sat_helper(1)[OF IH(3)]
          apply simp
         apply (simp add: 1)
     using IH.hyps(1) \<omega>' exhale_mh_diff
@@ -882,7 +882,7 @@ next
    and \<omega>': "\<omega>' = exhale_pred \<omega> (pred_id, v_args) q"
     using IH.prems(1) IH.hyps(3) exh_if_total_normal exh_if_total_normal_2
     by blast+
-  from IH(7) have es_sup: "list_all no_perm_pure_exp e_args \<and> list_all no_old_pure_exp e_args"
+  from IH(8) have es_sup: "list_all no_perm_pure_exp e_args \<and> list_all no_old_pure_exp e_args"
     by simp
   show ?case
     apply standard
