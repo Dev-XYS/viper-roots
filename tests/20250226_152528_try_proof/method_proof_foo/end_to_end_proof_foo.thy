@@ -90,7 +90,7 @@ apply ((rule init_state_in_state_relation[OF wf_ty_repr_basic disjoint_property_
 apply (simp)
 apply (simp)
 apply ((fastforce intro: is_empty_total_wf_mask))
-apply (simp)
+apply (simp add: empty_consistent_external_total_full)
 apply ((simp add: ctxt_bpl_def))
 apply ((simp add: ty_repr_basic_def))
 apply (simp)

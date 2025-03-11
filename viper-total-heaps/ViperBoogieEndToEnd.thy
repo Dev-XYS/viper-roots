@@ -460,6 +460,7 @@ lemma end_to_end_vpr_method_correct_partial:
                        vpr_store_well_typed (absval_interp_total ctxt_vpr) (nth_option (method_decl.args mdecl @ rets mdecl)) (get_store_total \<omega>) \<Longrightarrow>
                        total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>) \<Longrightarrow>
                        is_empty_total_full \<omega> \<Longrightarrow>
+                       StateCons \<omega> \<Longrightarrow>
                        \<exists>ns ls gs.
                            ns = \<lparr>old_global_state = gs, global_state = gs, local_state = ls, binder_state = Map.empty\<rparr> \<and>  
                            \<comment>\<open>well-typedness of Boogie state follows from state relation\<close>
@@ -494,6 +495,7 @@ proof (rule allI | rule impI)+
          StoreWellTy: "vpr_store_well_typed (absval_interp_total ctxt_vpr) (nth_option (method_decl.args mdecl @ rets mdecl)) (get_store_total \<omega>)" and
          HeapWellTy: "total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)" and
          "is_empty_total_full \<omega>" and
+         "StateCons \<omega>" and
          RedInhPre: "red_inhale ctxt_vpr StateCons (method_decl.pre mdecl) \<omega> rpre"
   
   let ?abs = "vbpl_absval_ty TyRep"
@@ -508,7 +510,7 @@ proof (rule allI | rule impI)+
     "unique_constants_distinct gs unique_consts" and
   AxiomsSat:
     "axioms_sat (vbpl_absval_ty TyRep) (constants, []) (fun_interp ctxt) (global_to_nstate (state_restriction gs constants)) axioms"
-    using InitialStateRel[OF StoreWellTy HeapWellTy \<open>is_empty_total_full \<omega>\<close>]
+    using InitialStateRel[OF StoreWellTy HeapWellTy \<open>is_empty_total_full \<omega>\<close> \<open>StateCons \<omega>\<close>]
     by blast
 
   from StateRelInitialInst have StateRel: "state_rel (program_total ctxt_vpr) StateCons TyRep Tr AuxPred ctxt \<omega> \<omega> ns"

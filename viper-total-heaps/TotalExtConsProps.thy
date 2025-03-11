@@ -1723,6 +1723,13 @@ lemma empty_consistent_external:
   unfolding zero_nested_mask_def
   by simp
 
+lemma empty_consistent_external_total_full:
+  assumes "is_empty_total_full \<omega>"
+  shows "consistent_external ctxt (get_total_full \<omega>)"
+  using assms
+  unfolding is_empty_total_full_def is_empty_total_def
+  by (metis (full_types) empty_consistent_external total_state.surjective unit.exhaust)
+
 
 subsection \<open>Other Lemmas\<close>
 
