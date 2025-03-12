@@ -866,14 +866,14 @@ next
   show ?case
     apply standard
     using eval_exhale_sat_helper(2)[OF IH(2)] es_sup
-          apply blast
+           apply blast
     using IH(8) eval_exhale_sat_helper(1)[OF IH(3)]
-         apply simp
-        apply (simp add: 1)
+          apply simp
+         apply (simp add: 1)
     using IH.hyps(1) \<omega>' exhale_mh_diff
-       apply blast
+        apply blast
     using IH.hyps(1) \<omega>' exhale_mp_diff 1
-      apply blast
+       apply blast
     by fact+
 next
   case IH: (ExhAccPredWildcard mp \<omega> e_args v_args pred_id q)

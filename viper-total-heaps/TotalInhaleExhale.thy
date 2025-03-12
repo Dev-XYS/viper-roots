@@ -164,7 +164,6 @@ inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
                    (dec_mh_loc_total_full \<omega> (a,f) q))"
 
 \<comment>\<open>exhale acc(P(es), p)\<close>
-\<comment> \<open>TODO: remove the corresponding fraction of the nested mask when exhaling a predicate\<close>
 | ExhAccPred:
   "\<lbrakk> mp = get_mp_total_full \<omega>;
      red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args);

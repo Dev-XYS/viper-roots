@@ -1893,4 +1893,19 @@ lemma sat_synmult_zero_is_empty:
   by (induction A, auto elim: sat.cases simp: synmult_0_mh_0 synmult_0_mp_0)
 
 
+lemma extcons_pred_well_typed:
+  assumes "consistent_external ctxt \<phi>"
+      and "get_mp_total \<phi> (pid,vs) > 0"
+      and "ViperLang.predicates (program_total ctxt) pid = Some pred_decl"
+      and "ViperLang.predicate_decl.args pred_decl = ty_args"
+    shows "vals_well_typed (absval_interp_total ctxt) vs ty_args"
+proof -
+  obtain \<phi>' where "consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) (get_mp_total \<phi> (pid,vs))"
+    using SatAll_case[OF assms(1)]
+    by (metis Abs_posreal_inverse assms(2) get_mp_total.simps mem_Collect_eq obtain_lpm_from_mp)
+  thus ?thesis
+    by (metis SatStep_case assms(3) assms(4) option.sel)
+qed
+
+
 end

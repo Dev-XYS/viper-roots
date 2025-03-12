@@ -1169,7 +1169,6 @@ lemma inhale_simulates_unfold:
       and CtxtWfPred: "ctxt_wf_pred ctxt"
       and SelfFraming: "\<And>q. assertion_self_framing_store ctxt StateCons (syntactic_mult q pbody) (nth_option vs)"
       and "\<phi>\<^sub>d = rm_from_lpm_total \<phi> (pid,vs) q"
-      and "\<And>\<omega>. StateCons \<omega> \<Longrightarrow> valid_heap_mask (get_mh_total_full \<omega>)"
       and "(\<forall>lbl \<phi>. trace lbl = Some \<phi> \<longrightarrow> StateCons_t \<phi>)"
       and AmountPos: "q > 0"  \<comment> \<open>It is okay because Viper checks if the unfolding amount is positive.\<close>
     shows "red_inhale ctxt StateCons (syntactic_mult (Rep_preal q) pbody)
@@ -1266,42 +1265,26 @@ proof -
   show ?thesis
     apply (rule extcons_state_can_be_inhaled[OF PredDecl PredBody _ Framed ShiftExtCons, simplified 1])
     using CtxtWfPred PredBody PredDecl ctxt_wf_pred_def
-         apply blast
-        apply (simp add: assms(9))
-       apply simp
+          apply blast
+         apply (simp add: assms(9))
+        apply simp
     using final_intcons WfCons[simplified wf_total_consistency_def]
-      apply (metis assms(11) full_total_state.select_convs(2) full_total_state.select_convs(3))
+       apply (simp add: assms(10))
     using WfCons
-     apply simp
+      apply simp
     by fact+
 qed
 
 
 subsection \<open>Unfold\<close>
 
-lemma extcons_pred_well_typed:
-  assumes "consistent_external ctxt \<phi>"
-      and "get_mp_total \<phi> (pid,vs) > 0"
-      and "ViperLang.predicates (program_total ctxt) pid = Some pred_decl"
-      and "ViperLang.predicate_decl.args pred_decl = ty_args"
-    shows "vals_well_typed (absval_interp_total ctxt) vs ty_args"
-proof -
-  obtain \<phi>' where "consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) (get_mp_total \<phi> (pid,vs))"
-    using SatAll_case[OF assms(1)]
-    by (metis Abs_posreal_inverse assms(2) get_mp_total.simps mem_Collect_eq obtain_lpm_from_mp)
-  thus ?thesis
-    by (metis SatStep_case assms(3) assms(4) option.sel)
-qed
-
-
 lemma unfold_stmt_rel:
-  assumes PredDecl: "ViperLang.predicates (program_total ctxt_vpr) pred_id = Some pred_decl"
-      and PredArgs: "ViperLang.predicate_decl.args pred_decl = ty_args"
-      and PredBody: "ViperLang.predicate_decl.body pred_decl = Some pred_body"
-      and SupportedPredBody: "supported_pred_body pred_body"
-      and SelfFraming: "assertion_self_framing ctxt_vpr StateCons pred_body ty_args"
+  assumes PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl"
+      and PredArgs: "predicate_decl.args pdecl = ty_args"
+      and PredBody: "predicate_decl.body pdecl = Some pbody"
+      and SupportedPredBody: "supported_pred_body pbody"
+      and SelfFraming: "assertion_self_framing ctxt_vpr StateCons pbody ty_args"
       and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
-      and IntConsImpliesWfMask: "\<And>\<omega>. StateCons \<omega> \<Longrightarrow> valid_heap_mask (get_mh_total_full \<omega>)"
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
       and CtxtWfPred: "ctxt_wf_pred ctxt_vpr"
@@ -1309,65 +1292,38 @@ lemma unfold_stmt_rel:
       and PermSimp: "e_p = ELit (LPerm 1)" \<comment> \<open>We only support a literal 1 as the permission.\<close>
       and StepExhale:
           "rel_general R R'
-             (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega> (RNormal \<omega>'))
-             (\<lambda>\<omega>. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega> RFailure)
+             (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> (RNormal \<omega>'))
+             (\<lambda>\<omega>. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> RFailure)
              P ctxt_bpl \<gamma> \<gamma>\<^sub>2"
-      and StepInhale: "inhale_rel R' (\<lambda>_ _. True) ctxt_vpr StateCons P ctxt_bpl pred_body \<gamma>\<^sub>2 \<gamma>'"
-    shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Unfold pred_id e_args (PureExp e_p)) \<gamma> \<gamma>'"
-  sorry
-
-
-\<^cancel>\<open>
-lemma unfold_stmt_rel':
-  assumes PredDecl: "ViperLang.predicates (program_total ctxt_vpr) pred_id = Some pred_decl"
-      and PredArgs: "ViperLang.predicate_decl.args pred_decl = ty_args"
-      and PredBody: "ViperLang.predicate_decl.body pred_decl = Some pred_body"
-      and SupportedPredBody: "supported_pred_body pred_body"
-      and SelfFraming: "assertion_self_framing ctxt_vpr StateCons pred_body ty_args"
-      and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
-      and IntConsImpliesWfMask: "\<And>\<omega>. StateCons \<omega> \<Longrightarrow> valid_heap_mask (get_mh_total_full \<omega>)"
-      and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
-      and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
-      and CtxtWfPred: "ctxt_wf_pred ctxt_vpr"
-      and ArgsSimp: "e_args = [pure_exp.Var 0]" \<comment> \<open>We only support one predicate argument, which must be the first method argument.\<close>
-      and PermSimp: "e_p = ELit (LPerm 1)" \<comment> \<open>We only support a literal 1 as the permission.\<close>
-      and StepExhale:
-          "rel_general R R'
-             (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega> (RNormal \<omega>'))
-             (\<lambda>\<omega>. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega> RFailure)
-             P ctxt_bpl \<gamma> \<gamma>\<^sub>2"
-      and StepInhale: "inhale_rel R' (\<lambda>_ _. True) ctxt_vpr StateCons P ctxt_bpl (syntactic_mult 1 pred_body) \<gamma>\<^sub>2 \<gamma>'"
-    shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Unfold pred_id e_args (PureExp e_p)) \<gamma> \<gamma>'"
+      and StepInhale: "inhale_rel R' (\<lambda>_ _. True) ctxt_vpr StateCons P ctxt_bpl (syntactic_mult 1 pbody) \<gamma>\<^sub>2 \<gamma>'"
+    shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Unfold pid e_args (PureExp e_p)) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro)
   fix \<omega> ns \<omega>'
   assume "R \<omega> ns"
-     and red_stmt: "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
+     and red_stmt: "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Unfold pid e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
   then obtain v_args v_p \<phi>' where
     e_args_eval: "red_pure_exps_total ctxt_vpr (Some \<omega>) e_args \<omega> (Some v_args)" and
     e_p_eval: "ctxt_vpr, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
     "v_p \<ge> 0" and
-    UnfoldRel: "unfold_rel ctxt_vpr pred_id v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>'" and
+    UnfoldRel: "unfold_rel ctxt_vpr pid v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>'" and
     "\<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr>"
     by (blast elim: RedUnfold_case)
   from StateRelImpliesExtCons \<open>R \<omega> ns\<close> have "consistent_external ctxt_vpr (get_total_full \<omega>)"
+    by simp
+  have "v_p > 0"
+    using PermSimp TotalExpressions.RedLit_case e_p_eval
+    by fastforce
+  have perm_suff: "get_mp_total_full \<omega> (pid,v_args) \<ge> Abs_preal v_p"
+    using unfold_rel_perm_sufficient[OF UnfoldRel]
     by simp
 
   from \<open>R \<omega> ns\<close> have ExtCons: "consistent_external ctxt_vpr (get_total_full \<omega>)"
     using StateRelImpliesExtCons
     by auto
-  have "vals_well_typed (absval_interp_total ctxt_vpr) v_args ty_args"
-  proof -
-    have "v_p > 0"
-      using PermSimp TotalExpressions.RedLit_case e_p_eval
-      by fastforce
-    have "get_mp_total_full \<omega> (pred_id,v_args) \<ge> Abs_preal v_p"
-      using unfold_rel_perm_sufficient[OF UnfoldRel]
-      by simp
-    thus ?thesis
-      using extcons_pred_well_typed ExtCons PredArgs PredDecl \<open>0 < v_p\<close> order_le_imp_less_or_eq order_less_trans positive_real_preal preal_not_0_gt_0
-      by fastforce
-  qed
-  with SelfFraming have FramingArgs: "\<And>p. assertion_self_framing_store ctxt_vpr StateCons (syntactic_mult p pred_body) (nth_option v_args)"
+  have args_well_ty: "vals_well_typed (absval_interp_total ctxt_vpr) v_args ty_args"
+    using extcons_pred_well_typed ExtCons PredArgs PredDecl \<open>0 < v_p\<close> order_le_imp_less_or_eq order_less_trans positive_real_preal preal_not_0_gt_0 perm_suff
+    by fastforce
+  with SelfFraming have FramingArgs: "\<And>p. assertion_self_framing_store ctxt_vpr StateCons (syntactic_mult p pbody) (nth_option v_args)"
     using assertion_self_framing_def
     by blast
 
@@ -1377,28 +1333,24 @@ proof (rule stmt_rel_intro)
   have LabelCons: "\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> StateCons_t \<phi>"
     by (smt (verit, best) StateRelImpliesIntCons WfCons \<open>R \<omega> ns\<close> wf_total_consistency_def)
 
-  from inhale_simulates_unfold[OF UnfoldRel ExtCons WfCons Cons_t PredDecl PredBody CtxtWfPred FramingArgs _ ]
+  from inhale_simulates_unfold[OF UnfoldRel ExtCons WfCons Cons_t PredDecl PredBody CtxtWfPred FramingArgs _ LabelCons]
   obtain \<phi>\<^sub>d where
-    \<phi>\<^sub>d: "\<phi>\<^sub>d = dec_mp_loc_total (mult_rm_nm_loc_total (get_total_full \<omega>) (pred_id,v_args) (Abs_preal v_p)) (pred_id,v_args) (Abs_preal v_p)" and
-    step_inhale': "red_inhale ctxt_vpr StateCons (syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)
+    \<phi>\<^sub>d: "\<phi>\<^sub>d = rm_from_lpm_total (get_total_full \<omega>) (pid,v_args) (Abs_preal v_p)" and
+    step_inhale': "red_inhale ctxt_vpr StateCons (syntactic_mult (Rep_preal (Abs_preal v_p)) pbody)
                      \<lparr> get_store_total = nth_option v_args, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>\<^sub>d \<rparr>
             (RNormal \<lparr> get_store_total = nth_option v_args, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>' \<rparr>)"
-    using IntConsImpliesWfMask LabelCons
-    by blast
+    by (meson \<open>0 < v_p\<close> positive_real_preal pperm_pnone_pgt)
 
-  from UnfoldRel have perm_suff: "get_mp_total_full \<omega> (pred_id,v_args) \<ge> Abs_preal v_p"
-    apply (simp add: unfold_rel.simps shift_up.simps)
-    by force
   let ?\<omega>\<^sub>d = "\<omega>\<lparr> get_total_full := \<phi>\<^sub>d \<rparr>"
-  have "exh_if_total (v_p \<ge> 0 \<and> get_mp_total_full \<omega> (pred_id,v_args) \<ge> Abs_preal v_p)
-                     (exhale_pred \<omega> (pred_id,v_args) (Abs_preal v_p))
+  have "exh_if_total (v_p \<ge> 0 \<and> get_mp_total_full \<omega> (pid,v_args) \<ge> Abs_preal v_p)
+                     (exhale_pred \<omega> (pid,v_args) (Abs_preal v_p))
         = RNormal ?\<omega>\<^sub>d"
     apply (simp only: perm_suff \<open>v_p \<ge> 0\<close>)
     by (simp add: exhale_pred_def \<phi>\<^sub>d)
 
-  hence step_exh: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega> (RNormal ?\<omega>\<^sub>d)"
+  hence step_exh: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> (RNormal ?\<omega>\<^sub>d)"
     using ExhAccPred
-    by (metis e_args_eval e_p_eval)
+    by (metis PredArgs PredBody PredDecl args_well_ty e_args_eval e_p_eval)
 
   obtain ns\<^sub>2 where bpl_step_exh: "red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>\<^sub>2, Normal ns\<^sub>2) \<and> R' ?\<omega>\<^sub>d ns\<^sub>2"
     using rel_success_elim[OF StepExhale \<open>R \<omega> ns\<close> step_exh]
@@ -1407,7 +1359,7 @@ proof (rule stmt_rel_intro)
   \<comment> \<open>Step 2: inhale\<close>
 
   have step_inhale:
-    "red_inhale ctxt_vpr StateCons (syntactic_mult (Rep_preal (Abs_preal v_p)) pred_body)
+    "red_inhale ctxt_vpr StateCons (syntactic_mult (Rep_preal (Abs_preal v_p)) pbody)
                 \<lparr> get_store_total = get_store_total \<omega>, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>\<^sub>d \<rparr>
        (RNormal \<lparr> get_store_total = get_store_total \<omega>, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>' \<rparr>)"
   proof -
@@ -1437,7 +1389,9 @@ proof (rule stmt_rel_intro)
     by simp
 
   obtain ns' where "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>2, Normal ns\<^sub>2) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
-    by (metis StepInhale \<omega>'_rel \<omega>\<^sub>d_rel bpl_step_exh inh_perm_1 inhale_rel_normal_elim step_inhale)
+    using inhale_rel_normal_elim[OF StepInhale bpl_step_exh[THEN conjunct2] TrueI, unfolded \<omega>\<^sub>d_rel, OF step_inhale[unfolded inh_perm_1, simplified]]
+    unfolding \<omega>'_rel
+    by presburger
 
   thus "\<exists>ns'. red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
     using bpl_step_exh red_ast_bpl_transitive
@@ -1447,28 +1401,31 @@ next
 
   fix \<omega> ns
   assume "R \<omega> ns"
-  assume "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Unfold pred_id e_args (PureExp e_p)) \<omega> RFailure"
+  assume "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Unfold pid e_args (PureExp e_p)) \<omega> RFailure"
 
   thus "\<exists>c'. snd c' = Failure \<and> red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) c'"
   proof cases
     case RedExhaleFailure
-    fix v_args v_p
+    fix v_args v_p pred_decl
     assume e_args_eval: "red_pure_exps_total ctxt_vpr (Some \<omega>) e_args \<omega> (Some v_args)" and
            e_p_eval: "ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
-           v_p_fail: "v_p \<le> 0 \<or> Rep_preal (get_mp_total_full \<omega> (pred_id, v_args)) < v_p"
-    from v_p_fail have v_p_fail': "\<not> (0 \<le> v_p \<and> Abs_preal v_p \<le> (get_mp_total_full \<omega>) (pred_id,v_args))"
+           v_p_fail: "v_p \<le> 0 \<or> Rep_preal (get_mp_total_full \<omega> (pid, v_args)) < v_p" and
+           pdecl': "program.predicates (program_total ctxt_vpr) pid = Some pred_decl" and
+           args_well_ty: "vals_well_typed (absval_interp_total ctxt_vpr) v_args (predicate_decl.args pred_decl)"
+    from v_p_fail have v_p_fail': "\<not> (0 \<le> v_p \<and> Abs_preal v_p \<le> (get_mp_total_full \<omega>) (pid,v_args))"
       apply (simp add: preal_to_real)
       using PermSimp TotalExpressions.RedLit_case e_p_eval
       by fastforce
-    have step_exhale: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega> RFailure"
-      using ExhAccPred[OF _ e_args_eval e_p_eval, where ?mp="get_mp_total_full \<omega>"] v_p_fail'
-      by (smt (verit) exh_if_total.simps(1))
+
+    have step_exhale: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> RFailure"
+      using ExhAccPred[OF _ e_args_eval e_p_eval PredDecl _ PredBody, where ?mp="get_mp_total_full \<omega>"] v_p_fail' PredDecl args_well_ty pdecl'
+      by auto
     show ?thesis
       using rel_failure_elim[OF StepExhale \<open>R \<omega> ns\<close> step_exhale]
       by blast
   next
     case RedSubExpressionFailure
-    have step_exhale: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega> RFailure"
+    have step_exhale: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> RFailure"
       apply (rule ExhSubExpFailure)
       using RedSubExpressionFailure
       by simp_all
@@ -1477,7 +1434,7 @@ next
       by blast
   qed
 qed
-\<close>
+
 
 (*
 lemma unfold_exhale_rel_rel:

@@ -237,13 +237,19 @@ always has at least one failure transition. This is in-sync with the Carbon impl
      ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p);
      v_p \<ge> 0;
      unfold_rel ctxt pred_id v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>';
-     \<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr>
+     \<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr>;
+     ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl);
+     ViperLang.predicate_decl.body pred_decl = Some pred_body
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
 | RedUnfoldFailure:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
      ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p);
-     v_p \<le> 0 \<or> v_p > Rep_preal (get_mp_total_full \<omega> (pred_id,v_args))
+     v_p \<le> 0 \<or> v_p > Rep_preal (get_mp_total_full \<omega> (pred_id,v_args));
+     ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl);
+     ViperLang.predicate_decl.body pred_decl = Some pred_body
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> RFailure"
 
