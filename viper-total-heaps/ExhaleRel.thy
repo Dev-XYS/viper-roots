@@ -259,7 +259,7 @@ next
         using \<omega>def_valid
         by simp
     next
-      show "ctxt_wf_pred ctxt_vpr"
+      show "ctxt_pred_syn_wf ctxt_vpr"
         using WfCons[unfolded wf_total_consistency_def]
         by simp
     qed (simp)

@@ -21,8 +21,8 @@ qed
 
 
 lemma wf_total_consistency_internal:
-  assumes "ctxt_wf_pred ctxt"
-      and "ctxt_pred_self_framing ctxt"
+  assumes "ctxt_pred_syn_wf ctxt"
+      and "ctxt_pred_self_framing_sat ctxt"
     shows "wf_total_consistency ctxt consistent_internal_total_full consistent_internal_total"
   unfolding wf_total_consistency_def
   apply (intro conjI)

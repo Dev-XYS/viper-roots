@@ -63,7 +63,7 @@ lemma exhale_pred_body_part_extcons_wrt_ploc:
       and "consistent_external ctxt \<phi>"
       and "red_exhale ctxt StateCons \<omega>0 (syntactic_mult (Rep_preal p) pbody) \<omega> (RNormal \<omega>')"
       and "get_nm_total_full \<omega>' + nm_exh = get_nm_total_full \<omega>"
-      and "ctxt_wf_pred ctxt"
+      and "ctxt_pred_syn_wf ctxt"
     shows "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) (pid,vs) p"
   apply standard
       apply (rule assms)+
@@ -82,7 +82,7 @@ proof -
                        (get_mh_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>))
                        (get_mp_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>))
                        (syntactic_mult (Rep_preal p) pbody)"
-    using exhale_diff_sat[OF assms(6), of \<omega>'] assms ctxt_wf_pred_def syntactic_mult_supported
+    using exhale_diff_sat[OF assms(6), of \<omega>'] assms ctxt_pred_syn_wf_def syntactic_mult_supported
           prat_non_negative total_state.surjective total_state.update_convs(2)
     by fastforce
 
@@ -319,7 +319,7 @@ subsection \<open>Preserved by Exhale\<close>
 lemma extcons_preserved_by_red_exhale:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
       and "red_exhale ctxt StateCons \<omega>0 A \<omega> (RNormal \<omega>')"
-      and "ctxt_wf_pred ctxt"
+      and "ctxt_pred_syn_wf ctxt"
     shows "consistent_external ctxt (get_total_full \<omega>')"
 proof
   fix pid vs p' nm'
@@ -349,7 +349,7 @@ definition differ_only_in_0_perm_locs where
      get_nm_total \<phi> = get_nm_total \<phi>'"
 
 lemma extcons_preserved_by_changing_0_locs':
-  assumes "ctxt_pred_self_framing ctxt"
+  assumes "ctxt_pred_self_framing_sat ctxt"
     shows "(consistent_external_wrt_ploc ctxt \<phi> lp p \<longrightarrow>
             (\<forall>\<phi>'. differ_only_in_0_perm_locs \<phi> \<phi>' \<longrightarrow>
                   consistent_external_wrt_ploc ctxt \<phi>' lp p)) \<and>
@@ -360,7 +360,7 @@ lemma extcons_preserved_by_changing_0_locs':
    apply (standard, standard, standard)
         apply fast+
      apply (metis differ_only_in_0_perm_locs_def)
-    apply (smt (verit) assms ctxt_pred_self_framing_def differ_only_in_0_perm_locs_def full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps get_mh_total.simps get_mp_total.simps preal_not_0_gt_0 pred_self_framing_subst sum_0_implies_mh_zero total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
+    apply (smt (verit) assms ctxt_pred_self_framing_sat_def differ_only_in_0_perm_locs_def full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps get_mh_total.simps get_mp_total.simps preal_not_0_gt_0 pred_self_framing_subst sum_0_implies_mh_zero total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
    apply blast
 proof (standard, intro impI)
   fix \<phi> \<phi>' :: "'a total_state"
@@ -390,7 +390,7 @@ qed
 lemma extcons_preserved_by_changing_0_locs:
   assumes "\<And>loc. get_hh_total \<phi> loc \<noteq> get_hh_total \<phi>' loc \<Longrightarrow> nm_loc_sum loc (get_nm_total \<phi>) 0"
       and "get_nm_total \<phi> = get_nm_total \<phi>'"
-      and "ctxt_pred_self_framing ctxt"
+      and "ctxt_pred_self_framing_sat ctxt"
     shows "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
            consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) p"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
@@ -401,8 +401,8 @@ lemma extcons_preserved_by_changing_0_locs:
 lemma extcons_preserved_by_red_stmt_exhale:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
       and "red_stmt_total ctxt StateCons \<Lambda> (Exhale A) \<omega> (RNormal \<omega>')"
-      and "ctxt_wf_pred ctxt"
-      and "ctxt_pred_self_framing ctxt"
+      and "ctxt_pred_syn_wf ctxt"
+      and "ctxt_pred_self_framing_sat ctxt"
     shows "consistent_external ctxt (get_total_full \<omega>')"
 proof -
   from assms(2) obtain \<omega>_exh where
@@ -428,7 +428,7 @@ subsection \<open>Preserved by Field Assignment\<close>
 
 lemma extcons_preserved_by_field_assignment_helper:
   assumes "nm_loc_sum loc (get_nm_total \<phi>) 0"
-      and "ctxt_pred_self_framing ctxt"
+      and "ctxt_pred_self_framing_sat ctxt"
     shows "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
            consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v) (pid,vs) p"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
@@ -451,7 +451,7 @@ lemma extcons_preserved_by_field_assignment:
   assumes "consistent_external ctxt \<phi>"
       and "consistent_internal (get_nm_total \<phi>)"
       and "get_mh_total \<phi> loc = 1"
-      and "ctxt_pred_self_framing ctxt"
+      and "ctxt_pred_self_framing_sat ctxt"
     shows "consistent_external ctxt (upd_hh_loc_total \<phi> loc v)"
 proof -
   have zero_perm: "\<And>lp lpm. get_fnm_total \<phi> lp = Some lpm \<Longrightarrow> nm_loc_sum loc (snd lpm) 0"
@@ -482,7 +482,7 @@ subsection \<open>Preserved by Unfold\<close>
 lemma extcons_preserved_by_red_stmt_unfold:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
       and "red_stmt_total ctxt R \<Lambda> (Unfold pid e_args (PureExp e_q)) \<omega> (RNormal \<omega>')"
-      and "ctxt_wf_pred ctxt"
+      and "ctxt_pred_syn_wf ctxt"
     shows "consistent_external ctxt (get_total_full \<omega>')"
 proof -
   obtain vs q \<phi>' where
@@ -578,7 +578,7 @@ subsection \<open>Preserved by Fold\<close>
 lemma extcons_preserved_by_red_stmt_fold:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
       and "red_stmt_total ctxt StateCons \<Lambda> (Fold pid e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
-      and "ctxt_wf_pred ctxt"
+      and "ctxt_pred_syn_wf ctxt"
     shows "consistent_external ctxt (get_total_full \<omega>')"
 proof -
   obtain vs p where
@@ -634,8 +634,8 @@ lemma extcons_preserved_by_red_stmt:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
       and "consistent_internal_total_full \<omega>"
       and "red_stmt_total ctxt consistent_internal_total_full \<Lambda> stmt \<omega> (RNormal \<omega>')"
-      and "ctxt_wf_pred ctxt"
-      and "ctxt_pred_self_framing ctxt"
+      and "ctxt_pred_syn_wf ctxt"
+      and "ctxt_pred_self_framing_sat ctxt"
     shows "consistent_external ctxt (get_total_full \<omega>')"
   using assms(1-3)
 proof (induction stmt arbitrary: \<Lambda> \<omega> \<omega>')
@@ -852,7 +852,7 @@ lemma plus_diff_full_total_state_upd_aux_2:
       and "\<omega>' = exhale_pred \<omega> (pid,vs) p"
       and "get_mp_total_full \<omega> (pid,vs) \<ge> p"
       and "consistent_external ctxt (get_total_full \<omega>)"
-      and "ctxt_wf_pred ctxt"
+      and "ctxt_pred_syn_wf ctxt"
       and "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
       and "vals_well_typed (absval_interp_total ctxt) vs (ViperLang.predicate_decl.args pdecl)"
       and "predicate_decl.body pdecl = Some pbody"
@@ -990,7 +990,7 @@ lemma exhale_inhale_normal:
       and "\<omega>_inh \<oplus> (\<omega> \<ominus> \<omega>') = Some \<omega>_inh'"
       and ValidInh': "StateCons \<omega>_inh' \<and> valid_heap_mask (get_mh_total_full \<omega>_inh')"
       and "consistent_external ctxt (get_total_full \<omega>)"
-      and "ctxt_wf_pred ctxt"
+      and "ctxt_pred_syn_wf ctxt"
     shows "red_inhale ctxt StateCons A \<omega>_inh (RNormal \<omega>_inh')"
   using assms exhale_normal_result_smaller[OF RedExh[simplified \<open>res = _\<close>], OF HOL.refl]
 proof (induction arbitrary: \<omega>_inh \<omega>_inh' \<omega>')

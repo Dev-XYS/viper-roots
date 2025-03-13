@@ -105,10 +105,24 @@ lemma pred_self_framing_subst:
 
 subsection \<open>Context All Predicates Self-Framing\<close>
 
-definition ctxt_pred_self_framing :: "'a total_context \<Rightarrow> bool" where
-  "ctxt_pred_self_framing ctxt \<equiv> \<forall>pid pdecl.
+definition ctxt_pred_self_framing_sat :: "'a total_context \<Rightarrow> bool" where
+  "ctxt_pred_self_framing_sat ctxt \<equiv> \<forall>pid pdecl.
      ViperLang.predicates (program_total ctxt) pid = Some pdecl \<longrightarrow>
      pred_self_framing ctxt pdecl"
+
+definition ctxt_pred_self_framing_inh :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> bool" where
+  "ctxt_pred_self_framing_inh ctxt StateCons \<equiv> \<forall>pid pdecl pbody.
+     ViperLang.predicates (program_total ctxt) pid = Some pdecl \<longrightarrow>
+     predicate_decl.body pdecl = Some pbody \<longrightarrow>
+     assertion_self_framing ctxt StateCons pbody (predicate_decl.args pdecl)"
+
+
+subsection \<open>Relation between Two Self-Framing Definitions\<close>
+
+lemma ctxt_pred_self_framing_inh_implies_sat:
+  assumes "ctxt_pred_self_framing_inh ctxt StateCons"
+  shows "ctxt_pred_self_framing_sat ctxt"
+  sorry
 
 
 end

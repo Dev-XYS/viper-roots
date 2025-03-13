@@ -400,7 +400,7 @@ lemma extcons_state_can_be_inhaled_assertion:
       and SupPred: "supported_pred_body A"
       and FinalIntCons: "StateCons (add_to_nm_total_full \<omega> nm)"
       and WfCons: "mono_prop_downward StateCons"
-      and WfCtxt: "ctxt_wf_pred ctxt"
+      and WfCtxt: "ctxt_pred_syn_wf ctxt"
     shows "red_inhale ctxt StateCons A \<omega> (RNormal (add_to_nm_total_full \<omega> nm))"
 
   using Sat mh_nm mp_nm ExtCons \<omega>hh SameStore Framed SupPred FinalIntCons
@@ -1126,7 +1126,7 @@ lemma extcons_state_can_be_inhaled:
       and \<omega>Store: "get_store_total \<omega> = nth_option vs"
       and FinalIntCons: "StateCons (add_to_nm_total_full \<omega> nm)"
       and WfCons: "wf_total_consistency ctxt StateCons StateCons_t"
-      and WfCtxt: "ctxt_wf_pred ctxt"
+      and WfCtxt: "ctxt_pred_syn_wf ctxt"
       and "p > 0"
     shows "red_inhale ctxt StateCons (syntactic_mult (Rep_preal p) pbody) \<omega> (RNormal (add_to_nm_total_full \<omega> nm))"
 proof -
@@ -1166,7 +1166,7 @@ lemma inhale_simulates_unfold:
       and IntCons: "StateCons_t \<phi>"
       and PredDecl: "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
       and PredBody: "ViperLang.predicate_decl.body pdecl = Some pbody"
-      and CtxtWfPred: "ctxt_wf_pred ctxt"
+      and CtxtWfPred: "ctxt_pred_syn_wf ctxt"
       and SelfFraming: "\<And>q. assertion_self_framing_store ctxt StateCons (syntactic_mult q pbody) (nth_option vs)"
       and "\<phi>\<^sub>d = rm_from_lpm_total \<phi> (pid,vs) q"
       and "(\<forall>lbl \<phi>. trace lbl = Some \<phi> \<longrightarrow> StateCons_t \<phi>)"
@@ -1264,7 +1264,7 @@ proof -
 
   show ?thesis
     apply (rule extcons_state_can_be_inhaled[OF PredDecl PredBody _ Framed ShiftExtCons, simplified 1])
-    using CtxtWfPred PredBody PredDecl ctxt_wf_pred_def
+    using CtxtWfPred PredBody PredDecl ctxt_pred_syn_wf_def
           apply blast
          apply (simp add: assms(9))
         apply simp
@@ -1282,12 +1282,12 @@ lemma unfold_stmt_rel:
   assumes PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl"
       and PredArgs: "predicate_decl.args pdecl = ty_args"
       and PredBody: "predicate_decl.body pdecl = Some pbody"
-      and SupportedPredBody: "supported_pred_body pbody"
-      and SelfFraming: "assertion_self_framing ctxt_vpr StateCons pbody ty_args"
+      and CtxtPredWf: "ctxt_pred_syn_wf ctxt_vpr"
+      and CtxtPredSF: "ctxt_pred_self_framing_inh ctxt_vpr StateCons"
       and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
-      and CtxtWfPred: "ctxt_wf_pred ctxt_vpr"
+      and CtxtWfPred: "ctxt_pred_syn_wf ctxt_vpr"
       and ArgsSimp: "e_args = [pure_exp.Var 0]" \<comment> \<open>We only support one predicate argument, which must be the first method argument.\<close>
       and PermSimp: "e_p = ELit (LPerm 1)" \<comment> \<open>We only support a literal 1 as the permission.\<close>
       and StepExhale:
@@ -1298,6 +1298,14 @@ lemma unfold_stmt_rel:
       and StepInhale: "inhale_rel R' (\<lambda>_ _. True) ctxt_vpr StateCons P ctxt_bpl (syntactic_mult 1 pbody) \<gamma>\<^sub>2 \<gamma>'"
     shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Unfold pid e_args (PureExp e_p)) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro)
+  \<comment> \<open>Specialize predicate body restrictions and self-framing to the predicate in consideration\<close>
+  have SupportedPredBody: "supported_pred_body pbody"
+    using CtxtWfPred PredBody PredDecl ctxt_pred_syn_wf_def
+    by blast
+  have SelfFraming: "assertion_self_framing ctxt_vpr StateCons pbody ty_args"
+    using CtxtPredSF PredArgs PredBody PredDecl ctxt_pred_self_framing_inh_def
+    by blast
+
   fix \<omega> ns \<omega>'
   assume "R \<omega> ns"
      and red_stmt: "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Unfold pid e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
@@ -1435,48 +1443,6 @@ next
   qed
 qed
 
-
-(*
-lemma unfold_exhale_rel_rel:
-  assumes "rel_general (uncurry (\<lambda>\<omega>0 \<omega> ns. \<omega>0 = \<omega> \<and> R \<omega> ns)) (uncurry (\<lambda>\<omega>0 \<omega> ns. R \<omega> ns))
-             (\<lambda>\<omega>0_\<omega> \<omega>0_\<omega>'. red_exhale ctxt_vpr StateCons (fst \<omega>0_\<omega>) (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) (snd \<omega>0_\<omega>) (RNormal (snd \<omega>0_\<omega>')))
-             (\<lambda>\<omega>0_\<omega>. red_exhale ctxt_vpr StateCons (fst \<omega>0_\<omega>) (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) (snd \<omega>0_\<omega>) RFailure)
-             P ctxt_bpl \<gamma> \<gamma>'"
-    shows "rel_general R R
-             (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> (RNormal \<omega>'))
-             (\<lambda>\<omega>. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> RFailure)
-             P ctxt_bpl \<gamma> \<gamma>'"
-  by (smt (verit, ccfv_SIG) assms rel_general_conseq rel_general_convert_2 uncurry.elims)
-*)
-
-(*
-lemma unfold_exhale_pred_rel:
-  assumes WfSubexp: "exprs_wf_rel
-                       (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and>
-                          Q (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega>def \<omega>)
-                       ctxt_vpr StateCons P ctxt_bpl (e_args_vpr @ [e_p_vpr]) \<gamma> \<gamma>\<^sub>2"
-      and CorrectPermRel:
-            "\<And>v_args v_p.
-               rel_general (uncurry R) (R' v_args v_p)
-                 (\<lambda>\<omega>0_\<omega> \<omega>0_\<omega>'. \<omega>0_\<omega> = \<omega>0_\<omega>' \<and>
-                    exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args v_p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) \<and>
-                    exhale_pred_acc_rel_perm_success ctxt_vpr StateCons (snd \<omega>0_\<omega>) pred_id v_args v_p)
-                 (\<lambda>\<omega>0_\<omega>.
-                    exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args v_p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) \<and>
-                    \<not> exhale_pred_acc_rel_perm_success ctxt_vpr StateCons (snd \<omega>0_\<omega>) pred_id v_args v_p)
-                 P ctxt_bpl \<gamma>\<^sub>2 \<gamma>\<^sub>3"
-      and UpdExhRel:
-            "\<And>v_args v_p.
-               rel_general (R' v_args v_p) (uncurry R'') \<comment>\<open>Here, the simulation needs to revert back to R\<close>
-                 (\<lambda> \<omega>0_\<omega> \<omega>0_\<omega>'. fst \<omega>0_\<omega> = fst \<omega>0_\<omega>' \<and> exhale_pred_acc_normal_premise ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args v_p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) (snd \<omega>0_\<omega>'))
-                 (\<lambda>_. False)
-                 P ctxt_bpl \<gamma>\<^sub>3 \<gamma>'"
-    shows "rel_general (uncurry R) (uncurry R'')
-             (\<lambda>\<omega>0_\<omega> \<omega>0_\<omega>'. red_exhale ctxt_vpr StateCons (fst \<omega>0_\<omega>) (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) (snd \<omega>0_\<omega>) (RNormal (snd \<omega>0_\<omega>')))
-             (\<lambda>\<omega>0_\<omega>. red_exhale ctxt_vpr StateCons (fst \<omega>0_\<omega>) (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) (snd \<omega>0_\<omega>) RFailure)
-             P ctxt_bpl \<gamma> \<gamma>'"
-  sorry
-*)
 
 lemma unfold_exhale_pred_rel:
   assumes WfSubexp: "exprs_wf_rel

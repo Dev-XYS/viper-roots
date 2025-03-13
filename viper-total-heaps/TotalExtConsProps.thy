@@ -1153,7 +1153,7 @@ lemma nm_scale_0:
 
 lemma fraction_consistent_external:
   fixes frac :: preal
-  assumes "ctxt_wf_pred ctxt"
+  assumes "ctxt_pred_syn_wf ctxt"
     shows "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
            consistent_external_wrt_ploc ctxt (mult_nm_total \<phi> frac) (pid,vs) (frac * p)"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
@@ -1169,7 +1169,7 @@ proof (induction rule: consistent_external_wrt_ploc_consistent_external.inducts)
      apply (subst nm_frac_mh_frac)
      apply (subst nm_frac_mp_frac)
      apply (rule fractionability_pq)
-    using IH.IH(1) assms ctxt_wf_pred_def IH(3) IH.hyps
+    using IH.IH(1) assms ctxt_pred_syn_wf_def IH(3) IH.hyps
       apply blast
     using IH.IH(3) less_preal.rep_eq preal_not_0_gt_0 times_preal.rep_eq total_state.update_convs(2) zero_preal.rep_eq
      apply fastforce

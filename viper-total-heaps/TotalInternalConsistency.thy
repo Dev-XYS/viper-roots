@@ -43,12 +43,12 @@ definition wf_total_consistency
                (\<forall>\<omega> v. R \<omega> \<longrightarrow> R (shift_and_add_state_total \<omega> v)) \<and>
                (\<forall>\<omega>. R \<omega> \<longleftrightarrow> (Rt (get_total_full \<omega>) \<and> (\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> Rt \<phi>))) \<and>
                (\<forall>\<omega> \<omega>' \<Lambda> stmt. consistent_external ctxt (get_total_full \<omega>) \<longrightarrow> R \<omega> \<longrightarrow>
-                              ctxt_wf_pred ctxt \<longrightarrow> ctxt_pred_self_framing ctxt \<longrightarrow>
+                              ctxt_pred_syn_wf ctxt \<longrightarrow> ctxt_pred_self_framing_sat ctxt \<longrightarrow>
                               red_stmt_total ctxt R \<Lambda> stmt \<omega> (RNormal \<omega>') \<longrightarrow>
                               consistent_external ctxt (get_total_full \<omega>')) \<and>
                (\<forall>\<phi>. Rt \<phi> \<longrightarrow> wf_mask_simple (get_mh_total \<phi>)) \<and>
                (\<forall>\<phi> pid vs q \<phi>'. Rt \<phi> \<longrightarrow> unfold_rel ctxt pid vs q \<phi> \<phi>' \<longrightarrow> Rt \<phi>') \<and>  \<comment> \<open>Basically the same as the preservation under statement reduction, but stated only on \<^typ>\<open>'a total_state\<close>.\<close>
-               ctxt_wf_pred ctxt \<and> ctxt_pred_self_framing ctxt  \<comment> \<open>These really shouldn't be here.\<close>"
+               ctxt_pred_syn_wf ctxt \<and> ctxt_pred_self_framing_sat ctxt  \<comment> \<open>These really shouldn't be here.\<close>"
 
 lemma total_consistencyI:
   assumes "wf_total_consistency ctxt R Rt"
@@ -119,8 +119,8 @@ lemma wf_total_consistency_trace_mono_downwardD:
 lemma total_consistency_red_stmt_extcons_preserve:
   assumes "wf_total_consistency ctxt R Rt"
       and "consistent_external ctxt (get_total_full \<omega>)"
-      and "ctxt_wf_pred ctxt"
-      and "ctxt_pred_self_framing ctxt"
+      and "ctxt_pred_syn_wf ctxt"
+      and "ctxt_pred_self_framing_sat ctxt"
       and "R \<omega>"
       and "red_stmt_total ctxt R \<Lambda> stmt \<omega> (RNormal \<omega>')"
     shows "consistent_external ctxt (get_total_full \<omega>')"
@@ -130,8 +130,8 @@ lemma total_consistency_red_stmt_extcons_preserve:
 
 lemma total_consistency_ctxt_wf:
   assumes "wf_total_consistency ctxt R Rt"
-    shows "ctxt_wf_pred ctxt"
-      and "ctxt_pred_self_framing ctxt"
+    shows "ctxt_pred_syn_wf ctxt"
+      and "ctxt_pred_self_framing_sat ctxt"
   using assms
   unfolding wf_total_consistency_def
   by fastforce+

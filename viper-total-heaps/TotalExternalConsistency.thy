@@ -166,8 +166,8 @@ lemmas extcons_inducts = consistent_external_wrt_ploc_consistent_external.induct
 
 subsection \<open>Well-formed Viper Context (Predicates)\<close>
 
-definition ctxt_wf_pred where
-  "ctxt_wf_pred ctxt \<equiv>
+definition ctxt_pred_syn_wf where
+  "ctxt_pred_syn_wf ctxt \<equiv>
      \<forall>pred_id pred_decl pred_body.
         ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl \<longrightarrow>
         ViperLang.predicate_decl.body pred_decl = Some pred_body \<longrightarrow>
