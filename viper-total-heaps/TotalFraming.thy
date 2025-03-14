@@ -1,7 +1,7 @@
 section \<open>Framed Assertions\<close>
 
 theory TotalFraming
-  imports TotalInhaleExhale
+  imports TotalInhaleExhale NestedMaskProperties
 begin
 
 
@@ -76,22 +76,36 @@ definition assertion_self_framing :: "'a total_context \<Rightarrow> ('a full_to
        assertion_self_framing_store ctxt StateCons (syntactic_mult p A) (nth_option vs)"
 
 
+
 subsection \<open>Self-Framing Predicate Definition Based on \<^const>\<open>sat\<close>\<close>
+
 
 definition well_typed_store :: "vtyp list \<Rightarrow> ('a \<Rightarrow> abs_type) \<Rightarrow> 'a store \<Rightarrow> bool"
   where
     "well_typed_store tys \<Delta> st \<equiv> \<forall>i. i < length tys \<longrightarrow> (\<exists>v. st i = Some v \<and> get_type \<Delta> v = tys ! i)"
 
-definition pred_self_framing :: "'a total_context \<Rightarrow> predicate_decl => bool"
-  where
-    "pred_self_framing ctxt pred_decl \<equiv>
-       \<forall>pred_body \<omega> \<omega>' mh mp frac. predicate_decl.body pred_decl = Some pred_body \<longrightarrow>
-          get_store_total \<omega> = get_store_total \<omega>' \<longrightarrow>
-          \<comment> \<open>well_typed_store (predicate_decl.args pred_decl) (absval_interp_total ctxt) (get_store_total \<omega>) \<longrightarrow>\<close>
-          \<comment> \<open>Maybe well-typed is redundant? \<^const>\<open>sat\<close> implies well-typed.\<close>
-          (\<forall>l. mh l > 0 \<longrightarrow> get_hh_total_full \<omega> l = get_hh_total_full \<omega>' l) \<longrightarrow>
-          sat ctxt \<omega> mh mp (syntactic_mult frac pred_body) \<longrightarrow> sat ctxt \<omega>' mh mp (syntactic_mult frac pred_body)"
 
+definition differ_only_in_0_perm_locs where
+  "differ_only_in_0_perm_locs \<phi> \<phi>' \<equiv>
+     (\<forall>loc. get_hh_total \<phi> loc \<noteq> get_hh_total \<phi>' loc \<longrightarrow> nm_loc_sum loc (get_nm_total \<phi>) 0) \<and>
+     get_nm_total \<phi> = get_nm_total \<phi>'"
+
+
+definition pred_self_framing :: "'a total_context \<Rightarrow> ('a total_state \<Rightarrow> bool) \<Rightarrow> predicate_decl \<Rightarrow> bool"
+  where
+    "pred_self_framing ctxt StateCons_t pdecl \<equiv>
+       \<forall>pbody \<omega> \<omega>' \<phi> \<phi>' frac. predicate_decl.body pdecl = Some pbody \<longrightarrow>
+          get_store_total \<omega> = get_store_total \<omega>' \<longrightarrow>
+          differ_only_in_0_perm_locs \<phi> \<phi>' \<longrightarrow>
+          get_hh_total_full \<omega> = get_hh_total \<phi> \<longrightarrow>
+          get_hh_total_full \<omega>' = get_hh_total \<phi>' \<longrightarrow>
+          sat ctxt \<omega> (get_mh_total \<phi>) (get_mp_total \<phi>) (syntactic_mult frac pbody) \<longrightarrow>
+          consistent_external ctxt \<phi> \<longrightarrow>
+          StateCons_t \<phi> \<longrightarrow>
+          sat ctxt \<omega>' (get_mh_total \<phi>') (get_mp_total \<phi>') (syntactic_mult frac pbody) \<and> consistent_external ctxt \<phi>'"
+
+
+(*
 lemma pred_self_framing_subst:
   assumes "pred_self_framing ctxt pred_decl"
       and "predicate_decl.body pred_decl = Some pred_body"
@@ -101,28 +115,21 @@ lemma pred_self_framing_subst:
     shows "sat ctxt \<omega>' mh mp (syntactic_mult p pred_body)"
   using assms(1) assms(2) assms(3) assms(4) assms(5) pred_self_framing_def
   by blast
+*)
 
 
 subsection \<open>Context All Predicates Self-Framing\<close>
 
-definition ctxt_pred_self_framing_sat :: "'a total_context \<Rightarrow> bool" where
-  "ctxt_pred_self_framing_sat ctxt \<equiv> \<forall>pid pdecl.
+definition ctxt_pred_self_framing_sat :: "'a total_context \<Rightarrow> ('a total_state \<Rightarrow> bool) \<Rightarrow> bool" where
+  "ctxt_pred_self_framing_sat ctxt StateCons_t \<equiv> \<forall>pid pdecl.
      ViperLang.predicates (program_total ctxt) pid = Some pdecl \<longrightarrow>
-     pred_self_framing ctxt pdecl"
+     pred_self_framing ctxt StateCons_t pdecl"
 
 definition ctxt_pred_self_framing_inh :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> bool" where
   "ctxt_pred_self_framing_inh ctxt StateCons \<equiv> \<forall>pid pdecl pbody.
      ViperLang.predicates (program_total ctxt) pid = Some pdecl \<longrightarrow>
      predicate_decl.body pdecl = Some pbody \<longrightarrow>
      assertion_self_framing ctxt StateCons pbody (predicate_decl.args pdecl)"
-
-
-subsection \<open>Relation between Two Self-Framing Definitions\<close>
-
-lemma ctxt_pred_self_framing_inh_implies_sat:
-  assumes "ctxt_pred_self_framing_inh ctxt StateCons"
-  shows "ctxt_pred_self_framing_sat ctxt"
-  sorry
 
 
 end

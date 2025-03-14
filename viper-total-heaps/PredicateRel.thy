@@ -1276,7 +1276,19 @@ proof -
 qed
 
 
+subsection \<open>Relation between Two Self-Framing Definitions\<close>
+
+
+lemma ctxt_pred_self_framing_inh_implies_sat:
+  assumes "ctxt_pred_self_framing_inh ctxt StateCons"
+  shows "ctxt_pred_self_framing_sat ctxt StateCons_t"
+  unfolding ctxt_pred_self_framing_sat_def pred_self_framing_def
+  sorry
+
+
+
 subsection \<open>Unfold\<close>
+
 
 lemma unfold_stmt_rel:
   assumes PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl"

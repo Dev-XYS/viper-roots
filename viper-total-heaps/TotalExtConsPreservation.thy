@@ -343,54 +343,50 @@ proof
     by fast
 qed
 
-definition differ_only_in_0_perm_locs where
-  "differ_only_in_0_perm_locs \<phi> \<phi>' \<equiv>
-     (\<forall>loc. get_hh_total \<phi> loc \<noteq> get_hh_total \<phi>' loc \<longrightarrow> nm_loc_sum loc (get_nm_total \<phi>) 0) \<and>
-     get_nm_total \<phi> = get_nm_total \<phi>'"
 
 lemma extcons_preserved_by_changing_0_locs':
-  assumes "ctxt_pred_self_framing_sat ctxt"
-    shows "(consistent_external_wrt_ploc ctxt \<phi> lp p \<longrightarrow>
-            (\<forall>\<phi>'. differ_only_in_0_perm_locs \<phi> \<phi>' \<longrightarrow>
-                  consistent_external_wrt_ploc ctxt \<phi>' lp p)) \<and>
-           (consistent_external ctxt \<phi> \<longrightarrow>
-            (\<forall>\<phi>'. differ_only_in_0_perm_locs \<phi> \<phi>' \<longrightarrow>
-                  consistent_external ctxt \<phi>'))"
-  apply (rule consistent_external_wrt_ploc_consistent_external.induct)
-   apply (standard, standard, standard)
+  assumes "ctxt_pred_self_framing_sat ctxt StateCons_t"
+      and "mono_prop_downward_sub_mask_total StateCons_t"
+      and "StateCons_t \<phi>"
+      and "differ_only_in_0_perm_locs \<phi> \<phi>'"
+    shows "consistent_external_wrt_ploc ctxt \<phi> lp p \<Longrightarrow>
+           consistent_external_wrt_ploc ctxt \<phi>' lp p" and
+          "consistent_external ctxt \<phi> \<Longrightarrow>
+           consistent_external ctxt \<phi>'"
+  using assms(3-)
+   apply (induction arbitrary: \<phi>' and \<phi>' rule: consistent_external_wrt_ploc_consistent_external.inducts)
+   apply (rule SatStep)
         apply fast+
-     apply (metis differ_only_in_0_perm_locs_def)
-    apply (smt (verit) assms ctxt_pred_self_framing_sat_def differ_only_in_0_perm_locs_def full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps get_mh_total.simps get_mp_total.simps preal_not_0_gt_0 pred_self_framing_subst sum_0_implies_mh_zero total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
-   apply blast
-proof (standard, intro impI)
+     apply (simp add: differ_only_in_0_perm_locs_def)
+    apply (smt (verit, del_insts) assms ctxt_pred_self_framing_sat_def full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps pred_self_framing_def total_state.cases total_state.select_convs(1) total_state.update_convs(2))
+   apply fastforce
+proof (rule SatAll)
   fix \<phi> \<phi>' :: "'a total_state"
-  assume IH:
-         "\<And>pid vs q nm'. Some (q, nm') = get_fnm_total \<phi> (pid,vs) \<Longrightarrow>
-            \<forall>\<phi>''. differ_only_in_0_perm_locs (\<phi>\<lparr> get_nm_total := nm' \<rparr>) \<phi>'' \<longrightarrow>
-                  consistent_external_wrt_ploc ctxt \<phi>'' (pid,vs) (Rep_posreal q)"
+  fix pred_id vs q nm'
+  assume IH: "\<And>pred_id vs q nm' \<phi>'.
+                  Some (q, nm') = get_fnm_total \<phi> (pred_id, vs) \<Longrightarrow>
+                  StateCons_t (\<phi>\<lparr> get_nm_total := nm' \<rparr>) \<Longrightarrow>
+                  differ_only_in_0_perm_locs (\<phi>\<lparr> get_nm_total := nm' \<rparr>) \<phi>' \<Longrightarrow>
+                  consistent_external_wrt_ploc ctxt \<phi>' (pred_id, vs) (Rep_posreal q)"
+     and intcons: "StateCons_t \<phi>"
      and diff_only: "differ_only_in_0_perm_locs \<phi> \<phi>'"
-  show "consistent_external ctxt \<phi>'"
-  proof
-    fix pid vs q nm'
-    assume lpm: "Some (q, nm') = get_fnm_total \<phi>' (pid,vs)"
-    with IH have "\<forall>\<phi>''. differ_only_in_0_perm_locs (\<phi>\<lparr> get_nm_total := nm' \<rparr>) \<phi>'' \<longrightarrow>
-                        consistent_external_wrt_ploc ctxt \<phi>'' (pid,vs) (Rep_posreal q)"
-      using diff_only differ_only_in_0_perm_locs_def
-      by (metis get_fnm_total.simps)
-    moreover have "differ_only_in_0_perm_locs (\<phi>\<lparr> get_nm_total := nm' \<rparr>) (\<phi>'\<lparr> get_nm_total := nm' \<rparr>)"
-      apply (subgoal_tac "\<And>loc. nm_loc_sum loc (get_nm_total \<phi>) 0 \<Longrightarrow> nm_loc_sum loc nm' 0")
-       apply (simp add: differ_only_in_0_perm_locs_def)
-       apply (meson diff_only differ_only_in_0_perm_locs_def nm_loc_sum.elims(2))
-      by (metis diff_only differ_only_in_0_perm_locs_def get_fnm_total.simps lpm padd_pos preal_gte_padd sub_mask_smaller)
-    ultimately show "consistent_external_wrt_ploc ctxt (\<phi>'\<lparr> get_nm_total := nm' \<rparr>) (pid,vs) (Rep_posreal q)"
-      by blast
-  qed
+     and lpm: "Some (q,nm') = get_fnm_total \<phi>' (pred_id,vs)"
+  show "consistent_external_wrt_ploc ctxt (\<phi>'\<lparr> get_nm_total := nm' \<rparr>) (pred_id,vs) (Rep_posreal q)"
+    apply (rule IH)
+    using diff_only[unfolded differ_only_in_0_perm_locs_def, THEN conjunct2] lpm[simplified]
+      apply fastforce
+     apply (metis \<open>get_nm_total \<phi> = get_nm_total \<phi>'\<close> assms(2) get_fnm_total.simps intcons lpm mono_prop_downward_sub_mask_total_def)
+    unfolding differ_only_in_0_perm_locs_def
+    by (metis all_pos diff_only differ_only_in_0_perm_locs_def get_fnm_total.simps lpm nle_le sub_mask_smaller total_state.select_convs(1) total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
 qed
+
 
 lemma extcons_preserved_by_changing_0_locs:
   assumes "\<And>loc. get_hh_total \<phi> loc \<noteq> get_hh_total \<phi>' loc \<Longrightarrow> nm_loc_sum loc (get_nm_total \<phi>) 0"
       and "get_nm_total \<phi> = get_nm_total \<phi>'"
-      and "ctxt_pred_self_framing_sat ctxt"
+      and "ctxt_pred_self_framing_sat ctxt StateCons_t"
+      and "StateCons_t \<phi>"
+      and "mono_prop_downward_sub_mask_total StateCons_t"
     shows "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
            consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) p"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
@@ -400,35 +396,52 @@ lemma extcons_preserved_by_changing_0_locs:
 
 lemma extcons_preserved_by_red_stmt_exhale:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
+      and "consistent_internal_total (get_total_full \<omega>)"
       and "red_stmt_total ctxt StateCons \<Lambda> (Exhale A) \<omega> (RNormal \<omega>')"
       and "ctxt_pred_syn_wf ctxt"
-      and "ctxt_pred_self_framing_sat ctxt"
+      and "ctxt_pred_self_framing_sat ctxt consistent_internal_total"
     shows "consistent_external ctxt (get_total_full \<omega>')"
 proof -
-  from assms(2) obtain \<omega>_exh where
+  from assms(3) obtain \<omega>_exh where
     exh: "red_exhale ctxt StateCons \<omega> A \<omega> (RNormal \<omega>_exh)" and
     havoc: "\<omega>' \<in> havoc_locs_state ctxt \<omega>_exh
       { loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full \<omega>) p) \<and> nm_loc_sum loc (get_nm_total_full \<omega>_exh) 0 }"
     by (blast elim: red_stmt_total.cases)
 
   hence "consistent_external ctxt (get_total_full \<omega>_exh)"
-    using assms(1) assms(3) extcons_preserved_by_red_exhale
+    using assms(1) assms(4) extcons_preserved_by_red_exhale
     by blast
 
   show ?thesis
     apply (rule extcons_preserved_by_changing_0_locs(2)[of "get_total_full \<omega>_exh"])
     using havoc[unfolded havoc_locs_state_def havoc_locs_heap_def, simplified]
-       apply force
-    using havoc havoc_locs_state_same_mask apply fastforce
-    by fact+
+         apply force
+    using havoc havoc_locs_state_same_mask
+        apply fastforce
+       apply fact
+    using assms(2) exh exhale_normal_result_smaller greater_full_total_state_total_state intcons_total_mono_prop_downward mono_prop_downwardD
+      apply blast
+     apply (simp add: intcons_mono_prop_downward_sub_mask_total)
+    by fact
 qed
+
 
 
 subsection \<open>Preserved by Field Assignment\<close>
 
+
+\<comment> \<open>In the following lemma, the internal consistency premise if necessary.
+    Consider the following predicate:
+        predicate Q(x: Ref, i: Int) { acc(x.f) }
+        predicate P(x: Ref) { (forall i:Int :: Q(x, i)) && x.g == 1 }
+    In the semantics, P is self-framing (not in Viper).
+    We can construct a external consistent state that satisfies P(x) without permission to x.g (but not internal consistent).
+    Thus, the following lemma does not hold without internal consistency.\<close>
+
 lemma extcons_preserved_by_field_assignment_helper:
   assumes "nm_loc_sum loc (get_nm_total \<phi>) 0"
-      and "ctxt_pred_self_framing_sat ctxt"
+      and "ctxt_pred_self_framing_sat ctxt consistent_internal_total"
+      and "consistent_internal_total \<phi>"
     shows "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
            consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v) (pid,vs) p"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
@@ -440,18 +453,19 @@ proof -
   show "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
         consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v) (pid,vs) p"
     using extcons_preserved_by_changing_0_locs(1)[OF * _ assms(2), of "upd_hh_loc_total \<phi> loc v"]
-    by simp
+    by (simp add: assms(3) intcons_mono_prop_downward_sub_mask_total)
   show "consistent_external ctxt \<phi> \<Longrightarrow>
         consistent_external ctxt (upd_hh_loc_total \<phi> loc v)"
     using extcons_preserved_by_changing_0_locs(2)[OF * _ assms(2), of "upd_hh_loc_total \<phi> loc v"]
-    by simp
+    by (simp add: assms(3) intcons_mono_prop_downward_sub_mask_total)
 qed
+
 
 lemma extcons_preserved_by_field_assignment:
   assumes "consistent_external ctxt \<phi>"
       and "consistent_internal (get_nm_total \<phi>)"
       and "get_mh_total \<phi> loc = 1"
-      and "ctxt_pred_self_framing_sat ctxt"
+      and "ctxt_pred_self_framing_sat ctxt consistent_internal_total"
     shows "consistent_external ctxt (upd_hh_loc_total \<phi> loc v)"
 proof -
   have zero_perm: "\<And>lp lpm. get_fnm_total \<phi> lp = Some lpm \<Longrightarrow> nm_loc_sum loc (snd lpm) 0"
@@ -470,9 +484,8 @@ proof -
       using consistent_external.cases[OF assms(1)]
       by metis
     show "consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pid,vs) (Rep_posreal q)"
-      using extcons_preserved_by_field_assignment_helper(1)[of loc "\<phi>\<lparr>get_nm_total := nm'\<rparr>", OF _ assms(4) extcons_nm, of v]
-      apply simp
-      by (metis \<open>nm_loc_sum loc nm' pos_perm_class.pnone\<close> nm_loc_sum.simps total_state.simps(4) total_state.surjective total_state.update_convs(2))
+      using extcons_preserved_by_field_assignment_helper(1)[of loc "\<phi>\<lparr>get_nm_total := nm'\<rparr>", OF _ assms(4) _ extcons_nm, of v]
+      by (metis \<open>nm_loc_sum loc nm' 0\<close> assms(2) consistent_internal_total_def intcons_mono_prop_downward_sub_mask_total lpm mono_prop_downward_sub_mask_total_def total_state.select_convs(1) total_state.surjective total_state.update_convs(1) total_state.update_convs(2) total_state_update_nm_read upd_hh_loc_total.simps)
   qed
 qed
 
@@ -635,7 +648,7 @@ lemma extcons_preserved_by_red_stmt:
       and "consistent_internal_total_full \<omega>"
       and "red_stmt_total ctxt consistent_internal_total_full \<Lambda> stmt \<omega> (RNormal \<omega>')"
       and "ctxt_pred_syn_wf ctxt"
-      and "ctxt_pred_self_framing_sat ctxt"
+      and "ctxt_pred_self_framing_sat ctxt consistent_internal_total"
     shows "consistent_external ctxt (get_total_full \<omega>')"
   using assms(1-3)
 proof (induction stmt arbitrary: \<Lambda> \<omega> \<omega>')
@@ -646,17 +659,13 @@ proof (induction stmt arbitrary: \<Lambda> \<omega> \<omega>')
 next
   case (Exhale A)
   then show ?case
-    using extcons_preserved_by_red_stmt_exhale RedExhale_case assms(4,5)
+    using extcons_preserved_by_red_stmt_exhale RedExhale_case assms(4,5) consistent_internal_total_full_def
     by blast
 next
   case (Assert A)
   then show ?case
     using RedAssertNormal_case
     by blast
-next
-  case (Assume A)
-  then show ?case
-    by (blast elim: red_stmt_total.cases)
 next
   case (If e s1 s2)
   then show ?case
@@ -685,10 +694,6 @@ next
           consistent_internal_total_def consistent_internal_total_full_def
     by fastforce
 next
-  case (Havoc _)
-  then show ?case
-    by (fastforce elim: red_stmt_total.cases)
-next
   case IH: (MethodCall ys m es)
   obtain v_args mdecl v_rets resPre resPost where
     "red_pure_exps_total ctxt (Some \<omega>) es \<omega> (Some v_args)" and
@@ -716,17 +721,13 @@ next
   then obtain \<omega>Pre where "resPre = RNormal \<omega>Pre"
     by (metis result_total.exhaust)
   hence "consistent_external ctxt (get_total_full \<omega>Pre)"
-    by (metis IH.prems(1) red_exh assms(4) assms(5) extcons_preserved_by_red_stmt_exhale full_total_state.select_convs(3))
+    by (metis IH.prems(1) IH.prems(2) assms(4) assms(5) consistent_internal_total_full_def extcons_preserved_by_red_stmt_exhale full_total_state.select_convs(3) red_exh)
   obtain \<omega>Post where "resPost = RNormal \<omega>Post"
     by (metis \<open>resPre = RNormal \<omega>Pre\<close> map_result_total.elims red_inh)
   hence "consistent_external ctxt (get_total_full \<omega>Post)"
     by (metis RedInhale_case \<open>consistent_external ctxt (get_total_full \<omega>Pre)\<close> \<open>resPre = RNormal \<omega>Pre\<close> extcons_preserved_by_red_inhale full_total_state.select_convs(3) red_inh sub_expressions.simps(7))
   then show ?case
     by (metis \<open>resPost = RNormal \<omega>Post\<close> \<open>resPre = RNormal \<omega>Pre\<close> full_total_state.select_convs(3) map_result_total.simps(1) red_inh reset_state_after_call_def result_total.inject)
-next
-  case (While _ _ _)
-  then show ?case
-    by (blast elim: red_stmt_total.cases)
 next
   case (Unfold pid es perm)
   then show ?case
@@ -741,18 +742,6 @@ next
     using assms(4) extcons_preserved_by_red_stmt_fold
      apply blast
     by (blast elim: red_stmt_total.cases)
-next
-  case (Package _ _)
-  then show ?case
-    by (blast elim: red_stmt_total.cases)
-next
-  case (Apply _ _)
-  then show ?case
-    by (blast elim: red_stmt_total.cases)
-next
-  case (Label _)
-  then show ?case
-    by (fastforce elim: red_stmt_total.cases)
 next
   case IH: (Scope \<tau> scopeBody)
   then obtain v res where
@@ -776,12 +765,7 @@ next
   then show ?case
     using \<open>res = RNormal \<omega>\<^sub>m\<close> map
     by auto
-next
-  case Skip
-  then show ?case
-    using RedSkip_case
-    by blast
-qed
+qed (auto elim: red_stmt_total.cases)
 
 
 subsection \<open>Relationship between inhale and exhale (Todo: Put somewhere else)\<close>
