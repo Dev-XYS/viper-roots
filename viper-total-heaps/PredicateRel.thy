@@ -1398,9 +1398,28 @@ next
 qed (auto intro: red_pure_exp_intros)
 
 
+lemma inhale_mono:
+  assumes "red_inhale ctxt StateCons A \<omega> (RNormal \<omega>')"
+  shows "\<omega> \<le> \<omega>'"
+  sorry
+
+
+lemma differ_only_in_0_perm_locs_smaller:
+  assumes "differ_only_in_0_perm_locs (get_total_full \<omega>\<^sub>i) (get_total_full \<omega>\<^sub>i')"
+      and "get_nm_total_full \<omega>\<^sub>0 = get_nm_total_full \<omega>\<^sub>0'"
+      and "get_hh_total_full \<omega>\<^sub>0 = get_hh_total_full \<omega>\<^sub>i"
+      and "get_hh_total_full \<omega>\<^sub>0' = get_hh_total_full \<omega>\<^sub>i'"
+      and "\<omega>\<^sub>0 \<le> \<omega>\<^sub>i"
+    shows "differ_only_in_0_perm_locs (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>\<^sub>0')"
+  using assms
+  unfolding differ_only_in_0_perm_locs_def
+  apply (intro conjI)
+   apply (metis nm_loc_sum_smaller all_pos get_hh_total_full.simps get_nm_total_full.simps less_eq_full_total_stateD_2 order_antisym)
+  by auto
+
+
 lemma inhale_perm_0_locs_irrelevant:
-  assumes "red_inhale ctxt StateCons A \<omega>\<^sub>0 res"
-      and "res = RNormal \<omega>\<^sub>i"
+  assumes "red_inhale ctxt StateCons A \<omega>\<^sub>0 (RNormal \<omega>\<^sub>i)"
       and "get_store_total \<omega>\<^sub>0 = get_store_total \<omega>\<^sub>0'"
       and "get_trace_total \<omega>\<^sub>0 = get_trace_total \<omega>\<^sub>0'"
       and "get_nm_total_full \<omega>\<^sub>0 = get_nm_total_full \<omega>\<^sub>0'"
@@ -1410,8 +1429,128 @@ lemma inhale_perm_0_locs_irrelevant:
       and "get_hh_total_full \<omega>\<^sub>0' = get_hh_total_full \<omega>\<^sub>i'"
     shows "red_inhale ctxt StateCons A \<omega>\<^sub>0' (RNormal \<omega>\<^sub>i')"
   using assms
-(* proof (induction arbitrary: \<omega>\<^sub>i \<omega>\<^sub>0' \<omega>\<^sub>i' rule: red_inhale.inducts) *)
-  sorry
+proof (induction A arbitrary: \<omega>\<^sub>0 \<omega>\<^sub>i \<omega>\<^sub>0' \<omega>\<^sub>i')
+  case (Atomic atm)
+  then show ?case sorry
+
+next
+  case IH: (Imp e A)
+
+  have "\<omega>\<^sub>0 \<le> \<omega>\<^sub>i"
+    using IH.prems(1) inhale_mono
+    by blast
+  hence diff_only_0_locs: "differ_only_in_0_perm_locs (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>\<^sub>0')"
+    using IH.prems(4,7,8) differ_only_in_0_perm_locs_smaller less_eq_full_total_stateD_2
+    by blast
+
+  from IH consider (True) "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e;\<omega>\<^sub>0\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+                  (False) "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e;\<omega>\<^sub>0\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    by (auto elim: InhImp_case)
+  then show ?case
+  proof cases
+    case True
+    hence *: "red_inhale ctxt StateCons A \<omega>\<^sub>0 (RNormal \<omega>\<^sub>i)"
+      by (metis IH.prems(1) InhImp_case ValueAndBasicState.val.inject(2) eval_is_deterministic_single extended_val.inject result_total.distinct(5))
+    show ?thesis
+      apply (rule InhImpTrue)
+       apply (metis IH.prems(2-4) True diff_only_0_locs eval_perm_0_locs_irrelevant(1) extended_val.distinct(1))
+      apply (rule IH(1))
+             apply (rule *)
+      using IH
+      by auto
+  next
+    case False
+    hence "\<omega>\<^sub>i = \<omega>\<^sub>0"
+      by (metis (full_types) IH.prems(1) InhImp_case ValueAndBasicState.val.inject(2) eval_is_deterministic_single extended_val.inject result_total.distinct(5) result_total.inject)
+    show ?thesis
+      apply (rule InhImpFalse)
+       apply (metis False IH.prems(2-4) diff_only_0_locs eval_perm_0_locs_irrelevant(1) extended_val.distinct(1))
+      using IH \<open>\<omega>\<^sub>i = \<omega>\<^sub>0\<close>
+      by (simp add: differ_only_in_0_perm_locs_def)
+  qed
+
+next
+  case IH: (CondAssert e A B)
+
+  have "\<omega>\<^sub>0 \<le> \<omega>\<^sub>i"
+    using IH.prems(1) inhale_mono
+    by blast
+  hence diff_only_0_locs: "differ_only_in_0_perm_locs (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>\<^sub>0')"
+    using IH.prems(4,7,8) differ_only_in_0_perm_locs_smaller less_eq_full_total_stateD_2
+    by blast
+
+  from IH consider (True) "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e;\<omega>\<^sub>0\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+                  (False) "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e;\<omega>\<^sub>0\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    by (auto elim: red_inhale.cases)
+  then show ?case
+  proof cases
+    case True
+    hence *: "red_inhale ctxt StateCons A \<omega>\<^sub>0 (RNormal \<omega>\<^sub>i)"
+      by (metis IH.prems(1) InhCondAssert ValueAndBasicState.val.inject(2) eval_is_deterministic_single extended_val.inject result_total.simps(7))
+    show ?thesis
+      apply (rule InhCondAssertTrue)
+       apply (metis IH.prems(2-4) True diff_only_0_locs eval_perm_0_locs_irrelevant(1) extended_val.distinct(1))
+      apply (rule IH(1))
+             apply (rule *)
+      using IH
+      by auto
+  next
+    case False
+    hence *: "red_inhale ctxt StateCons B \<omega>\<^sub>0 (RNormal \<omega>\<^sub>i)"
+      by (metis IH.prems(1) InhCondAssert ValueAndBasicState.val.inject(2) eval_is_deterministic_single extended_val.inject result_total.simps(7))
+    show ?thesis
+      apply (rule InhCondAssertFalse)
+       apply (metis IH.prems(2-4) False diff_only_0_locs eval_perm_0_locs_irrelevant(1) extended_val.distinct(1))
+      apply (rule IH(2))
+             apply (rule *)
+      using IH
+      by auto
+  qed
+
+next
+  case IH: (Star A B)
+  then obtain \<omega>'' where
+    inhA: "red_inhale ctxt StateCons A \<omega>\<^sub>0 (RNormal \<omega>'')" and
+    inhB: "red_inhale ctxt StateCons B \<omega>'' (RNormal \<omega>\<^sub>i)"
+    by (blast elim: InhStar_case)
+  define \<omega>''' where "\<omega>''' = upd_hh_total_full \<omega>'' (get_hh_total_full \<omega>\<^sub>0')"
+  hence "\<omega>'' \<le> \<omega>\<^sub>i"
+    using inhB
+    by (simp add: inhale_mono)
+  have "differ_only_in_0_perm_locs (get_total_full \<omega>'') (get_total_full \<omega>''')"
+    apply (rule differ_only_in_0_perm_locs_smaller[OF IH(9)])
+    unfolding \<open>\<omega>''' = _\<close>
+       apply simp
+    using \<open>\<omega>'' \<le> \<omega>\<^sub>i\<close> less_eq_full_total_stateD_2
+      apply blast
+     apply simp
+    using IH.prems(8)
+     apply auto[1]
+    by fact
+
+  show ?case
+    apply (rule InhStarNormal)
+     apply (rule IH(1)[OF inhA, of \<omega>\<^sub>0' "\<omega>'''"])
+           apply (simp add: IH.prems(2))
+          apply (simp add: IH.prems(3))
+    using IH.prems(4)
+         apply auto[1]
+        apply (simp add: \<open>\<omega>''' = _\<close>)
+       apply (simp add: \<open>\<omega>''' = _\<close>)
+      apply fact
+     apply (simp add: \<open>\<omega>''' = _\<close>)
+    apply (rule IH(2)[OF inhB])
+          apply (simp add: \<open>\<omega>''' = _\<close>)
+         apply (simp add: \<open>\<omega>''' = _\<close>)
+        apply (simp add: \<open>\<omega>''' = _\<close>)
+       apply fact
+      apply fact
+     apply fact
+    unfolding \<open>\<omega>''' = _\<close>
+    apply simp
+    using IH.prems(8)
+    by auto
+qed (auto elim: red_inhale.cases)
 
 
 lemma inhale_sat:
