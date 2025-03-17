@@ -399,7 +399,7 @@ lemma extcons_state_can_be_inhaled_assertion:
       and Framed: "assertion_framing_state ctxt StateCons A \<omega>"
       and SupPred: "supported_pred_body A"
       and FinalIntCons: "StateCons (add_to_nm_total_full \<omega> nm)"
-      and WfCons: "mono_prop_downward StateCons"
+      and MonoCons: "mono_prop_downward StateCons"
       and WfCtxt: "ctxt_pred_syn_wf ctxt"
     shows "red_inhale ctxt StateCons A \<omega> (RNormal (add_to_nm_total_full \<omega> nm))"
 
@@ -993,7 +993,7 @@ next
      apply (metis (no_types, lifting) \<open>nm\<^sub>1 + nm\<^sub>2 = nm\<close> ab_semigroup_add_class.add_ac(1) option.sel plus_total_state_ext_def total_state.ext_inject total_state.surjective total_state.update_convs(2))
     by (simp add: defined_def plus_total_state_ext_def)
   hence A_mask_intcons: "StateCons (add_to_nm_total_full \<omega> nm\<^sub>1)"
-    using IH(14) WfCons mono_prop_downwardD
+    using IH(14) MonoCons mono_prop_downwardD
     by blast
 
   show ?case
@@ -1125,12 +1125,13 @@ lemma extcons_state_can_be_inhaled:
       and \<omega>hh: "get_hh_total_full \<omega> = hh"
       and \<omega>Store: "get_store_total \<omega> = nth_option vs"
       and FinalIntCons: "StateCons (add_to_nm_total_full \<omega> nm)"
-      and WfCons: "wf_total_consistency ctxt StateCons StateCons_t"
+      and MonoCons: "mono_prop_downward StateCons"
       and WfCtxt: "ctxt_pred_syn_wf ctxt"
       and "p > 0"
     shows "red_inhale ctxt StateCons (syntactic_mult (Rep_preal p) pbody) \<omega> (RNormal (add_to_nm_total_full \<omega> nm))"
 proof -
   have
+    "vals_well_typed (absval_interp_total ctxt) vs (predicate_decl.args pdecl)"
     "p = 0 \<Longrightarrow> nm = 0" and
     "p > 0 \<Longrightarrow> sat ctxt \<lparr> get_store_total = nth_option vs,
                    get_trace_total = Map.empty,
@@ -1142,10 +1143,10 @@ proof -
     by fastforce+
   moreover have "assertion_framing_state ctxt StateCons (syntactic_mult (Rep_preal p) pbody) \<omega>"
     using SelfFraming
-    by auto
+    by (simp add: calculation(1))
   ultimately show ?thesis
     apply (cases "p > 0")
-    using \<omega>Store \<omega>hh extcons_state_can_be_inhaled_assertion FinalIntCons wf_total_consistency_trace_mono_downwardD[OF WfCons]
+    using \<omega>Store \<omega>hh extcons_state_can_be_inhaled_assertion FinalIntCons MonoCons
      apply (metis SupPred WfCtxt full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps prat_non_negative syntactic_mult_supported total_state.select_convs(1))
     apply (subgoal_tac "p = 0")
      prefer 2
@@ -1270,20 +1271,120 @@ proof -
         apply simp
     using final_intcons WfCons[simplified wf_total_consistency_def]
        apply (simp add: assms(10))
-    using WfCons
+    using WfCons[unfolded wf_total_consistency_def]
       apply simp
     by fact+
 qed
 
 
+
 subsection \<open>Relation between Two Self-Framing Definitions\<close>
 
 
-lemma ctxt_pred_self_framing_inh_implies_sat:
-  assumes "ctxt_pred_self_framing_inh ctxt StateCons"
-  shows "ctxt_pred_self_framing_sat ctxt StateCons_t"
-  unfolding ctxt_pred_self_framing_sat_def pred_self_framing_def
+lemma eval_perm_0_locs_irrelevant:
+  assumes "ctxt, Some \<omega> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r"
+      and "get_store_total \<omega> = get_store_total \<omega>'"
+      and "get_trace_total \<omega> = get_trace_total \<omega>'"
+      and "differ_only_in_0_perm_locs (get_total_full \<omega>) (get_total_full \<omega>')"
+    shows "ctxt, Some \<omega>' \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t r"
   sorry
+
+
+lemma inhale_perm_0_locs_irrelevant:
+  assumes "red_inhale ctxt StateCons A \<omega>\<^sub>0 res"
+      and "res = RNormal \<omega>\<^sub>i"
+      and "get_store_total \<omega>\<^sub>0 = get_store_total \<omega>\<^sub>0'"
+      and "get_trace_total \<omega>\<^sub>0 = get_trace_total \<omega>\<^sub>0'"
+      and "get_nm_total_full \<omega>\<^sub>0 = get_nm_total_full \<omega>\<^sub>0'"
+      and "get_store_total \<omega>\<^sub>i = get_store_total \<omega>\<^sub>i'"
+      and "get_trace_total \<omega>\<^sub>i = get_trace_total \<omega>\<^sub>i'"
+      and "differ_only_in_0_perm_locs (get_total_full \<omega>\<^sub>i) (get_total_full \<omega>\<^sub>i')"
+      and "get_hh_total_full \<omega>\<^sub>0' = get_hh_total_full \<omega>\<^sub>i'"
+    shows "red_inhale ctxt StateCons A \<omega>\<^sub>0' (RNormal \<omega>\<^sub>i')"
+  using assms
+(* proof (induction arbitrary: \<omega>\<^sub>i \<omega>\<^sub>0' \<omega>\<^sub>i' rule: red_inhale.inducts) *)
+  sorry
+
+
+lemma inhale_sat:
+  assumes "red_inhale ctxt StateCons A \<omega> (RNormal \<omega>')"
+      and "(\<lambda>l. get_mh_total_full \<omega> l + mh l) = get_mh_total_full \<omega>'"
+      and "(\<lambda>l. get_mp_total_full \<omega> l + mp l) = get_mp_total_full \<omega>'"
+    shows "sat ctxt \<omega> mh mp A"
+  sorry
+
+
+lemma ctxt_pred_self_framing_inh_implies_sat:
+  assumes CtxtPredSynWf: "ctxt_pred_syn_wf ctxt"
+      and MonoCons: "mono_prop_downward StateCons"
+      and ConsCons_t: "\<forall>\<omega>. StateCons \<omega> \<longleftrightarrow> (StateCons_t (get_total_full \<omega>) \<and> (\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> StateCons_t \<phi>))"
+      and CtxtPredSFinh: "ctxt_pred_self_framing_inh ctxt StateCons"
+    shows "ctxt_pred_self_framing_sat ctxt StateCons_t"
+  unfolding ctxt_pred_self_framing_sat_def pred_self_framing_def
+proof (intro allI | intro impI)+
+  fix pid
+  fix \<omega> \<omega>' :: "'a full_total_state"
+  fix \<phi> \<phi>' :: "'a total_state"
+  fix vs frac
+  assume "frac > 0"
+     and store_same: "get_store_total \<omega> = get_store_total \<omega>'"
+     and diff_only_0_locs: "differ_only_in_0_perm_locs \<phi> \<phi>'"
+     and hh_same: "get_hh_total_full \<omega> = get_hh_total \<phi>"
+     and hh'_same: "get_hh_total_full \<omega>' = get_hh_total \<phi>'"
+     and extcons: "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) frac"
+     and intcons: "StateCons_t \<phi>"
+
+  obtain pdecl pbody where
+    pdecl: "program.predicates (program_total ctxt) pid = Some pdecl" and
+    pbody: "predicate_decl.body pdecl = Some pbody" and
+    "vals_well_typed (absval_interp_total ctxt) vs (ViperLang.predicate_decl.args pdecl)"
+    by (meson SatStep_case extcons)
+
+  have sup_pbody: "supported_pred_body pbody"
+    using CtxtPredSynWf ctxt_pred_syn_wf_def pbody pdecl
+    by blast
+
+  obtain hh nm where "\<phi> = \<lparr> get_hh_total = hh, get_nm_total = nm \<rparr>"
+    using total_state.cases
+    by auto
+
+  define \<omega>\<^sub>0 where "\<omega>\<^sub>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := 0 \<rparr> \<rparr>"
+
+  have framed_by_empty: "\<And>q. assertion_framing_state ctxt StateCons (syntactic_mult q pbody) \<omega>\<^sub>0"
+    using CtxtPredSFinh[unfolded ctxt_pred_self_framing_inh_def assertion_self_framing_def assertion_self_framing_store_def]
+    by (metis SatStep_case \<omega>\<^sub>0_def extcons full_total_state.update_convs(1) option.sel pbody pdecl update_store_total.simps)
+
+  define \<omega>\<^sub>i where "\<omega>\<^sub>i = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi> \<rparr>"
+
+  have inh: "red_inhale ctxt StateCons (syntactic_mult (Rep_preal frac) pbody) \<omega>\<^sub>0 (RNormal \<omega>\<^sub>i)"
+    using extcons_state_can_be_inhaled[OF pdecl pbody sup_pbody framed_by_empty extcons[unfolded \<open>\<phi> = _\<close>]]
+    unfolding \<open>\<omega>\<^sub>0 = _\<close> \<open>\<phi> = _\<close>
+    using ConsCons_t CtxtPredSynWf MonoCons \<omega>\<^sub>i_def \<open>\<phi> = _\<close> \<open>0 < frac\<close> intcons
+    by force
+
+  define \<omega>\<^sub>0' where "\<omega>\<^sub>0' = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>'\<lparr> get_nm_total := 0 \<rparr> \<rparr>"
+  define \<omega>\<^sub>i' where "\<omega>\<^sub>i' = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>' \<rparr>"
+
+  have inh': "red_inhale ctxt StateCons (syntactic_mult (Rep_preal frac) pbody) \<omega>\<^sub>0' (RNormal \<omega>\<^sub>i')"
+    apply (rule inhale_perm_0_locs_irrelevant[OF inh])
+    unfolding \<open>\<omega>\<^sub>0 = _\<close> \<open>\<omega>\<^sub>0' = _\<close> \<open>\<omega>\<^sub>i = _\<close> \<open>\<omega>\<^sub>i' = _\<close>
+           apply auto
+    by fact
+
+  hence "consistent_external ctxt \<phi>'"
+    by (metis (full_types) \<omega>\<^sub>0'_def \<omega>\<^sub>i'_def empty_consistent_external extcons_preserved_by_red_inhale full_total_state.select_convs(3) old.unit.exhaust total_state.surjective total_state.update_convs(2))
+
+  show "consistent_external_wrt_ploc ctxt \<phi>' (pid, vs) frac"
+    apply (rule SatStep)
+         apply fact+
+      apply (simp add: \<open>0 < frac\<close> pperm_pgt_pnone)
+     apply (rule inhale_sat)
+       apply (rule inh'[unfolded \<open>\<omega>\<^sub>0' = _\<close>])
+      prefer 3
+      apply fact
+    unfolding zero_nested_mask_def \<open>\<omega>\<^sub>i' = _\<close>
+    by (simp_all add: zero_mask_def comp_def)
+qed
 
 
 

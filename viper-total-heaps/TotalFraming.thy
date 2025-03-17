@@ -91,19 +91,18 @@ definition differ_only_in_0_perm_locs where
      get_nm_total \<phi> = get_nm_total \<phi>'"
 
 
-definition pred_self_framing :: "'a total_context \<Rightarrow> ('a total_state \<Rightarrow> bool) \<Rightarrow> predicate_decl \<Rightarrow> bool"
+definition pred_self_framing :: "'a total_context \<Rightarrow> ('a total_state \<Rightarrow> bool) \<Rightarrow> predicate_ident \<Rightarrow> bool"
   where
-    "pred_self_framing ctxt StateCons_t pdecl \<equiv>
-       \<forall>pbody \<omega> \<omega>' \<phi> \<phi>' frac. predicate_decl.body pdecl = Some pbody \<longrightarrow>
+    "pred_self_framing ctxt StateCons_t pid \<equiv>
+       \<forall>(\<omega>::'a full_total_state) (\<omega>'::'a full_total_state) (\<phi>::'a total_state) (\<phi>'::'a total_state) vs frac.
+          frac > 0 \<longrightarrow>
           get_store_total \<omega> = get_store_total \<omega>' \<longrightarrow>
           differ_only_in_0_perm_locs \<phi> \<phi>' \<longrightarrow>
           get_hh_total_full \<omega> = get_hh_total \<phi> \<longrightarrow>
           get_hh_total_full \<omega>' = get_hh_total \<phi>' \<longrightarrow>
-          sat ctxt \<omega> (get_mh_total \<phi>) (get_mp_total \<phi>) (syntactic_mult frac pbody) \<longrightarrow>
-          consistent_external ctxt \<phi> \<longrightarrow>
+          consistent_external_wrt_ploc ctxt \<phi> (pid,vs) frac \<longrightarrow>
           StateCons_t \<phi> \<longrightarrow>
-          sat ctxt \<omega>' (get_mh_total \<phi>') (get_mp_total \<phi>') (syntactic_mult frac pbody) \<and> consistent_external ctxt \<phi>'"
-
+          consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) frac"
 
 (*
 lemma pred_self_framing_subst:
@@ -121,9 +120,8 @@ lemma pred_self_framing_subst:
 subsection \<open>Context All Predicates Self-Framing\<close>
 
 definition ctxt_pred_self_framing_sat :: "'a total_context \<Rightarrow> ('a total_state \<Rightarrow> bool) \<Rightarrow> bool" where
-  "ctxt_pred_self_framing_sat ctxt StateCons_t \<equiv> \<forall>pid pdecl.
-     ViperLang.predicates (program_total ctxt) pid = Some pdecl \<longrightarrow>
-     pred_self_framing ctxt StateCons_t pdecl"
+  "ctxt_pred_self_framing_sat ctxt StateCons_t \<equiv> \<forall>pid.
+     pred_self_framing ctxt StateCons_t pid"
 
 definition ctxt_pred_self_framing_inh :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> bool" where
   "ctxt_pred_self_framing_inh ctxt StateCons \<equiv> \<forall>pid pdecl pbody.
