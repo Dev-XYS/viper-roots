@@ -1282,12 +1282,120 @@ subsection \<open>Relation between Two Self-Framing Definitions\<close>
 
 
 lemma eval_perm_0_locs_irrelevant:
-  assumes "ctxt, Some \<omega> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r"
+  assumes "get_store_total \<omega>\<^sub>0 = get_store_total \<omega>\<^sub>0'"
+      and "get_trace_total \<omega>\<^sub>0 = get_trace_total \<omega>\<^sub>0'"
+      and "differ_only_in_0_perm_locs (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>\<^sub>0')"
       and "get_store_total \<omega> = get_store_total \<omega>'"
       and "get_trace_total \<omega> = get_trace_total \<omega>'"
-      and "differ_only_in_0_perm_locs (get_total_full \<omega>) (get_total_full \<omega>')"
-    shows "ctxt, Some \<omega>' \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t r"
-  sorry
+      and "get_nm_total_full \<omega> = get_nm_total_full \<omega>'"
+      and "get_hh_total_full \<omega>\<^sub>0 = get_hh_total_full \<omega>"
+      and "get_hh_total_full \<omega>\<^sub>0' = get_hh_total_full \<omega>'"
+      and "\<omega>_def = Some \<omega>\<^sub>0"
+      and "\<omega>_def' = Some \<omega>\<^sub>0'"
+    shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r \<Longrightarrow>
+           r \<noteq> VFailure \<Longrightarrow>
+           ctxt, \<omega>_def' \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t r"
+      and "red_pure_exps_total ctxt \<omega>_def es \<omega> rs \<Longrightarrow>
+           rs \<noteq> None \<Longrightarrow>
+           red_pure_exps_total ctxt \<omega>_def' es \<omega>' rs"
+  using assms
+proof (induction arbitrary: \<omega>\<^sub>0 \<omega>_def' \<omega>\<^sub>0' \<omega>' and \<omega>\<^sub>0 \<omega>_def' \<omega>\<^sub>0' \<omega>' rule: red_pure_exp_inducts)
+  case IH: (RedBinopLazy \<omega>_def e1 \<omega> v1 bop v e2)
+  then show ?case
+    by (fastforce intro: RedBinopLazy)
+next
+  case IH: (RedBinop \<omega>_def e1 \<omega> v1 e2 v2 bop v)
+  then show ?case
+    by (fastforce intro: RedBinop)
+next
+  case IH: (RedUnop \<omega>_def e \<omega> v unop v')
+  then show ?case
+    by (fastforce intro: RedUnop)
+next
+  case IH: (RedOld \<omega> l \<phi> \<omega>_def'\<^sub>s \<omega>_def e v)
+  show ?case
+    apply (rule TotalExpressions.RedOld)
+    using IH
+      apply simp
+    using IH
+     apply simp
+    using IH(3)[unfolded \<open>\<omega>_def'\<^sub>s = _\<close> \<open>\<omega>_def = _\<close>, simplified]
+    apply (subgoal_tac "\<omega>\<^sub>0\<lparr> get_total_full := \<phi> \<rparr> = \<omega>\<^sub>0'\<lparr> get_total_full := \<phi> \<rparr>")
+     apply (subgoal_tac "\<omega>\<lparr> get_total_full := \<phi> \<rparr> = \<omega>'\<lparr> get_total_full := \<phi> \<rparr>")
+      apply argo
+    by (rule full_total_state.equality, simp_all add: IH)
+next
+  case IH: (RedField \<omega>_def e \<omega> a f v)
+  have **: "ctxt, \<omega>_def' \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))"
+    by (metis IH.IH(2) IH.prems(2-11) extended_val.distinct(1))
+  show ?case
+    unfolding \<open>\<omega>_def = _\<close> \<open>\<omega>_def' = _\<close>
+    apply simp
+    apply (intro conjI)
+     defer
+    using IH.prems(1,10)
+     apply force
+  proof
+    assume "(a,f) \<in> get_valid_locs \<omega>\<^sub>0"
+    hence "(a,f) \<in> get_valid_locs \<omega>\<^sub>0'"
+      using IH(7)[unfolded differ_only_in_0_perm_locs_def]
+      unfolding get_valid_locs_def
+      by auto
+    moreover have "get_hh_total_full \<omega>' (a,f) = v"
+      unfolding IH(12)[symmetric]
+      using IH(7)[unfolded differ_only_in_0_perm_locs_def]
+      by (metis IH.hyps IH.prems(8) \<open>(a, f) \<in> get_valid_locs \<omega>\<^sub>0\<close> get_hh_total_full.simps get_mh_total.simps get_mh_total_full.simps get_valid_locs_def mem_Collect_eq pperm_pgt_pnone sum_0_implies_mh_zero)
+    ultimately show "ctxt, Some \<omega>\<^sub>0' \<turnstile> \<langle>FieldAcc e f;\<omega>'\<rangle> [\<Down>]\<^sub>t Val v"
+      using ** IH.prems(11) RedField_def_normalI
+      by blast
+  qed
+next
+  case IH: (RedPerm \<omega>_def e \<omega> a f v)
+  then show ?case
+    by (fastforce intro: RedPerm)
+next
+  case IH: (RedUnfoldingDef \<omega>\<^sub>0\<^sub>f es \<omega> vs perm pid nm' \<omega>\<^sub>0\<^sub>u ubody v)
+  hence *: "get_nm_total_full \<omega>\<^sub>0 = get_nm_total_full \<omega>\<^sub>0'"
+    by (metis differ_only_in_0_perm_locs_def get_nm_total_full.simps)
+  have "\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0"
+    using IH.prems(10)
+    by auto
+  define perm' where "perm' = get_mp_total_full \<omega>\<^sub>0' (pid,vs)"
+  have **: "\<And>l. nm_loc_sum l (get_nm_total_full \<omega>\<^sub>0) 0 \<Longrightarrow> nm_loc_sum l nm' 0"
+    using IH.hyps(3) \<open>\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0\<close> shift_up_preserves_loc_sum
+    by blast
+
+  show ?case
+    unfolding \<open>\<omega>_def' = _\<close>
+    apply (rule RedUnfoldingDef)
+         apply (rule IH(2)[of \<omega>\<^sub>0 \<omega>\<^sub>0'])
+                   apply simp
+                  apply fact+
+         apply simp
+        apply fact
+    unfolding \<open>perm' = _\<close>
+    using IH.hyps(1,2) * \<open>\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0\<close>
+       apply auto[1]
+    using IH *
+      apply simp
+     apply (simp del: upd_nm_total_full.simps)
+    apply (rule IH(4)[of \<omega>\<^sub>0\<^sub>u "upd_nm_total_full \<omega>\<^sub>0' nm'"])
+              apply auto
+            apply (simp add: IH.prems(1))
+           apply (simp add: IH.hyps(4) IH.prems(2) \<open>\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0\<close>)
+          apply (simp add: IH.hyps(4) IH.prems(3) \<open>\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0\<close>)
+    using IH(12)
+    unfolding differ_only_in_0_perm_locs_def
+    using ** IH.hyps(4) \<open>\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0\<close>
+         apply force
+        apply fact+
+    using IH.hyps(4) IH.prems(7-9) \<open>\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0\<close>
+    by auto
+next
+  case (RedExpListCons \<omega>_def e \<omega> v es res res')
+  then show ?case
+    by (metis extended_val.distinct(1) option.simps(8) red_pure_exp_total_red_pure_exps_total.RedExpListCons)
+qed (auto intro: red_pure_exp_intros)
 
 
 lemma inhale_perm_0_locs_irrelevant:
