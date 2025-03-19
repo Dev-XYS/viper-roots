@@ -1427,11 +1427,212 @@ lemma inhale_perm_0_locs_irrelevant:
       and "get_trace_total \<omega>\<^sub>i = get_trace_total \<omega>\<^sub>i'"
       and "differ_only_in_0_perm_locs (get_total_full \<omega>\<^sub>i) (get_total_full \<omega>\<^sub>i')"
       and "get_hh_total_full \<omega>\<^sub>0' = get_hh_total_full \<omega>\<^sub>i'"
+      and ConsHeapIrrelevant:
+            "\<And>\<omega> \<omega>'. get_trace_total \<omega> = get_trace_total \<omega>' \<Longrightarrow>
+                     get_nm_total_full \<omega> = get_nm_total_full \<omega>' \<Longrightarrow>
+                     StateCons \<omega> \<Longrightarrow> StateCons \<omega>'"
     shows "red_inhale ctxt StateCons A \<omega>\<^sub>0' (RNormal \<omega>\<^sub>i')"
-  using assms
+  using assms(1-8)
 proof (induction A arbitrary: \<omega>\<^sub>0 \<omega>\<^sub>i \<omega>\<^sub>0' \<omega>\<^sub>i')
   case (Atomic atm)
-  then show ?case sorry
+  show ?case
+  proof (cases atm)
+    case (Pure e)
+    have "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e;\<omega>\<^sub>0\<rangle> [\<Down>]\<^sub>t Val (VBool True)" and "\<omega>\<^sub>0 = \<omega>\<^sub>i"
+      using Atomic(1)[unfolded Pure]
+      by (metis InhPure_case result_total.distinct(3) result_total.distinct(5) result_total.inject)+
+    hence "ctxt, Some \<omega>\<^sub>0' \<turnstile> \<langle>e;\<omega>\<^sub>0'\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+      using eval_perm_0_locs_irrelevant(1)[of \<omega>\<^sub>0 \<omega>\<^sub>0' \<omega>\<^sub>0 \<omega>\<^sub>0']
+      by (metis Atomic.prems(1-4,7,8) differ_only_in_0_perm_locs_smaller extended_val.simps(3) inhale_mono)
+    moreover have "\<omega>\<^sub>0' = \<omega>\<^sub>i'"
+      by (metis (mono_tags) Atomic.prems(2-8) \<open>\<omega>\<^sub>0 = \<omega>\<^sub>i\<close> differ_only_in_0_perm_locs_def full_total_state.surjective get_hh_total_full.simps get_nm_total_full.elims old.unit.exhaust total_state.surjective)
+    ultimately show ?thesis
+      unfolding Pure
+      using red_inhale.InhPure
+      by fastforce
+  next
+    case (Acc e_r f perm)
+    show ?thesis
+    proof (cases perm)
+      case (PureExp e_p)
+      from Atomic(1)[unfolded Acc PureExp] obtain r p W where
+        eval_r: "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e_r;\<omega>\<^sub>0\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
+        eval_p: "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e_p;\<omega>\<^sub>0\<rangle> [\<Down>]\<^sub>t Val (VPerm p)" and
+        "W = (if r = Null then {\<omega>\<^sub>0} else inhale_perm_single StateCons \<omega>\<^sub>0 (the_address r,f) (Some (Abs_preal p)))" and
+        res: "th_result_rel (p \<ge> 0) (W \<noteq> {} \<and> (p > 0 \<longrightarrow> r \<noteq> Null)) W (RNormal \<omega>\<^sub>i)"
+        by (auto elim: InhAcc_case)
+      have "ctxt, Some \<omega>\<^sub>0' \<turnstile> \<langle>e_r;\<omega>\<^sub>0'\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+        apply (rule eval_perm_0_locs_irrelevant(1)[of \<omega>\<^sub>0 \<omega>\<^sub>0', OF _ _ _ _ _ _ _ _ _ _ eval_r])
+        using Atomic
+                  apply auto
+        by (metis Atomic.prems(4,8) differ_only_in_0_perm_locs_smaller inhale_mono inhale_only_changes_mask)
+      have "ctxt, Some \<omega>\<^sub>0' \<turnstile> \<langle>e_p;\<omega>\<^sub>0'\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+        apply (rule eval_perm_0_locs_irrelevant(1)[of \<omega>\<^sub>0 \<omega>\<^sub>0', OF _ _ _ _ _ _ _ _ _ _ eval_p])
+        using Atomic
+                  apply auto
+        by (metis Atomic.prems(4,8) differ_only_in_0_perm_locs_smaller inhale_mono inhale_only_changes_mask)
+
+      define W' where "W' = (if r = Null then {\<omega>\<^sub>0'} else inhale_perm_single StateCons \<omega>\<^sub>0' (the_address r,f) (Some (Abs_preal p)))"
+      have "\<omega>\<^sub>i' \<in> W'"
+        unfolding \<open>W' = _\<close>
+      proof (auto split: if_split)
+        assume "r = Null"
+        hence "\<omega>\<^sub>i = \<omega>\<^sub>0"
+          using \<open>W = _\<close> res th_result_rel_normal
+          by auto
+        thus "\<omega>\<^sub>i' = \<omega>\<^sub>0'"
+          by (metis (mono_tags) Atomic.prems(2-8) differ_only_in_0_perm_locs_def full_total_state.equality get_hh_total_full.simps get_nm_total_full.simps old.unit.exhaust total_state.surjective)
+      next
+        assume "r \<noteq> Null"
+        hence "\<omega>\<^sub>i \<in> inhale_perm_single StateCons \<omega>\<^sub>0 (the_address r, f) (Some (Abs_preal p))"
+          using \<open>W = _\<close> res th_result_rel_normal
+          by auto
+        hence "\<omega>\<^sub>i = upd_mh_loc_total_full \<omega>\<^sub>0 (the_address r, f) (get_mh_total_full \<omega>\<^sub>0 (the_address r, f) + Abs_preal p)"
+          unfolding inhale_perm_single_def
+          by fastforce
+        show "\<omega>\<^sub>i' \<in> inhale_perm_single StateCons \<omega>\<^sub>0' (the_address r, f) (Some (Abs_preal p))"
+          unfolding inhale_perm_single_def
+          apply (rule CollectI)
+          apply (rule exI[of _ \<omega>\<^sub>i'])
+          apply (rule exI[of _ "Abs_preal p"])
+          apply (intro conjI)
+             apply simp
+            apply simp
+           apply (rule full_total_state.equality)
+              prefer 4
+          using inhale_only_changes_mask[OF Atomic(1)] Atomic
+              apply (simp, simp, simp)
+           apply (rule total_state.equality)
+             prefer 3
+          using inhale_only_changes_mask[OF Atomic(1)] Atomic
+             apply (simp, simp)
+          using \<open>\<omega>\<^sub>i = _\<close> Atomic
+           apply (simp add: differ_only_in_0_perm_locs_def)
+          apply (rule ConsHeapIrrelevant[of \<omega>\<^sub>i])
+          using Atomic Atomic(7)[unfolded differ_only_in_0_perm_locs_def] \<open>\<omega>\<^sub>i \<in> _\<close>[unfolded inhale_perm_single_def]
+          by auto
+      qed
+
+      show ?thesis
+        unfolding Acc PureExp
+        apply (rule InhAcc)
+           apply fact+
+        by (metis (full_types) THResultNormal_alt \<open>\<omega>\<^sub>i' \<in> W'\<close> res all_not_in_conv th_result_rel_normal)
+    next
+      case Wildcard
+      from Atomic(1)[unfolded Acc Wildcard] obtain r W where
+        eval_r: "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e_r;\<omega>\<^sub>0\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
+        "W = inhale_perm_single StateCons \<omega>\<^sub>0 (the_address r,f) None" and
+        res: "th_result_rel True (W \<noteq> {} \<and> r \<noteq> Null) W (RNormal \<omega>\<^sub>i)"
+        by (auto elim: InhAccWildcard_case)
+      have "ctxt, Some \<omega>\<^sub>0' \<turnstile> \<langle>e_r;\<omega>\<^sub>0'\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+        apply (rule eval_perm_0_locs_irrelevant(1)[of \<omega>\<^sub>0 \<omega>\<^sub>0', OF _ _ _ _ _ _ _ _ _ _ eval_r])
+        using Atomic
+                  apply auto
+        by (metis Atomic.prems(4,8) differ_only_in_0_perm_locs_smaller inhale_mono inhale_only_changes_mask)
+
+      define W' where "W' = inhale_perm_single StateCons \<omega>\<^sub>0' (the_address r,f) None"
+      have "\<omega>\<^sub>i' \<in> W'"
+        unfolding \<open>W' = _\<close>
+      proof -
+        have "\<omega>\<^sub>i \<in> inhale_perm_single StateCons \<omega>\<^sub>0 (the_address r, f) None"
+          using \<open>W = _\<close> res th_result_rel_normal
+          by auto
+        then obtain q where
+          "option_fold ((=) q) (q \<noteq> 0) None" and
+          "\<omega>\<^sub>i = upd_mh_loc_total_full \<omega>\<^sub>0 (the_address r, f) (get_mh_total_full \<omega>\<^sub>0 (the_address r, f) + q)" and
+          "StateCons \<omega>\<^sub>i"
+          using inhale_perm_single_def
+          by blast
+        show "\<omega>\<^sub>i' \<in> inhale_perm_single StateCons \<omega>\<^sub>0' (the_address r, f) None"
+          unfolding inhale_perm_single_def
+          apply (rule CollectI)
+          apply (rule exI[of _ \<omega>\<^sub>i'])
+          apply (rule exI[of _ q])
+          apply (intro conjI)
+             apply simp
+            apply fact
+           apply (rule full_total_state.equality)
+              prefer 4
+          using inhale_only_changes_mask[OF Atomic(1)] Atomic
+              apply (simp, simp, simp)
+           apply (rule total_state.equality)
+             prefer 3
+          using inhale_only_changes_mask[OF Atomic(1)] Atomic
+             apply (simp, simp)
+          using \<open>\<omega>\<^sub>i = _\<close> Atomic
+           apply (simp add: differ_only_in_0_perm_locs_def)
+          apply (rule ConsHeapIrrelevant[of \<omega>\<^sub>i])
+          using Atomic Atomic(7)[unfolded differ_only_in_0_perm_locs_def] \<open>\<omega>\<^sub>i \<in> _\<close>[unfolded inhale_perm_single_def]
+          by auto
+      qed
+
+      show ?thesis
+        unfolding Acc Wildcard
+        apply (rule InhAccWildcard)
+          apply fact+
+        by (metis (mono_tags, opaque_lifting) THResultNormal_alt \<open>\<omega>\<^sub>i' \<in> W'\<close> emptyE res th_result_rel_normal)
+    qed
+  next
+    case (AccPredicate pid e_args perm)
+    show ?thesis
+    proof (cases perm)
+      case (PureExp e_p)
+      from Atomic(1)[unfolded AccPredicate PureExp] obtain vs p W where
+        eval_vs: "red_pure_exps_total ctxt (Some \<omega>\<^sub>0) e_args \<omega>\<^sub>0 (Some vs)" and
+        eval_p: "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e_p;\<omega>\<^sub>0\<rangle> [\<Down>]\<^sub>t Val (VPerm p)" and
+        "W = inhale_perm_single_pred ctxt StateCons \<omega>\<^sub>0 (pid,vs) (Some (Abs_preal p))" and
+        res: "th_result_rel (p \<ge> 0) (W \<noteq> {}) W (RNormal \<omega>\<^sub>i)"
+        by (auto elim: InhAccPredPerm_case)
+      have "red_pure_exps_total ctxt (Some \<omega>\<^sub>0') e_args \<omega>\<^sub>0' (Some vs)"
+        apply (rule eval_perm_0_locs_irrelevant(2)[of \<omega>\<^sub>0 \<omega>\<^sub>0', OF _ _ _ _ _ _ _ _ _ _ eval_vs])
+        using Atomic
+                  apply auto
+        by (metis Atomic.prems(4,8) differ_only_in_0_perm_locs_smaller inhale_mono inhale_only_changes_mask)
+      have "ctxt, Some \<omega>\<^sub>0' \<turnstile> \<langle>e_p;\<omega>\<^sub>0'\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+        apply (rule eval_perm_0_locs_irrelevant(1)[of \<omega>\<^sub>0 \<omega>\<^sub>0', OF _ _ _ _ _ _ _ _ _ _ eval_p])
+        using Atomic
+                  apply auto
+        by (metis Atomic.prems(4,8) differ_only_in_0_perm_locs_smaller inhale_mono inhale_only_changes_mask)
+
+      define W' where "W' = inhale_perm_single_pred ctxt StateCons \<omega>\<^sub>0' (pid,vs) (Some (Abs_preal p))"
+      have "\<omega>\<^sub>i' \<in> W'"
+        unfolding \<open>W' = _\<close>
+      proof -
+        have "\<omega>\<^sub>i \<in> inhale_perm_single_pred ctxt StateCons \<omega>\<^sub>0 (pid,vs) (Some (Abs_preal p))"
+          using \<open>W = _\<close> res th_result_rel_normal
+          by auto
+        then obtain q \<phi>_inh where
+          "option_fold ((=) q) (q \<noteq> 0) (Some (Abs_preal p))" and
+          "consistent_external_wrt_ploc ctxt \<phi>_inh (pid,vs) q" and
+          \<phi>_inh_hh: "get_hh_total \<phi>_inh = get_hh_total_full \<omega>\<^sub>0" and
+          "\<omega>\<^sub>i = (if q = 0 then \<omega>\<^sub>0 else add_to_lpm_nonzero_total_full \<omega>\<^sub>0 (pid,vs) (Abs_posreal q) (get_nm_total \<phi>_inh))"
+          "StateCons \<omega>\<^sub>i"
+          using inhale_perm_single_pred_def
+          by blast
+        show "\<omega>\<^sub>i' \<in> inhale_perm_single_pred ctxt StateCons \<omega>\<^sub>0' (pid,vs) (Some (Abs_preal p))"
+          unfolding inhale_perm_single_pred_def
+          apply (rule CollectI)
+          apply (rule exI[of _ \<omega>\<^sub>i'])
+          apply (rule exI[of _ "\<phi>_inh\<lparr> get_hh_total := get_hh_total_full \<omega>\<^sub>0' \<rparr>"])
+          apply (rule exI[of _ q])
+          apply (intro conjI)
+               apply simp
+              apply fact
+            (* unprovable *)
+          sorry
+      qed
+
+      show ?thesis
+        unfolding AccPredicate PureExp
+        apply (rule InhAccPred)
+          apply fact+
+        by (metis (mono_tags, opaque_lifting) THResultNormal_alt \<open>\<omega>\<^sub>i' \<in> W'\<close> emptyE res th_result_rel_normal)
+    next
+      case Wildcard
+      then show ?thesis sorry
+    qed
+  qed
 
 next
   case IH: (Imp e A)
@@ -1616,7 +1817,8 @@ proof (intro allI | intro impI)+
     apply (rule inhale_perm_0_locs_irrelevant[OF inh])
     unfolding \<open>\<omega>\<^sub>0 = _\<close> \<open>\<omega>\<^sub>0' = _\<close> \<open>\<omega>\<^sub>i = _\<close> \<open>\<omega>\<^sub>i' = _\<close>
            apply auto
-    by fact
+     apply fact
+    sorry
 
   hence "consistent_external ctxt \<phi>'"
     by (metis (full_types) \<omega>\<^sub>0'_def \<omega>\<^sub>i'_def empty_consistent_external extcons_preserved_by_red_inhale full_total_state.select_convs(3) old.unit.exhaust total_state.surjective total_state.update_convs(2))
