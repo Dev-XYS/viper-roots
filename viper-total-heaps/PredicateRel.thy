@@ -1418,6 +1418,51 @@ lemma differ_only_in_0_perm_locs_smaller:
   by auto
 
 
+lemma differ_only_in_0_perm_locs_submask:
+  assumes "differ_only_in_0_perm_locs \<phi> \<phi>'"
+      and "Some (q,nm) = get_fnm_total \<phi> lp"
+    shows "differ_only_in_0_perm_locs (\<phi>\<lparr> get_nm_total := nm \<rparr>) (\<phi>'\<lparr> get_nm_total := nm \<rparr>)"
+  using assms
+  unfolding differ_only_in_0_perm_locs_def
+  by (metis all_pos get_fnm_total.simps nle_le sub_mask_smaller total_state.select_convs(1) total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
+
+
+lemma ctxt_pred_self_framing_inh_implies_extcons_irrelevant_perm_0_locs:
+  assumes "ctxt_pred_self_framing_inh ctxt StateCons"
+      and ConsMonoSub: "mono_prop_downward_sub_mask_total StateCons_t"
+      and ConsCons_t: "\<forall>\<omega>. StateCons \<omega> \<longleftrightarrow> (StateCons_t (get_total_full \<omega>) \<and> (\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> StateCons_t \<phi>))"
+      and "StateCons_t \<phi>"
+      and "differ_only_in_0_perm_locs \<phi> \<phi>'"
+    shows "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
+           consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) p"
+      and "consistent_external ctxt \<phi> \<Longrightarrow>
+           consistent_external ctxt \<phi>'"
+  using assms(4-)
+proof (induction arbitrary: \<phi>' and \<phi>' rule: consistent_external_wrt_ploc_consistent_external.inducts)
+  case IH: (SatStep pid pdecl vs pbody p \<phi>)
+  note diff_only_0_locs = IH.prems(2)[unfolded differ_only_in_0_perm_locs_def]
+  show ?case
+    apply (rule SatStep)
+         apply fact+
+    using diff_only_0_locs IH.hyps(2)
+      apply argo
+    subgoal using IH sorry
+    apply (rule IH.IH(5))
+    by fact+
+next
+  case IH: (SatAll \<phi>)
+  note diff_only_0_locs = IH.prems(2)[unfolded differ_only_in_0_perm_locs_def]
+  show ?case
+    apply (rule SatAll)
+    apply (rule IH(2))
+    using diff_only_0_locs
+      apply simp
+    using ConsMonoSub[unfolded mono_prop_downward_sub_mask_total_def] IH.prems(1) diff_only_0_locs
+     apply simp
+    by (simp add: IH.prems(2) diff_only_0_locs differ_only_in_0_perm_locs_submask)
+qed
+
+
 lemma inhale_perm_0_locs_irrelevant:
   assumes "red_inhale ctxt StateCons A \<omega>\<^sub>0 (RNormal \<omega>\<^sub>i)"
       and "get_store_total \<omega>\<^sub>0 = get_store_total \<omega>\<^sub>0'"
