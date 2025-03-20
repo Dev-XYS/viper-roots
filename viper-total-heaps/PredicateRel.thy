@@ -1398,6 +1398,120 @@ next
 qed (auto intro: red_pure_exp_intros)
 
 
+(* lemma eval_None_perm_0_locs_irrelevant:
+  assumes "differ_only_in_0_perm_locs (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>\<^sub>0')"
+      and "get_store_total \<omega> = get_store_total \<omega>'"
+      and "get_trace_total \<omega> = get_trace_total \<omega>'"
+      and "get_nm_total_full \<omega> = get_nm_total_full \<omega>'"
+      and "get_hh_total_full \<omega>\<^sub>0 = get_hh_total_full \<omega>"
+      and "get_hh_total_full \<omega>\<^sub>0' = get_hh_total_full \<omega>'"
+    shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r \<Longrightarrow>
+           r \<noteq> VFailure \<Longrightarrow>
+           ctxt, \<omega>_def' \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t r"
+      and "red_pure_exps_total ctxt \<omega>_def es \<omega> rs \<Longrightarrow>
+           rs \<noteq> None \<Longrightarrow>
+           red_pure_exps_total ctxt \<omega>_def' es \<omega>' rs"
+  using assms
+  sorry *)
+(* proof (induction arbitrary: \<omega>\<^sub>0 \<omega>_def' \<omega>\<^sub>0' \<omega>' and \<omega>\<^sub>0 \<omega>_def' \<omega>\<^sub>0' \<omega>' rule: red_pure_exp_inducts)
+  case IH: (RedBinopLazy \<omega>_def e1 \<omega> v1 bop v e2)
+  then show ?case
+    by (fastforce intro: RedBinopLazy)
+next
+  case IH: (RedBinop \<omega>_def e1 \<omega> v1 e2 v2 bop v)
+  then show ?case
+    by (fastforce intro: RedBinop)
+next
+  case IH: (RedUnop \<omega>_def e \<omega> v unop v')
+  then show ?case
+    by (fastforce intro: RedUnop)
+next
+  case IH: (RedOld \<omega> l \<phi> \<omega>_def'\<^sub>s \<omega>_def e v)
+  show ?case
+    apply (rule TotalExpressions.RedOld)
+    using IH
+      apply simp
+    using IH
+     apply simp
+    using IH(3)[unfolded \<open>\<omega>_def'\<^sub>s = _\<close> \<open>\<omega>_def = _\<close>, simplified]
+    apply (subgoal_tac "\<omega>\<^sub>0\<lparr> get_total_full := \<phi> \<rparr> = \<omega>\<^sub>0'\<lparr> get_total_full := \<phi> \<rparr>")
+     apply (subgoal_tac "\<omega>\<lparr> get_total_full := \<phi> \<rparr> = \<omega>'\<lparr> get_total_full := \<phi> \<rparr>")
+      apply argo
+    by (rule full_total_state.equality, simp_all add: IH)
+next
+  case IH: (RedField \<omega>_def e \<omega> a f v)
+  have **: "ctxt, \<omega>_def' \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))"
+    by (metis IH.IH(2) IH.prems(2-11) extended_val.distinct(1))
+  show ?case
+    unfolding \<open>\<omega>_def = _\<close> \<open>\<omega>_def' = _\<close>
+    apply simp
+    apply (intro conjI)
+     defer
+    using IH.prems(1,10)
+     apply force
+  proof
+    assume "(a,f) \<in> get_valid_locs \<omega>\<^sub>0"
+    hence "(a,f) \<in> get_valid_locs \<omega>\<^sub>0'"
+      using IH(7)[unfolded differ_only_in_0_perm_locs_def]
+      unfolding get_valid_locs_def
+      by auto
+    moreover have "get_hh_total_full \<omega>' (a,f) = v"
+      unfolding IH(12)[symmetric]
+      using IH(7)[unfolded differ_only_in_0_perm_locs_def]
+      by (metis IH.hyps IH.prems(8) \<open>(a, f) \<in> get_valid_locs \<omega>\<^sub>0\<close> get_hh_total_full.simps get_mh_total.simps get_mh_total_full.simps get_valid_locs_def mem_Collect_eq pperm_pgt_pnone sum_0_implies_mh_zero)
+    ultimately show "ctxt, Some \<omega>\<^sub>0' \<turnstile> \<langle>FieldAcc e f;\<omega>'\<rangle> [\<Down>]\<^sub>t Val v"
+      using ** IH.prems(11) RedField_def_normalI
+      by blast
+  qed
+next
+  case IH: (RedPerm \<omega>_def e \<omega> a f v)
+  then show ?case
+    by (fastforce intro: RedPerm)
+next
+  case IH: (RedUnfoldingDef \<omega>\<^sub>0\<^sub>f es \<omega> vs perm pid nm' \<omega>\<^sub>0\<^sub>u ubody v)
+  hence *: "get_nm_total_full \<omega>\<^sub>0 = get_nm_total_full \<omega>\<^sub>0'"
+    by (metis differ_only_in_0_perm_locs_def get_nm_total_full.simps)
+  have "\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0"
+    using IH.prems(10)
+    by auto
+  define perm' where "perm' = get_mp_total_full \<omega>\<^sub>0' (pid,vs)"
+  have **: "\<And>l. nm_loc_sum l (get_nm_total_full \<omega>\<^sub>0) 0 \<Longrightarrow> nm_loc_sum l nm' 0"
+    using IH.hyps(3) \<open>\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0\<close> shift_up_preserves_loc_sum
+    by blast
+
+  show ?case
+    unfolding \<open>\<omega>_def' = _\<close>
+    apply (rule RedUnfoldingDef)
+         apply (rule IH(2)[of \<omega>\<^sub>0 \<omega>\<^sub>0'])
+                   apply simp
+                  apply fact+
+         apply simp
+        apply fact
+    unfolding \<open>perm' = _\<close>
+    using IH.hyps(1,2) * \<open>\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0\<close>
+       apply auto[1]
+    using IH *
+      apply simp
+     apply (simp del: upd_nm_total_full.simps)
+    apply (rule IH(4)[of \<omega>\<^sub>0\<^sub>u "upd_nm_total_full \<omega>\<^sub>0' nm'"])
+              apply auto
+            apply (simp add: IH.prems(1))
+           apply (simp add: IH.hyps(4) IH.prems(2) \<open>\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0\<close>)
+          apply (simp add: IH.hyps(4) IH.prems(3) \<open>\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0\<close>)
+    using IH(12)
+    unfolding differ_only_in_0_perm_locs_def
+    using ** IH.hyps(4) \<open>\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0\<close>
+         apply force
+        apply fact+
+    using IH.hyps(4) IH.prems(7-9) \<open>\<omega>\<^sub>0\<^sub>f = \<omega>\<^sub>0\<close>
+    by auto
+next
+  case (RedExpListCons \<omega>_def e \<omega> v es res res')
+  then show ?case
+    by (metis extended_val.distinct(1) option.simps(8) red_pure_exp_total_red_pure_exps_total.RedExpListCons)
+qed (auto intro: red_pure_exp_intros) *)
+
+
 lemma inhale_mono:
   assumes "red_inhale ctxt StateCons A \<omega> (RNormal \<omega>')"
   shows "\<omega> \<le> \<omega>'"
@@ -1427,28 +1541,228 @@ lemma differ_only_in_0_perm_locs_submask:
   by (metis all_pos get_fnm_total.simps nle_le sub_mask_smaller total_state.select_convs(1) total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
 
 
+definition differ_only_in_0_perm_locs_hh where
+  "differ_only_in_0_perm_locs_hh \<phi> hh \<equiv>
+     (\<forall>loc. get_hh_total \<phi> loc \<noteq> hh loc \<longrightarrow> nm_loc_sum loc (get_nm_total \<phi>) 0)"
+
+
+lemma differ_only_in_0_perm_locs_hh_smaller:
+  assumes "differ_only_in_0_perm_locs_hh \<phi> hh"
+      and "\<phi>' \<le> \<phi>"
+    shows "differ_only_in_0_perm_locs_hh \<phi>' hh"
+  using assms
+  unfolding differ_only_in_0_perm_locs_hh_def
+  by (metis less_eq_total_stateD nm_loc_sum_smaller padd_pos preal_gte_padd)
+
+
+lemma eval_None_same_hh:  \<comment> \<open>redundant with @{thm eval_exhale_sat_helper_helper}}\<close>
+  assumes "get_hh_total_full \<omega> = get_hh_total_full \<omega>'"
+      and "get_store_total \<omega> = get_store_total \<omega>'"
+    shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r \<Longrightarrow>
+           \<omega>_def = None \<Longrightarrow>
+           r = Val v \<Longrightarrow>
+           supported_pred_expr e \<Longrightarrow>
+           ctxt, None \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t Val v"
+      and "red_pure_exps_total ctxt \<omega>_def es \<omega> rs \<Longrightarrow>
+           \<omega>_def = None \<Longrightarrow>
+           rs = Some vs \<Longrightarrow>
+           list_all supported_pred_expr es \<Longrightarrow>
+           red_pure_exps_total ctxt None es \<omega>' (Some vs)"
+  using assms
+proof (induction arbitrary: \<omega>' v and \<omega>' vs rule: red_pure_exp_inducts)
+  case (RedField \<omega>_def e \<omega> a f v)
+  then show ?case
+    by (metis RedField_no_def_normalI eval_exhale_sat_helper_helper(1) option.pred_inject(1))
+next
+  case (RedUnfolding es \<omega> vs ubody v pred_id)
+  then show ?case
+    by (meson eval_exhale_sat_helper_helper(1) red_pure_exp_total_red_pure_exps_total.RedUnfolding)
+qed (fastforce intro: red_pure_exp_intros)+
+
+
+(* lemma framed_eval_perm_0_locs_irrelevant:
+  assumes "assertion_framing_state ctxt StateCons A \<omega>"
+      and "e \<in> set (direct_sub_expressions_assertion A)"
+      and "differ_only_in_0_perm_locs_hh (get_total_full \<omega>) hh"
+      and "get_hh_total_full \<omega>' = hh"
+    shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r \<Longrightarrow>
+           \<omega>_def = None \<Longrightarrow>
+           r = Val v \<Longrightarrow>
+           supported_pred_expr e \<Longrightarrow>
+           ctxt, None \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t Val v"
+      and "red_pure_exps_total ctxt \<omega>_def es \<omega> rs \<Longrightarrow>
+           \<omega>_def = None \<Longrightarrow>
+           rs = Some vs \<Longrightarrow>
+           list_all supported_pred_expr es \<Longrightarrow>
+           red_pure_exps_total ctxt None es \<omega>' (Some vs)"
+  using assms
+(* proof (induction arbitrary: \<omega>' v and \<omega>' vs rule: red_pure_exp_inducts) *)
+  sorry *)
+
+lemma framed_eval_perm_0_locs_irrelevant:
+  assumes "assertion_framing_state ctxt StateCons A \<omega>"
+      and "e \<in> set (direct_sub_expressions_assertion A)"
+      and "differ_only_in_0_perm_locs_hh (get_total_full \<omega>) hh"
+      and "get_hh_total_full \<omega>' = hh"
+      and "supported_pred_expr e"
+      and "ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+    shows "ctxt, None \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t Val v"
+  sorry
+
+
+lemma framed_sat_irrelevant_perm_0_locs_helper:
+    fixes \<phi> :: "'a total_state"
+  assumes "ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+      and "assertion_framing_state ctxt StateCons A \<omega>\<^sub>0"
+      and "differ_only_in_0_perm_locs_hh (add_to_nm_total \<phi> (get_nm_total_full \<omega>\<^sub>0)) hh"
+      and "get_store_total \<omega>\<^sub>0 = get_store_total \<omega>"
+      and "get_hh_total_full \<omega>\<^sub>0 = get_hh_total_full \<omega>"
+      and "get_hh_total_full \<omega> = get_hh_total \<phi>"
+      and "get_hh_total_full \<omega>' = hh"
+      and "supported_pred_body A"
+      and "e \<in> set (direct_sub_expressions_assertion A)"
+    shows "ctxt, None \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t Val v"
+  apply (rule framed_eval_perm_0_locs_irrelevant[where hh=hh])
+       apply fact+
+     apply (rule differ_only_in_0_perm_locs_hh_smaller[OF assms(3)])
+  unfolding less_eq_total_state_ext_def
+     apply (intro conjI)
+  using assms(5,6) apply auto[1]
+      apply simp
+      apply (simp add: add.commute nm_sum_is_bigger)
+     apply simp
+    apply fact
+   apply (metis Ball_set_list_all assert_pred_subexp assms(8,9))
+  apply (rule eval_None_same_hh(1))
+       apply (rule assms(5)[symmetric])
+      apply (rule assms(4)[symmetric])
+     apply fact
+    apply simp
+   apply simp
+  by (metis Ball_set_list_all assert_pred_subexp assms(8,9))
+
+
+lemma framed_sat_irrelevant_perm_0_locs_multi_helper:
+    fixes \<phi> :: "'a total_state"
+  assumes "red_pure_exps_total ctxt None es \<omega> (Some vs)"
+      and "assertion_framing_state ctxt StateCons A \<omega>\<^sub>0"
+      and "differ_only_in_0_perm_locs_hh (add_to_nm_total \<phi> (get_nm_total_full \<omega>\<^sub>0)) hh"
+      and "get_store_total \<omega>\<^sub>0 = get_store_total \<omega>"
+      and "get_hh_total_full \<omega>\<^sub>0 = get_hh_total_full \<omega>"
+      and "get_hh_total_full \<omega> = get_hh_total \<phi>"
+      and "get_hh_total_full \<omega>' = hh"
+      and "supported_pred_body A"
+      and "set es \<subseteq> set (direct_sub_expressions_assertion A)"
+    shows "red_pure_exps_total ctxt None es \<omega>' (Some vs)"
+  sorry
+
+
+lemma framed_sat_irrelevant_perm_0_locs:
+  assumes "sat ctxt \<omega> mh mp A"
+      and "mh = get_mh_total \<phi>"
+      and "mp = get_mp_total \<phi>"
+      and "assertion_framing_state ctxt StateCons A \<omega>\<^sub>0"
+      and "StateCons (add_to_nm_total_full \<omega>\<^sub>0 (get_nm_total \<phi>))"
+      and "consistent_external ctxt \<phi>"
+      and "differ_only_in_0_perm_locs_hh (add_to_nm_total \<phi> (get_nm_total_full \<omega>\<^sub>0)) hh"
+      and "get_store_total \<omega>\<^sub>0 = get_store_total \<omega>"
+      and "get_hh_total_full \<omega>\<^sub>0 = get_hh_total_full \<omega>"
+      and "get_hh_total_full \<omega> = get_hh_total \<phi>"
+      and "get_hh_total_full \<omega>' = hh"
+      and "supported_pred_body A"
+    shows "sat ctxt \<omega>' mh mp A"
+  using assms(1-12)
+proof (induction arbitrary: \<phi> \<omega>\<^sub>0 \<omega>' hh rule: sat.inducts)
+  case IH: (SatAcc e_r r e_p p a mh f mp)
+  have "ctxt, None \<turnstile> \<langle>e_r;\<omega>'\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and "ctxt, None \<turnstile> \<langle>e_p;\<omega>'\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+    by (rule framed_sat_irrelevant_perm_0_locs_helper; (rule IH)?; auto)+
+  then show ?case
+    using IH.hyps(3-6)
+    by (blast intro: SatAcc)
+next
+  case (SatAccWildcard e_r r a f mh mp)
+  then show ?case sorry
+next
+  case IH: (SatAccPred e_args v_args e_p p mh mp pid pdecl pbody)
+  have "ctxt, None \<turnstile> \<langle>e_p;\<omega>'\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+    by (rule framed_sat_irrelevant_perm_0_locs_helper; (rule IH)?; auto)
+  moreover have "red_pure_exps_total ctxt None e_args \<omega>' (Some v_args)"
+    by (rule framed_sat_irrelevant_perm_0_locs_multi_helper; (rule IH)?; auto)
+  ultimately show ?case
+    using IH.hyps
+    by (blast intro: SatAccPred)
+next
+  case (SatAccPredWildcard e_args v_args mh pid mp pdecl pbody)
+  then show ?case sorry
+next
+  case (SatPure e mh mp)
+  then show ?case sorry
+next
+  case (SatStar mh mh\<^sub>1 mh\<^sub>2 mp mp\<^sub>1 mp\<^sub>2 A B)
+  then show ?case sorry
+next
+  case (SatImpTrue e mh mp A)
+  then show ?case sorry
+next
+  case (SatImpFalse e mh mp A)
+  then show ?case sorry
+next
+  case (SatCondTrue e mh mp A B)
+  then show ?case sorry
+next
+  case (SatCondFalse e mh mp B A)
+  then show ?case sorry
+qed
+
+
 lemma ctxt_pred_self_framing_inh_implies_extcons_irrelevant_perm_0_locs:
-  assumes "ctxt_pred_self_framing_inh ctxt StateCons"
+  assumes SFinh: "ctxt_pred_self_framing_inh ctxt StateCons"
       and ConsMonoSub: "mono_prop_downward_sub_mask_total StateCons_t"
       and ConsCons_t: "\<forall>\<omega>. StateCons \<omega> \<longleftrightarrow> (StateCons_t (get_total_full \<omega>) \<and> (\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> StateCons_t \<phi>))"
+      and CtxtSynWf: "ctxt_pred_syn_wf ctxt"
       and "StateCons_t \<phi>"
       and "differ_only_in_0_perm_locs \<phi> \<phi>'"
     shows "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
            consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) p"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
            consistent_external ctxt \<phi>'"
-  using assms(4-)
+  using assms(5-)
 proof (induction arbitrary: \<phi>' and \<phi>' rule: consistent_external_wrt_ploc_consistent_external.inducts)
   case IH: (SatStep pid pdecl vs pbody p \<phi>)
   note diff_only_0_locs = IH.prems(2)[unfolded differ_only_in_0_perm_locs_def]
+  define \<omega>\<^sub>b where "\<omega>\<^sub>b = \<lparr> get_store_total = Map.empty, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := 0 \<rparr> \<rparr>"
+  define \<omega>\<^sub>0 where "\<omega>\<^sub>0 = update_store_total \<omega>\<^sub>b (nth_option vs)"
   show ?case
     apply (rule SatStep)
          apply fact+
     using diff_only_0_locs IH.hyps(2)
       apply argo
-    subgoal using IH sorry
-    apply (rule IH.IH(5))
-    by fact+
+     apply (rule framed_sat_irrelevant_perm_0_locs[where \<omega>\<^sub>0=\<omega>\<^sub>0 and \<phi>=\<phi> and hh="get_hh_total \<phi>'"])
+    using diff_only_0_locs IH.IH(3)
+                apply simp
+               apply (simp add: diff_only_0_locs)
+              apply (simp add: diff_only_0_locs)
+    unfolding \<open>\<omega>\<^sub>0 = _\<close>
+    using SFinh[unfolded ctxt_pred_self_framing_inh_def
+                assertion_self_framing_def
+                assertion_self_framing_store_def,
+                THEN spec[of _ pid], THEN spec[of _ pdecl], THEN spec[of _ pbody],
+                THEN mp, THEN mp, THEN spec[of _ vs], THEN spec[of _ "Rep_preal p"],
+                THEN mp, THEN spec[of _ \<omega>\<^sub>b]] IH
+             apply blast
+    unfolding \<open>\<omega>\<^sub>b = _\<close>
+            apply simp
+            apply (simp add: ConsCons_t IH.prems(1))
+           apply (simp add: IH.IH(4))
+          apply simp
+    using diff_only_0_locs differ_only_in_0_perm_locs_hh_def apply blast
+         apply simp
+        apply simp
+       apply simp
+      apply simp
+    using CtxtSynWf IH(1) IH(6) ctxt_pred_syn_wf_def prat_non_negative syntactic_mult_supported apply blast
+    by (simp add: IH.IH(5) IH.prems(1) IH.prems(2))
+
 next
   case IH: (SatAll \<phi>)
   note diff_only_0_locs = IH.prems(2)[unfolded differ_only_in_0_perm_locs_def]

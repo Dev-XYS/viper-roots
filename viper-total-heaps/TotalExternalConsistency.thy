@@ -54,22 +54,22 @@ inductive sat :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarro
      ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      p \<ge> 0;
      mh = zero_mask;
-     mp = singleton_mp (pred_id,v_args) (Abs_preal p);
-     ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl);
-     predicate_decl.body pred_decl = Some pred_body
+     mp = singleton_mp (pid,v_args) (Abs_preal p);
+     ViperLang.predicates (program_total ctxt) pid = Some pdecl;
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pdecl);
+     predicate_decl.body pdecl = Some pbody
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
+   sat ctxt \<omega> mh mp (Atomic (AccPredicate pid e_args (PureExp e_p)))"
 
 | SatAccPredWildcard:
   "\<lbrakk> red_pure_exps_total ctxt None e_args \<omega> (Some v_args);
      mh = zero_mask;
-     is_singleton_mp (pred_id,v_args) mp;
-     ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl);
-     predicate_decl.body pred_decl = Some pred_body
+     is_singleton_mp (pid,v_args) mp;
+     ViperLang.predicates (program_total ctxt) pid = Some pdecl;
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pdecl);
+     predicate_decl.body pdecl = Some pbody
    \<rbrakk> \<Longrightarrow>
-   sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
+   sat ctxt \<omega> mh mp (Atomic (AccPredicate pid e_args Wildcard))"
 
 | SatPure:
   "\<lbrakk> ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
@@ -134,24 +134,24 @@ inductive consistent_external_wrt_ploc :: "'a total_context \<Rightarrow> 'a tot
           consistent_external :: "'a total_context \<Rightarrow> 'a total_state \<Rightarrow> bool"
           for ctxt :: "'a total_context" where
   SatStep:
-  "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     vals_well_typed (absval_interp_total ctxt) vs (ViperLang.predicate_decl.args pred_decl);
-     ViperLang.predicate_decl.body pred_decl = Some pred_body;
+  "\<lbrakk> ViperLang.predicates (program_total ctxt) pid = Some pdecl;
+     vals_well_typed (absval_interp_total ctxt) vs (ViperLang.predicate_decl.args pdecl);
+     ViperLang.predicate_decl.body pdecl = Some pbody;
      p = 0 \<Longrightarrow> get_nm_total \<phi> = 0;
      p > 0 \<Longrightarrow> sat ctxt
          \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
          (get_mh_total \<phi>) (get_mp_total \<phi>)
-         (syntactic_mult (Rep_preal p) pred_body);
+         (syntactic_mult (Rep_preal p) pbody);
      consistent_external ctxt \<phi>
    \<rbrakk> \<Longrightarrow>
-   consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p"
+   consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p"
 | SatAll:
-  "\<lbrakk> \<And>pred_id vs q nm'. Some (q, nm') = get_fnm_total \<phi> (pred_id,vs) \<Longrightarrow>
-       consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm' \<rparr>) (pred_id,vs) (Rep_posreal q)
+  "\<lbrakk> \<And>pid vs q nm'. Some (q, nm') = get_fnm_total \<phi> (pid,vs) \<Longrightarrow>
+       consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm' \<rparr>) (pid,vs) (Rep_posreal q)
    \<rbrakk> \<Longrightarrow>
    consistent_external ctxt \<phi>"
 
-inductive_cases SatStep_case: "consistent_external_wrt_ploc ctxt \<phi> (pred_id,vs) p"
+inductive_cases SatStep_case: "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p"
 inductive_cases SatAll_case: "consistent_external ctxt \<phi>"
 
 lemmas extcons_inducts = consistent_external_wrt_ploc_consistent_external.inducts
@@ -168,10 +168,10 @@ subsection \<open>Well-formed Viper Context (Predicates)\<close>
 
 definition ctxt_pred_syn_wf where
   "ctxt_pred_syn_wf ctxt \<equiv>
-     \<forall>pred_id pred_decl pred_body.
-        ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl \<longrightarrow>
-        ViperLang.predicate_decl.body pred_decl = Some pred_body \<longrightarrow>
-        supported_pred_body pred_body"
+     \<forall>pid pdecl pbody.
+        ViperLang.predicates (program_total ctxt) pid = Some pdecl \<longrightarrow>
+        ViperLang.predicate_decl.body pdecl = Some pbody \<longrightarrow>
+        supported_pred_body pbody"
 
 
 end
