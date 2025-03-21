@@ -30,7 +30,7 @@ definition inhale_pred_normal_premise
 
 
 lemma inhale_predicate_acc_rel:
-  assumes WfSubexp: "exprs_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega> ns \<and> \<omega>def = \<omega> \<and> Q (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega>) 
+  assumes WfSubexp: "exprs_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega> ns \<and> \<omega>def = \<omega> \<and> Q (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega>)
                        ctxt_vpr StateCons P ctxt (e_args @ [e_p]) \<gamma> \<gamma>2"
       and PosPermRel: "\<And>vs p. rel_general R (R' vs p)
                          (\<lambda> \<omega> \<omega>'. \<omega> = \<omega>' \<and> (ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VPerm p)) \<and> p \<ge> 0) \<and>
@@ -40,7 +40,7 @@ lemma inhale_predicate_acc_rel:
                          P ctxt \<gamma>2 \<gamma>3"
       and UpdInhRel: "\<And>vs p. rel_general (R' vs p) R \<comment>\<open>Here, the simulation needs to revert back to R\<close>
                          (inhale_pred_normal_premise ctxt_vpr StateCons pred_id e_args e_p vs p)
-                         (\<lambda> \<omega>. False) P ctxt \<gamma>3 \<gamma>'" 
+                         (\<lambda> \<omega>. False) P ctxt \<gamma>3 \<gamma>'"
     shows "inhale_rel R Q ctxt_vpr StateCons P ctxt (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<gamma> \<gamma>'"
 proof (rule inhale_rel_intro_2)
   fix \<omega> ns res
@@ -849,7 +849,7 @@ next
     apply (case_tac "fnm\<^sub>2 lp"; cut_tac ?lp=lp in fnm\<^sub>2; simp)
      apply (metis option.distinct(1))
     by (metis Abs_posreal_inverse Some_Some_ifD fst_eqD mem_Collect_eq option.inject pperm_pnone_pgt)
-  
+
   have nm\<^sub>1_cons: "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = nm\<^sub>1 \<rparr>"
   proof
     fix pid vs q nm'
@@ -1670,6 +1670,8 @@ lemma framed_sat_irrelevant_perm_0_locs:
       and "get_hh_total_full \<omega> = get_hh_total \<phi>"
       and "get_hh_total_full \<omega>' = hh"
       and "supported_pred_body A"
+      and CtxtPredSynWf: "ctxt_pred_syn_wf ctxt"
+      and ConsMono: "mono_prop_downward StateCons"
     shows "sat ctxt \<omega>' mh mp A"
   using assms(1-12)
 proof (induction arbitrary: \<phi> \<omega>\<^sub>0 \<omega>' hh rule: sat.inducts)
@@ -1698,8 +1700,256 @@ next
   case (SatPure e mh mp)
   then show ?case sorry
 next
-  case (SatStar mh mh\<^sub>1 mh\<^sub>2 mp mp\<^sub>1 mp\<^sub>2 A B)
-  then show ?case sorry
+  case IH: (SatStar mh mh\<^sub>1 mh\<^sub>2 mp mp\<^sub>1 mp\<^sub>2 A B)
+
+  define fnm where fnm: "fnm = get_fnm_total \<phi>"
+  obtain fnm\<^sub>1 where fnm\<^sub>1: "\<And>lp. fnm\<^sub>1 lp = (if mp\<^sub>1 lp = 0 then None else Some (Abs_posreal (mp\<^sub>1 lp), (mp\<^sub>1 lp / mp lp) *\<^sub>s (snd (the (fnm lp)))))"
+    by simp
+  obtain fnm\<^sub>2 where fnm\<^sub>2: "\<And>lp. fnm\<^sub>2 lp = (if mp\<^sub>2 lp = 0 then None else Some (Abs_posreal (mp\<^sub>2 lp), (mp\<^sub>2 lp / mp lp) *\<^sub>s (snd (the (fnm lp)))))"
+    by simp
+  define nm\<^sub>1 where "nm\<^sub>1 = NM mh\<^sub>1 fnm\<^sub>1"
+  define nm\<^sub>2 where "nm\<^sub>2 = NM mh\<^sub>2 fnm\<^sub>2"
+  define \<phi>\<^sub>1 where "\<phi>\<^sub>1 = \<phi>\<lparr> get_nm_total := nm\<^sub>1 \<rparr>"
+  define \<phi>\<^sub>2 where "\<phi>\<^sub>2 = \<phi>\<lparr> get_nm_total := nm\<^sub>2 \<rparr>"
+
+  have "mp\<^sub>1 = get_mp_total \<phi>\<^sub>1"
+    unfolding \<phi>\<^sub>1_def nm\<^sub>1_def
+    apply simp
+    apply standard
+    apply (rename_tac lp)
+    apply (case_tac "fnm\<^sub>1 lp"; cut_tac ?lp=lp in fnm\<^sub>1; simp)
+     apply (metis option.distinct(1))
+    by (metis Abs_posreal_inverse Some_Some_ifD fst_eqD mem_Collect_eq option.inject pperm_pnone_pgt)
+  have "mp\<^sub>2 = get_mp_total \<phi>\<^sub>2"
+    unfolding \<phi>\<^sub>2_def nm\<^sub>2_def
+    apply simp
+    apply standard
+    apply (rename_tac lp)
+    apply (case_tac "fnm\<^sub>2 lp"; cut_tac ?lp=lp in fnm\<^sub>2; simp)
+     apply (metis option.distinct(1))
+    by (metis Abs_posreal_inverse Some_Some_ifD fst_eqD mem_Collect_eq option.inject pperm_pnone_pgt)
+
+  have \<phi>\<^sub>1_extcons: "consistent_external ctxt \<phi>\<^sub>1"
+  proof
+    fix pid vs q nm'
+    assume lpm: "Some (q,nm') = get_fnm_total \<phi>\<^sub>1 (pid,vs)"
+    have "q = Abs_posreal (mp\<^sub>1 (pid,vs))" and
+         "nm' = (mp\<^sub>1 (pid,vs) / mp (pid,vs)) *\<^sub>s (snd (the (fnm (pid,vs))))"
+      using lpm[unfolded \<open>\<phi>\<^sub>1 = _\<close> \<open>nm\<^sub>1 = _\<close>, simplified, simplified fnm\<^sub>1]
+      by (cases "mp\<^sub>1 (pid,vs) = 0"; simp)+
+
+    have "mp (pid,vs) \<ge> mp\<^sub>1 (pid,vs)"
+      by (meson IH.hyps(2) le_funD split_implies_le(1))
+    then obtain q\<^sub>a nm'\<^sub>a where "Some (q\<^sub>a,nm'\<^sub>a) = get_fnm_total \<phi> (pid,vs)"
+      by (metis IH.prems(2) \<open>mp\<^sub>1 = _\<close> get_fnm_total.simps get_mp_0_implies_fnm_None get_mp_total.simps linorder_not_less lpm obtain_lpm_from_mp preal_not_0_gt_0)
+
+    hence extcons\<^sub>a: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm'\<^sub>a \<rparr>) (pid,vs) (Rep_posreal q\<^sub>a)"
+      by (metis IH.prems(5) consistent_external.cases)
+
+    have the_eq: "snd (the (fnm (pid,vs))) = nm'\<^sub>a"
+      by (metis \<open>Some (q\<^sub>a,nm'\<^sub>a) = _\<close> fnm option.sel sndI)
+
+    have q_pos: "mp\<^sub>1 (pid,vs) > 0"
+      using lpm preal_not_0_gt_0 \<open>mp\<^sub>1 = get_mp_total \<phi>\<^sub>1\<close> get_mp_0_implies_fnm_None
+      by fastforce
+
+    have "Rep_posreal q\<^sub>a = mp (pid,vs)"
+      by (metis IH.prems(2) \<open>Some (q\<^sub>a,nm'\<^sub>a) =_\<close> \<open>mp\<^sub>1 (pid, vs) \<le> mp (pid, vs)\<close> get_fnm_total.simps get_mp_total.simps mem_Collect_eq obtain_lpm_from_mp option.sel order_less_le_trans posreal_to_preal(8) prod.sel(1) q_pos)
+
+    show "consistent_external_wrt_ploc ctxt (\<phi>\<^sub>1\<lparr> get_nm_total := nm' \<rparr>) (pid,vs) (Rep_posreal q)"
+      unfolding \<open>\<phi>\<^sub>1 = _\<close> \<open>nm' = _\<close> the_eq \<open>q = _\<close> Abs_posreal_inverse[of "mp\<^sub>1 (pid,vs)", simplified, OF q_pos]
+      using fraction_consistent_external(1)[OF CtxtPredSynWf extcons\<^sub>a, of "mp\<^sub>1 (pid, vs) / mp (pid, vs)", unfolded \<open>Rep_posreal q\<^sub>a = _\<close>, simplified]
+      apply simp
+      by (metis (mono_tags, lifting) IH.prems(2) \<open>Some (q\<^sub>a,nm'\<^sub>a) = _\<close> get_fnm_total.simps get_mp_0_implies_fnm_None get_mp_total.simps nonzero_eq_divide_eq option.discI preal_to_real(10) preal_to_real(12) preal_to_real(9) zero_preal.abs_eq)
+  qed
+
+  have \<phi>\<^sub>2_extcons: "consistent_external ctxt \<phi>\<^sub>2"
+  proof
+    fix pid vs q nm'
+    assume lpm: "Some (q,nm') = get_fnm_total \<phi>\<^sub>2 (pid,vs)"
+    have "q = Abs_posreal (mp\<^sub>2 (pid,vs))" and
+         "nm' = (mp\<^sub>2 (pid,vs) / mp (pid,vs)) *\<^sub>s (snd (the (fnm (pid,vs))))"
+      using lpm[unfolded \<open>\<phi>\<^sub>2 = _\<close> \<open>nm\<^sub>2 = _\<close>, simplified, simplified fnm\<^sub>2]
+      by (cases "mp\<^sub>2 (pid,vs) = 0"; simp)+
+
+    have "mp (pid,vs) \<ge> mp\<^sub>2 (pid,vs)"
+      by (meson IH.hyps(2) le_funD split_implies_le(2))
+    then obtain q\<^sub>a nm'\<^sub>a where "Some (q\<^sub>a,nm'\<^sub>a) = get_fnm_total \<phi> (pid,vs)"
+      by (metis IH.prems(2) \<open>mp\<^sub>2 = _\<close> get_fnm_total.simps get_mp_0_implies_fnm_None get_mp_total.simps linorder_not_less lpm obtain_lpm_from_mp preal_not_0_gt_0)
+
+    hence extcons\<^sub>a: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm'\<^sub>a \<rparr>) (pid,vs) (Rep_posreal q\<^sub>a)"
+      by (metis IH.prems(5) consistent_external.cases)
+
+    have the_eq: "snd (the (fnm (pid,vs))) = nm'\<^sub>a"
+      by (metis \<open>Some (q\<^sub>a,nm'\<^sub>a) = _\<close> fnm option.sel sndI)
+
+    have q_pos: "mp\<^sub>2 (pid,vs) > 0"
+      using lpm preal_not_0_gt_0 \<open>mp\<^sub>2 = get_mp_total \<phi>\<^sub>2\<close> get_mp_0_implies_fnm_None
+      by fastforce
+
+    have "Rep_posreal q\<^sub>a = mp (pid,vs)"
+      by (metis IH.prems(2) \<open>Some (q\<^sub>a,nm'\<^sub>a) =_\<close> \<open>mp\<^sub>2 (pid, vs) \<le> mp (pid, vs)\<close> get_fnm_total.simps get_mp_total.simps mem_Collect_eq obtain_lpm_from_mp option.sel order_less_le_trans posreal_to_preal(8) prod.sel(1) q_pos)
+
+    show "consistent_external_wrt_ploc ctxt (\<phi>\<^sub>2\<lparr> get_nm_total := nm' \<rparr>) (pid,vs) (Rep_posreal q)"
+      unfolding \<open>\<phi>\<^sub>2 = _\<close> \<open>nm' = _\<close> the_eq \<open>q = _\<close> Abs_posreal_inverse[of "mp\<^sub>2 (pid,vs)", simplified, OF q_pos]
+      using fraction_consistent_external(1)[OF CtxtPredSynWf extcons\<^sub>a, of "mp\<^sub>2 (pid, vs) / mp (pid, vs)", unfolded \<open>Rep_posreal q\<^sub>a = _\<close>, simplified]
+      apply simp
+      by (metis (mono_tags, lifting) IH.prems(2) \<open>Some (q\<^sub>a,nm'\<^sub>a) = _\<close> get_fnm_total.simps get_mp_0_implies_fnm_None get_mp_total.simps nonzero_eq_divide_eq option.discI preal_to_real(10) preal_to_real(12) preal_to_real(9) zero_preal.abs_eq)
+  qed
+
+  have "nm\<^sub>1 + nm\<^sub>2 = get_nm_total \<phi>"
+    unfolding plus_nested_mask_def nm\<^sub>1_def nm\<^sub>2_def
+    apply simp
+    apply (rule nested_mask_equality)
+    using IH.hyps(1) IH.prems(1)
+     apply auto[1]
+    unfolding fnm[simplified, symmetric]
+    apply simp
+    apply standard
+    apply (rename_tac lp)
+    apply (case_tac "fnm\<^sub>1 lp"; case_tac "fnm\<^sub>2 lp"; simp add: pfun_comb_def)
+    subgoal for lp
+      apply (subgoal_tac "mp lp = 0")
+      apply (metis IH.prems(2) fnm get_fnm_total.simps get_mp_0_implies_fnm_None get_mp_total.simps)
+      apply (subgoal_tac "mp\<^sub>1 lp = 0 \<and> mp\<^sub>2 lp = 0")
+      using IH(2)[simplified, THEN fun_cong, of lp, simplified add_masks_def]
+       apply fastforce
+      using fnm\<^sub>1[of lp] fnm\<^sub>2[of lp]
+      by (metis option.distinct(1))
+    subgoal for lp lpm\<^sub>2
+      apply (subgoal_tac "mp\<^sub>1 lp = 0 \<and> mp\<^sub>2 lp = mp lp \<and> mp\<^sub>2 lp > 0")
+      using fnm\<^sub>2[of lp, simplified]
+       apply (smt (verit, ccfv_SIG) IH.prems(2) PosReal.ppos.rep_eq \<open>get_fnm_nm (get_nm_total \<phi>) = fnm\<close> divide_preal.rep_eq divide_self_if get_mp_total.simps gr_0_is_ppos obtain_lpm_from_mp one_preal.rep_eq option.distinct(1) option.sel preal_semimodule_class.scale_one preal_to_real(12) prod.sel(2))
+      using IH(2)[simplified, THEN fun_cong, of lp, simplified add_masks_def]
+      by (metis add.commute fnm\<^sub>1 fnm\<^sub>2 option.distinct(1) padd_pnone preal_not_0_gt_0)
+    subgoal for lp lpm\<^sub>1
+      apply (subgoal_tac "mp\<^sub>2 lp = 0 \<and> mp\<^sub>1 lp = mp lp \<and> mp\<^sub>1 lp > 0")
+      using fnm\<^sub>2[of lp, simplified]
+       apply (metis IH.prems(2) \<open>get_fnm_nm (get_nm_total \<phi>) = fnm\<close> divide_preal.rep_eq divide_self_if fnm\<^sub>1 get_mp_total.simps obtain_lpm_from_mp one_preal.rep_eq option.distinct(1) option.sel preal_semimodule_class.scale_one preal_to_real(12) prod.sel(2) zero_preal.abs_eq)
+      using IH(2)[simplified, THEN fun_cong, of lp, simplified add_masks_def]
+      by (metis fnm\<^sub>1 fnm\<^sub>2 option.distinct(1) padd_pnone preal_not_0_gt_0)
+    subgoal for lp lpm\<^sub>1 lpm\<^sub>2
+    proof -
+      assume "fnm\<^sub>1 lp = Some lpm\<^sub>1"
+        and "fnm\<^sub>2 lp = Some lpm\<^sub>2"
+      have "Rep_posreal (fst lpm\<^sub>1) = mp\<^sub>1 lp"
+        using \<open>fnm\<^sub>1 lp = Some lpm\<^sub>1\<close> \<open>mp\<^sub>1 = _\<close> nm\<^sub>1_def
+        unfolding \<open>\<phi>\<^sub>1 = _\<close>
+        by auto
+      have "Rep_posreal (fst lpm\<^sub>2) = mp\<^sub>2 lp"
+        using \<open>fnm\<^sub>2 lp = Some lpm\<^sub>2\<close> \<open>mp\<^sub>2 = _\<close> nm\<^sub>2_def
+        unfolding \<open>\<phi>\<^sub>2 = _\<close>
+        by auto
+      have "mp lp > 0"
+        by (metis IH.hyps(2) \<open>fnm\<^sub>1 lp = Some lpm\<^sub>1\<close> fnm\<^sub>1 le_funD option.distinct(1) order_less_imp_not_less order_less_le preal_not_0_gt_0 split_implies_le(1))
+      hence 1: "fnm lp = Some (Abs_posreal (mp lp), snd (the (fnm lp)))"
+        by (metis IH.prems(2) \<open>get_fnm_nm (get_nm_total \<phi>) = fnm\<close> get_mp_total.simps obtain_lpm_from_mp option.sel split_pairs)
+      have 2: "snd lpm\<^sub>1 = (mp\<^sub>1 lp / mp lp) *\<^sub>s snd (the (fnm lp))"
+        by (metis \<open>fnm\<^sub>1 lp = Some lpm\<^sub>1\<close> fnm\<^sub>1 option.discI option.sel split_pairs)
+      have 3: "snd lpm\<^sub>2 = (mp\<^sub>2 lp / mp lp) *\<^sub>s snd (the (fnm lp))"
+        by (metis \<open>fnm\<^sub>2 lp = Some lpm\<^sub>2\<close> fnm\<^sub>2 option.discI option.sel split_pairs)
+      show "Some (fst lpm\<^sub>1 + fst lpm\<^sub>2, nested_mask_merge (snd lpm\<^sub>1) (snd lpm\<^sub>2)) = fnm lp"
+        apply (subst 1)
+        apply standard+
+         apply (rule Rep_posreal_inject[THEN iffD1])
+        unfolding plus_posreal.rep_eq
+         apply (metis Abs_posreal_inject IH.hyps(2) Rep_posreal Rep_posreal_inverse \<open>Rep_posreal (fst lpm\<^sub>1) = mp\<^sub>1 lp\<close> \<open>Rep_posreal (fst lpm\<^sub>2) = mp\<^sub>2 lp\<close> \<open>pos_perm_class.pnone < mp lp\<close> add_masks_def mem_Collect_eq mp_split.simps)
+        unfolding plus_nested_mask_def[symmetric] 2 3
+        unfolding preal_semimodule_class.scale_add_left[symmetric]
+        using preal_semimodule_class.scale_one IH(2)[simplified, THEN fun_cong, of lp, simplified add_masks_def]
+        by (metis PosReal.field_divide_inverse PosReal.field_inverse PosReal.pmult_comm \<open>pos_perm_class.pnone < mp lp\<close> distrib_right preal_not_0_gt_0)
+    qed
+    done
+
+  define \<omega>\<^sub>A where "\<omega>\<^sub>A = add_to_nm_total_full \<omega>\<^sub>0 nm\<^sub>1"
+  have 1: "add_to_nm_total_full \<omega>\<^sub>A nm\<^sub>2 = add_to_nm_total_full \<omega>\<^sub>0 (get_nm_total \<phi>)"
+    apply (rule full_total_state.equality; simp_all add: IH \<omega>\<^sub>A_def)
+    apply (rule total_state.equality; simp_all add: IH \<omega>\<^sub>A_def)
+    using \<open>nm\<^sub>1 + nm\<^sub>2 = _\<close> ab_semigroup_add_class.add_ac(1)
+    by metis
+
+  have "add_to_nm_total_full \<omega>\<^sub>0 (get_nm_total \<phi>) \<succeq> add_to_nm_total_full \<omega>\<^sub>0 nm\<^sub>1"
+    apply (simp add: greater_def)
+    apply (rule exI[of _ "upd_nm_total_full \<omega>\<^sub>0 nm\<^sub>2"])
+    apply (simp add: plus_full_total_state_ext_def plus_total_state_ext_def)
+    apply standard+
+     apply (simp add: \<open>nm\<^sub>1 + nm\<^sub>2 = get_nm_total \<phi>\<close> ab_semigroup_add_class.add_ac(1))
+    by (simp add: defined_def plus_total_state_ext_def)
+
+  hence A_mask_intcons: "StateCons (add_to_nm_total_full \<omega>\<^sub>0 nm\<^sub>1)"
+    using ConsMono IH.prems(4) mono_prop_downwardD
+    by auto
+
+  have *: "add_to_nm_total \<phi>\<^sub>1 (get_nm_total_full \<omega>\<^sub>0) \<le> add_to_nm_total \<phi> (get_nm_total_full \<omega>\<^sub>0)"
+    by (smt (verit) \<open>nm\<^sub>1 + nm\<^sub>2 = get_nm_total \<phi>\<close> \<phi>\<^sub>1_def add_to_nm_total.simps less_eq_total_state_ext_def nm_plus_mono nm_sum_is_bigger total_state.ext_inject total_state.surjective total_state.update_convs(2))
+
+  have **: "add_to_nm_total \<phi>\<^sub>2 (get_nm_total_full \<omega>\<^sub>A) = add_to_nm_total \<phi> (get_nm_total_full \<omega>\<^sub>0)"
+    apply (rule total_state.equality; simp)
+    unfolding \<open>\<phi>\<^sub>2 = _\<close> \<open>\<omega>\<^sub>A = _\<close>
+     apply simp_all
+    by (metis \<open>nm\<^sub>1 + nm\<^sub>2 = get_nm_total \<phi>\<close> add.commute add.left_commute)
+
+  have inhA: "red_inhale ctxt StateCons A \<omega>\<^sub>0 (RNormal (add_to_nm_total_full \<omega>\<^sub>0 nm\<^sub>1))"
+    apply (rule extcons_state_can_be_inhaled_assertion[where hh="get_hh_total \<phi>"])
+               apply fact
+              apply (simp add: nm\<^sub>1_def)
+             apply (simp add: \<open>mp\<^sub>1 = get_mp_total \<phi>\<^sub>1\<close> \<phi>\<^sub>1_def)
+            apply (metis (full_types) \<phi>\<^sub>1_def \<phi>\<^sub>1_extcons old.unit.exhaust total_state.surjective total_state.update_convs(2))
+    using IH.prems(8,9)
+           apply auto[1]
+    using IH.prems(9)
+          apply auto[1]
+         apply (simp add: IH.prems(7))
+    using IH.prems(3) assertion_framing_star
+        apply blast
+    using IH.prems(11)
+       apply auto[1]
+    using A_mask_intcons
+      apply auto[1]
+    by fact+
+
+  show ?case
+    apply (rule SatStar)
+       apply fact
+      apply fact
+     apply (rule IH.IH(1)[where \<phi>=\<phi>\<^sub>1 and \<omega>\<^sub>0=\<omega>\<^sub>0 and hh=hh])
+               apply (simp add: \<phi>\<^sub>1_def nm\<^sub>1_def)
+              apply (simp add: \<open>mp\<^sub>1 = get_mp_total \<phi>\<^sub>1\<close>)
+    using IH.prems(3) assertion_framing_star
+             apply blast
+    using A_mask_intcons \<phi>\<^sub>1_def
+            apply force
+           apply fact
+    using * IH.prems(6) differ_only_in_0_perm_locs_hh_smaller
+          apply blast
+         apply fact+
+    using IH.prems(9) \<open>\<phi>\<^sub>1 = _\<close>
+       apply auto[1]
+    using IH.prems(10)
+      apply auto[1]
+    using IH.prems(11)
+     apply auto[1]
+    apply (rule IH.IH(2)[where \<phi>=\<phi>\<^sub>2 and \<omega>\<^sub>0=\<omega>\<^sub>A and hh=hh])
+              apply (simp add: \<phi>\<^sub>2_def nm\<^sub>2_def)
+             apply (simp add: \<open>mp\<^sub>2 = get_mp_total \<phi>\<^sub>2\<close>)
+    using IH.prems(3) \<omega>\<^sub>A_def inhA assertion_framing_star
+            apply blast
+    using 1 IH.prems(4) \<phi>\<^sub>2_def
+           apply force
+          apply fact
+    using ** IH.prems(6)
+         apply presburger
+    unfolding \<open>\<omega>\<^sub>A = _\<close>
+        apply (simp add: IH.prems(7))
+    using IH.prems(8)
+       apply auto[1]
+    using IH.prems(9) \<open>\<phi>\<^sub>2 = _\<close>
+      apply auto[1]
+    using IH.prems(10)
+     apply auto[1]
+    using IH.prems(11)
+    apply auto[1]
+    done
 next
   case (SatImpTrue e mh mp A)
   then show ?case sorry
