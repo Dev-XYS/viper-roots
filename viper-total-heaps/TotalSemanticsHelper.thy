@@ -55,7 +55,7 @@ inductive_cases InhAccPredPerm_case: "red_inhale ctxt R (Atomic (AccPredicate pi
 inductive_cases InhAccPredWildcard_case: "red_inhale ctxt R (Atomic (AccPredicate pid e_args Wildcard)) \<omega> res"
 inductive_cases InhStar_case: "red_inhale ctxt R (A && B) \<omega> res"
 inductive_cases InhImp_case: "red_inhale ctxt R (Imp e A) \<omega> res"
-inductive_cases InhCondAssert: "red_inhale ctxt R (CondAssert e A B) \<omega> res"
+inductive_cases InhCondAssert_case: "red_inhale ctxt R (CondAssert e A B) \<omega> res"
 
 lemmas red_inhale_elims =
   InhStar_case

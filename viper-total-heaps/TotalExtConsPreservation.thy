@@ -309,7 +309,7 @@ next
 next
   case (CondAssert x1a A1 A2)
   then show ?case
-    using InhCondAssert
+    using InhCondAssert_case
     by blast
 qed (blast elim: red_inhale.cases)+
 

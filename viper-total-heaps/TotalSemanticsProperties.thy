@@ -366,17 +366,18 @@ next
     using red_exp_list_failure_Nil by auto
 qed
 
+
 lemma eval_ok_no_type_error:
   assumes "get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2"
-    and "get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2"
-  shows "ctxt, \<omega>_def\<^sub>1 \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t r\<^sub>1 \<Longrightarrow>
-           r\<^sub>1 = Val v\<^sub>1 \<Longrightarrow>
-           supported_pred_expr e \<Longrightarrow>
-           \<exists>r\<^sub>2. ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t r\<^sub>2" and
-    "red_pure_exps_total ctxt \<omega>_def\<^sub>1 es \<omega>\<^sub>1 rs\<^sub>1 \<Longrightarrow>
-           rs\<^sub>1 = Some vs\<^sub>1 \<Longrightarrow>
-           list_all supported_pred_expr es \<Longrightarrow>
-           \<exists>rs\<^sub>2. red_pure_exps_total ctxt \<omega>_def\<^sub>2 es \<omega>\<^sub>2 rs\<^sub>2"
+      and "get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2"
+    shows "ctxt, \<omega>_def\<^sub>1 \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t r\<^sub>1 \<Longrightarrow>
+             r\<^sub>1 = Val v\<^sub>1 \<Longrightarrow>
+             supported_pred_expr e \<Longrightarrow>
+             \<exists>r\<^sub>2. ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t r\<^sub>2" and
+          "red_pure_exps_total ctxt \<omega>_def\<^sub>1 es \<omega>\<^sub>1 rs\<^sub>1 \<Longrightarrow>
+             rs\<^sub>1 = Some vs\<^sub>1 \<Longrightarrow>
+             list_all supported_pred_expr es \<Longrightarrow>
+             \<exists>rs\<^sub>2. red_pure_exps_total ctxt \<omega>_def\<^sub>2 es \<omega>\<^sub>2 rs\<^sub>2"
   using assms
 proof (induction arbitrary: v\<^sub>1 r\<^sub>2 v\<^sub>2 \<omega>_def\<^sub>2 and vs\<^sub>1 rs\<^sub>2 vs\<^sub>2 \<omega>_def\<^sub>2 rule: red_pure_exp_inducts)
   case (RedLit \<omega>_def l uu)
@@ -961,6 +962,7 @@ next
 qed
 
 
+
 subsection \<open>Inhale Properties\<close>
 
 lemma inhale_with_more_variables:
@@ -971,6 +973,26 @@ lemma inhale_with_more_variables:
       and "\<omega>\<^sub>2' = \<omega>\<^sub>1'\<lparr> get_store_total := get_store_total \<omega>\<^sub>2 \<rparr>"
     shows "red_inhale ctxt StateCons A \<omega>\<^sub>2 (RNormal \<omega>\<^sub>2')"
   sorry
+
+
+\<comment> \<open>Currently not used anywhere.\<close>
+lemma inhale_mono:
+  assumes "red_inhale ctxt StateCons A \<omega> (RNormal \<omega>')"
+  shows "\<omega> \<le> \<omega>'"
+  oops
+
+
+
+subsection \<open>Framed Evaluation Properties\<close>
+
+
+lemma eval_hh_decides_well_typedness:
+  assumes "get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2"
+    shows "ctxt, \<omega>_def\<^sub>1 \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t r\<^sub>1 \<Longrightarrow>
+           \<exists>r\<^sub>2. ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t r\<^sub>2"
+      and "red_pure_exps_total ctxt \<omega>_def\<^sub>1 es \<omega>\<^sub>1 rs\<^sub>1 \<Longrightarrow>
+           \<exists>rs\<^sub>2. red_pure_exps_total ctxt \<omega>_def\<^sub>2 es \<omega>\<^sub>2 rs\<^sub>2"
+  oops
 
 
 end
