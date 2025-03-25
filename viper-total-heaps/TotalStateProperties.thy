@@ -1211,7 +1211,9 @@ lemma any_larger_than_core_total_full:
   by (simp add: assms)
 
 
+
 subsection \<open>I don't know where to put these lemmas.\<close>
+
 
 lemma obtain_lpm_from_mp:
   assumes "get_mp_nm nm lp > 0"
@@ -1239,10 +1241,21 @@ lemma mh_mp_zero_implies_nm_zero:
   by auto
 
 
+lemma get_mp_0_implies_fnm_None:
+  assumes "get_mp_nm nm lp = 0"
+  shows "get_fnm_nm nm lp = None"
+  using assms
+  apply simp
+  by (metis Rep_posreal comp_apply mem_Collect_eq option.exhaust_sel option_fold.simps(1) pperm_pgt_pnone)
+
+
+
 subsection \<open>valid mask (TODO: move to ViperLang?)\<close>
+
 
 abbreviation valid_heap_mask :: "preal mask \<Rightarrow> bool"
   where "valid_heap_mask \<equiv> wf_mask_simple"
+
 
 lemma valid_heap_maskD:
   assumes "valid_heap_mask m"

@@ -1,7 +1,7 @@
 section \<open>Framed Assertions\<close>
 
 theory TotalFraming
-  imports TotalInhaleExhale NestedMaskProperties
+  imports TotalInhaleExhale NestedMaskProperties TotalStateInst
 begin
 
 
@@ -128,6 +128,47 @@ definition ctxt_pred_self_framing_inh :: "'a total_context \<Rightarrow> ('a ful
      ViperLang.predicates (program_total ctxt) pid = Some pdecl \<longrightarrow>
      predicate_decl.body pdecl = Some pbody \<longrightarrow>
      assertion_self_framing ctxt StateCons pbody (predicate_decl.args pdecl)"
+
+
+
+subsection \<open>Some Lemmas\<close>
+
+
+lemma differ_only_in_0_perm_locs_smaller:
+  assumes "differ_only_in_0_perm_locs (get_total_full \<omega>\<^sub>i) (get_total_full \<omega>\<^sub>i')"
+      and "get_nm_total_full \<omega>\<^sub>0 = get_nm_total_full \<omega>\<^sub>0'"
+      and "get_hh_total_full \<omega>\<^sub>0 = get_hh_total_full \<omega>\<^sub>i"
+      and "get_hh_total_full \<omega>\<^sub>0' = get_hh_total_full \<omega>\<^sub>i'"
+      and "\<omega>\<^sub>0 \<le> \<omega>\<^sub>i"
+    shows "differ_only_in_0_perm_locs (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>\<^sub>0')"
+  using assms
+  unfolding differ_only_in_0_perm_locs_def
+  apply (intro conjI)
+   apply (metis nm_loc_sum_smaller all_pos get_hh_total_full.simps get_nm_total_full.simps less_eq_full_total_stateD_2 order_antisym)
+  by auto
+
+
+lemma differ_only_in_0_perm_locs_submask:
+  assumes "differ_only_in_0_perm_locs \<phi> \<phi>'"
+      and "Some (q,nm) = get_fnm_total \<phi> lp"
+    shows "differ_only_in_0_perm_locs (\<phi>\<lparr> get_nm_total := nm \<rparr>) (\<phi>'\<lparr> get_nm_total := nm \<rparr>)"
+  using assms
+  unfolding differ_only_in_0_perm_locs_def
+  by (metis all_pos get_fnm_total.simps nle_le sub_mask_smaller total_state.select_convs(1) total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
+
+
+definition differ_only_in_0_perm_locs_hh where
+  "differ_only_in_0_perm_locs_hh \<phi> hh \<equiv>
+     (\<forall>loc. get_hh_total \<phi> loc \<noteq> hh loc \<longrightarrow> nm_loc_sum loc (get_nm_total \<phi>) 0)"
+
+
+lemma differ_only_in_0_perm_locs_hh_smaller:
+  assumes "differ_only_in_0_perm_locs_hh \<phi> hh"
+      and "\<phi>' \<le> \<phi>"
+    shows "differ_only_in_0_perm_locs_hh \<phi>' hh"
+  using assms
+  unfolding differ_only_in_0_perm_locs_hh_def
+  by (metis less_eq_total_stateD nm_loc_sum_smaller padd_pos preal_gte_padd)
 
 
 end
