@@ -537,7 +537,8 @@ lemma intcons_empty:
 
 lemma intcons_mono_prop_downward_sub_mask_total:
   shows "mono_prop_downward_sub_mask_total consistent_internal_total"
-  sorry
+  unfolding mono_prop_downward_sub_mask_total_def consistent_internal_total_def consistent_internal_def
+  by (metis dual_order.trans get_fnm_total.simps sub_mask_smaller total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
 
 
 
