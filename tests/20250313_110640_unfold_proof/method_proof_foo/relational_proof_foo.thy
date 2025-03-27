@@ -46,7 +46,7 @@ WfFunBpl: "(fun_interp_wf (type_interp ectxt) global_data.fdecls (fun_interp ect
 VprProgramTotal [simp]: "((program_total ctxt_vpr)=global_data_vpr.vpr_prog)" and 
 RtypeInterpEmpty[simp]: "((rtype_interp ectxt)=[])" and 
 CtxtVprPredWf: "(ctxt_pred_syn_wf ctxt_vpr)" and 
-CtxtVprPredSelfFraming: "(ctxt_pred_self_framing_inh ctxt_vpr consistent_internal_total_full)"
+CtxtVprPredSelfFraming: "(ctxt_pred_self_framing_sat ctxt_vpr consistent_internal_total)"
 begin
 lemma var_ctxt_bpl_wf : 
 
@@ -71,7 +71,7 @@ fun field_acc_init_tac ctxt = (resolve_tac ctxt @{thms syn_field_access_valid_wf
 val field_access_wf_rel_tac_aux_inst = (field_access_wf_rel_tac_aux field_acc_init_tac simp_with_tr_def_tac field_rel_single_tac simp_with_ty_repr_def_tac exp_rel_info)
 val exp_wf_rel_info = {field_access_wf_rel_syn_tac = field_access_wf_rel_tac_aux_inst}
 val aux_var_disj_tac = (assm_full_simp_solved_with_thms_tac @{thms tr_vpr_bpl_0_def basic_disjointness_lemmas map_upd_set_dom aux_pred_capture_state_dom ran_shift_and_add})
-val basic_stmt_rel_info = {ctxt_wf_thm = @{thm CtxtWf}, consistency_wf_thm = @{thm wf_total_consistency_internal[OF CtxtVprPredWf ctxt_pred_self_framing_inh_implies_sat[OF CtxtVprPredSelfFraming]]}, consistency_down_mono_thm = @{thm true_mono_prop_downward_ord}, tr_def_thm = @{thm tr_vpr_bpl_0_def}, method_data_table = method_decl_data, vpr_program_ctxt_eq_thm = @{thm VprProgramTotal}, var_rel_tac = lookup_var_rel_tac, var_context_vpr_tac = assm_full_simp_solved_with_thms_tac @{thms var_ctxt_viper_def shift_and_add_def}, field_rel_single_tac = field_rel_single_tac, aux_var_disj_tac = aux_var_disj_tac, type_interp_econtext = @{thm TyInterpBpl}, vpr_prog_def_thm = @{thm vpr_prog_def}}
+val basic_stmt_rel_info = {ctxt_wf_thm = @{thm CtxtWf}, consistency_wf_thm = @{thm wf_total_consistency_internal[OF CtxtVprPredWf CtxtVprPredSelfFraming]}, consistency_down_mono_thm = @{thm true_mono_prop_downward_ord}, tr_def_thm = @{thm tr_vpr_bpl_0_def}, method_data_table = method_decl_data, vpr_program_ctxt_eq_thm = @{thm VprProgramTotal}, var_rel_tac = lookup_var_rel_tac, var_context_vpr_tac = assm_full_simp_solved_with_thms_tac @{thms var_ctxt_viper_def shift_and_add_def}, field_rel_single_tac = field_rel_single_tac, aux_var_disj_tac = aux_var_disj_tac, type_interp_econtext = @{thm TyInterpBpl}, vpr_prog_def_thm = @{thm vpr_prog_def}}
 val inhale_rel_info = {basic_info = basic_stmt_rel_info, atomic_inhale_rel_tac = atomic_inhale_rel_inst_tac, is_inh_rel_inv_thm = @{thm true_is_inh_rel_invariant}, no_def_checks_tac_opt = NONE}
 val inhale_rel_info_opt = {basic_info = basic_stmt_rel_info, atomic_inhale_rel_tac = atomic_inhale_rel_inst_tac, is_inh_rel_inv_thm = @{thm assertion_framing_is_inh_rel_invariant}, no_def_checks_tac_opt = (SOME inh_no_def_checks_tac)}
 val exhale_rel_info = {basic_info = basic_stmt_rel_info, atomic_exhale_rel_tac = atomic_exhale_rel_inst_tac, is_exh_rel_inv_thm = @{thm true_is_assertion_red_invariant_exh}, no_def_checks_tac_opt = NONE}
@@ -134,7 +134,27 @@ apply (tactic \<open> (stmt_rel_tac @{context} stmt_rel_info stmt_body_hints 1) 
 apply (tactic \<open> (progress_red_bpl_rel_tac @{context} 1) \<close>)
 apply ((unfold foo_decl_proj_mpost))
 apply ((rule exhale_true_stmt_rel))
-done
+  sorry
+
+
+schematic_goal
+  "vpr_all_method_spec_correct_total ctxt_vpr consistent_internal_total_full vpr_prog \<Longrightarrow>
+   stmt_rel
+     (state_rel_well_def_same ectxt vpr_prog consistent_internal_total_full
+       (ty_repr_basic (absval_interp_total ctxt_vpr)) tr_vpr_bpl_0 (\<lambda>x. None))
+     (state_rel_well_def_same ectxt vpr_prog consistent_internal_total_full
+       (ty_repr_basic (absval_interp_total ctxt_vpr)) tr_vpr_bpl_0 (\<lambda>x. None))
+     ctxt_vpr consistent_internal_total_full var_ctxt_viper P ectxt
+     (Unfold ''P'' [pure_exp.Var 0] (PureExp (ELit WritePerm)))
+     (BigBlock None [Assign 8 (expr.Var 3), cmd.Assert (Lit (Lang.lit.LBool True))]
+       (Some (ParsedIf (Some (expr.Var 8 \<guillemotleft>Lang.binop.Neq\<guillemotright> expr.Var 2)) [bigblock_1] [bigblock_2])) None,
+      KSeq bigblock_3 KStop)
+     ?\<gamma>1.233"
+  apply (rule unfold_stmt_rel)
+               prefer 13
+               apply (rule unfold_exhale_pred_rel)
+                 apply (simp only: append_Cons append_Nil)
+  apply (tactic \<open>exps_wf_rel_tac basic_stmt_rel_info exp_wf_rel_info exp_rel_info @{context} NONE 2 1\<close>)
 
 
 
