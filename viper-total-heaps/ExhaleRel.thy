@@ -1051,9 +1051,11 @@ subsection \<open>Predicate access predicate rule\<close>
 definition exhale_pred_acc_rel_assms ::
   "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> predicate_ident \<Rightarrow> pure_exp list \<Rightarrow> pure_exp \<Rightarrow>
    'a ValueAndBasicState.val list \<Rightarrow> real \<Rightarrow> 'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> bool"
-  where "exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args e_p v_args v_p \<omega>0 \<omega>  \<equiv>
+  where "exhale_pred_acc_rel_assms ctxt_vpr StateCons pid e_args e_p v_args v_p \<omega>0 \<omega> \<equiv>
             red_pure_exps_total ctxt_vpr (Some \<omega>0) e_args \<omega> (Some v_args) \<and>
-            ctxt_vpr, Some \<omega>0 \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
+            ctxt_vpr, Some \<omega>0 \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p) \<and>
+            (\<forall>pdecl. program.predicates (program_total ctxt_vpr) pid = Some pdecl \<longrightarrow>
+                     vals_well_typed (absval_interp_total ctxt_vpr) v_args (ViperLang.predicate_decl.args pdecl))"
 
 definition exhale_pred_acc_rel_perm_success ::
   "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> predicate_ident \<Rightarrow>

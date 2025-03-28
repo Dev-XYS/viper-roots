@@ -1,5 +1,6 @@
 theory CPGHelperML
   imports ViperBoogieRelUtil TotalViperHelperML ExpRelML  "HOL-Eisbach.Eisbach" "HOL-Eisbach.Eisbach_Tools"
+          PredicateRel
 begin
 
 ML \<open>
@@ -308,11 +309,18 @@ fun intro_fact_pred_mask_lookup_reduction ctxt (info: basic_stmt_rel_info) exp_r
   (Rmsg' "intro mask lookup" (simp_tac_with_thms [] ctxt) ctxt) THEN'
   (* (Rmsg' "intro mask lookup red 8" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN' *)
   (* (Rmsg' "intro mask lookup red 9" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN' *)
+  (Rmsg' "intro mask lookup" (simp_tac_with_thms [#vpr_prog_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "intro mask lookup" (simp_tac_with_thms @{thms predicate_decl.defs} ctxt) ctxt) THEN'
+  (Rmsg' "intro mask lookup" (simp_tac_with_thms @{thms exhale_pred_acc_rel_assms_def} ctxt) ctxt) THEN'
+  (Rmsg' "intro mask lookup" (blast_tac ctxt) ctxt) THEN'
+  (Rmsg' "intro mask lookup" (simp_tac_with_thms [] ctxt) ctxt) THEN'
   (Rmsg' "intro mask lookup red 10" (exp_rel_tac exp_rel_info ctxt) ctxt) THEN'
-  (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN'
   (Rmsg' "intro mask lookup" (simp_tac_with_thms [] ctxt) ctxt) THEN'
   (Rmsg' "intro mask lookup" (simp_tac_with_thms [] ctxt) ctxt) THEN'
   (Rmsg' "intro mask lookup" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+  (Rmsg' "intro mask lookup" (simp_tac_with_thms [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "intro mask lookup" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
   (Rmsg' "intro mask lookup" (simp_only_tac @{thms read_mask_concrete_def fun_repr_concrete.simps} ctxt) ctxt) THEN'
   (Rmsg' "intro mask lookup" (simp_tac_with_thms [#tr_def_thm info] ctxt) ctxt) (* THEN'
   (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) *)

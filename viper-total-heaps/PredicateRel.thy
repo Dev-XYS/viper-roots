@@ -700,10 +700,12 @@ proof (rule rel_intro)
   assume "R \<omega> ns"
      and exh: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> (RNormal \<omega>')"
 
-  then obtain mp v_args p where
+  then obtain mp v_args p pdecl where
     "mp = get_mp_total_full \<omega>" and
     eval_e_args: "red_pure_exps_total ctxt_vpr (Some \<omega>) e_args_vpr \<omega> (Some v_args)" and
     eval_e_p: "ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)" and
+    pdecl: "program.predicates (program_total ctxt_vpr) pred_id = Some pdecl" and
+    args_well_ty: "vals_well_typed (absval_interp_total ctxt_vpr) v_args (ViperLang.predicate_decl.args pdecl)" and
     "RNormal \<omega>' = exh_if_total (p \<ge> 0 \<and> mp (pred_id, v_args) \<ge> Abs_preal p)
                                (exhale_pred \<omega> (pred_id, v_args) (Abs_preal p))"
     by (auto elim: ExhAccPred_case)
@@ -715,7 +717,7 @@ proof (rule rel_intro)
     by blast
 
   have eval_ok: "exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args p \<omega> \<omega>"
-    by (simp add: eval_e_args eval_e_p exhale_pred_acc_rel_assms_def)
+    by (simp add: eval_e_args eval_e_p exhale_pred_acc_rel_assms_def pdecl args_well_ty)
   moreover have perm_ok: "exhale_pred_acc_rel_perm_success ctxt_vpr StateCons \<omega> pred_id v_args p"
     unfolding exhale_pred_acc_rel_perm_success_def
     by (metis (full_types) Abs_preal_inverse \<open>RNormal \<omega>' = _\<close> \<open>mp = _\<close> exh_if_total_normal less_eq_preal.rep_eq mem_Collect_eq)
@@ -750,7 +752,7 @@ next
     thus ?thesis
       using rel_failure_elim[OF CorrectPermRel \<open>R \<omega> ns\<^sub>2\<close>]
       unfolding exhale_pred_acc_rel_assms_def exhale_pred_acc_rel_perm_success_def
-      by (metis (full_types) Abs_preal_inverse Red2 less_eq_preal.rep_eq ExhAccPred(2-4) mem_Collect_eq red_ast_bpl_transitive)
+      by (metis (full_types) Abs_preal_inverse Red2 less_eq_preal.rep_eq local.ExhAccPred(2-6) mem_Collect_eq option.sel red_ast_bpl_transitive)
   next
     case ExhSubExpFailure
     thus ?thesis
@@ -770,7 +772,6 @@ lemma exhale_rel_pred_acc_upd_rel:
     TempPermNotInAuxPred: "temp_perm \<notin> dom AuxPred" and
 
     WfTyRep: "wf_ty_repr_bpl TyRep" and
-    (* MaskDefDifferent: "mask_var_def Tr \<noteq> mask_var Tr" and *)
     TyInterp: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
 
     NullConst: "const_repr Tr CNull = nullConst" and
@@ -809,6 +810,10 @@ lemma exp_rel_perm_pred_access_2:
     MaskReadWf: "mask_read_wf TyRep ctxt_bpl mask_read_bpl" and
     StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega>def \<omega> ns" and
     RedArgsVpr: "red_pure_exps_total ctxt_vpr (Some \<omega>def_opt) e_args_vpr \<omega> (Some v_args_vpr)" and
+    PredDecl: "program.predicates (program_total ctxt_vpr) ''P'' = Some pdecl" and
+    ArgsRestrict: "predicate_decl.args pdecl = [TRef]" and
+    ArgsWellTy: "\<forall>pdecl. program.predicates (program_total ctxt_vpr) ''P'' = Some pdecl \<longrightarrow>
+                         vals_well_typed (absval_interp_total ctxt_vpr) v_args_vpr (ViperLang.predicate_decl.args pdecl)" and
     "e_args_vpr = [e_arg_vpr]" and
     ArgRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl) ctxt_vpr ctxt_bpl e_arg_vpr e_arg_bpl" and
     "mvar = mask_var Tr" and
@@ -841,7 +846,11 @@ proof -
     using ArgRel[unfolded exp_rel_vpr_bpl_def exp_rel_vb_single_def] eval_arg_vpr StateRel
     by blast
 
-  obtain r where "v_arg_vpr = VRef r" sorry
+  obtain r where "v_arg_vpr = VRef r"
+    using ArgsWellTy[THEN spec, of pdecl, THEN mp, OF PredDecl,
+        unfolded ArgsRestrict vals_well_typed_def \<open>v_args_vpr = _\<close>, simplified]
+      has_type_get_type has_type_simps(8)
+    by blast
   from arg_rel[unfolded \<open>v_arg_vpr = _\<close>, simplified]
   have "v_arg_bpl = AbsV (ARef r)"
     by auto
