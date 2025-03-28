@@ -297,6 +297,7 @@ fun intro_fact_mask_lookup_reduction ctxt (info: basic_stmt_rel_info) exp_rel_in
 
 fun intro_fact_pred_mask_lookup_reduction ctxt (info: basic_stmt_rel_info) exp_rel_info exp_rel_perm_access_thm vpr_rcv_red_tac =
   (Rmsg' "intro mask lookup red 1" (revcut_tac exp_rel_perm_access_thm) ctxt) THEN'
+  (Rmsg' "intro mask lookup" (resolve_tac ctxt [#ctxt_wf_thm info]) ctxt) THEN'
   (Rmsg' "intro mask lookup red 2" (resolve_tac ctxt @{thms mask_read_wf_concrete} THEN'
                                     resolve_tac ctxt [#ctxt_wf_thm info])
                                       ctxt) THEN'
@@ -308,6 +309,7 @@ fun intro_fact_pred_mask_lookup_reduction ctxt (info: basic_stmt_rel_info) exp_r
   (* (Rmsg' "intro mask lookup red 8" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN' *)
   (* (Rmsg' "intro mask lookup red 9" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN' *)
   (Rmsg' "intro mask lookup red 10" (exp_rel_tac exp_rel_info ctxt) ctxt) THEN'
+  (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN'
   (Rmsg' "intro mask lookup" (simp_tac_with_thms [] ctxt) ctxt) THEN'
   (Rmsg' "intro mask lookup" (simp_tac_with_thms [] ctxt) ctxt) THEN'
   (Rmsg' "intro mask lookup" (simp_tac_with_thms [] ctxt) ctxt) THEN'

@@ -805,18 +805,69 @@ lemma exhale_rel_pred_acc_upd_rel:
 
 lemma exp_rel_perm_pred_access_2:
   assumes
+    CtxtFunWf: "ctxt_wf Pr TyRep F FunMap ctxt_bpl" and
     MaskReadWf: "mask_read_wf TyRep ctxt_bpl mask_read_bpl" and
     StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega>def \<omega> ns" and
     RedArgsVpr: "red_pure_exps_total ctxt_vpr (Some \<omega>def_opt) e_args_vpr \<omega> (Some v_args_vpr)" and
-    (* RedArgVpr: "ctxt_vpr, Some \<omega>def_opt \<turnstile> \<langle>e_arg_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val v_arg_vpr" and *)
-      "e_args_vpr = [e_arg_vpr]" and
-    ArgRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt) ctxt_vpr ctxt_bpl e_arg_vpr e_arg_bpl" and
-      "mvar = mask_var Tr" and
-      "nullConst = const_repr Tr CNull" and
-      "e_ploc_bpl = FunExp ''P'' [] [e_arg_bpl]" and
-      "e_bpl = mask_read_bpl (expr.Var mvar) (expr.Var nullConst) e_ploc_bpl [TConSingle ''PredicateType_P'', TPrim TBool]"
-    shows "red_expr_bpl ctxt_bpl e_bpl ns (RealV (Rep_preal (get_mp_total_full \<omega> (''P'',v_args_vpr))))"
-  sorry
+    "e_args_vpr = [e_arg_vpr]" and
+    ArgRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl) ctxt_vpr ctxt_bpl e_arg_vpr e_arg_bpl" and
+    "mvar = mask_var Tr" and
+    "nullConst = const_repr Tr CNull" and
+    FunName: "FunMap FPredicateLoc_P = ''P''" and
+    "F = field_translation Tr" and
+    "e_ploc_bpl = FunExp ''P'' [] [e_arg_bpl]" and
+    "e_bpl = mask_read_bpl (expr.Var mvar) (expr.Var nullConst) e_ploc_bpl [TConSingle ''PredicateType_P'', TPrim TBool]"
+  shows "red_expr_bpl ctxt_bpl e_bpl ns (RealV (Rep_preal (get_mp_total_full \<omega> (''P'',v_args_vpr))))"
+proof -
+  from state_rel_mask_var_rel[OF StateRel] obtain mb
+    where LookupMaskVar: "lookup_var (var_context ctxt_bpl) ns (mask_var Tr) = Some (AbsV (AMask mb))" and
+          MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb"
+    unfolding mask_var_rel_def
+    by auto
+
+  from state_rel_boogie_const_rel[OF StateRel, unfolded boogie_const_rel_def, THEN spec, of CNull, simplified]
+  have LookupNullVar: "lookup_var (var_context ctxt_bpl) ns nullConst = Some (AbsV (ARef Null))"
+    unfolding \<open>nullConst = _\<close>
+    by auto
+
+  obtain v_arg_vpr where "v_args_vpr = [v_arg_vpr]"
+    by (metis RedArgsVpr \<open>e_args_vpr = _\<close> option.simps(1,3) red_pure_exps_total_singleton)
+  hence eval_arg_vpr: "ctxt_vpr, Some \<omega>def_opt \<turnstile> \<langle>e_arg_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v_arg_vpr"
+    using RedArgsVpr \<open>e_args_vpr = _\<close> red_exp_list_normal_elim
+    by fastforce
+  obtain v_arg_bpl where
+    "red_expr_bpl ctxt_bpl e_arg_bpl ns v_arg_bpl" and
+    arg_rel: "val_rel_vpr_bpl v_arg_vpr = v_arg_bpl"
+    using ArgRel[unfolded exp_rel_vpr_bpl_def exp_rel_vb_single_def] eval_arg_vpr StateRel
+    by blast
+
+  obtain r where "v_arg_vpr = VRef r" sorry
+  from arg_rel[unfolded \<open>v_arg_vpr = _\<close>, simplified]
+  have "v_arg_bpl = AbsV (ARef r)"
+    by auto
+
+  show ?thesis
+    unfolding \<open>e_bpl = _\<close> \<open>mvar = _\<close> \<open>e_ploc_bpl = _\<close>
+    apply (rule mask_read_wf_apply[OF MaskReadWf])
+        defer
+        apply (rule RedVar)
+        apply (rule LookupMaskVar)
+       apply (rule RedVar)
+       apply (rule LookupNullVar)
+      apply (rule RedFunOp)
+        apply (subst FunName[symmetric])
+    using CtxtFunWf
+    unfolding ctxt_wf_def fun_interp_vpr_bpl_wf_def
+        apply blast
+       apply (rule RedExpListCons)
+        apply fact
+       apply (rule RedExpListNil)
+    unfolding \<open>v_arg_bpl = _\<close>
+      apply (simp add: lift_fun_bpl_def)
+     apply simp
+    by (metis MaskRel \<open>v_arg_vpr = VRef r\<close> \<open>v_args_vpr = [v_arg_vpr]\<close> mask_rel_def)
+qed
+
 
 
 end
