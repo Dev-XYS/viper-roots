@@ -761,6 +761,48 @@ next
 qed
 
 
+lemma exhale_rel_pred_acc_upd_rel:
+  assumes
+    StateRelIn: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow>
+                             state_rel Pr StateCons TyRep Tr (AuxPred(temp_perm \<mapsto> pred_eq (RealV v_p)))
+                             ctxt_bpl \<omega> \<omega> ns" and
+    StateRelOut: "\<And> \<omega> ns. state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> \<omega> ns \<Longrightarrow> R' \<omega> ns" and
+    TempPermNotInAuxPred: "temp_perm \<notin> dom AuxPred" and
+
+    WfTyRep: "wf_ty_repr_bpl TyRep" and
+    (* MaskDefDifferent: "mask_var_def Tr \<noteq> mask_var Tr" and *)
+    TyInterp: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
+
+    NullConst: "const_repr Tr CNull = nullConst" and
+    MaskVar: "m_bpl = mask_var Tr" and
+    PredLocBpl: "e_ploc_bpl = FunExp ''P'' [] [e_arg_bpl]" and
+
+    MaskUpdateWf: "mask_update_wf TyRep ctxt_bpl mask_upd_bpl" and
+    MaskReadWf: "mask_read_wf TyRep ctxt mask_read_bpl" and
+
+    MaskUpdateBpl: "m_upd_bpl = mask_upd_bpl (Var m_bpl) (Var nullConst) e_ploc_bpl new_perm
+                                  [TConSingle ''PredicateType_P'', TPrim TBool]" and
+    NewPermBpl: "new_perm = (mask_read_bpl (Var m_bpl) (Var nullConst) e_ploc_bpl
+                                  [TConSingle ''PredicateType_P'', TPrim TBool]) \<guillemotleft>Sub\<guillemotright> (Var temp_perm)" and
+
+    ArgRel: "exp_rel_vpr_bpl
+                (state_rel Pr StateCons TyRep Tr (AuxPred(temp_perm \<mapsto> pred_eq (RealV v_p))) ctxt)
+                ctxt_vpr ctxt_bpl e_arg_vpr e_arg_bpl" and
+
+    PredFunInterp: "fun_interp ctxt_bpl ''P'' = Some (lift_fun_bpl (vbpl_absval_ty TyRep) (0, [TConSingle (TRefId TyRep)], TCon (TFieldId TyRep) [TCon ''PredicateType_P'' [], TPrim TBool]) predicate_loc_P)" and
+    PredName: "pred_id = ''P''" and
+    PredLookup: "ViperLang.predicates (program_total ctxt_vpr) pred_id = Some pdecl" and
+    PredTyArgsLookup: "predicate_decl.args pdecl = ty_args" and
+    PredTyArgs: "ty_args = [TRef]"
+
+  shows "rel_general R R'
+           (\<lambda>\<omega> \<omega>'. exhale_pred_acc_normal_premise ctxt_vpr StateCons pred_id [e_arg_vpr] e_p_vpr v_args_vpr v_p \<omega> \<omega> \<omega>')
+           (\<lambda>_. False) P ctxt_bpl
+           (BigBlock name ((Assign m_bpl m_upd_bpl) # cs) str tr, cont)
+           (BigBlock name cs str tr, cont)"
+  sorry
+
+
 lemma exp_rel_perm_pred_access_2:
   assumes
     MaskReadWf: "mask_read_wf TyRep ctxt_bpl mask_read_bpl" and

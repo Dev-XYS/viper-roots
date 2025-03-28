@@ -151,11 +151,29 @@ schematic_goal
       KSeq bigblock_3 KStop)
      ?\<gamma>1.233"
   apply (rule unfold_stmt_rel)
-               prefer 13
-               apply (rule unfold_exhale_pred_rel)
-                 apply (simp only: append_Cons append_Nil)
-  apply (tactic \<open>exps_wf_rel_tac basic_stmt_rel_info exp_wf_rel_info exp_rel_info @{context} NONE 2 1\<close>)
-
+               apply (simp add: vpr_prog_def)
+              apply (simp add: predicate_decl.defs)
+             apply (simp add: predicate_decl.defs)
+            apply (simp add: CtxtVprPredWf)
+  subgoal sorry
+          apply (rule wf_total_consistency_internal[OF CtxtVprPredWf CtxtVprPredSelfFraming])
+         apply (simp add: tr_vpr_bpl_0_def state_rel0_def state_rel_def default_state_rel_options_def)
+        apply (simp add: tr_vpr_bpl_0_def state_rel0_def state_rel_def default_state_rel_options_def)
+  subgoal sorry
+       apply (simp add: CtxtVprPredWf)
+      apply simp
+     apply simp
+    apply simp
+   apply (rule unfold_exhale_pred_rel)
+     apply (simp only: append_Cons append_Nil)
+     apply (tactic \<open>exps_wf_rel_tac basic_stmt_rel_info exp_wf_rel_info exp_rel_info @{context} NONE 2 1\<close>)
+    (* apply (tactic \<open>rewrite_rel_general_tac @{context} 1\<close>) *)
+    apply (rule rel_propagate_pre_2)
+     apply (rule red_ast_bpl_relI)
+     apply (tactic \<open>store_temporary_perm_pred_exh_tac @{context} basic_stmt_rel_info exp_rel_info @{thm foo_before_ast_to_cfg_prog.lvar8(2)} 1\<close>)  \<comment> \<open>don't know what @{thm foo_before_ast_to_cfg_prog.lvar8(2)} does\<close>
+    apply (tactic \<open>prove_perm_non_negative_pred_exh_tac @{context} basic_stmt_rel_info @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]} 1\<close>)
+    apply (tactic \<open>prove_sufficient_perm_pred_tac @{context} basic_stmt_rel_info exp_rel_info @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]} @{thm exp_rel_perm_pred_access_2} 1\<close>)
+  sorry
 
 
 end
