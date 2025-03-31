@@ -1046,7 +1046,15 @@ next
 qed
 
 
+
 subsection \<open>Predicate access predicate rule\<close>
+
+
+definition pred_ty_correct_premise where
+  "pred_ty_correct_premise ctxt pid vs \<equiv>
+     \<exists>pdecl. program.predicates (program_total ctxt) pid = Some pdecl \<and>
+             vals_well_typed (absval_interp_total ctxt) vs (predicate_decl.args pdecl)"
+
 
 definition exhale_pred_acc_rel_assms ::
   "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> predicate_ident \<Rightarrow> pure_exp list \<Rightarrow> pure_exp \<Rightarrow>
@@ -1054,8 +1062,7 @@ definition exhale_pred_acc_rel_assms ::
   where "exhale_pred_acc_rel_assms ctxt_vpr StateCons pid e_args e_p v_args v_p \<omega>0 \<omega> \<equiv>
             red_pure_exps_total ctxt_vpr (Some \<omega>0) e_args \<omega> (Some v_args) \<and>
             ctxt_vpr, Some \<omega>0 \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p) \<and>
-            (\<forall>pdecl. program.predicates (program_total ctxt_vpr) pid = Some pdecl \<longrightarrow>
-                     vals_well_typed (absval_interp_total ctxt_vpr) v_args (ViperLang.predicate_decl.args pdecl))"
+            pred_ty_correct_premise ctxt_vpr pid v_args"
 
 definition exhale_pred_acc_rel_perm_success ::
   "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> predicate_ident \<Rightarrow>

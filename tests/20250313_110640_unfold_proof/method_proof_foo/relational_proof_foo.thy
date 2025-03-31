@@ -172,7 +172,9 @@ schematic_goal
      apply (rule red_ast_bpl_relI)
      apply (tactic \<open>store_temporary_perm_pred_exh_tac @{context} basic_stmt_rel_info exp_rel_info @{thm foo_before_ast_to_cfg_prog.lvar8(2)} 1\<close>)  \<comment> \<open>don't know what @{thm foo_before_ast_to_cfg_prog.lvar8(2)} does\<close>
     apply (tactic \<open>prove_perm_non_negative_pred_exh_tac @{context} basic_stmt_rel_info @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]} 1\<close>)
-    apply (tactic \<open>prove_sufficient_perm_pred_tac @{context} basic_stmt_rel_info exp_rel_info @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]} @{thm exp_rel_perm_pred_access_2} 1\<close>)
+  apply (tactic \<open>prove_sufficient_perm_pred_tac @{context} basic_stmt_rel_info exp_rel_info @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]} @{thm exp_rel_perm_pred_access_2} 1\<close>)
+  apply (tactic \<open>rewrite_rel_general_tac @{context} 1\<close>)
+  apply (rule exhale_rel_pred_acc_upd_rel)
   sorry
 
 

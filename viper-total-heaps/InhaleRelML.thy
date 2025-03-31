@@ -230,6 +230,7 @@ ML \<open>
   end
 
   fun inhale_rel_pred_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info =
+    (* (SUBGOAL (fn (t,_) => raise TERM ("inh pred breakpoint", [t]))) THEN' *)
     (Rmsg' "inh pred acc upd 0" (resolve_tac ctxt @{thms inhale_rel_pred_acc_upd_rel}) ctxt) THEN'
     (Rmsg' "inh pred acc upd 1" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd aux var disjoint" (#aux_var_disj_tac info ctxt) ctxt) THEN'
@@ -238,21 +239,23 @@ ML \<open>
     (Rmsg' "inh pred acc upd ty interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd def mask and eval mask same" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd def mask and eval mask same" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd ty interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc mask update wf concrete" (resolve_tac ctxt [ @{thm mask_update_wf_concrete} OF [#ctxt_wf_thm info, @{thm wf_ty_repr_basic}]]) ctxt) THEN'
     (Rmsg' "inh pred acc mask read wf concrete" (resolve_tac ctxt [ @{thm mask_read_wf_concrete} OF [#ctxt_wf_thm info, @{thm wf_ty_repr_basic}]]) ctxt) THEN'
     (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac @{thms update_mask_concrete_def ty_repr_basic_def} ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd 3" (assm_full_simp_solved_with_thms_tac @{thms update_mask_concrete_def read_mask_concrete_def ty_repr_basic_def} ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd rcv rel" ((exp_rel_tac exp_rel_info ctxt) |> SOLVED') ctxt) THEN'
+    (Rmsg' "intro mask lookup 5" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+    (Rmsg' "inh pred acc upd ploc" (prove_ploc_rel ctxt info exp_rel_info) ctxt) THEN'
+    (Rmsg' "inh pred acc upd absinterpeq" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN'
+    (Rmsg' "intro mask lookup 5" (simp_tac_with_thms [] ctxt) ctxt)(*  THEN'
+    (SUBGOAL (fn (t,_) => raise TERM ("inh pred breakpoint", [t]))) THEN'
     (Rmsg' "inh pred pred upd 3" (assm_full_simp_solved_with_thms_tac [ simplify ctxt (inst_spec @{cterm FPredicateLoc_P} OF [ simplify (add_simps @{thms ctxt_wf_def fun_interp_vpr_bpl_wf_def} (Simplifier.clear_simpset ctxt)) (#ctxt_wf_thm info) ])  ] ctxt) ctxt) THEN'
     (* The above line applies (simp add: spec[OF CtxtWf[simplified ctxt_wf_def fun_interp_vpr_bpl_wf_def], of FPredicateLoc_P, simplified]).
        Needs a better way to formulate this. *)
     (Rmsg' "inh pred acc upd ty interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac [ (#vpr_prog_def_thm info) ] ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd absinterpeq" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd progeq" (resolve_tac ctxt [#vpr_program_ctxt_eq_thm info]) ctxt) (* THEN'
-    (SUBGOAL (fn (t,_) => raise TERM ("inh pred breakpoint", [t]))) *)
+    (SUBGOAL (fn (t,_) => raise TERM ("inh pred breakpoint", [t]))) *) *)
 
   fun atomic_inhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) inh_pred_acc_hint =
     case inh_pred_acc_hint of
