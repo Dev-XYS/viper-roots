@@ -682,7 +682,7 @@ proof (rule rel_intro)
     by blast
 
   have eval_ok: "exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args p \<omega> \<omega>"
-    by (simp add: eval_e_args eval_e_p exhale_pred_acc_rel_assms_def pdecl args_well_ty)
+    by (simp add: args_well_ty eval_e_args eval_e_p exhale_pred_acc_rel_assms_def pdecl pred_ty_correct_premise_def)
   moreover have perm_ok: "exhale_pred_acc_rel_perm_success ctxt_vpr StateCons \<omega> pred_id v_args p"
     unfolding exhale_pred_acc_rel_perm_success_def
     by (metis (full_types) Abs_preal_inverse \<open>RNormal \<omega>' = _\<close> \<open>mp = _\<close> exh_if_total_normal less_eq_preal.rep_eq mem_Collect_eq)
@@ -717,7 +717,7 @@ next
     thus ?thesis
       using rel_failure_elim[OF CorrectPermRel \<open>R \<omega> ns\<^sub>2\<close>]
       unfolding exhale_pred_acc_rel_assms_def exhale_pred_acc_rel_perm_success_def
-      by (metis (full_types) Abs_preal_inverse Red2 less_eq_preal.rep_eq local.ExhAccPred(2-6) mem_Collect_eq option.sel red_ast_bpl_transitive)
+      by (metis (no_types, lifting) Abs_preal_inverse Red2 less_eq_preal.rep_eq local.ExhAccPred(2-6) mem_Collect_eq pred_ty_correct_premise_def red_ast_bpl_transitive)
   next
     case ExhSubExpFailure
     thus ?thesis
