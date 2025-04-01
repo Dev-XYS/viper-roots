@@ -848,43 +848,219 @@ qed
 
 lemma exhale_rel_pred_acc_upd_rel:
   assumes
-    StateRelIn: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow>
-                             state_rel Pr StateCons TyRep Tr (AuxPred(temp_perm \<mapsto> pred_eq (RealV v_p)))
+    StateRelIn: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow>
+                             state_rel Pr StateCons TyRep Tr (AuxPred(temp_perm \<mapsto> pred_eq (RealV p)))
                              ctxt_bpl \<omega> \<omega> ns" and
-    StateRelOut: "\<And> \<omega> ns. state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> \<omega> ns \<Longrightarrow> R' \<omega> ns" and
-    TempPermNotInAuxPred: "temp_perm \<notin> dom AuxPred" and
+    TempPermNotInAux: "temp_perm \<notin> dom AuxPred" and
+    StateRelOut: "\<And>\<omega> ns. state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> \<omega> ns \<Longrightarrow> R' \<omega> ns" and
+
+    WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t" and
 
     WfTyRep: "wf_ty_repr_bpl TyRep" and
+    MaskVarDefSame: "mask_var_def Tr = mask_var Tr" and
     TyInterp: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
 
     NullConst: "const_repr Tr CNull = nullConst" and
     MaskVar: "m_bpl = mask_var Tr" and
-    PredLocBpl: "e_ploc_bpl = FunExp ''P'' [] [e_arg_bpl]" and
 
     MaskUpdateWf: "mask_update_wf TyRep ctxt_bpl mask_upd_bpl" and
-    MaskReadWf: "mask_read_wf TyRep ctxt mask_read_bpl" and
+    MaskReadWf: "mask_read_wf TyRep ctxt_bpl mask_read_bpl" and
 
-    MaskUpdateBpl: "m_upd_bpl = mask_upd_bpl (Var m_bpl) (Var nullConst) e_ploc_bpl new_perm
-                                  [TConSingle ''PredicateType_P'', TPrim TBool]" and
     NewPermBpl: "new_perm = (mask_read_bpl (Var m_bpl) (Var nullConst) e_ploc_bpl
                                   [TConSingle ''PredicateType_P'', TPrim TBool]) \<guillemotleft>Sub\<guillemotright> (Var temp_perm)" and
+    MaskUpdateBpl: "m_upd_bpl = mask_upd_bpl (Var m_bpl) (Var nullConst) e_ploc_bpl new_perm
+                                  [TConSingle ''PredicateType_P'', TPrim TBool]" and
 
-    ArgRel: "exp_rel_vpr_bpl
-                (state_rel Pr StateCons TyRep Tr (AuxPred(temp_perm \<mapsto> pred_eq (RealV v_p))) ctxt)
-                ctxt_vpr ctxt_bpl e_arg_vpr e_arg_bpl" and
+    PlocBpl: "e_ploc_bpl = FunExp pid [] e_args_bpl" and
+    PlocRel: "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl" and
 
-    PredFunInterp: "fun_interp ctxt_bpl ''P'' = Some (lift_fun_bpl (vbpl_absval_ty TyRep) (0, [TConSingle (TRefId TyRep)], TCon (TFieldId TyRep) [TCon ''PredicateType_P'' [], TPrim TBool]) predicate_loc_P)" and
-    PredName: "pred_id = ''P''" and
-    PredLookup: "ViperLang.predicates (program_total ctxt_vpr) pred_id = Some pdecl" and
-    PredTyArgsLookup: "predicate_decl.args pdecl = ty_args" and
-    PredTyArgs: "ty_args = [TRef]"
+    AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep" and
+    ProgEq: "program_total ctxt_vpr = Pr"
 
   shows "rel_general R R'
-           (\<lambda>\<omega> \<omega>'. exhale_pred_acc_normal_premise ctxt_vpr StateCons pred_id [e_arg_vpr] e_p_vpr v_args_vpr v_p \<omega> \<omega> \<omega>')
+           (\<lambda>\<omega> \<omega>'. exhale_pred_acc_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr p \<omega> \<omega> \<omega>')
            (\<lambda>_. False) P ctxt_bpl
            (BigBlock name ((Assign m_bpl m_upd_bpl) # cs) str tr, cont)
            (BigBlock name cs str tr, cont)"
-  sorry
+
+  apply (rule rel_intro)
+   prefer 2
+   apply blast
+proof -
+  fix \<omega> ns \<omega>'
+  assume "R \<omega> ns"
+     and *: "exhale_pred_acc_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr p \<omega> \<omega> \<omega>'"
+
+  hence InitRel: "state_rel_def_same Pr StateCons TyRep Tr
+                                     (AuxPred(temp_perm \<mapsto> pred_eq (RealV p))) ctxt_bpl \<omega> ns"
+    using StateRelIn
+    by blast
+
+  hence InitRel': "state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns"
+    apply (rule state_rel_aux_pred_remove[where ?AuxPred="AuxPred(temp_perm \<mapsto> pred_eq (RealV p))" and ?AuxPred'=AuxPred])
+    by (simp add: TempPermNotInAux map_le_def)
+
+  let ?ploc = "(pid,v_args_vpr)"
+
+  have perm_suff: "p \<ge> 0 \<and> p \<le> Rep_preal (get_mp_total_full \<omega> (pid,v_args_vpr))"
+    using * exhale_pred_acc_normal_premise_def exhale_pred_acc_rel_perm_success_def
+    by blast+
+
+  have "\<omega>' = rm_from_lpm_total_full \<omega> (pid,v_args_vpr) (Abs_preal p)"
+    using * exhale_pred_acc_normal_premise_def
+    by blast
+
+  hence mh_same: "get_mh_total_full \<omega> = get_mh_total_full \<omega>'" and
+        mp_rel: "get_mp_total_full \<omega>' = (get_mp_total_full \<omega>)( ?ploc := get_mp_total_full \<omega> ?ploc - Abs_preal p )"
+     apply simp
+    apply (subst \<open>\<omega>' = _\<close>)
+    apply (rule ext)
+    apply (rename_tac lp)
+    apply (case_tac "lp = (pid,v_args_vpr)"; simp)
+    apply (insert perm_suff)
+    apply (case_tac "get_fnm_total_full \<omega> (pid,v_args_vpr)"; simp)
+    using minus_preal.abs_eq zero_preal.rep_eq zero_preal_def apply force
+    by (metis Abs_preal_inverse add.commute all_pos comm_monoid_add_class.add_0 greater_minus_plus less_eq_preal.rep_eq mem_Collect_eq minus_preal_gte order_antisym posreal_to_preal(8) pperm_pnone_pgt)
+
+  have \<omega>'_extcons: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow>
+    StateCons \<omega>' \<and>
+    consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')"
+    apply (intro conjI)
+    sorry
+
+  obtain mb where
+    LookupMask: "lookup_var (var_context ctxt_bpl) ns (mask_var Tr) = Some (AbsV (AMask mb))" and
+    LookupMaskTy: "lookup_var_ty (var_context ctxt_bpl) (mask_var Tr) = Some (TConSingle (TMaskId TyRep))" and
+    MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb"
+    using state_rel_obtain_mask[OF StateRelIn[OF \<open>R \<omega> ns\<close>]]
+    by blast
+
+  \<comment> \<open>Construct the value of the new permission from the Viper state.\<close>
+  let ?np = "Rep_preal (get_mp_total_full \<omega> (pid,v_args_vpr)) - p"
+
+  have LookupTempPerm: "lookup_var (var_context ctxt_bpl) ns temp_perm = Some (RealV p)"
+    using state_rel_aux_pred_sat_lookup_2[OF StateRelIn[OF \<open>R \<omega> ns\<close>]]
+    unfolding pred_eq_def
+    by (metis (full_types) fun_upd_same)
+
+  have null_eval: "red_expr_bpl ctxt_bpl (Var nullConst) ns (AbsV (ARef Null))"
+    apply (rule red_expr_red_exprs.RedVar)
+    by (metis NullConst StateRelIn \<open>R \<omega> ns\<close> boogie_const_rel_lookup boogie_const_val.simps(3) state_rel_boogie_const_rel)
+
+  have new_perm_eval: "red_expr_bpl ctxt_bpl new_perm ns (LitV (LReal ?np))"
+    apply (simp add: NewPermBpl)
+    apply (rule red_expr_red_exprs.RedBinOp[where ?v1.0="LitV (LReal (Rep_preal (get_mp_total_full \<omega> (pid,v_args_vpr))))" and ?v2.0="LitV (LReal p)"])
+      apply (rule mask_read_wf_apply[OF MaskReadWf, where ?m=mb and ?r=Null and ?f="PredSnapshotField (pid,v_args_vpr)"])
+          apply (metis MaskRel mask_rel_def)
+         apply (simp add: LookupMask MaskVar red_expr_red_exprs.RedVar)
+        apply (simp add: null_eval)
+    using PlocRel[unfolded ploc_rel_vpr_bpl_def]
+       apply (meson * \<open>R \<omega> ns\<close> exhale_pred_acc_normal_premise_def exhale_pred_acc_rel_assms_def)
+      apply force
+     apply (fastforce intro: RedVar LookupTempPerm)
+    by simp
+
+  \<comment> \<open>Construct the new Boogie heap.\<close>
+  let ?mb' = "mb( (Null, PredSnapshotField (pid,v_args_vpr)) := ?np )"
+
+  have m_upd_bpl_red: "red_expr_bpl ctxt_bpl m_upd_bpl ns (AbsV (AMask ?mb'))"
+    apply (subst \<open>m_upd_bpl = _\<close>)
+    apply (rule mask_update_wf_apply[OF MaskUpdateWf])
+        apply (simp add: LookupMask MaskVar red_expr_red_exprs.RedVar)
+       apply (simp add: null_eval)
+    using PlocRel[unfolded ploc_rel_vpr_bpl_def]
+      apply (meson * \<open>R \<omega> ns\<close> exhale_pred_acc_normal_premise_def exhale_pred_acc_rel_assms_def)
+    using new_perm_eval
+     apply blast
+    by simp
+
+  have "valid_heap_mask (get_mh_total_full \<omega>)"
+    using InitRel state_rel_wf_mask_simple by blast
+
+  have Disj: "disjoint_list [ {heap_var Tr, heap_var_def Tr},
+                              {mask_var Tr, mask_var_def Tr},
+                              ran (var_translation Tr),
+                              ran (field_translation Tr),
+                              range (const_repr Tr), dom AuxPred]"
+    using InitRel state_rel_disjoint
+    by (smt (verit) dom_fun_upd fun_upd_triv map_le_imp_upd_le option.simps(3) state_rel_aux_pred_remove upd_None_map_le)
+
+  show "\<exists>ns'. red_ast_bpl P ctxt_bpl
+                ((BigBlock name (Assign m_bpl m_upd_bpl # cs) str tr, cont), Normal ns)
+                ((BigBlock name cs str tr, cont), Normal ns') \<and> R' \<omega>' ns'"
+    apply (rule exI, intro conjI)
+     apply (rule red_ast_bpl_one_simple_cmd)
+     apply (rule RedAssign[where ?ty="TConSingle (TMaskId TyRep)" and ?v="AbsV (AMask ?mb')"])
+    using MaskVar StateRelIn \<open>R \<omega> ns\<close> state_rel_obtain_mask
+       apply blast
+      apply (simp add: TyInterp)
+    using m_upd_bpl_red
+     apply blast
+    apply (rule StateRelOut)
+    apply (simp only: state_rel_def)
+    apply (simp only: state_rel0_def, intro conjI)
+    using state_rel_wf_mask_simple[OF InitRel] \<open>\<omega>' = _\<close>
+                    apply (simp, simp)
+    using \<omega>'_extcons \<open>\<omega>' = _\<close>
+                  apply blast
+                 apply (simp add: TyInterp)
+                apply (rule store_rel_stable[where ?\<omega>=\<omega> and ?ns=ns])
+    using InitRel state_rel_store_rel
+                  apply blast
+                 apply (simp add: \<open>\<omega>' = _\<close>)
+    using InitRel MaskVar state_rel_disj_mask_store
+                apply fastforce
+               apply (simp add: Disj)
+              apply (simp, simp, simp)
+           defer defer defer defer
+           apply (metis InitRel MaskVar field_rel_stable mask_var_disjoint state_rel_field_rel state_rel_state_rel0 update_var_other)
+          apply (metis InitRel MaskVar boogie_const_rel_stable mask_var_disjoint state_rel_boogie_const_rel state_rel_state_rel0 update_var_other)
+         defer
+         apply (metis (no_types, lifting) InitRel' MaskVar aux_vars_pred_sat_def domI mask_var_disjoint state_rel_aux_pred_sat_lookup state_rel_state_rel0 update_var_other)
+  proof -
+    let ?ns' = "update_var (var_context ctxt_bpl) ns m_bpl
+                  (AbsV (AMask (mb((Null, PredSnapshotField (pid,v_args_vpr)) :=
+                                   Rep_preal (get_mp_total_full \<omega> (pid,v_args_vpr)) - p))))"
+
+    \<comment> \<open>Prove \<^const>\<open>heap_var_rel\<close>\<close>
+    show HeapRel: "heap_var_rel Pr (var_context ctxt_bpl) TyRep (field_translation Tr) (heap_var Tr) \<omega>' ?ns'"
+      apply (rule heap_var_rel_stable[OF state_rel0_heap_var_rel[OF InitRel[simplified state_rel_def]]])
+       apply (simp add: \<open>\<omega>' = _\<close>)
+      by (metis InitRel MaskVar mask_var_disjoint state_rel_state_rel0 update_var_other)
+
+    \<comment> \<open>Prove \<^const>\<open>mask_var_rel\<close>\<close>
+    show MaskRel: "mask_var_rel Pr (var_context ctxt_bpl) TyRep (field_translation Tr) (mask_var Tr) \<omega>' ?ns'"
+      apply (unfold mask_var_rel_def)
+      apply (rule exI[of _ ?mb'])
+      apply (intro conjI)
+        apply (simp add: MaskVar)
+      using LookupMaskTy
+       apply blast
+      apply (unfold mask_rel_def)
+      apply (intro conjI)
+      using MaskRel[simplified mask_rel_def] mh_same
+         apply auto[1]
+        apply (simp add: MaskRel[simplified mask_rel_def])
+      using MaskRel[simplified mask_rel_def] perm_suff Abs_preal_inverse less_eq_preal.rep_eq minus_preal.rep_eq mp_rel perm_suff
+      by auto
+
+    show "heap_var_rel Pr (var_context ctxt_bpl) TyRep (field_translation Tr) (heap_var_def Tr) \<omega>' ?ns'"
+      apply (rule heap_var_rel_stable[OF state_rel_heap_var_def_rel[OF InitRel]])
+       apply (simp add: \<open>\<omega>' = _\<close>)
+      by (metis InitRel MaskVar mask_var_disjoint state_rel_state_rel0 update_var_other)
+
+    show MaskRel: "mask_var_rel Pr (var_context ctxt_bpl) TyRep (field_translation Tr) (mask_var_def Tr) \<omega>' ?ns'"
+      apply (subst MaskVarDefSame)
+      using MaskRel
+      by blast
+
+    show "state_well_typed (type_interp ctxt_bpl) (var_context ctxt_bpl) [] ?ns'"
+      apply (rule state_well_typed_upd_2)
+      using InitRel state_rel_state_well_typed
+       apply blast
+      by (simp add: TyInterp LookupMaskTy MaskVar)
+  qed
+qed
 
 
 
