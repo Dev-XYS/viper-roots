@@ -926,7 +926,16 @@ proof -
     StateCons \<omega>' \<and>
     consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')"
     apply (intro conjI)
-    sorry
+    using total_consistency_rm_from_lpm_int[OF WfCons]
+     apply (metis Abs_preal_inverse InitRel Rep_preal_inverse \<open>\<omega>' = _\<close> less_preal.rep_eq mem_Collect_eq order_le_less perm_suff state_rel_consistent)
+    unfolding \<open>\<omega>' = _\<close>
+    apply (rule total_consistency_rm_from_lpm_ext[OF WfCons])
+    using total_consistency_ctxt_wf(1)[OF WfCons] ProgEq
+      apply (simp add: total_context.defs ctxt_pred_syn_wf_def)
+    using InitRel state_rel_consistent
+     apply blast
+    using Abs_preal_inverse less_eq_preal.rep_eq perm_suff
+    by auto
 
   obtain mb where
     LookupMask: "lookup_var (var_context ctxt_bpl) ns (mask_var Tr) = Some (AbsV (AMask mb))" and

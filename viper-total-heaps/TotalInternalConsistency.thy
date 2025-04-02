@@ -37,7 +37,7 @@ certain properties on the state consistency. The following well-formedness defin
 these properties.\<close>
 
 
-definition wf_total_consistency
+definition wf_total_consistency :: "'a total_context \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> bool"
   where "wf_total_consistency ctxt R Rt \<equiv>
                mono_prop_downward R \<and>
                (\<forall>\<omega>. is_empty_total_full \<omega> \<longrightarrow> Rt (get_total_full \<omega>)) \<and>
@@ -51,6 +51,11 @@ definition wf_total_consistency
                               consistent_external ctxt (get_total_full \<omega>')) \<and>
                (\<forall>\<phi>. Rt \<phi> \<longrightarrow> wf_mask_simple (get_mh_total \<phi>)) \<and>
                (\<forall>\<phi> pid vs q \<phi>'. Rt \<phi> \<longrightarrow> unfold_rel ctxt pid vs q \<phi> \<phi>' \<longrightarrow> Rt \<phi>') \<and>  \<comment> \<open>Basically the same as the preservation under statement reduction, but stated only on \<^typ>\<open>'a total_state\<close>.\<close>
+               (\<forall>p lp \<omega>. R \<omega> \<longrightarrow> p \<le> get_mp_total_full \<omega> lp \<longrightarrow> R (rm_from_lpm_total_full \<omega> lp p)) \<and>
+               (\<forall>ctxt p lp \<omega>::'a full_total_state. ctxt_pred_syn_wf ctxt \<longrightarrow>
+                         consistent_external ctxt (get_total_full \<omega>) \<longrightarrow>
+                         p \<le> get_mp_total_full \<omega> lp \<longrightarrow>
+                         consistent_external ctxt (get_total_full (rm_from_lpm_total_full \<omega> lp p))) \<and>  \<comment> \<open>Again, these are redundant.\<close>
                ctxt_pred_syn_wf ctxt \<and> ctxt_pred_self_framing_sat ctxt Rt  \<comment> \<open>These really shouldn't be here.\<close>"
 
 
@@ -76,7 +81,7 @@ lemma total_consistency_red_stmt_preserve:
     shows "R \<omega>'"
   using assms
   unfolding wf_total_consistency_def
-  by blast
+  by fast
 
 
 lemma total_consistency_store_update:
@@ -148,6 +153,29 @@ lemma total_consistency_ctxt_wf:
   using assms
   unfolding wf_total_consistency_def
   by fastforce+
+
+
+lemma total_consistency_rm_from_lpm_int:
+  assumes "wf_total_consistency ctxt R Rt"
+      and "R \<omega>"
+      and "p \<le> get_mp_total_full \<omega> lp"
+    shows "R (rm_from_lpm_total_full \<omega> lp p)"
+  using assms
+  unfolding wf_total_consistency_def
+  by blast
+
+
+lemma total_consistency_rm_from_lpm_ext:
+    fixes ctxt :: "'a total_context"
+      and \<omega> :: "'a full_total_state"
+  assumes "wf_total_consistency ctxt R Rt"
+      and "ctxt_pred_syn_wf ctxt'"
+      and "consistent_external ctxt' (get_total_full \<omega>)"
+      and "p \<le> get_mp_total_full \<omega> lp"
+    shows "consistent_external ctxt' (get_total_full (rm_from_lpm_total_full \<omega> lp p))"
+  using assms
+  unfolding wf_total_consistency_def
+  by blast
 
 
 definition mono_prop_downward_sub_mask_total :: "('a total_state \<Rightarrow> bool) \<Rightarrow> bool" where

@@ -414,7 +414,7 @@ proof -
          apply force
     using havoc havoc_locs_state_same_mask
         apply fastforce
-       apply fact
+       apply (rule assms(5))
     using assms(2) exh exhale_normal_result_smaller greater_full_total_state_total_state intcons_total_mono_prop_downward mono_prop_downwardD
       apply blast
      apply (simp add: intcons_mono_prop_downward_sub_mask_total)
