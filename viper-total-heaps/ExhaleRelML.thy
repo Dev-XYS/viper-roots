@@ -295,6 +295,27 @@ ML \<open>
                        fastforce_tac ctxt @{thms prat_non_negative},
                        assm_full_simp_solved_tac ctxt]) ctxt)
 
+  fun upd_exhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) exp_rel_info =
+    (Rmsg' "UpdExhField Init Progress" (rewrite_rel_general_tac ctxt) ctxt) THEN'
+    (Rmsg' "UpdExhField 1" (resolve_tac ctxt @{thms exhale_rel_pred_acc_upd_rel}) ctxt) THEN'
+    (Rmsg' "UpdExhField StateRel Input" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
+    (Rmsg' "UpdExhField StateRel Output" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
+    (Rmsg' "UpdExhField StateRel Output" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
+    (Rmsg' "UpdExhField Wf Total Consistency" (resolve_tac ctxt [#consistency_wf_thm info]) ctxt) THEN'
+    (Rmsg' "UpdExhField Wf TyRepr" (resolve_tac ctxt @{thms wf_ty_repr_basic}) ctxt) THEN'
+    (Rmsg' "UpdExhField MaskDef Different" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "UpdExhField Wf Total Consistency" (resolve_tac ctxt [#type_interp_econtext info]) ctxt) THEN'
+    (Rmsg' "UpdExhField MaskDef Different" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "UpdExhField MaskDef Different" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "UpdExhField MaskUpdateWf" (resolve_tac ctxt [@{thm mask_update_wf_concrete} OF [#ctxt_wf_thm info, @{thm wf_ty_repr_basic}]]) ctxt) THEN'
+    (Rmsg' "UpdExhField MaskReadWf" (resolve_tac ctxt [@{thm mask_read_wf_concrete} OF [#ctxt_wf_thm info, @{thm wf_ty_repr_basic}]]) ctxt) THEN'
+    (Rmsg' "UpdExhField MaskUpdateBpl" (simp_tac_with_thms @{thms update_mask_concrete_def} ctxt) ctxt) THEN'
+    (Rmsg' "UpdExhField MaskReadBpl" (assm_full_simp_solved_with_thms_tac @{thms read_mask_concrete_def update_mask_concrete_def} ctxt) ctxt) THEN'
+    (Rmsg' "UpdExhField MaskUpdateBpl" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+    (Rmsg' "UpdExhField MaskUpdateBpl" (prove_ploc_rel ctxt info exp_rel_info) ctxt) THEN'
+    (Rmsg' "UpdExhField TyInterp" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN'
+    (Rmsg' "UpdExhField TyInterp" (assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm info] ctxt) ctxt)
+
   (* This tactic is not used (and not verified) at the moment. The exhale in unfold uses a different one. *)
   fun atomic_exhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) exh_pred_acc_hint =
     case exh_pred_acc_hint of
