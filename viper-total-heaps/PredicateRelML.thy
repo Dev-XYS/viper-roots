@@ -24,9 +24,15 @@ fun atomic_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) (no_de
     | _ => error("only support PredAccExhHint")
 
 fun pred_unfold_tac ctxt (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) atomic_exhale_hint inhale_hint =
-  (SUBGOAL (fn (t,_) => raise TERM ("Unfold breakpoint", [t]))) THEN'
   (Rmsg' "Unfold Start" (resolve_tac ctxt @{thms unfold_stmt_rel}) ctxt) THEN'
   (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [#vpr_prog_def_thm basic_info] ctxt) ctxt) THEN'
+  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt) THEN'
+  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt) THEN'
+  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
+  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
+  (Rmsg' "Unfold" (resolve_tac ctxt [#consistency_wf_thm basic_info]) ctxt) THEN'
+  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info, @{thm default_state_rel_options_def}, @{thm state_rel_consistent}] ctxt) ctxt) THEN'
+  (SUBGOAL (fn (t,_) => raise TERM ("Unfold breakpoint", [t]))) THEN'
   (Rmsg' "Unfold PredBody Lookup" (assm_full_simp_solved_with_thms_tac [#vpr_prog_def_thm basic_info, @{thm predicate_decl.defs(1)}] ctxt) ctxt) THEN'
   (atomic_exhale_pred_acc_in_unfold_tac ctxt basic_info (#no_def_checks_tac_opt exhale_info) atomic_exhale_hint) THEN'
   (SUBGOAL (fn (t,_) => raise TERM ("Unfold breakpoint", [t])))

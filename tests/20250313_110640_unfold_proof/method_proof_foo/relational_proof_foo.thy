@@ -1,21 +1,21 @@
 theory relational_proof_foo
  imports TotalViper.ViperBoogieTranslationInterface TotalViper.ExprWfRelML TotalViper.CPGHelperML TotalViper.StmtRelML TotalViper.ViperBoogieEndToEndML TotalViper.TotalConsistencyInst Boogie_Lang.TypingML "../global_data_vpr" "../boogie_proofs/foo_proofs/foo_before_ast_to_cfg_prog"
 begin
-definition var_ctxt_viper :: "(nat => ((vtyp) option))" where 
+definition var_ctxt_viper :: "(nat => ((vtyp) option))" where
   "var_ctxt_viper  = (nth_option (append [ViperLang.TRef] []))"
 
 
-definition var_relation_list_1 :: "(((nat\<times>nat)) list)" where 
+definition var_relation_list_1 :: "(((nat\<times>nat)) list)" where
   "var_relation_list_1  = [(0,7)]"
 
 
-lemma var_relation_list_1_bound : 
+lemma var_relation_list_1_bound :
 
 shows "(list_all (\<lambda> x.((7\<le>(snd x))\<and>((snd x)\<le>7))) var_relation_list_1)"
 by (simp add: var_relation_list_1_def)
 
 
-definition tr_vpr_bpl_0 :: "tr_vpr_bpl" where 
+definition tr_vpr_bpl_0 :: "tr_vpr_bpl" where
   "tr_vpr_bpl_0  = (tr_vpr_bpl.make 5 6 5 6 (map_of global_data_vpr.field_rel_list) f_None (map_of var_relation_list_1) const_repr_basic default_state_rel_options)"
 
 
@@ -23,15 +23,15 @@ declare tr_vpr_bpl.defs(1)[simp]
 
 declare program.defs(1)[simp]
 
-abbreviation var_ctxt_bpl where 
+abbreviation var_ctxt_bpl where
   "var_ctxt_bpl  \<equiv> ((append global_data.constants_vdecls global_data.globals_vdecls),(append foo_before_ast_to_cfg_prog.params_vdecls foo_before_ast_to_cfg_prog.locals_vdecls))"
 
 
-abbreviation state_rel_initial where 
+abbreviation state_rel_initial where
   "state_rel_initial A Pr ctxt w ns \<equiv> (state_rel_def_same Pr consistent_internal_total_full (ty_repr_basic A) tr_vpr_bpl_0 Map.empty ctxt w ns)"
 
 
-abbreviation type_interp_bpl where 
+abbreviation type_interp_bpl where
   "type_interp_bpl A \<equiv> (vbpl_absval_ty (ty_repr_basic A))"
 
 
@@ -39,16 +39,16 @@ lemmas basic_disjointness_lemmas = not_satisfies_prop_in_set[OF list_all_ran_map
 
 
 locale method_proof =
-fixes ectxt :: "(('a) econtext_bpl)" and ctxt_vpr :: "(('a) total_context)"assumes VarContextBpl [simp]: "((var_context ectxt)=var_ctxt_bpl)" and 
-TyInterpBpl [simp]: "((type_interp ectxt)=(type_interp_bpl (absval_interp_total ctxt_vpr)))" and 
-CtxtWf: "(ctxt_wf global_data_vpr.vpr_prog (ty_repr_basic (absval_interp_total ctxt_vpr)) (map_of global_data_vpr.field_rel_list) fun_repr_concrete ectxt)" and 
-WfFunBpl: "(fun_interp_wf (type_interp ectxt) global_data.fdecls (fun_interp ectxt))" and 
-VprProgramTotal [simp]: "((program_total ctxt_vpr)=global_data_vpr.vpr_prog)" and 
-RtypeInterpEmpty[simp]: "((rtype_interp ectxt)=[])" and 
-CtxtVprPredWf: "(ctxt_pred_syn_wf ctxt_vpr)" and 
-CtxtVprPredSelfFraming: "(ctxt_pred_self_framing_sat ctxt_vpr consistent_internal_total)"
+fixes ectxt :: "(('a) econtext_bpl)" and ctxt_vpr :: "(('a) total_context)"assumes VarContextBpl [simp]: "((var_context ectxt)=var_ctxt_bpl)" and
+TyInterpBpl [simp]: "((type_interp ectxt)=(type_interp_bpl (absval_interp_total ctxt_vpr)))" and
+CtxtWf: "(ctxt_wf global_data_vpr.vpr_prog (ty_repr_basic (absval_interp_total ctxt_vpr)) (map_of global_data_vpr.field_rel_list) fun_repr_concrete ectxt)" and
+WfFunBpl: "(fun_interp_wf (type_interp ectxt) global_data.fdecls (fun_interp ectxt))" and
+VprProgramTotal [simp]: "((program_total ctxt_vpr)=global_data_vpr.vpr_prog)" and
+RtypeInterpEmpty[simp]: "((rtype_interp ectxt)=[])" and
+CtxtVprPredWf [simp]: "(ctxt_pred_syn_wf ctxt_vpr)" and
+CtxtVprPredSelfFraming [simp]: "(ctxt_pred_self_framing_inh ctxt_vpr consistent_internal_total_full)"
 begin
-lemma var_ctxt_bpl_wf : 
+lemma var_ctxt_bpl_wf :
 
 shows "(\<forall> x t.(((lookup_var_ty (var_context ectxt) x)=(Some t))\<longrightarrow>(wf_ty 0 t)))"
 using foo_before_ast_to_cfg_prog.var_context_wf by simp
@@ -81,7 +81,7 @@ val stmt_rel_info_opt = {basic_stmt_rel_info = basic_stmt_rel_info, atomic_rel_t
 val stmt_body_hints = (SeqnHint [(AtomicHint (InhaleHint {inhale_stmt_rel_thm = @{thm inhale_stmt_rel_no_inv}, inhale_rel_hint = (GoodStateAfter (GoodStateAfter (AtomicInhHint (PredicateAccInhHint (exp_wf_rel_info, exp_rel_info, @{thm foo_before_ast_to_cfg_prog.lvar8(2)}, @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]})))))})), (AtomicHint (UnfoldHint ((PredAccExhHint (exp_wf_rel_info, exp_rel_info, @{thm foo_before_ast_to_cfg_prog.lvar8(2)}, @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]}, @{thm HOL.TrueI})), {inhale_stmt_rel_thm = @{thm inhale_stmt_rel_inst_framing_inv}, inhale_rel_hint = (GoodStateAfter (GoodStateAfter (AtomicInhHint (FieldAccInhHint (exp_wf_rel_info, exp_rel_info, @{thm foo_before_ast_to_cfg_prog.lvar8(2)}, @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]})))))})))])
 \<close>
 
-lemma method_rel_proof : 
+lemma method_rel_proof :
 
 shows "(method_rel (state_rel_empty (state_rel_initial (absval_interp_total ctxt_vpr) global_data_vpr.vpr_prog ectxt)) (state_rel_initial (absval_interp_total ctxt_vpr) global_data_vpr.vpr_prog ectxt) ctxt_vpr consistent_internal_total_full var_ctxt_viper P ectxt method_decls.foo_decl (convert_ast_to_program_point foo_before_ast_to_cfg_prog.proc_body))"
 apply ((unfold method_rel_def))
@@ -139,6 +139,16 @@ apply ((rule exhale_true_stmt_rel))
 
 schematic_goal
   "vpr_all_method_spec_correct_total ctxt_vpr consistent_internal_total_full vpr_prog \<Longrightarrow>
+     state_rel_well_def_same ectxt vpr_prog consistent_internal_total_full
+      (ty_repr_basic (absval_interp_total ctxt_vpr)) tr_vpr_bpl_0 (\<lambda>x. None) \<omega> ns \<Longrightarrow>
+     consistent_internal_total_full \<omega>"
+
+  apply (simp add: tr_vpr_bpl_0_def default_state_rel_options_def state_rel_consistent)
+  by (simp add: state_rel_consistent)
+
+
+schematic_goal
+  "vpr_all_method_spec_correct_total ctxt_vpr consistent_internal_total_full vpr_prog \<Longrightarrow>
    stmt_rel
      (state_rel_well_def_same ectxt vpr_prog consistent_internal_total_full
        (ty_repr_basic (absval_interp_total ctxt_vpr)) tr_vpr_bpl_0 (\<lambda>x. None))
@@ -155,11 +165,12 @@ schematic_goal
               apply (simp add: predicate_decl.defs)
              apply (simp add: predicate_decl.defs)
             apply (simp add: CtxtVprPredWf)
-  subgoal sorry
+           apply (simp add: CtxtVprPredSelfFraming)
           apply (rule wf_total_consistency_internal[OF CtxtVprPredWf CtxtVprPredSelfFraming])
          apply (simp add: tr_vpr_bpl_0_def state_rel0_def state_rel_def default_state_rel_options_def)
         apply (simp add: tr_vpr_bpl_0_def state_rel0_def state_rel_def default_state_rel_options_def)
-  subgoal sorry
+        apply (rule extcons_fun_interp_irrelevant')
+        apply (simp add: VprProgramTotal ty_repr_basic_def)
        apply (simp add: CtxtVprPredWf)
       apply simp
      apply simp

@@ -1886,6 +1886,14 @@ next
 qed
 
 
+\<comment> \<open>Instantiation of the above lemma to make it easier to use\<close>
+lemma extcons_fun_interp_irrelevant':
+  assumes "consistent_external (total_context.make (program_total ctxt) (\<lambda>_. None) (absval_interp_total ctxt)) \<phi>"
+  shows "consistent_external ctxt \<phi>"
+  apply (rule extcons_fun_interp_irrelevant(2)[OF _ _ assms])
+  by (simp_all add: total_context.defs)
+
+
 lemma sat_synmult_zero_is_empty:
   assumes "sat ctxt \<omega> mh mp (syntactic_mult 0 A)"
     shows "mh = zero_mask \<and> mp = zero_mask"

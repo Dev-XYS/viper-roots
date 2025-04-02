@@ -508,8 +508,6 @@ proof (rule stmt_rel_intro)
     UnfoldRel: "unfold_rel ctxt_vpr pid v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>'" and
     "\<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr>"
     by (blast elim: RedUnfold_case)
-  from StateRelImpliesExtCons \<open>R \<omega> ns\<close> have "consistent_external ctxt_vpr (get_total_full \<omega>)"
-    by simp
   have "v_p > 0"
     using PermSimp PermPos TotalExpressions.RedLit_case e_p_eval
     by fastforce

@@ -87,7 +87,7 @@ qed
 
 lemma wf_total_consistency_internal:
   assumes "ctxt_pred_syn_wf ctxt"
-      and "ctxt_pred_self_framing_sat ctxt consistent_internal_total"
+      and "ctxt_pred_self_framing_inh ctxt consistent_internal_total_full"
     shows "wf_total_consistency ctxt consistent_internal_total_full consistent_internal_total"
   unfolding wf_total_consistency_def
   apply (intro conjI)
@@ -108,7 +108,13 @@ lemma wf_total_consistency_internal:
      apply (metis mono_prop_downward_ord_consistent_internal_total_full mono_prop_downward_ord_def rm_from_lpm_total_full_smaller)
   using assms(1) rm_from_lpm_preserved_intcons
     apply blast
-  by fact+
+   apply fact
+  apply (rule ctxt_pred_self_framing_inh_implies_sat[where StateCons=consistent_internal_total_full])
+      apply fact
+     apply (simp add: intcons_mono_prop_downward_sub_mask_total)
+    apply (simp add: intcons_total_full_mono_prop_downward)
+   apply (simp add: consistent_internal_total_full_def)
+  by fact
 
 
 end
