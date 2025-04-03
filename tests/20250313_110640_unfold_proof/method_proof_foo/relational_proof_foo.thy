@@ -78,7 +78,7 @@ val exhale_rel_info = {basic_info = basic_stmt_rel_info, atomic_exhale_rel_tac =
 val exhale_rel_info_opt = {basic_info = basic_stmt_rel_info, atomic_exhale_rel_tac = atomic_exhale_rel_inst_tac, is_exh_rel_inv_thm = @{thm framing_exh_is_assertion_red_invariant_exh[OF true_mono_prop_downward]}, no_def_checks_tac_opt = (SOME exh_no_def_checks_tac)}
 val stmt_rel_info = {basic_stmt_rel_info = basic_stmt_rel_info, atomic_rel_tac = atomic_rel_inst_tac, inhale_rel_info = inhale_rel_info, exhale_rel_info = exhale_rel_info}
 val stmt_rel_info_opt = {basic_stmt_rel_info = basic_stmt_rel_info, atomic_rel_tac = atomic_rel_inst_tac, inhale_rel_info = inhale_rel_info_opt, exhale_rel_info = exhale_rel_info_opt}
-val stmt_body_hints = (SeqnHint [(AtomicHint (InhaleHint {inhale_stmt_rel_thm = @{thm inhale_stmt_rel_no_inv}, inhale_rel_hint = (GoodStateAfter (GoodStateAfter (AtomicInhHint (PredicateAccInhHint (exp_wf_rel_info, exp_rel_info, @{thm foo_before_ast_to_cfg_prog.lvar8(2)}, @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]})))))})), (AtomicHint (UnfoldHint ((PredAccExhHint (exp_wf_rel_info, exp_rel_info, @{thm foo_before_ast_to_cfg_prog.lvar8(2)}, @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]}, @{thm HOL.TrueI})), {inhale_stmt_rel_thm = @{thm inhale_stmt_rel_inst_framing_inv}, inhale_rel_hint = (GoodStateAfter (GoodStateAfter (AtomicInhHint (FieldAccInhHint (exp_wf_rel_info, exp_rel_info, @{thm foo_before_ast_to_cfg_prog.lvar8(2)}, @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]})))))})))])
+val stmt_body_hints = (SeqnHint [(AtomicHint (InhaleHint {inhale_stmt_rel_thm = @{thm inhale_stmt_rel_no_inv}, inhale_rel_hint = (GoodStateAfter (GoodStateAfter (AtomicInhHint (PredicateAccInhHint (exp_wf_rel_info, exp_rel_info, @{thm foo_before_ast_to_cfg_prog.lvar8(2)}, @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]})))))})), (AtomicHint (UnfoldHint ((PredAccExhHint (exp_wf_rel_info, exp_rel_info, @{thm foo_before_ast_to_cfg_prog.lvar8(2)}, @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]}, @{thm exp_rel_perm_pred_access_2})), {inhale_stmt_rel_thm = @{thm inhale_stmt_rel_inst_framing_inv}, inhale_rel_hint = (GoodStateAfter (GoodStateAfter (AtomicInhHint (FieldAccInhHint (exp_wf_rel_info, exp_rel_info, @{thm foo_before_ast_to_cfg_prog.lvar8(2)}, @{thm state_rel_aux_pred_sat_lookup_3[where ?aux_var="8"]})))))})))])
 \<close>
 
 lemma method_rel_proof :
@@ -138,12 +138,18 @@ apply ((rule exhale_true_stmt_rel))
 
 
 schematic_goal
-  "vpr_all_method_spec_correct_total ctxt_vpr consistent_internal_total_full vpr_prog \<Longrightarrow>
+  "\<And>\<omega> ns.
+     vpr_all_method_spec_correct_total ctxt_vpr consistent_internal_total_full vpr_prog \<Longrightarrow>
      state_rel_well_def_same ectxt vpr_prog consistent_internal_total_full
       (ty_repr_basic (absval_interp_total ctxt_vpr)) tr_vpr_bpl_0 (\<lambda>x. None) \<omega> ns \<Longrightarrow>
-     consistent_internal_total_full \<omega>"
+     consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (absval_interp_total ctxt_vpr))
+      (get_total_full \<omega>)"
 
-  apply (simp add: tr_vpr_bpl_0_def default_state_rel_options_def state_rel_consistent)
+  apply (frule state_rel_consistent)
+   apply (simp add: default_state_rel_options_def tr_vpr_bpl_0_def)
+  by (simp add: ty_repr_basic_def)
+apply (simp add: default_state_rel_options_def state_rel_consistent ty_repr_basic_def)
+  by (metis state_rel_consistent state_rel_options.simps(1) tr_vpr_bpl.simps(9) ty_repr_bpl.simps(5))
   by (simp add: state_rel_consistent)
 
 
@@ -178,7 +184,8 @@ schematic_goal
    apply (rule unfold_exhale_pred_rel)
      apply (simp only: append_Cons append_Nil)
      apply (tactic \<open>exps_wf_rel_tac basic_stmt_rel_info exp_wf_rel_info exp_rel_info @{context} NONE 2 1\<close>)
-    (* apply (tactic \<open>rewrite_rel_general_tac @{context} 1\<close>) *)
+    (* apply (tactic \<open>rewrite_rel_general_tac @
+  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info, @{thm default_state_rel_options_def}, @{thm state_rel_consistent}] ctxt) ctxt) THEN'{context} 1\<close>) *)
     apply (rule rel_propagate_pre_2)
      apply (rule red_ast_bpl_relI)
      apply (tactic \<open>store_temporary_perm_pred_exh_tac @{context} basic_stmt_rel_info exp_rel_info @{thm foo_before_ast_to_cfg_prog.lvar8(2)} 1\<close>)  \<comment> \<open>don't know what @{thm foo_before_ast_to_cfg_prog.lvar8(2)} does\<close>
