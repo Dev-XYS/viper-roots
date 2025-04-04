@@ -1522,7 +1522,7 @@ lemma assertion_framing_state_mono:
   unfolding assertion_framing_state_def
   by blast  
 
-(*
+
 lemma vpr_postcondition_framed_mono:
   assumes "mono_prop_downward_ord StateCons"
       and "vpr_postcondition_framed ctxt StateCons A \<phi> \<sigma>" 
@@ -1531,32 +1531,36 @@ lemma vpr_postcondition_framed_mono:
     shows "vpr_postcondition_framed ctxt StateCons A \<phi>' \<sigma>" 
   unfolding vpr_postcondition_framed_def
 proof (rule allI | rule impI)+
-  fix mh trace
+  fix \<phi>'' trace
 
   assume TraceOldLabel: "trace old_label = Some \<phi>'"
+     and IntCons: "StateCons \<lparr> get_store_total = \<sigma>, get_trace_total = trace, get_total_full = \<phi>'' \<rparr>"
   
   let ?trace_\<omega> = "trace (old_label \<mapsto> \<phi>)"
-  let ?\<omega>' = "\<lparr>get_store_total = \<sigma>, get_trace_total = trace, get_total_full = mh\<rparr>"
-  let ?\<omega> = "\<lparr>get_store_total = \<sigma>, get_trace_total = ?trace_\<omega>, get_total_full = mh\<rparr>"
+  let ?\<omega>' = "\<lparr>get_store_total = \<sigma>, get_trace_total = trace, get_total_full = \<phi>''\<rparr>"
+  let ?\<omega> = "\<lparr>get_store_total = \<sigma>, get_trace_total = ?trace_\<omega>, get_total_full = \<phi>''\<rparr>"
   have Leq: "?\<omega> \<le> ?\<omega>'"
     using \<open>\<phi> \<le> \<phi>'\<close> TraceOldLabel
     unfolding less_eq_full_total_state_ext_def
     by auto
 
-  assume "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total mh)"
-     and "valid_heap_mask (get_mh_total mh)"
+  assume "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total \<phi>'')"
+     and "valid_heap_mask (get_mh_total \<phi>'')"
 
   moreover from this have "assertion_framing_state ctxt StateCons A ?\<omega>"
-    using assms Leq assertion_framing_state_mono TraceOldLabel
-    unfolding vpr_postcondition_framed_def
-    by auto   
+    using assms Leq assertion_framing_state_mono TraceOldLabel IntCons
+    unfolding vpr_postcondition_framed_def 
+    by (simp add: mono_prop_downward_ord_def)
 
   thus "assertion_framing_state ctxt StateCons A ?\<omega>'"
     using assertion_framing_state_mono Leq assms
     by blast
-qed *)
+qed
+
+
 
 subsection \<open>Exhale\<close>
+
 
 lemma exhale_only_changes_total_state_aux:
   assumes "red_exhale ctxt R \<omega>def A \<omega> res" and "res = RNormal \<omega>'"
@@ -2830,7 +2834,7 @@ proof (rule allI | rule impI)+
   qed
 qed
 
-(*
+
 lemma exh_if_total_map_stmt_result_total:
   assumes "b \<longleftrightarrow> b'"
       and "\<omega> = f \<omega>'"
@@ -2840,20 +2844,23 @@ lemma exh_if_total_map_stmt_result_total:
   apply (erule exh_if_total.elims, simp, simp)+
   done
 
+
 lemma red_exhale_accI:
   assumes "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
       and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
       and "a = the_address r"      
-      and "\<omega>' = (if r = Null then \<omega> else upd_mh_loc_total_full \<omega> (a,f) ((get_mh_total_full \<omega> (a,f)) - (Abs_preal p)))" (is "\<omega>' = ?\<omega>def")      
+      and "\<omega>' = (if r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a,f) (Abs_preal p))" (is "\<omega>' = ?\<omega>def")      
       and "res = exh_if_total (p \<ge> 0 \<and> (if r = Null then p = 0 else get_mh_total_full \<omega> (a,f) \<ge> Abs_preal p)) \<omega>'" 
     shows "red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> res"
   unfolding \<open>res = _\<close> \<open>\<omega>' = _\<close>
   apply (rule ExhAcc)
-  using assms by auto
+  using assms
+  by auto
+
 
 lemma exhale_same_on_free_var:
   assumes "red_exhale ctxt StateCons \<omega>def1 A \<omega>1 res1"
-      and "res2 = map_stmt_result_total (\<lambda>\<omega>. \<omega> \<lparr> get_store_total := get_store_total \<omega>2 \<rparr>) res1"
+      and "res2 = map_result_total (\<lambda>\<omega>. \<omega> \<lparr> get_store_total := get_store_total \<omega>2 \<rparr>) res1"
       and "\<And> x. x \<in> free_var_assertion A \<Longrightarrow> get_store_total \<omega>1 x = get_store_total \<omega>2 x"
       and "get_trace_total \<omega>1 = get_trace_total \<omega>2 \<and> get_total_full \<omega>1 = get_total_full \<omega>2"
       and "get_trace_total \<omega>def1 = get_trace_total \<omega>def2 \<and> get_total_full \<omega>def1 = get_total_full \<omega>def2"
@@ -2870,15 +2877,15 @@ proof (induction arbitrary: \<omega>2 res2)
                                "\<And>x. x \<in> free_var_pure_exp e_p \<Longrightarrow> get_store_total \<omega> x = get_store_total \<omega>2 x"
     by simp_all
 
-  with ConstraintExp have RedRef: "ctxt, StateCons, Some \<omega>def2 \<turnstile> \<langle>e_r;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
-                          RedPerm: "ctxt, StateCons, Some \<omega>def2 \<turnstile> \<langle>e_p;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
-    using red_pure_exp_inhale_store_same_on_free_var(1)  ExhAcc
+  with ConstraintExp have RedRef: "ctxt, Some \<omega>def2 \<turnstile> \<langle>e_r;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
+                          RedPerm: "ctxt, Some \<omega>def2 \<turnstile> \<langle>e_p;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+    using ConstraintExp ExhAcc.hyps(2,3) ExhAcc.prems(3,4) FreeVarExp(2) red_pure_exp_store_same_on_free_var(1)
     by blast+
 
-  let ?\<omega>' = " (if r = Null then \<omega>2 else update_mh_loc_total_full \<omega>2 (the_address r, f) (get_mh_total_full \<omega>2 (the_address r, f) - Abs_preal p))"
+  let ?\<omega>' = "(if r = Null then \<omega>2 else dec_mh_loc_total_full \<omega>2 (the_address r, f) (Abs_preal p))"
   show ?case
   proof (rule red_exhale_accI[OF RedRef RedPerm], simp, simp)
-    show "res2 = exh_if_total (0 \<le> p \<and> (if r = Null then p = 0 else pgte (get_mh_total_full \<omega>2 (the_address r, f)) (Abs_preal p))) ?\<omega>'"
+    show "res2 = exh_if_total (0 \<le> p \<and> (if r = Null then p = 0 else get_mh_total_full \<omega>2 (the_address r, f) \<ge> Abs_preal p)) ?\<omega>'"
     proof (cases r)
       case (Address a')
       hence "r = Address a"
@@ -2887,19 +2894,10 @@ proof (induction arbitrary: \<omega>2 res2)
 
       show ?thesis 
         unfolding \<open>r = Address a\<close> \<open>res2 = _\<close>
-      proof (rule HOL.sym, simp, rule exh_if_total_map_stmt_result_total)
-        have Eq1: "get_total_full \<omega>2 = get_total_full \<omega>"
-          using ExhAcc
-          by simp
-
-        show "\<omega>2\<lparr>get_total_full := get_total_full \<omega>2
-         \<lparr>get_mh_total := (get_mh_total (get_total_full \<omega>2))((a, f) := get_mh_total (get_total_full \<omega>2) (a, f) - Abs_preal p)\<rparr>\<rparr> =
-                \<omega>\<lparr>get_total_full := get_total_full \<omega>\<lparr>get_mh_total := (get_mh_total (get_total_full \<omega>))((a, f) := mh (a, f) - Abs_preal p)\<rparr>,
-                  get_store_total := get_store_total \<omega>2\<rparr>"
-          unfolding Eq1 \<open>mh = _\<close>
-          apply (rule full_total_state.equality)
-          by (simp_all add: ExhAcc)      
-      qed (simp add: ExhAcc)
+        apply (rule HOL.sym, simp, rule exh_if_total_map_stmt_result_total)
+         apply (simp add: ExhAcc.hyps(1) ExhAcc.prems(3))
+        using ExhAcc.prems(3)
+        by auto
     next
       case Null
       then show ?thesis 
@@ -2915,21 +2913,21 @@ next
   case (ExhPure e \<omega> b)
   hence "supported_pure_exp e"
     by simp
-  with ExhPure have "ctxt, StateCons, Some \<omega>def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
-    using red_pure_exp_inhale_store_same_on_free_var(1) free_var_assertion.simps(1) free_var_atomic_assert.simps(1) by blast    
+  with ExhPure have "ctxt, Some \<omega>def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
+    by (simp add: red_pure_exp_store_same_on_free_var(1))   
   moreover have "\<omega>2 = \<omega>\<lparr>get_store_total := get_store_total \<omega>2\<rparr>"
     apply (rule full_total_state.equality)
     by (auto simp: ExhPure)
   ultimately show ?case
-    using TotalSemantics.ExhPure
-    by (metis (full_types) ExhPure.prems(1) exh_if_total.simps(1) exh_if_total.simps(2) map_stmt_result_total.simps(1) map_stmt_result_total.simps(3))
+    using TotalInhaleExhale.ExhPure
+    by (metis (full_types) ExhPure.prems(1) exh_if_total.simps(1,2) map_result_total.simps(1,3))
 next
   case (ExhStarNormal A \<omega> \<omega>'' B res)
   let ?\<omega>''2 = "\<omega>'' \<lparr> get_store_total := get_store_total \<omega>2 \<rparr>"
   from ExhStarNormal have RedExhA: "red_exhale ctxt StateCons \<omega>def2 A \<omega>2 (RNormal ?\<omega>''2)"
     by auto
 
-  moreover have "red_exhale ctxt StateCons \<omega>def2 B ?\<omega>''2 (map_stmt_result_total (get_store_total_update (\<lambda>_. get_store_total ?\<omega>''2)) res)"
+  moreover have "red_exhale ctxt StateCons \<omega>def2 B ?\<omega>''2 (map_result_total (get_store_total_update (\<lambda>_. get_store_total ?\<omega>''2)) res)"
   proof (rule ExhStarNormal.IH(2))
     fix x
     assume "x \<in> free_var_assertion B"
@@ -2958,8 +2956,8 @@ next
   case (ExhImpTrue e \<omega> A res)  
   hence "supported_pure_exp e"
     by (meson assert_pred.elims(2) assert_pred_rec.simps(2) pure_exp_pred.elims(2))
-  with ExhImpTrue have "ctxt, StateCons, Some \<omega>def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
-    using red_pure_exp_inhale_store_same_on_free_var(1)
+  with ExhImpTrue have "ctxt, Some \<omega>def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+    using red_pure_exp_store_same_on_free_var(1)
     by (metis UnCI free_var_assertion.simps(2))
   thus ?case
     using ExhImpTrue
@@ -2968,8 +2966,8 @@ next
   case (ExhImpFalse e \<omega> A)
   hence "supported_pure_exp e"
     by (meson assert_pred.elims(2) assert_pred_rec.simps(2) pure_exp_pred.elims(2))
-  with ExhImpFalse have "ctxt, StateCons, Some \<omega>def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
-    using red_pure_exp_inhale_store_same_on_free_var(1)
+  with ExhImpFalse have "ctxt, Some \<omega>def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    using red_pure_exp_store_same_on_free_var(1)
     by (metis UnCI free_var_assertion.simps(2))
   moreover have "\<omega>2 = \<omega> \<lparr> get_store_total := get_store_total \<omega>2 \<rparr>"
     apply (rule full_total_state.equality)
@@ -2977,13 +2975,13 @@ next
     by auto
   ultimately show ?case
     using ExhImpFalse
-    by (metis map_stmt_result_total.simps(1) red_exhale.ExhImpFalse)
+    by (metis map_result_total.simps(1) red_exhale.ExhImpFalse)
 next
   case (ExhCondTrue e \<omega> A res B)
   hence "supported_pure_exp e"
     by auto
-  hence "ctxt, StateCons, Some \<omega>def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
-    using red_pure_exp_inhale_store_same_on_free_var(1)
+  hence "ctxt, Some \<omega>def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+    using red_pure_exp_store_same_on_free_var(1)
     by (metis ExhCondTrue.hyps(1) ExhCondTrue.prems(2) ExhCondTrue.prems(3) ExhCondTrue.prems(4) UnCI free_var_assertion.simps(3))
   thus ?case
     using ExhCondTrue
@@ -2992,8 +2990,8 @@ next
   case (ExhCondFalse e \<omega> B res A)
   hence "supported_pure_exp e"
     by auto
-  hence "ctxt, StateCons, Some \<omega>def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
-    using red_pure_exp_inhale_store_same_on_free_var(1)
+  hence "ctxt, Some \<omega>def2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    using red_pure_exp_store_same_on_free_var(1)
     by (metis ExhCondFalse.hyps(1) ExhCondFalse.prems(2) ExhCondFalse.prems(3) ExhCondFalse.prems(4) UnCI free_var_assertion.simps(3))
   thus ?case
     using ExhCondFalse
@@ -3002,13 +3000,13 @@ next
   case (ExhSubExpFailure A \<omega>)
   hence "list_all supported_pure_exp (direct_sub_expressions_assertion A)"
     by (metis assert_pred_subexp list.pred_mono_strong pure_exp_pred.simps)
-  with ExhSubExpFailure have "red_pure_exps_total ctxt StateCons (Some \<omega>def2) (direct_sub_expressions_assertion A) \<omega>2 None"
-    using red_pure_exp_inhale_store_same_on_free_var(2) assert_pred_subexp free_var_assertion_map_free_var_pure_exp
+  with ExhSubExpFailure have "red_pure_exps_total ctxt (Some \<omega>def2) (direct_sub_expressions_assertion A) \<omega>2 None"
+    using red_pure_exp_store_same_on_free_var(2) assert_pred_subexp free_var_assertion_map_free_var_pure_exp
     by blast
   then show ?case 
     using ExhSubExpFailure    
-    by (auto intro: TotalSemantics.ExhSubExpFailure)
+    by (auto intro: TotalInhaleExhale.ExhSubExpFailure)
 qed (simp_all)
-*)
+
 
 end
