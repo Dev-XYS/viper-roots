@@ -42,8 +42,8 @@ fun pred_unfold_tac ctxt (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (
   (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
 
   (atomic_exhale_pred_acc_in_unfold_tac ctxt basic_info (#no_def_checks_tac_opt exhale_info) atomic_exhale_hint) THEN'
-
   (Rmsg' "Unfold simp synmult" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
   (Rmsg' "Unfold inhale" (inhale_rel_tac ctxt inhale_info inhale_hint) ctxt)
 
 \<close>

@@ -479,7 +479,8 @@ lemma unfold_stmt_rel:
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
       and CtxtWfPred: "ctxt_pred_syn_wf ctxt_vpr"
-      and ArgsSimp: "e_args = [pure_exp.Var 0]" \<comment> \<open>We only support one predicate argument, which must be the first method argument.\<close>
+      (* and ArgsSimp: "e_args = [pure_exp.Var 0]" \<comment> \<open>We only support one predicate argument, which must be the first method argument.\<close> *)
+      and "True"
       and PermSimp: "e_p = ELit (LPerm p)" \<comment> \<open>We only support literals as the permission.\<close>
       and PermPos: "p > 0"
       and StepExhale:
@@ -487,7 +488,7 @@ lemma unfold_stmt_rel:
              (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> (RNormal \<omega>'))
              (\<lambda>\<omega>. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> RFailure)
              P ctxt_bpl \<gamma> \<gamma>\<^sub>2"
-      and StepInhale: "inhale_rel R' (\<lambda>_ _. True) ctxt_vpr StateCons P ctxt_bpl (syntactic_mult p pbody) \<gamma>\<^sub>2 \<gamma>'"
+      and StepInhale: "inhale_rel R' (\<lambda>_ _. True) ctxt_vpr StateCons P ctxt_bpl (syntactic_mult p (substitute_args_assertion pbody e_args)) \<gamma>\<^sub>2 \<gamma>'"
     shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Unfold pid e_args (PureExp e_p)) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro)
   \<comment> \<open>Specialize predicate body restrictions and self-framing to the predicate in consideration\<close>
@@ -557,27 +558,23 @@ proof (rule stmt_rel_intro)
   \<comment> \<open>Step 2: inhale\<close>
 
   have step_inhale:
-    "red_inhale ctxt_vpr StateCons (syntactic_mult (Rep_preal (Abs_preal v_p)) pbody)
+    "red_inhale ctxt_vpr StateCons (syntactic_mult (Rep_preal (Abs_preal v_p)) (substitute_args_assertion pbody e_args))
                 \<lparr> get_store_total = get_store_total \<omega>, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>\<^sub>d \<rparr>
        (RNormal \<lparr> get_store_total = get_store_total \<omega>, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>' \<rparr>)"
-  proof -
-    obtain var0 where "get_store_total \<omega> 0 = Some var0 \<and> v_args = [var0]"
-      using RedExpList_case[OF e_args_eval[simplified ArgsSimp RedExpList_case]]
-      by (metis ArgsSimp Some_Some_ifD TotalExpressions.RedVar_case e_args_eval option.inject red_pure_exps_total_singleton)
-    show ?thesis
-      apply (rule inhale_with_more_variables[where ?\<omega>\<^sub>1="\<lparr> get_store_total = nth_option v_args, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>\<^sub>d \<rparr>"])
-      using step_inhale'
-          apply simp
-         apply simp
-         apply (metis Some_Some_ifD \<open>get_store_total \<omega> 0 = Some var0 \<and> v_args = [var0]\<close> length_Suc_conv less_Suc0 list.size(3) nth_Cons_0)
-      by simp_all
-  qed
+    apply (subst substitute_synmult_commute[symmetric])
+     apply (simp add: prat_non_negative)
+    apply (rule inhale_with_substitution)
+     apply simp_all
+     apply fact
+    using e_args_eval 
+      \<comment> \<open>Not provable without further restrictions.\<close>
+    sorry
 
-  \<comment> \<open>Simplification: permission = 1\<close>
+  \<comment> \<open>Simplification: permission is constant\<close>
   have "v_p = p"
     using TotalExpressions.RedLit_case[OF e_p_eval[simplified PermSimp]]
     by auto
-  hence inh_perm_1: "Rep_preal (Abs_preal v_p) = p"
+  hence inh_perm_const: "Rep_preal (Abs_preal v_p) = p"
     using one_preal.rep_eq one_preal_def Abs_preal_inverse \<open>0 \<le> v_p\<close>
     by auto
 
@@ -587,7 +584,7 @@ proof (rule stmt_rel_intro)
     by simp
 
   obtain ns' where "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>2, Normal ns\<^sub>2) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
-    using inhale_rel_normal_elim[OF StepInhale bpl_step_exh[THEN conjunct2] TrueI, unfolded \<omega>\<^sub>d_rel, OF step_inhale[unfolded inh_perm_1, simplified]]
+    using inhale_rel_normal_elim[OF StepInhale bpl_step_exh[THEN conjunct2] TrueI, unfolded \<omega>\<^sub>d_rel, OF step_inhale[unfolded inh_perm_const, simplified]]
     unfolding \<omega>'_rel
     by presburger
 

@@ -5,7 +5,6 @@ theory TotalExpressions
           TotalContext TotalViperState TotalStateUtil TotalResult
 begin
 
-
 fun sub_pure_exp_total :: "pure_exp \<Rightarrow> pure_exp list" where
   "sub_pure_exp_total (Unop _ e) = [e]"
 \<comment>\<open>the second expression of a binary expression might not be evaluated due to lazy binary operators\<close>

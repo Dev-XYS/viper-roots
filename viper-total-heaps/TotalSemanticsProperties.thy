@@ -1739,6 +1739,7 @@ qed
 
 subsection \<open>Inhale Properties\<close>
 
+
 lemma inhale_with_more_variables:
   assumes "red_inhale ctxt StateCons A \<omega>\<^sub>1 (RNormal \<omega>\<^sub>1')"
       and "\<And>x v. get_store_total \<omega>\<^sub>1 x = Some v \<Longrightarrow> get_store_total \<omega>\<^sub>2 x = Some v"
@@ -1746,6 +1747,13 @@ lemma inhale_with_more_variables:
       and "get_total_full \<omega>\<^sub>1 = get_total_full \<omega>\<^sub>2"
       and "\<omega>\<^sub>2' = \<omega>\<^sub>1'\<lparr> get_store_total := get_store_total \<omega>\<^sub>2 \<rparr>"
     shows "red_inhale ctxt StateCons A \<omega>\<^sub>2 (RNormal \<omega>\<^sub>2')"
+  sorry
+
+
+lemma inhale_with_substitution:
+  assumes "red_inhale ctxt StateCons A (\<omega>\<lparr> get_store_total := nth_option vs \<rparr>) (RNormal (\<omega>'\<lparr> get_store_total := nth_option vs \<rparr>))"
+      and "red_pure_exps_total ctxt (Some \<omega>) es \<omega> (Some vs)"
+    shows "red_inhale ctxt StateCons (substitute_args_assertion A es) \<omega> (RNormal \<omega>')"
   sorry
 
 
