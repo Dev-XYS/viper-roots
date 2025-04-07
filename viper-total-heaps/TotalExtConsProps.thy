@@ -1894,6 +1894,15 @@ lemma extcons_fun_interp_irrelevant':
   by (simp_all add: total_context.defs)
 
 
+lemma extcons_fun_interp_irrelevant'':
+  assumes "consistent_external ctxt \<phi>"
+      and "program_total ctxt = Pr"
+      and "absval_interp_total ctxt = AbsInterp"
+    shows "consistent_external (total_context.make Pr FunInterp AbsInterp) \<phi>"
+  apply (rule extcons_fun_interp_irrelevant(2)[where ?ctxt1.0=ctxt])
+  by (simp_all add: total_context.defs assms)
+
+
 lemma sat_synmult_zero_is_empty:
   assumes "sat ctxt \<omega> mh mp (syntactic_mult 0 A)"
     shows "mh = zero_mask \<and> mp = zero_mask"

@@ -233,7 +233,12 @@ ML \<open>
       (Rmsg' "exhale havoc WellDefSame" (assm_full_simp_solved_with_thms_tac [tr_thm] ctxt) ctxt) THEN'
       (Rmsg' "exhale havoc IdOnKnownLocsName" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
       (Rmsg' "exhale havoc TypeInterp" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-      (Rmsg' "exhale havoc StateCons" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+      (Rmsg' "exhale havoc StateCons" ((resolve_tac ctxt @{thms conjI}) THEN'
+                                       (blast_tac ctxt) THEN'
+                                       (resolve_tac ctxt @{thms extcons_fun_interp_irrelevant''}) THEN'
+                                       (blast_tac ctxt) THEN'
+                                       (assm_full_simp_solved_tac ctxt) THEN'
+                                       (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt)) ctxt) THEN'
       (Rmsg' "exhale havoc ElemExhaleState" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
       (Rmsg' "exhale havoc HeapVar" (assm_full_simp_solved_with_thms_tac [tr_thm] ctxt) ctxt) THEN'
       (Rmsg' "exhale havoc MaskVar" (assm_full_simp_solved_with_thms_tac [tr_thm] ctxt) ctxt) THEN'
@@ -338,7 +343,7 @@ ML \<open>
         (inhale_rel_tac ctxt inhale_info (#inhale_rel_hint inh_complete_hint))
      | ExhaleHint (NormalExhCompleteHint exh_complete_hint) =>
         (Rmsg' "AtomicExh1 Start" (resolve_tac ctxt [(#exhale_stmt_rel_thm exh_complete_hint) OF [(#consistency_wf_thm basic_info)]]) ctxt) THEN'
-        (Rmsg' "AtomicExh2 Consistency" (fastforce_tac ctxt []) ctxt) THEN'
+        (Rmsg' "AtomicExh2 Consistency" (assm_full_simp_solved_with_thms_tac @{thms framing_exh_def} ctxt) ctxt) THEN'
         (Rmsg' "AtomicExh3 Invariant" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (normal_exhale_rel_tac ctxt exhale_info exh_complete_hint)
      | ExhaleHint TrivialExhCompleteHint =>

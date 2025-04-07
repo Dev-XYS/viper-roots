@@ -460,12 +460,17 @@ lemma nm_loc_sum_add_to_lpm:
   by (metis assms nm_loc_sum'_add_to_lpm nm_loc_sum.elims(2) nm_loc_sum.elims(3) plus_preal.rep_eq)
 
 
-subsection \<open>Zero Permission Location\<close>
+subsection \<open>Zero/Non-Zero Permission Location\<close>
 
 lemma sum_0_implies_mh_zero:
   assumes "nm_loc_sum loc nm 0"
     shows "get_mh_nm nm loc = 0"
   by (metis assms less_eq_preal.rep_eq nm_get_eq nm_loc_sum'.simps nm_loc_sum.simps padd_pos preal_gte_padd)
+
+lemma mh_pos_implies_sum_pos:
+  assumes "get_mh_nm nm loc > 0"
+  shows "\<exists>p > 0. nm_loc_sum loc nm p"
+  sorry
 
 
 subsection \<open>Sub-Mask Smaller\<close>

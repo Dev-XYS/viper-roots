@@ -1,5 +1,5 @@
 theory ExhaleRelML
-imports Boogie_Lang.HelperML ExprWfRelML ExhaleRel ViperBoogieHelperML CPGHelperML PredicateRel DummyRel
+imports Boogie_Lang.HelperML ExprWfRelML ExhaleRel ViperBoogieHelperML CPGHelperML PredicateRel
 begin
 
 ML \<open>

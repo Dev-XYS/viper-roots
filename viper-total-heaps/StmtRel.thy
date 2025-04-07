@@ -661,7 +661,7 @@ subsection \<open>Exhale statement relation\<close>
 
 lemma exhale_stmt_rel:
   assumes WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
-      and Consistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
+      and Consistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and> consistent_external ctxt_vpr (get_total_full \<omega>)"
       \<comment>\<open>The following premise shows the advantage of allowing different input and output relations for
          \<^term>\<open>exhale_rel\<close>. It allows abstracting over any potential setup code that is required for
          encoding an exhale. Note that if we only allowed the same input and output relation, then
@@ -676,7 +676,8 @@ lemma exhale_stmt_rel:
                        red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
                        \<comment>\<open>the updated state is a havoc of the current evaluation state\<close>
                        snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 }) \<and>
-                       StateCons (snd \<omega>')
+                       StateCons (snd \<omega>') \<and>
+                       consistent_external ctxt_vpr (get_total_full (snd \<omega>'))
                 ) (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'"
     shows "stmt_rel R R_out ctxt_vpr StateCons \<Lambda>_vpr P ctxt (Exhale A) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro)
@@ -684,6 +685,9 @@ proof (rule stmt_rel_intro)
   assume "R \<omega> ns" and RedExhale: "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Exhale A) \<omega> (RNormal \<omega>')"
   hence "StateCons \<omega>'"
     using Consistent[OF \<open>R \<omega> ns\<close>] WfConsistency total_consistency_red_stmt_preserve
+    by blast
+  have extcons: "consistent_external ctxt_vpr (get_total_full \<omega>')"
+    using Consistent WfConsistency \<open>R \<omega> ns\<close> local.RedExhale total_consistency_ctxt_wf(1) total_consistency_ctxt_wf(2) total_consistency_red_stmt_extcons_preserve
     by blast
 
   from RedExhale show "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Exhale A) \<omega> (RNormal \<omega>') \<Longrightarrow>
@@ -695,7 +699,7 @@ proof (rule stmt_rel_intro)
       using InvHolds[OF \<open>R \<omega> ns\<close>]
       by blast
 
-    moreover from rel_success_elim[OF UpdHavoc, where ?\<omega> = "(\<omega>,\<omega>_exh)" and ?\<omega>'="(\<omega>',\<omega>')"] RedExhale \<open>Rexh \<omega> \<omega>_exh ns2\<close> \<open>StateCons \<omega>'\<close>
+    moreover from rel_success_elim[OF UpdHavoc, where ?\<omega> = "(\<omega>,\<omega>_exh)" and ?\<omega>'="(\<omega>',\<omega>')"] RedExhale \<open>Rexh \<omega> \<omega>_exh ns2\<close> \<open>StateCons \<omega>'\<close> extcons
     obtain ns3 where
       "red_ast_bpl P ctxt (\<gamma>2, Normal ns2) (\<gamma>', Normal ns3)" and "R_out \<omega>' ns3"
       by auto
@@ -723,7 +727,7 @@ text \<open>The following theorem is the same as exhale_stmt_rel except that Rex
 
 lemma exhale_stmt_rel_inst:
   assumes WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
-      and Consistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
+      and Consistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and> consistent_external ctxt_vpr (get_total_full \<omega>)"
       and InvHolds: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> Q A \<omega> \<omega>"
       and ExhRel: "exhale_rel (rel_ext_eq R) (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt) Q ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>2"
       and UpdHavoc: "rel_general (uncurry (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt)) (\<lambda>\<omega> ns. R_out (snd \<omega>) ns)
@@ -731,7 +735,8 @@ lemma exhale_stmt_rel_inst:
                        red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
                        \<comment>\<open>the updated state is a havoc of the current evaluation state\<close>
                        snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 }) \<and>
-                       StateCons (snd \<omega>')
+                       StateCons (snd \<omega>') \<and>
+                       consistent_external ctxt_vpr (get_total_full (snd \<omega>'))
                 ) (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'"
     shows "stmt_rel R R_out ctxt_vpr StateCons \<Lambda>_vpr P ctxt (Exhale A) \<gamma> \<gamma>'"
 proof (rule exhale_stmt_rel[OF WfConsistency])
@@ -808,14 +813,15 @@ text \<open>The following lemma and the next one must have the same number and k
       tactic deals with the premises.\<close>
 lemma exhale_stmt_rel_inst_no_inv:
   assumes WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
-      and Consistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
+      and Consistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and> consistent_external ctxt_vpr (get_total_full \<omega>)"
       and InvHolds: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> True" \<comment>\<open>not required, but makes proof generation uniform (same number of premises for each case)\<close>
       and "exhale_rel (rel_ext_eq R) (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt) (\<lambda>_ _ _. True) ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>2"
 
       and UpdHavoc: "rel_general (uncurry (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt)) (\<lambda>\<omega> ns. R (snd \<omega>) ns)
                (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
                        snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 }) \<and>
-                       StateCons (snd \<omega>')
+                       StateCons (snd \<omega>') \<and>
+                       consistent_external ctxt_vpr (get_total_full (snd \<omega>'))
                 ) (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'"
     shows "stmt_rel R R ctxt_vpr StateCons \<Lambda>_vpr P ctxt (Exhale A) \<gamma> \<gamma>'"
   using assms
@@ -823,13 +829,14 @@ lemma exhale_stmt_rel_inst_no_inv:
 
 lemma exhale_stmt_rel_inst_framing_inv:
   assumes WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
-      and StateRelAndConsistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega> ns \<and> StateCons \<omega>"
+      and StateRelAndConsistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega> ns \<and> StateCons \<omega> \<and> consistent_external ctxt_vpr (get_total_full \<omega>)"
       and InvHolds: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> framing_exh ctxt_vpr StateCons A \<omega> \<omega>"
       and ExhRel: "exhale_rel (rel_ext_eq R) (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt) (framing_exh ctxt_vpr StateCons) ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>2"
       and UpdHavoc: "rel_general (uncurry (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt)) (\<lambda>\<omega> ns. (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt) (snd \<omega>) ns)
                (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
                        snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 }) \<and>
-                       StateCons (snd \<omega>')
+                       StateCons (snd \<omega>') \<and>
+                       consistent_external ctxt_vpr (get_total_full (snd \<omega>'))
                 ) (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'"
     shows "stmt_rel R (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt) ctxt_vpr StateCons \<Lambda>_vpr P ctxt (Exhale A) \<gamma> \<gamma>'"
   apply (rule exhale_stmt_rel_inst[OF WfConsistency _ _ ExhRel UpdHavoc])
@@ -847,7 +854,7 @@ lemma exhale_stmt_rel_finish:
           TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and
           "StateCons \<omega>' \<and>
              consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')" and
-          "\<omega>' \<in> havoc_locs_state ctxt_vpr \<omega> ({loc. get_mh_total_full (\<omega>0 ) loc > 0 \<and> get_mh_total_full \<omega> loc = 0})" and
+          "\<omega>' \<in> havoc_locs_state ctxt_vpr \<omega> ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full \<omega>0) p) \<and> nm_loc_sum loc (get_nm_total_full \<omega>) 0 })" and
           "hvar = heap_var Tr" and
           "mvar = mask_var Tr" and
           LookupDeclExhaleHeap: "lookup_var_decl (var_context ctxt) hvar_exh = Some (TConSingle (THeapId TyRep), None)" and
@@ -928,7 +935,10 @@ proof -
         unfolding mask_rel_def
         by blast
       hence "get_mh_total_full \<omega> heap_loc \<noteq> 0"
-        using PermPos zero_preal.rep_eq by fastforce
+        using PermPos zero_preal.rep_eq
+        by fastforce
+      hence "\<not> nm_loc_sum heap_loc (get_nm_total_full \<omega>) 0"
+        by (metis get_mh_total.simps get_mh_total_full.simps get_nm_total_full.simps sum_0_implies_mh_zero)
 
       hence "get_hh_total_full \<omega> heap_loc = get_hh_total_full \<omega>' heap_loc"
         using \<open>\<omega>' \<in> _\<close>
@@ -1023,15 +1033,15 @@ proof -
   next
     show "get_store_total \<omega> = get_store_total \<omega>'"
       using \<open>\<omega>' \<in> _\<close> havoc_locs_state_same_store
-      by metis
+      by fastforce
   next
     show "get_nm_total_full \<omega> = get_nm_total_full \<omega>'"
       using \<open>\<omega>' \<in> _\<close> havoc_locs_state_same_mask
-      by metis
+      by fastforce
   next
     show "get_trace_total \<omega> = get_trace_total \<omega>'"
       using \<open>\<omega>' \<in> _\<close> havoc_locs_state_same_trace
-      by metis
+      by fastforce
   next
     show "heap_var_rel Pr (var_context ctxt) TyRep (field_translation Tr) (heap_var Tr) \<omega>' ?ns2"
       using ProgramTotal
