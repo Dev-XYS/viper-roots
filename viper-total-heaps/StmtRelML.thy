@@ -343,7 +343,7 @@ ML \<open>
         (inhale_rel_tac ctxt inhale_info (#inhale_rel_hint inh_complete_hint))
      | ExhaleHint (NormalExhCompleteHint exh_complete_hint) =>
         (Rmsg' "AtomicExh1 Start" (resolve_tac ctxt [(#exhale_stmt_rel_thm exh_complete_hint) OF [(#consistency_wf_thm basic_info)]]) ctxt) THEN'
-        (Rmsg' "AtomicExh2 Consistency" (assm_full_simp_solved_with_thms_tac @{thms framing_exh_def} ctxt) ctxt) THEN'
+        (Rmsg' "AtomicExh2 Consistency" (fastforce_tac ctxt @{thms framing_exh_def}) ctxt) THEN'
         (Rmsg' "AtomicExh3 Invariant" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (normal_exhale_rel_tac ctxt exhale_info exh_complete_hint)
      | ExhaleHint TrivialExhCompleteHint =>

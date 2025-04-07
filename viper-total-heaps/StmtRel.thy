@@ -550,8 +550,6 @@ lemma field_assign_rel_inst:
       and RcvRel: "exp_rel_vpr_bpl (rel_ext_eq R) ctxt_vpr ctxt rcv_vpr rcv_bpl"
       and FieldRelSingle: "field_rel_single (program_total ctxt_vpr) TyRep Tr f_vpr (Lang.Var f_bpl) \<tau>_bpl"
       and RhsRel: "exp_rel_vpr_bpl (rel_ext_eq R) ctxt_vpr ctxt rhs_vpr rhs_bpl"
-      and CtxtInterp: "fun_interp_total ctxt_vpr = (\<lambda>_. None) \<and>
-                       absval_interp_total ctxt_vpr = (\<lambda>_. undefined)" \<comment> \<open>We only support empty interpretation.\<close>
     shows "stmt_rel R R ctxt_vpr StateCons \<Lambda>_vpr P ctxt (ViperLang.FieldAssign rcv_vpr f_vpr rhs_vpr)
             \<gamma> (BigBlock name cs str tr, cont)"
 proof (rule field_assign_rel[OF WfConsistency, where ?\<tau>_vpr = "the (declared_fields (program_total ctxt_vpr) f_vpr)"])
@@ -580,14 +578,11 @@ proof (rule field_assign_rel[OF WfConsistency, where ?\<tau>_vpr = "the (declare
                                (AbsV (AHeap (hb( (Address addr,f_bpl_val) \<mapsto> (val_rel_vpr_bpl v) ))))
                          )"
 
-  have "ctxt_vpr = total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (domain_type TyRep)"
-    apply (rule total_context.equality)
-    by (simp_all add: total_context.defs CtxtInterp assms(5))
-  hence ConsistentUpdState':
+  have ConsistentUpdState':
     "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons (upd_hh_loc_total_full \<omega> (addr,f_vpr) v) \<and>
        consistent_external (total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (domain_type TyRep)) (get_total_full (upd_hh_loc_total_full \<omega> (addr,f_vpr) v))"
-    using ConsistentUpdState
-    by force
+    using ConsistentUpdState assms(5) extcons_fun_interp_irrelevant''
+    by fastforce
 
   from state_rel_heap_update_2_ext[OF WfTyRep StateRelInst _ ConsistentUpdState' ConsistentUpdState' FieldLookup FieldTranslation TyTranslation NewValVprTy]
   obtain hb f_bpl_val where
@@ -618,13 +613,9 @@ next
   fix \<omega> ns
   assume "R \<omega> ns"
 
-  moreover have "ctxt_vpr = total_context.make (program_total ctxt_vpr) (\<lambda>_. None) (domain_type TyRep)"
-    apply (rule total_context.equality)
-    by (simp_all add: total_context.defs CtxtInterp assms(5))
-
-  ultimately show "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega> \<and>
+  then show "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow> StateCons \<omega> \<and>
           consistent_external ctxt_vpr (get_total_full \<omega>)"
-    using RStateRel state_rel_consistent
+    using RStateRel state_rel_consistent  assms(5) extcons_fun_interp_irrelevant'
     by fastforce
 qed (insert assms, simp_all)
 
@@ -2998,8 +2989,6 @@ lemma scoped_var_stmt_rel:
       and VprToBplTy: "vpr_to_bpl_ty TyRep \<tau>_vpr = Some \<tau>_bpl"
       and "var_tr' = shift_and_add (var_translation Tr) x_bpl"
       and CtxtProg: "program_total ctxt_vpr = Pr"
-      and CtxtInterp: "fun_interp_total ctxt_vpr = (\<lambda>_. None) \<and>
-                       absval_interp_total ctxt_vpr = (\<lambda>_. undefined)" \<comment> \<open>We only support empty interpretation.\<close>
       and StmtRelBody:
           "stmt_rel (state_rel_def_same Pr StateCons TyRep (Tr\<lparr> var_translation := var_tr' \<rparr>) AuxPred ctxt)
                     (state_rel_def_same Pr StateCons TyRep (Tr\<lparr> var_translation := var_tr' \<rparr>) AuxPred ctxt)
@@ -3144,13 +3133,10 @@ proof (rule stmt_rel_intro_2)
         hence "StateCons \<omega>"
           using state_rel_consistent[OF StateRel_ns']
           by simp
-        moreover have "ctxt_vpr = total_context.make Pr (\<lambda>_. None) (domain_type TyRep)"
-          apply (rule total_context.equality)
-          by (simp_all add: total_context.defs CtxtInterp CtxtProg DomainTyRep)
-        ultimately show ?thesis
+        then show ?thesis
           using WfConsistency RedStmtVpr \<open>res = RNormal \<omega>'\<close> total_consistency_red_stmt_extcons_preserve[OF WfConsistency _ _ _ _ RedStmtVpr[simplified \<open>res = RNormal \<omega>'\<close>]]
           unfolding wf_total_consistency_def
-          by (metis StateRel_ns' \<open>consistent_state_rel_opt (state_rel_opt Tr)\<close> state_rel_consistent)
+          by (metis CtxtProg DomainTyRep StateRel_ns' \<open>consistent_state_rel_opt (state_rel_opt Tr)\<close> extcons_fun_interp_irrelevant' extcons_fun_interp_irrelevant'' state_rel_consistent)
       qed
 
       show "binder_state ns_body = Map.empty"
@@ -3207,8 +3193,6 @@ lemma scoped_var_stmt_rel_simplify_tr:
     This avoids unnecessary updates in the term (such as consescutive var_translation updates)\<close>
       and "Tr' = (Tr\<lparr> var_translation := shift_and_add (var_translation Tr) x_bpl \<rparr>)"
       and CtxtProg: "program_total ctxt_vpr = Pr"
-      and CtxtInterp: "fun_interp_total ctxt_vpr = (\<lambda>_. None) \<and>
-                       absval_interp_total ctxt_vpr = (\<lambda>_. undefined)" \<comment> \<open>We only support empty interpretation.\<close>
       and StmtRelBody:
           "stmt_rel (state_rel_def_same Pr StateCons TyRep Tr' AuxPred ctxt)
                     (state_rel_def_same Pr StateCons TyRep Tr' AuxPred ctxt)
