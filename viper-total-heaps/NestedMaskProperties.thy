@@ -467,11 +467,6 @@ lemma sum_0_implies_mh_zero:
     shows "get_mh_nm nm loc = 0"
   by (metis assms less_eq_preal.rep_eq nm_get_eq nm_loc_sum'.simps nm_loc_sum.simps padd_pos preal_gte_padd)
 
-lemma mh_pos_implies_sum_pos:
-  assumes "get_mh_nm nm loc > 0"
-  shows "\<exists>p > 0. nm_loc_sum loc nm p"
-  sorry
-
 
 subsection \<open>Sub-Mask Smaller\<close>
 
