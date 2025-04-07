@@ -2493,11 +2493,11 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
          using aux_disj_thms
          by (auto simp add: map_upd_set_dom)
      next
-       have "StateCons_t (get_total_full \<omega>pre)"
+       have cons2: "StateCons_t (get_total_full \<omega>pre) \<and> consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>pre)"
        proof -
          have "consistent_state_rel_opt (state_rel_opt (Tr\<lparr>var_translation := var_tr'\<rparr>))"
            by (simp add: ConsistencyEnabled)
-         with state_rel_consistent[OF \<open>?RCall \<omega>pre nspre\<close>]  WfConsistency
+         with state_rel_consistent[OF \<open>?RCall \<omega>pre nspre\<close>] WfConsistency
          show ?thesis
            unfolding wf_total_consistency_def
            by blast
@@ -2507,10 +2507,11 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
          unfolding \<open>\<omega>havoc = _\<close>
          apply (intro conjI)
           apply (rule total_consistencyI[OF WfConsistency])
-           apply (simp add: \<open>StateCons_t (get_total_full \<omega>pre)\<close>)
+           apply (simp add: cons2)
           apply simp
-          apply (fastforce split: if_split_asm intro: \<open>StateCons_t (get_total_full \<omega>)\<close> )
-         sorry
+          apply (fastforce split: if_split_asm intro: \<open>StateCons_t (get_total_full \<omega>)\<close>)
+         using cons2
+         by auto
      next
        fix x
        assume "map_of (snd (var_context ctxt)) x \<noteq> None"
