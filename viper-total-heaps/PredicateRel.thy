@@ -488,7 +488,7 @@ lemma unfold_stmt_rel:
              (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> (RNormal \<omega>'))
              (\<lambda>\<omega>. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> RFailure)
              P ctxt_bpl \<gamma> \<gamma>\<^sub>2"
-      and StepInhale: "inhale_rel R' (\<lambda>_ _. True) ctxt_vpr StateCons P ctxt_bpl (syntactic_mult p (substitute_args_assertion pbody e_args)) \<gamma>\<^sub>2 \<gamma>'"
+      and StepInhale: "inhale_rel R' (assertion_framing_state ctxt_vpr StateCons) ctxt_vpr StateCons P ctxt_bpl (syntactic_mult p (substitute_args_assertion pbody e_args)) \<gamma>\<^sub>2 \<gamma>'"
     shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Unfold pid e_args (PureExp e_p)) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro)
   \<comment> \<open>Specialize predicate body restrictions and self-framing to the predicate in consideration\<close>
@@ -566,7 +566,20 @@ proof (rule stmt_rel_intro)
     apply (rule inhale_with_substitution)
      apply simp_all
      apply fact
-    using e_args_eval 
+    using e_args_eval
+      \<comment> \<open>Not provable without further restrictions.\<close>
+    sorry
+
+  have FramingSubst:
+    "assertion_framing_state ctxt_vpr StateCons
+       (syntactic_mult p (substitute_args_assertion pbody e_args))
+       \<lparr> get_store_total = get_store_total \<omega>, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>\<^sub>d \<rparr>"
+    apply (subst substitute_synmult_commute[symmetric])
+     apply (simp add: PermPos order_less_imp_le)
+    apply (rule framing_with_substitution)
+    using FramingArgs[of p, unfolded assertion_self_framing_store_def, simplified]
+     apply blast
+    using e_args_eval
       \<comment> \<open>Not provable without further restrictions.\<close>
     sorry
 
@@ -584,7 +597,7 @@ proof (rule stmt_rel_intro)
     by simp
 
   obtain ns' where "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>2, Normal ns\<^sub>2) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
-    using inhale_rel_normal_elim[OF StepInhale bpl_step_exh[THEN conjunct2] TrueI, unfolded \<omega>\<^sub>d_rel, OF step_inhale[unfolded inh_perm_const, simplified]]
+    using inhale_rel_normal_elim[OF StepInhale bpl_step_exh[THEN conjunct2], unfolded \<omega>\<^sub>d_rel, OF FramingSubst step_inhale[unfolded inh_perm_const, simplified]]
     unfolding \<omega>'_rel
     by presburger
 

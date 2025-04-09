@@ -1747,13 +1747,20 @@ lemma inhale_with_more_variables:
       and "get_total_full \<omega>\<^sub>1 = get_total_full \<omega>\<^sub>2"
       and "\<omega>\<^sub>2' = \<omega>\<^sub>1'\<lparr> get_store_total := get_store_total \<omega>\<^sub>2 \<rparr>"
     shows "red_inhale ctxt StateCons A \<omega>\<^sub>2 (RNormal \<omega>\<^sub>2')"
-  sorry
+  oops  \<comment> \<open>Not used anywhere\<close>
 
 
 lemma inhale_with_substitution:
   assumes "red_inhale ctxt StateCons A (\<omega>\<lparr> get_store_total := nth_option vs \<rparr>) (RNormal (\<omega>'\<lparr> get_store_total := nth_option vs \<rparr>))"
       and "red_pure_exps_total ctxt (Some \<omega>) es \<omega> (Some vs)"
     shows "red_inhale ctxt StateCons (substitute_args_assertion A es) \<omega> (RNormal \<omega>')"
+  sorry
+
+
+lemma framing_with_substitution:
+  assumes "assertion_framing_state ctxt StateCons A (\<omega>\<lparr> get_store_total := nth_option vs \<rparr>)"
+      and "red_pure_exps_total ctxt (Some \<omega>) es \<omega> (Some vs)"
+    shows "assertion_framing_state ctxt StateCons (substitute_args_assertion A es) \<omega>"
   sorry
 
 

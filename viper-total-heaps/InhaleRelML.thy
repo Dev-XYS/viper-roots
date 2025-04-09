@@ -121,12 +121,12 @@ ML \<open>
 
 ML \<open>
 
-  datatype atomic_inhale_rel_hint = 
-    PureExpInhHint of 
+  datatype atomic_inhale_rel_hint =
+    PureExpInhHint of
        exp_wf_rel_info *
-       exp_rel_info 
+       exp_rel_info
   | FieldAccInhHint of
-       exp_wf_rel_info * 
+       exp_wf_rel_info *
        exp_rel_info *
        thm * (* auxiliary variable lookup var ty theorem *)
        thm (* auxiliary variable lookup var from state relation theorem *)
@@ -136,22 +136,22 @@ ML \<open>
        thm * (* auxiliary variable lookup var ty theorem *)
        thm (* auxiliary variable lookup var from state relation theorem *)
 
-  fun inh_no_def_checks_tac ctxt (_: basic_stmt_rel_info) : int -> tactic  =
+  fun inh_no_def_checks_tac ctxt (_: basic_stmt_rel_info) : int -> tactic =
     resolve_tac ctxt [ @{thm assertion_framing_state_inh_exprs_wf_rel} ] THEN'
     blast_tac ctxt THEN' (* assertion_framing_state *)
     assm_full_simp_solved_tac ctxt  (* subexpression equality *)
 
   fun store_temporary_inh_perm_tac ctxt (info: basic_stmt_rel_info) exp_rel_info lookup_aux_var_ty_thm =
-        store_temporary_perm_tac 
-         ctxt 
-         info 
-         exp_rel_info 
+        store_temporary_perm_tac
+         ctxt
+         info
+         exp_rel_info
          lookup_aux_var_ty_thm
          (fn ctxt => blast_tac ctxt)
 
   fun prove_perm_non_negative_inh_tac ctxt (info: basic_stmt_rel_info) lookup_aux_var_state_rel_thm =
       (Rmsg' "Inh Prove Perm Nonnegative - Init" (resolve_tac ctxt @{thms rel_propagate_pre_assert_2}) ctxt) THEN'
-      (Rmsg' "Inh Prove Perm Nonnegative - Introduce Facts" 
+      (Rmsg' "Inh Prove Perm Nonnegative - Introduce Facts"
               (EVERY' [intro_fact_lookup_no_perm_const_tac ctxt (#tr_def_thm info),
               intro_fact_lookup_aux_var_tac ctxt lookup_aux_var_state_rel_thm]) ctxt) THEN'
       (Rmsg' "Inh Prove Perm Nonnegative - Boogie Expression Reduction" (prove_red_expr_bpl_tac ctxt) ctxt) THEN'

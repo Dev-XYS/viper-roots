@@ -135,6 +135,7 @@ ML \<open>
   | ExhaleHint of (atomic_exhale_rel_hint exhale_rel_complete_hint)
   | AssertHint of (atomic_exhale_rel_hint assert_rel_complete_hint)
   | UnfoldHint of
+       (atomic_inhale_rel_hint inhale_rel_info) *
        atomic_exhale_rel_hint *
        (atomic_inhale_rel_hint inhale_rel_complete_hint)
   | MethodCallHint of 
@@ -353,7 +354,7 @@ ML \<open>
         (Rmsg' "AtomicAssert Start" (resolve_tac ctxt [#assert_stmt_rel_thm assert_complete_hint]) ctxt) THEN'
         (Rmsg' "AtomicAssert Init" ((#init_tac assert_complete_hint) basic_info (#setup_well_def_state_tac assert_complete_hint basic_info) ctxt) ctxt) THEN' 
         (assert_rel_tac ctxt exhale_info assert_complete_hint)
-     | UnfoldHint (atomic_exhale_hint, inhale_hint) =>
+     | UnfoldHint (inhale_info, atomic_exhale_hint, inhale_hint) =>
         (pred_unfold_tac ctxt inhale_info exhale_info basic_info atomic_exhale_hint (#inhale_rel_hint inhale_hint))
      | MethodCallHint (callee_name, rets_lookup_decl_thms, inhale_info_call, exhale_info_call, exh_pre_complete_hint, inh_post_complete_hint) => 
         let val callee_data = Symtab.lookup (#method_data_table basic_info) callee_name |> Option.valOf in
