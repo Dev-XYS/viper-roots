@@ -590,8 +590,9 @@ proof (induct A arbitrary: mh mp)
   next
     case (AccPredicate pred_id e_args perm)
     then have "mh = zero_mask"
-      using IH sat_AccPred_mh_zero by blast
-    have "list_all no_perm_pure_exp e_args" and "list_all no_old_pure_exp e_args"
+      using IH sat_AccPred_mh_zero
+      by blast
+    have "list_all no_perm_pure_exp e_args" and "list_all no_old_pure_exp e_args" and "list_all no_result_pure_exp e_args"
       using AccPredicate IH.prems(1) IH.prems(2) SatAtomic_case assert_pred.elims(2)
       by fastforce+
     hence "list_all supported_pred_expr e_args"

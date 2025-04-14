@@ -763,7 +763,44 @@ next
 qed
 
 
+lemma eval_with_different_pred_heap:
+  assumes "get_hh_total_full \<omega> = get_hh_total_full \<omega>'"
+      and "get_mh_total_full \<omega> = get_mh_total_full \<omega>'"
+      and "get_store_total \<omega> = get_store_total \<omega>'"
+      and "get_trace_total \<omega> = get_trace_total \<omega>'"
+      and "\<omega>_def = Some \<omega>"
+    shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow>
+           no_perm_pure_exp e \<Longrightarrow>
+           no_unfolding_pure_exp e \<Longrightarrow>
+           ctxt, Some \<omega>' \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t Val v"
+      and "red_pure_exps_total ctxt \<omega>_def es \<omega> (Some vs) \<Longrightarrow>
+           list_all no_perm_pure_exp es \<Longrightarrow>
+           list_all no_unfolding_pure_exp es \<Longrightarrow>
+           red_pure_exps_total ctxt (Some \<omega>') es \<omega>' (Some vs)"
+  using assms
+proof (induction rule: red_pure_exp_inducts)
+  case (RedOld \<omega> l \<phi> \<omega>_def' \<omega>_def e v)
+  then show ?case
+    by (metis (mono_tags, lifting) full_total_state.surjective full_total_state.update_convs(3) option.simps(9) red_pure_exp_total_red_pure_exps_total.RedOld unit.exhaust)
+next
+  case IH: (RedField \<omega>_def e \<omega> a f v)
+  hence *: "if_Some (\<lambda>res. (a, f) \<in> get_valid_locs res) \<omega>_def = if_Some (\<lambda>res. (a, f) \<in> get_valid_locs res) (Some \<omega>')"
+    by (simp add: get_valid_locs_def)
+  show ?case
+    apply (subst *)
+    apply (rule RedField)
+    using IH
+    by simp_all
+next
+  case (RedSubFailure e' \<omega>_def \<omega>)
+  then show ?case
+    by (meson pure_exp_pred_subexp red_pure_exp_total_red_pure_exps_total.RedSubFailure)
+qed (fastforce intro: red_pure_exp_intros)+
+
+
+
 subsection \<open>Relation between exhale and sat\<close>
+
 
 lemma exhale_mh_diff:
   shows "get_mh_total_full \<omega> - get_mh_total_full (exhale_pred \<omega> ploc p) = zero_mask"
@@ -1737,38 +1774,1242 @@ qed
 
 
 
-subsection \<open>Inhale Properties\<close>
+subsection \<open>Substitution Properties\<close>
 
 
-lemma inhale_with_more_variables:
-  assumes "red_inhale ctxt StateCons A \<omega>\<^sub>1 (RNormal \<omega>\<^sub>1')"
-      and "\<And>x v. get_store_total \<omega>\<^sub>1 x = Some v \<Longrightarrow> get_store_total \<omega>\<^sub>2 x = Some v"
-      and "get_trace_total \<omega>\<^sub>1 = get_trace_total \<omega>\<^sub>2"
-      and "get_total_full \<omega>\<^sub>1 = get_total_full \<omega>\<^sub>2"
-      and "\<omega>\<^sub>2' = \<omega>\<^sub>1'\<lparr> get_store_total := get_store_total \<omega>\<^sub>2 \<rparr>"
-    shows "red_inhale ctxt StateCons A \<omega>\<^sub>2 (RNormal \<omega>\<^sub>2')"
-  oops  \<comment> \<open>Not used anywhere\<close>
+lemma eval_with_substitution:
+  assumes "red_pure_exps_total ctxt (Some \<omega>\<^sub>0) eargs \<omega> (Some vargs)"
+      and "\<omega>_def = Some (\<omega>\<^sub>0\<lparr> get_store_total := nth_option vargs \<rparr>)"
+      and "\<omega>_subst = \<omega>\<lparr> get_store_total := nth_option vargs \<rparr>"
+    shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>_subst\<rangle> [\<Down>]\<^sub>t res \<Longrightarrow>
+           res = Val v \<Longrightarrow>
+           no_perm_pure_exp e \<Longrightarrow>
+           no_old_pure_exp e \<Longrightarrow>
+           no_result_pure_exp e \<Longrightarrow>
+           no_unfolding_pure_exp e \<Longrightarrow>
+           ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>substitute_args_expr e eargs;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+      and "red_pure_exps_total ctxt \<omega>_def es \<omega>_subst rs \<Longrightarrow>
+           rs = Some vs \<Longrightarrow>
+           list_all no_perm_pure_exp es \<Longrightarrow>
+           list_all no_old_pure_exp es \<Longrightarrow>
+           list_all no_result_pure_exp es \<Longrightarrow>
+           list_all no_unfolding_pure_exp es \<Longrightarrow>
+           red_pure_exps_total ctxt (Some \<omega>\<^sub>0) (map (\<lambda>e. substitute_args_expr e eargs) es) \<omega> (Some vs)"
+  using assms
+proof (induction arbitrary: \<omega>\<^sub>0 \<omega> v and \<omega>\<^sub>0 \<omega> vs rule: red_pure_exp_inducts)
+  case (RedVar \<omega>_subst n v' \<omega>_def)
+  from RedVar(1)[unfolded \<open>\<omega>_subst = _\<close>, simplified]
+  have "vargs ! n = v"
+    by (metis RedVar.prems(1) Some_Some_ifD extended_val.inject option.inject)
+  thus ?case
+    apply simp
+    using RedVar
+    by (metis Some_Some_ifD RedVar(1)[unfolded \<open>\<omega>_subst = _\<close>, simplified] list_all2_conv_all_nth red_pure_exps_total_list_all2)
+next
+  case (RedBinop \<omega>_def e1 \<omega>_subst v1 e2 v2 bop v)
+  have "no_perm_pure_exp e1" and "no_old_pure_exp e1" and "no_result_pure_exp e1" and "no_unfolding_pure_exp e1" and
+       "no_perm_pure_exp e2" and "no_old_pure_exp e2" and "no_result_pure_exp e2" and "no_unfolding_pure_exp e2"
+    using RedBinop.prems(2-5)
+    by force+
+  show ?case
+    apply simp
+    apply (rule TotalExpressions.RedBinop)
+       apply (rule RedBinop(2))
+              apply simp
+             apply fact+
+      apply (rule RedBinop(4))
+             apply simp
+            apply fact+
+    using RedBinop.hyps(2) RedBinop.prems(1,7)
+    by force
+next
+  case (RedField \<omega>_def e \<omega>_subst a f v')
+  have "no_perm_pure_exp e" and "no_old_pure_exp e" and "no_result_pure_exp e" and "no_unfolding_pure_exp e"
+    using RedField.prems(2-5)
+    by force+
+  have e_eval: "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>substitute_args_expr e eargs;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))"
+    apply (rule RedField(2))
+           apply simp
+    by fact+
+  have *: "if_Some (\<lambda>res. (a, f) \<in> get_valid_locs res) \<omega>_def = if_Some (\<lambda>res. (a, f) \<in> get_valid_locs res) (Some \<omega>\<^sub>0)"
+    unfolding \<open>\<omega>_def = _\<close> \<open>\<omega>_subst = _\<close>
+    by (simp add: get_valid_locs_def)
+  hence "(a, f) \<in> get_valid_locs \<omega>\<^sub>0"
+    using RedField.prems(1)
+    by auto
+  show ?case
+    apply (simp only: substitute_args_expr.simps)
+    apply (rule TotalExpressions.RedField[OF e_eval, of f v, simplified, simplified \<open>(a, f) \<in> get_valid_locs \<omega>\<^sub>0\<close>, simplified])
+    using * RedField.hyps RedField.prems(1,8)
+    by force
+(*
+next
+  case (RedUnfoldingDef \<omega>_def es \<omega>_subst vs perm pid nm' \<omega>'_def ubody v')
+  have "list_all no_perm_pure_exp es" and "list_all no_old_pure_exp es" and "list_all no_result_pure_exp es" and "list_all no_unfolding_pure_exp es" and
+       "no_perm_pure_exp ubody" and "no_old_pure_exp ubody" and "no_result_pure_exp ubody" and "no_unfolding_pure_exp ubody"
+    using RedUnfoldingDef.prems(2-5)
+    by fastforce+
+  have "\<omega>_def = \<omega>\<^sub>0\<lparr> get_store_total := nth_option vargs \<rparr>"
+    using RedUnfoldingDef.prems(7)
+    by blast
+  show ?case
+    apply simp
+    apply (rule TotalExpressions.RedUnfoldingDef[where nm'=nm'])
+         apply (rule RedUnfoldingDef(2))
+                apply simp
+               apply fact+
+    using RedUnfoldingDef(5)[unfolded \<open>\<omega>_def = _\<close> \<open>\<omega>_subst = _\<close>]
+        apply blast
+    using RedUnfoldingDef.hyps(1,2) RedUnfoldingDef.prems(7) \<open>\<omega>_def = _\<close>
+       apply auto[1]
+    using RedUnfoldingDef(7)[unfolded RedUnfoldingDef(5)]
+      apply (simp add: RedUnfoldingDef.prems(7) \<open>\<omega>_def = _\<close>)
+     apply simp
+    apply (rule RedUnfoldingDef(4))
+           apply fact+
+    subgoal \<comment> \<open>Requires investigation\<close>
+     apply (metis RedUnfoldingDef.hyps(4) \<open>\<omega>_def = _\<close> full_total_state.surjective full_total_state.update_convs(1) full_total_state.update_convs(3) total_state.unfold_congs(2) upd_nm_total_full.simps)
+    by (simp add: RedUnfoldingDef.prems(8))
+*)
+qed (fastforce intro: red_pure_exp_intros)+
+
+
+lemma subst_var_eval_rev:
+  assumes "e_subst = substitute_args_expr e eargs"
+      and "\<exists>x. e = Var x"
+      and "e_subst \<noteq> DummyExpr"
+      and "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e_subst;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+      and "red_pure_exps_total ctxt (Some \<omega>\<^sub>0) eargs \<omega> (Some vargs)"
+    shows "ctxt, Some (\<omega>\<^sub>0\<lparr> get_store_total := nth_option vargs \<rparr>) \<turnstile> \<langle>e; \<omega>\<lparr> get_store_total := nth_option vargs \<rparr>\<rangle> [\<Down>]\<^sub>t Val v"
+proof -
+  obtain x where "e = Var x"
+    using assms(2)
+    by blast
+  have eval_xth: "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>eargs ! x; \<omega>\<rangle> [\<Down>]\<^sub>t Val (vargs ! x)"
+    by (metis \<open>e = _\<close> assms(1,3,5) list_all2_conv_all_nth red_pure_exps_total_list_all2 substitute_args_expr.simps(1))
+  show ?thesis
+    apply (subst \<open>e = _\<close>)
+    apply (rule TotalExpressions.RedVar)
+    apply simp
+    apply (intro conjI)
+     apply (metis eval_xth \<open>e = _\<close> assms(1,4,5) eval_is_deterministic_single extended_val.inject red_pure_exps_total_Some_lengthD substitute_args_expr.simps(1))
+    by (metis \<open>e = _\<close> assms(1,3,5) red_pure_exps_total_Some_lengthD substitute_args_expr.simps(1))
+qed
+
+
+lemma subst_var_eval_rev_failure:
+  assumes "e_subst = substitute_args_expr e eargs"
+      and "\<exists>x. e = Var x"
+      and "e_subst \<noteq> DummyExpr"
+      and "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e_subst;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+      and "red_pure_exps_total ctxt (Some \<omega>\<^sub>0) eargs \<omega> (Some vargs)"
+    shows "False"
+proof -
+  obtain x where "e = Var x"
+    using assms(2)
+    by blast
+  have eval_xth: "ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>eargs ! x; \<omega>\<rangle> [\<Down>]\<^sub>t Val (vargs ! x)"
+    by (metis \<open>e = _\<close> assms(1,3,5) list_all2_conv_all_nth red_pure_exps_total_list_all2 substitute_args_expr.simps(1))
+  show ?thesis
+    by (metis \<open>e = Var x\<close> assms(1,3,4) eval_is_deterministic_single eval_xth extended_val.discI substitute_args_expr.simps(1))
+qed
+
+
+lemma substitute_subexpr_expr_commute:
+  assumes "\<not> (\<exists>x. e = Var x)"
+  shows "map (\<lambda>e. substitute_args_expr e eargs) (sub_pure_exp_total e) = sub_pure_exp_total (substitute_args_expr e eargs)"
+  using assms
+  by (induction e; simp)
+
+
+lemma substitute_subexpr_assertion_commute:
+  shows "map (\<lambda>e. substitute_args_expr e eargs) (direct_sub_expressions_assertion A) = direct_sub_expressions_assertion (substitute_args_assertion A eargs)"
+  apply (induction A; simp?)
+  apply (rename_tac atm)
+  apply (case_tac atm; simp?)
+   apply (rename_tac e_r f perm)
+   apply (case_tac perm; simp?)
+  apply (rename_tac pid e_args perm)
+  apply (case_tac perm; simp?)
+  done
+
+
+lemma eval_with_substitution_rev:
+  assumes "red_pure_exps_total ctxt (Some \<omega>\<^sub>0) eargs \<omega> (Some vargs)"
+      and "\<omega>_def = Some \<omega>\<^sub>0"
+      and "\<omega>_subst = \<omega>\<lparr> get_store_total := nth_option vargs \<rparr>"
+      and "list_all no_perm_pure_exp eargs"
+      (* and "list_all no_result_pure_exp eargs" *)
+      and "list_all no_unfolding_pure_exp eargs"
+    shows "ctxt, \<omega>_def \<turnstile> \<langle>e_subst;\<omega>\<rangle> [\<Down>]\<^sub>t res \<Longrightarrow>
+           e_subst = substitute_args_expr e eargs \<Longrightarrow>
+           \<comment> \<open>res = Val v \<Longrightarrow>\<close>
+           no_perm_pure_exp e \<Longrightarrow>
+           no_old_pure_exp e \<Longrightarrow>
+           no_result_pure_exp e \<Longrightarrow>
+           no_unfolding_pure_exp e \<Longrightarrow>
+           ctxt, Some (\<omega>\<^sub>0\<lparr> get_store_total := nth_option vargs \<rparr>) \<turnstile> \<langle>e;\<omega>\<lparr> get_store_total := nth_option vargs \<rparr>\<rangle> [\<Down>]\<^sub>t res"
+      and "red_pure_exps_total ctxt \<omega>_def es_subst \<omega> rs \<Longrightarrow>
+           es_subst = map (\<lambda>e. substitute_args_expr e eargs) es \<Longrightarrow>
+           \<comment> \<open>rs = Some vs \<Longrightarrow>\<close>
+           list_all no_perm_pure_exp es \<Longrightarrow>
+           list_all no_old_pure_exp es \<Longrightarrow>
+           list_all no_result_pure_exp es \<Longrightarrow>
+           list_all no_unfolding_pure_exp es \<Longrightarrow>
+           red_pure_exps_total ctxt (Some (\<omega>\<^sub>0\<lparr> get_store_total := nth_option vargs \<rparr>)) es (\<omega>\<lparr> get_store_total := nth_option vargs \<rparr>) rs"
+  using assms(1-3)
+proof (induction arbitrary: \<omega>\<^sub>0 \<omega>_subst e and \<omega>\<^sub>0 \<omega>_subst es rule: red_pure_exp_inducts)
+  case (RedLit \<omega>_def l \<omega>)
+  consider (Subst) "\<exists>x. e = Var x" | (NoSubst) "e = ELit l"
+    using RedLit(1)
+    by (cases e; simp)
+  then show ?case
+  proof cases
+    case Subst
+    then show ?thesis
+      using RedLit.prems(1,6) TotalExpressions.RedLit subst_var_eval_rev
+      by blast
+  next
+    case NoSubst
+    then show ?thesis
+      using TotalExpressions.RedLit
+      by blast
+  qed
+next
+  case (RedVar \<omega> n v \<omega>_def)
+  then obtain x where "e = Var x"
+    using RedVar(1)
+    by (cases e; simp)
+  then show ?case
+    by (metis RedVar.hyps RedVar.prems(1,6) pure_exp.distinct(57) TotalExpressions.RedVar subst_var_eval_rev)
+next
+  case (RedResult \<omega> v \<omega>_def)
+  then show ?case
+    apply (cases e; simp)
+    by (smt (verit, ccfv_threshold) RedResult.prems(1,8) RedVar RedVar_case full_total_state.fold_congs(1) pure_exp.distinct(220) red_pure_exp_total_red_pure_exps_total.RedResult subst_var_eval_rev)
+next
+  case (RedBinopLazy \<omega>_def e1_subst \<omega> v1 bop v e2_subst)
+  consider (SubstPart) "\<exists>e1 e2. e = Binop e1 bop e2" | (SubstVar) "\<exists>x. e = Var x"
+    using RedBinopLazy(4)
+    by (cases e; simp)
+  then show ?case
+  proof cases
+    case SubstPart
+    then show ?thesis
+      by (metis (no_types, lifting) RedBinopLazy.IH(2) RedBinopLazy.hyps RedBinopLazy.prems pure_exp.inject(4) pure_exp_pred.elims(2) pure_exp_pred_rec.simps(4) TotalExpressions.RedBinopLazy substitute_args_expr.simps(3))
+  next
+    case SubstVar
+    then show ?thesis
+      by (metis (no_types, lifting) RedBinopLazy.IH(1) RedBinopLazy.hyps RedBinopLazy.prems(1) RedBinopLazy.prems(6) RedBinopLazy.prems(7) full_total_state.unfold_congs(1) pure_exp.distinct(107) TotalExpressions.RedBinopLazy subst_var_eval_rev)
+  qed
+next
+  case (RedBinop \<omega>_def e1_subst \<omega> v1 e2_subst v2 bop v)
+  consider (SubstPart) "\<exists>e1 e2. e = Binop e1 bop e2" | (SubstVar) "\<exists>x. e = Var x"
+    using RedBinop.prems(1)
+    by (cases e; simp)
+  then show ?case
+  proof cases
+    case SubstPart
+    then obtain e1 e2 where "e = Binop e1 bop e2"
+      by blast
+    show ?thesis
+      apply (subst \<open>e = _\<close>)
+      using RedBinop.IH(2,4) RedBinop.hyps(1,2) RedBinop.prems(1-7) \<open>e = _\<close> TotalExpressions.RedBinop
+      by fastforce
+  next
+    case SubstVar
+    show ?thesis
+      apply (rule subst_var_eval_rev)
+          apply fact+
+        apply simp
+      using RedBinop.IH(1,3) RedBinop.hyps(1,2) RedBinop.prems(7)
+       apply (blast intro: TotalExpressions.RedBinop)
+      by fact
+  qed
+next
+  case (RedBinopRightFailure \<omega>_def e1_subst \<omega> v1 e2_subst bop)
+  consider (SubstPart) "\<exists>e1 e2. e = Binop e1 bop e2" | (SubstVar) "\<exists>x. e = Var x"
+    using RedBinopRightFailure.prems(1)
+    by (cases e; simp)
+  then show ?case
+  proof cases
+    case SubstPart
+    then obtain e1 e2 where "e = Binop e1 bop e2"
+      by blast
+    show ?thesis
+      apply (subst \<open>e = _\<close>)
+      apply (rule TotalExpressions.RedBinopRightFailure)
+         apply (rule RedBinopRightFailure.IH(2))
+      using RedBinopRightFailure.prems \<open>e = _\<close>
+                apply fastforce+
+        apply (rule RedBinopRightFailure.IH(4))
+      using RedBinopRightFailure.prems \<open>e = _\<close>
+               apply fastforce+
+       apply fact
+      using RedBinopRightFailure.hyps(2) RedBinopRightFailure.prems(7)
+      by auto
+  next
+    case SubstVar
+    then obtain x where "e = Var x"
+      by blast
+    show ?thesis
+      using RedBinopRightFailure.IH(1,3) RedBinopRightFailure.hyps(1,2) RedBinopRightFailure.prems(1,6,7) \<open>e = Var x\<close> TotalExpressions.RedBinopRightFailure subst_var_eval_rev_failure
+      by blast
+  qed
+next
+  case (RedBinopOpFailure \<omega>_def e1_subst \<omega> v1 e2_subst v2 bop)
+  consider (SubstPart) "\<exists>e1 e2. e = Binop e1 bop e2" | (SubstVar) "\<exists>x. e = Var x"
+    using RedBinopOpFailure.prems(1)
+    by (cases e; simp)
+  then show ?case
+  proof cases
+    case SubstPart
+    then obtain e1 e2 where "e = Binop e1 bop e2"
+      by blast
+    show ?thesis
+      apply (subst \<open>e = _\<close>)
+      apply (rule TotalExpressions.RedBinopOpFailure)
+         apply (rule RedBinopOpFailure.IH(2))
+      using RedBinopOpFailure.prems \<open>e = _\<close>
+                apply fastforce+
+        apply (rule RedBinopOpFailure.IH(4))
+      using RedBinopOpFailure.prems \<open>e = _\<close>
+               apply fastforce+
+      using RedBinopOpFailure.hyps(1) RedBinopOpFailure.prems(7)
+       apply auto[1]
+      by fact
+  next
+    case SubstVar
+    then obtain x where "e = Var x"
+      by blast
+    show ?thesis
+      using RedBinopOpFailure.IH(1,3) RedBinopOpFailure.hyps(1,2) RedBinopOpFailure.prems(1,6,7) \<open>e = Var x\<close> TotalExpressions.RedBinopOpFailure subst_var_eval_rev_failure
+      by blast
+  qed
+next
+  case (RedUnop \<omega>_def e_subst \<omega> v unop v')
+  consider (SubstPart) "\<exists>e'. e = Unop unop e'" | (SubstVar) "\<exists>x. e = Var x"
+    using RedUnop.prems(1)
+    by (cases e; simp)
+  then show ?case
+  proof cases
+    case SubstPart
+    then show ?thesis
+      by (metis RedUnop.IH(2) RedUnop.hyps RedUnop.prems(1-7) list.pred_inject(2) pure_exp.inject(3) pure_exp_pred_subexp TotalExpressions.RedUnop sub_pure_exp_total.simps(1) substitute_args_expr.simps(2))
+  next
+    case SubstVar
+    then show ?thesis
+      using RedUnop.IH(1) RedUnop.hyps RedUnop.prems(1,6,7) TotalExpressions.RedUnop subst_var_eval_rev
+      by blast
+  qed
+next
+  case (RedCondExpTrue \<omega>_def e1_subst \<omega> e2_subst r e3_subst)
+  consider (SubstPart) "\<exists>e1 e2 e3. e = CondExp e1 e2 e3" | (SubstVar) "\<exists>x. e = Var x"
+    using RedCondExpTrue.prems(1)
+    by (cases e; simp)
+  then show ?case
+  proof cases
+    case SubstPart
+    then obtain e1 e2 e3 where "e = CondExp e1 e2 e3"
+      by blast
+    show ?thesis
+      apply (subst \<open>e = _\<close>)
+      apply (rule TotalExpressions.RedCondExpTrue)
+       apply (rule RedCondExpTrue.IH(2))
+      using RedCondExpTrue.prems \<open>e = _\<close>
+              apply fastforce+
+      apply (rule RedCondExpTrue.IH(4))
+      using RedCondExpTrue.prems \<open>e = _\<close>
+      by fastforce+
+  next
+    case SubstVar
+    show ?thesis
+    proof (cases r)
+      case (Val v)
+      show ?thesis
+        apply (subst \<open>r = _\<close>)
+        apply (rule subst_var_eval_rev)
+            apply fact+
+          apply simp
+        using RedCondExpTrue.IH(1,3) RedCondExpTrue.prems(7) Val
+         apply (blast intro: TotalExpressions.RedCondExpTrue)
+        by fact
+    next
+      case VFailure
+      then show ?thesis
+        using RedCondExpTrue.IH(1,3) RedCondExpTrue.prems(1,6,7) SubstVar TotalExpressions.RedCondExpTrue subst_var_eval_rev_failure
+        by blast
+    qed
+  qed
+next
+  case (RedCondExpFalse \<omega>_def e1_subst \<omega> e3_subst r e2_subst)
+  consider (SubstPart) "\<exists>e1 e2 e3. e = CondExp e1 e2 e3" | (SubstVar) "\<exists>x. e = Var x"
+    using RedCondExpFalse.prems(1)
+    by (cases e; simp)
+  then show ?case
+  proof cases
+    case SubstPart
+    then obtain e1 e2 e3 where "e = CondExp e1 e2 e3"
+      by blast
+    show ?thesis
+      apply (subst \<open>e = _\<close>)
+      apply (rule TotalExpressions.RedCondExpFalse)
+       apply (rule RedCondExpFalse.IH(2))
+      using RedCondExpFalse.prems \<open>e = _\<close>
+              apply fastforce+
+      apply (rule RedCondExpFalse.IH(4))
+      using RedCondExpFalse.prems \<open>e = _\<close>
+      by fastforce+
+  next
+    case SubstVar
+    show ?thesis
+    proof (cases r)
+      case (Val v)
+      show ?thesis
+        apply (subst \<open>r = _\<close>)
+        apply (rule subst_var_eval_rev)
+            apply fact+
+          apply simp
+        using RedCondExpFalse.IH(1,3) RedCondExpFalse.prems(7) Val
+         apply (blast intro: TotalExpressions.RedCondExpFalse)
+        by fact
+    next
+      case VFailure
+      then show ?thesis
+        using RedCondExpFalse.IH(1,3) RedCondExpFalse.prems(1,6,7) SubstVar TotalExpressions.RedCondExpFalse subst_var_eval_rev_failure
+        by blast
+    qed
+  qed
+next
+  case (RedOld \<omega> l \<phi> \<omega>_def' \<omega>_def e_subst r)
+  consider (SubstPart) "\<exists>e'. e = Old l e'" | (SubstVar) "\<exists>x. e = Var x"
+    using RedOld.prems(1)
+    by (cases e; simp)
+  then show ?case
+  proof cases
+    case SubstPart
+    then show ?thesis
+      using RedOld.prems(3)
+      by force
+  next
+    case SubstVar
+    show ?thesis
+    proof (cases r)
+      case (Val v)
+      show ?thesis
+        apply (subst \<open>r = _\<close>)
+        apply (rule subst_var_eval_rev)
+            apply fact+
+          apply simp
+        using RedOld.IH(1) RedOld.hyps(1,2) RedOld.prems(7) Val TotalExpressions.RedOld
+         apply blast
+        by fact
+    next
+      case VFailure
+      then show ?thesis
+        by (metis RedOld.IH(1) RedOld.hyps(1,2) RedOld.prems(1,6,7) SubstVar no_old_pure_exp_no_rec.simps(1) no_old_pure_exp_no_rec.simps(16) TotalExpressions.RedOld subst_var_eval_rev_failure)
+    qed
+  qed
+next
+  case (RedOldFailure \<omega> l \<omega>_def e)
+  consider (SubstPart) "\<exists>e'. e = Old l e'" | (SubstVar) "\<exists>x. e = Var x"
+    using RedOldFailure.prems(1)
+    by (cases e; simp)
+  then show ?case
+  proof cases
+    case SubstPart
+    then show ?thesis
+      using RedOldFailure.prems(3)
+      by force
+  next
+    case SubstVar
+    show ?thesis
+      using RedOldFailure.hyps RedOldFailure.prems(1,6) SubstVar TotalExpressions.RedOldFailure subst_var_eval_rev_failure
+      by blast
+  qed
+next
+  case (RedField \<omega>_def e_subst \<omega> a f v)
+  have "if_Some (\<lambda>res. (a, f) \<in> get_valid_locs res) \<omega>_def =
+        if_Some (\<lambda>res. (a, f) \<in> get_valid_locs res) (Some (\<omega>\<^sub>0\<lparr> get_store_total := nth_option vargs \<rparr>))"
+    unfolding \<open>\<omega>_def = _\<close>
+    by (simp add: get_valid_locs_def)
+  consider (SubstPart) "\<exists>e'. e = FieldAcc e' f" | (SubstVar) "\<exists>x. e = Var x"
+    using RedField.prems(1)
+    by (cases e; simp)
+  then show ?case
+  proof cases
+    case SubstPart
+    then obtain e' where "e = FieldAcc e' f"
+      by blast
+    show ?thesis
+      apply (subst \<open>e = _\<close>)
+      apply (subst \<open>if_Some _ _ = _\<close>)
+      apply (rule TotalExpressions.RedField)
+       apply (rule RedField.IH(2))
+      using RedField.prems \<open>e = FieldAcc e' f\<close>
+              apply fastforce+
+      using RedField.hyps
+      by auto
+  next
+    case SubstVar
+    show ?thesis
+    proof (cases "if_Some (\<lambda>res. (a, f) \<in> get_valid_locs res) \<omega>_def")
+      case True
+      show ?thesis
+        apply (subst True)
+        apply (simp del: update_store_total.simps)
+        apply (rule subst_var_eval_rev)
+            apply fact+
+          apply simp
+        using RedField.IH(1) RedField.hyps RedField.prems(7) RedField_def_normalI True
+         apply fastforce
+        by fact
+    next
+      case False
+      show ?thesis
+        apply (subst False)
+        using False
+        by (metis RedField.IH(1) RedField.prems(1,6,7) RedField_def_failureI SubstVar if_SomeIex pure_exp.distinct(149) subst_var_eval_rev_failure)
+    qed
+  qed
+next
+  case (RedFieldNullFailure \<omega>_def e \<omega> f)
+  consider (SubstPart) "\<exists>e'. e = FieldAcc e' f" | (SubstVar) "\<exists>x. e = Var x"
+    using RedFieldNullFailure.prems(1)
+    by (cases e; simp)
+  then show ?case
+  proof cases
+    case SubstPart
+    then show ?thesis
+      by (metis RedFieldNullFailure.IH(2) RedFieldNullFailure.prems(1-7) pure_exp.inject(6) pure_exp_pred.elims(2) pure_exp_pred_rec.simps(6) TotalExpressions.RedFieldNullFailure substitute_args_expr.simps(5))
+  next
+    case SubstVar
+    then show ?thesis
+      using RedFieldNullFailure.IH(1) RedFieldNullFailure.prems(1,6,7) TotalExpressions.RedFieldNullFailure subst_var_eval_rev_failure
+      by blast
+  qed
+next
+  case (RedPermNull \<omega>_def e \<omega> f)
+  then show ?case
+    apply (cases e; simp)
+    by (metis assms(4) list_all_length no_perm_pure_exp_no_rec.simps(1) pure_exp.distinct(183) pure_exp_pred.elims(2))
+next
+  case (RedPerm \<omega>_def e_subst \<omega> a f v)
+  then show ?case
+    apply (cases e; simp)
+    by (metis assms(4) list_all_length no_perm_pure_exp_no_rec.simps(1) pure_exp.distinct(183) pure_exp_pred.elims(2))
+next
+  case (RedUnfoldingDefNoPred \<omega>_def es \<omega> vs pid ubody)
+  then show ?case
+    apply (cases e; simp)
+    by (metis assms(5) list_all_length no_unfolding_pure_exp_no_rec.simps(1) pure_exp.distinct(227) pure_exp_pred.elims(2))
+next
+  case (RedUnfoldingDef \<omega>_def es \<omega> vs perm pid nm' \<omega>'_def ubody v)
+  show ?case
+    using RedUnfoldingDef.prems(1)
+    apply (cases e; simp)
+     apply (metis assms(5) list_all_length no_unfolding_pure_exp_no_rec.simps(1) pure_exp.distinct(227) pure_exp_pred.elims(2))
+    using RedUnfoldingDef.prems(5)
+    by fastforce
+next
+  case (RedSubFailure e' \<omega>_def \<omega>)
+  show ?case
+  proof (cases "\<exists>x. e = Var x")
+    case True
+    then show ?thesis
+      by (metis RedSubFailure.IH(1) RedSubFailure.hyps RedSubFailure.prems(1,6,7) TotalExpressions.RedSubFailure sub_pure_exp_total.simps(16) subst_var_eval_rev_failure)
+  next
+    case False
+    then show ?thesis
+      using substitute_subexpr_expr_commute
+      by (metis RedSubFailure.IH(2) RedSubFailure.hyps RedSubFailure.prems(1-7) length_greater_0_conv length_map pure_exp_pred_subexp TotalExpressions.RedSubFailure)
+  qed
+qed (fastforce intro: red_pure_exp_intros)+
+
+
+lemma inhale_perm_single_diff_store:
+  assumes WfCons: "wf_total_consistency ctxt StateCons StateCons_t"
+      and "\<omega>' \<in> inhale_perm_single StateCons \<omega> lh p_opt"
+    shows "\<omega>'\<lparr> get_store_total := store \<rparr> \<in> inhale_perm_single StateCons (\<omega>\<lparr> get_store_total := store \<rparr>) lh p_opt"
+proof -
+  obtain q where *:
+    "option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
+     \<omega>' = upd_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + q) \<and> StateCons \<omega>'"
+    using assms
+    unfolding inhale_perm_single_def
+    by blast
+  show ?thesis
+    unfolding inhale_perm_single_def
+    apply standard
+    apply (rule exI[of _ "\<omega>'\<lparr> get_store_total := store \<rparr>"])
+    apply (rule exI[of _ q])
+    apply (intro conjI)
+       prefer 4
+    using * WfCons total_consistency_store_update_2
+       apply blast
+    using *
+    by simp_all
+qed
+
+
+lemma inhale_perm_single_pred_diff_store:
+  assumes WfCons: "wf_total_consistency ctxt StateCons StateCons_t"
+      and "\<omega>' \<in> inhale_perm_single_pred ctxt StateCons \<omega> lp p_opt"
+    shows "\<omega>'\<lparr> get_store_total := store \<rparr> \<in> inhale_perm_single_pred ctxt StateCons (\<omega>\<lparr> get_store_total := store \<rparr>) lp p_opt"
+proof -
+  obtain \<phi>_inh q where *:
+    "option_fold ((=) q) (q \<noteq> 0) p_opt \<and>
+     consistent_external_wrt_ploc ctxt \<phi>_inh lp q \<and>
+     get_hh_total \<phi>_inh = get_hh_total_full \<omega> \<and>
+     \<omega>' = (if q = 0 then \<omega> else add_to_lpm_nonzero_total_full \<omega> lp (Abs_posreal q) (get_nm_total \<phi>_inh)) \<and>
+     StateCons \<omega>'"
+    using assms
+    unfolding inhale_perm_single_pred_def
+    by blast
+  show ?thesis
+    unfolding inhale_perm_single_pred_def
+    apply standard
+    apply (rule exI[of _ "\<omega>'\<lparr> get_store_total := store \<rparr>"])
+    apply (rule exI[of _ \<phi>_inh])
+    apply (rule exI[of _ q])
+    apply (intro conjI)
+         prefer 6
+    using * WfCons total_consistency_store_update_2
+         apply blast
+    using *
+    by simp_all
+qed
+
+
+lemma inhale_mono:
+  assumes "red_inhale ctxt StateCons A \<omega> (RNormal \<omega>')"
+  shows "\<omega> \<le> \<omega>'"
+  sorry
+
+
+lemma eval_with_larger_state:
+  assumes "red_pure_exps_total ctxt (Some \<omega>) es \<omega> (Some vs)"
+      and NoPerm: "list_all no_perm_pure_exp es"
+      and NoUnfolding: "list_all no_unfolding_pure_exp es"
+      and Larger: "\<omega>' \<ge> \<omega>"
+    shows "red_pure_exps_total ctxt (Some \<omega>') es \<omega>' (Some vs)"
+  sorry
 
 
 lemma inhale_with_substitution:
-  assumes "red_inhale ctxt StateCons A (\<omega>\<lparr> get_store_total := nth_option vs \<rparr>) (RNormal (\<omega>'\<lparr> get_store_total := nth_option vs \<rparr>))"
+  assumes "red_inhale ctxt StateCons A \<omega>_subst res"
+      and "\<omega>_subst = \<omega>\<lparr> get_store_total := nth_option vs \<rparr>"
+      and "res = RNormal \<omega>'"
       and "red_pure_exps_total ctxt (Some \<omega>) es \<omega> (Some vs)"
-    shows "red_inhale ctxt StateCons (substitute_args_assertion A es) \<omega> (RNormal \<omega>')"
-  sorry
+      and "get_store_total \<omega>'' = get_store_total \<omega>"
+      and "get_trace_total \<omega>'' = get_trace_total \<omega>"
+      and "get_total_full \<omega>'' = get_total_full \<omega>'"
+      and "supported_pred_body A"
+      and "no_unfolding_assertion A"  \<comment> \<open>Temporary restriction. Would be good if it could be lifted.\<close>
+      and WfCons: "wf_total_consistency ctxt StateCons StateCons_t"
+      and NoPerm: "list_all no_perm_pure_exp es"
+      and NoUnfolding: "list_all no_unfolding_pure_exp es"
+    shows "red_inhale ctxt StateCons (substitute_args_assertion A es) \<omega> (RNormal \<omega>'')"
+  using assms(1-9)
+proof (induction arbitrary: \<omega> \<omega>' \<omega>'')
+  case (InhAcc \<omega>_subst e_r r e_p p W' f res)
+  hence "no_perm_pure_exp e_r" and "no_old_pure_exp e_r" and "no_result_pure_exp e_r" and "no_unfolding_pure_exp e_r" and
+        "no_perm_pure_exp e_p" and "no_old_pure_exp e_p" and "no_result_pure_exp e_p" and "no_unfolding_pure_exp e_p"
+    by auto
+  hence "ctxt, Some \<omega> \<turnstile> \<langle>substitute_args_expr e_r es;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
+        "ctxt, Some \<omega> \<turnstile> \<langle>substitute_args_expr e_p es;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+    using InhAcc.hyps(1,2) InhAcc.prems(1,3) eval_with_substitution(1)
+    by blast+
+  show ?case
+    apply simp
+    apply (rule red_inhale.InhAcc)
+       apply fact+
+     apply simp
+    apply simp
+    apply (intro conjI; intro impI)
+  proof -
+    assume "r = Null"
+    hence "th_result_rel (0 \<le> p) (\<not> 0 < p) {\<omega>_subst} (RNormal \<omega>')"
+      using InhAcc.hyps(3,4) InhAcc.prems(2)
+      by auto
+    hence "0 \<le> p" and "\<not> 0 < p" and "\<omega>' = \<omega>_subst"
+      using th_result_rel_normal
+      by auto
+    have "\<omega>'' = \<omega>"
+      apply (rule full_total_state.equality; simp add: InhAcc)
+      by (simp add: InhAcc.prems(1) \<open>\<omega>' = \<omega>_subst\<close>)
+    thus "th_result_rel (0 \<le> p) (\<not> 0 < p) {\<omega>} (RNormal \<omega>'')"
+      by (simp add: \<open>0 \<le> p\<close> \<open>\<not> 0 < p\<close> THResultNormal)
+  next
+    assume "r \<noteq> Null"
+    let ?W = "inhale_perm_single StateCons \<omega> (the_address r, f) (Some (Abs_preal p))"
+    have "0 \<le> p" and "W' \<noteq> {}" and "\<omega>' \<in> W'"
+      using InhAcc.hyps(4) InhAcc.prems(2) th_result_rel_normal
+      by auto
+    have "?W \<noteq> {}"
+      using inhale_perm_single_diff_store[OF WfCons \<open>\<omega>' \<in> W'\<close>[unfolded \<open>W' = _\<close>, simplified \<open>r \<noteq> Null\<close>, simplified], of "get_store_total \<omega>"]
+      unfolding \<open>\<omega>_subst = _\<close>
+      by auto
+    have "\<omega>'' = \<omega>'\<lparr> get_store_total := get_store_total \<omega> \<rparr>"
+      apply (rule full_total_state.equality; simp add: InhAcc)
+      using InhAcc.hyps(3) InhAcc.prems(1) \<open>\<omega>' \<in> W'\<close> \<open>r \<noteq> Null\<close> inhale_perm_single_trace_same
+      by fastforce
+    have "\<omega>'' \<in> ?W"
+      using inhale_perm_single_diff_store[OF WfCons \<open>\<omega>' \<in> W'\<close>[unfolded \<open>W' = _\<close>, simplified \<open>r \<noteq> Null\<close>, simplified], of "get_store_total \<omega>"]
+      unfolding \<open>\<omega>_subst = _\<close> \<open>\<omega>'' = _\<close>
+      by simp
+    thus "th_result_rel (0 \<le> p) (?W \<noteq> {}) ?W (RNormal \<omega>'')"
+      by (simp add: \<open>?W \<noteq> {}\<close> \<open>0 \<le> p\<close> THResultNormal)
+  qed
+next
+  case (InhAccWildcard \<omega>_subst e_r r W' f res)
+  hence "no_perm_pure_exp e_r" and "no_old_pure_exp e_r" and "no_result_pure_exp e_r" and "no_unfolding_pure_exp e_r"
+    by auto
+  hence r_eval: "ctxt, Some \<omega> \<turnstile> \<langle>substitute_args_expr e_r es;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+    using InhAccWildcard.hyps(1,2) InhAccWildcard.prems(1,3) eval_with_substitution(1)
+    by blast+
+  have "r \<noteq> Null" and "W' \<noteq> {}" and "\<omega>' \<in> W'"
+    using InhAccWildcard.hyps(3) InhAccWildcard.prems(2) th_result_rel_normal
+    by auto
+  let ?W = "inhale_perm_single StateCons \<omega> (the_address r, f) None"
+  have "?W \<noteq> {}"
+    using inhale_perm_single_diff_store[OF WfCons \<open>\<omega>' \<in> W'\<close>[unfolded \<open>W' = _\<close>], of "get_store_total \<omega>"]
+    unfolding \<open>\<omega>_subst = _\<close>
+    by auto
+  have "\<omega>'' = \<omega>'\<lparr> get_store_total := get_store_total \<omega> \<rparr>"
+    apply (rule full_total_state.equality; simp add: InhAccWildcard)
+    using InhAccWildcard.hyps(2) InhAccWildcard.prems(1) \<open>\<omega>' \<in> W'\<close> inhale_perm_single_trace_same
+    by fastforce
+  have "\<omega>'' \<in> ?W"
+    using inhale_perm_single_diff_store[OF WfCons \<open>\<omega>' \<in> W'\<close>[unfolded \<open>W' = _\<close>], of "get_store_total \<omega>"]
+    unfolding \<open>\<omega>_subst = _\<close> \<open>\<omega>'' = _\<close>
+    by simp
+  show ?case
+    apply simp
+    apply (rule red_inhale.InhAccWildcard)
+      apply fact+
+     apply simp
+    by (simp add: THResultNormal_alt \<open>\<omega>'' \<in> _\<close> \<open>?W \<noteq> {}\<close> \<open>r \<noteq> Null\<close>)
+next
+  case (InhAccPred \<omega>_subst e_args v_args e_p p W' pid res)
+  hence "list_all no_perm_pure_exp e_args" and "list_all no_old_pure_exp e_args" and "list_all no_result_pure_exp e_args" and "list_all no_unfolding_pure_exp e_args" and
+        "no_perm_pure_exp e_p" and "no_old_pure_exp e_p" and "no_result_pure_exp e_p" and "no_unfolding_pure_exp e_p"
+    by auto
+  hence "red_pure_exps_total ctxt (Some \<omega>) (map (\<lambda>e. substitute_args_expr e es) e_args) \<omega> (Some v_args)" and
+    "ctxt, Some \<omega> \<turnstile> \<langle>substitute_args_expr e_p es;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+    using InhAccPred.hyps(1,2) InhAccPred.prems(1,3) eval_with_substitution
+    by metis+
+  have "0 \<le> p" and "W' \<noteq> {}" and "\<omega>' \<in> W'"
+    using InhAccPred.hyps(4) InhAccPred.prems(2) th_result_rel_normal
+    by auto
+  let ?W = "inhale_perm_single_pred ctxt StateCons \<omega> (pid,v_args) (Some (Abs_preal p))"
+  have "?W \<noteq> {}"
+    using inhale_perm_single_pred_diff_store[OF WfCons \<open>\<omega>' \<in> W'\<close>[unfolded \<open>W' = _\<close>], of "get_store_total \<omega>"]
+    unfolding \<open>\<omega>_subst = _\<close>
+    by auto
+  have "\<omega>'' = \<omega>'\<lparr> get_store_total := get_store_total \<omega> \<rparr>"
+    apply (rule full_total_state.equality; simp add: InhAccPred)
+    using InhAccPred.hyps(3) InhAccPred.prems(1) \<open>\<omega>' \<in> W'\<close> inhale_perm_single_pred_trace_same
+    by fastforce
+  have "\<omega>'' \<in> ?W"
+    using inhale_perm_single_pred_diff_store[OF WfCons \<open>\<omega>' \<in> W'\<close>[unfolded \<open>W' = _\<close>], of "get_store_total \<omega>"]
+    unfolding \<open>\<omega>_subst = _\<close> \<open>\<omega>'' = _\<close>
+    by simp
+  show ?case
+    apply simp
+    apply (rule red_inhale.InhAccPred)
+       apply fact+
+     apply simp
+    by (simp add: \<open>0 \<le> p\<close> \<open>?W \<noteq> {}\<close> \<open>\<omega>'' \<in> ?W\<close> THResultNormal)
+next
+  case (InhAccPredWildcard \<omega>_subst e_args v_args W' pid res)
+  hence "list_all no_perm_pure_exp e_args" and "list_all no_old_pure_exp e_args" and "list_all no_result_pure_exp e_args" and "list_all no_unfolding_pure_exp e_args"
+    by auto
+  hence "red_pure_exps_total ctxt (Some \<omega>) (map (\<lambda>e. substitute_args_expr e es) e_args) \<omega> (Some v_args)"
+    using InhAccPredWildcard.hyps(1) InhAccPredWildcard.prems(1,3) eval_with_substitution(2)
+    by blast
+  have "W' \<noteq> {}" and "\<omega>' \<in> W'"
+    using InhAccPredWildcard.hyps(3) InhAccPredWildcard.prems(2) th_result_rel_normal
+    by blast+
+  let ?W = "inhale_perm_single_pred ctxt StateCons \<omega> (pid,v_args) None"
+  have "?W \<noteq> {}"
+    using inhale_perm_single_pred_diff_store[OF WfCons \<open>\<omega>' \<in> W'\<close>[unfolded \<open>W' = _\<close>], of "get_store_total \<omega>"]
+    unfolding \<open>\<omega>_subst = _\<close>
+    by auto
+  have "\<omega>'' = \<omega>'\<lparr> get_store_total := get_store_total \<omega> \<rparr>"
+    apply (rule full_total_state.equality; simp add: InhAccPredWildcard)
+    using InhAccPredWildcard.hyps(2) InhAccPredWildcard.prems(1) \<open>\<omega>' \<in> W'\<close> inhale_perm_single_pred_trace_same
+    by fastforce
+  have "\<omega>'' \<in> ?W"
+    using inhale_perm_single_pred_diff_store[OF WfCons \<open>\<omega>' \<in> W'\<close>[unfolded \<open>W' = _\<close>], of "get_store_total \<omega>"]
+    unfolding \<open>\<omega>_subst = _\<close> \<open>\<omega>'' = _\<close>
+    by simp
+  show ?case
+    apply simp
+    apply (rule red_inhale.InhAccPredWildcard)
+      apply fact+
+     apply simp
+    by (simp add:\<open>?W \<noteq> {}\<close> \<open>\<omega>'' \<in> ?W\<close> THResultNormal)
+next
+  case (InhPure \<omega>_subst e b)
+  hence "no_perm_pure_exp e" and "no_old_pure_exp e" and "no_result_pure_exp e" and "no_unfolding_pure_exp e"
+    by auto
+  hence e_eval: "ctxt, Some \<omega> \<turnstile> \<langle>substitute_args_expr e es;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
+    using eval_with_substitution(1)[OF InhPure(4) _ _ InhPure(1)] InhPure.prems(1)
+    by blast
+  have "\<omega> = \<omega>''"
+    by (metis (mono_tags) InhPure.prems(1,2,4,5,6) full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(1) old.unit.exhaust result_total.inject result_total.simps(5))
+  show ?case
+    apply simp
+    by (metis (full_types) InhPure.prems(2) \<open>\<omega> = \<omega>''\<close> e_eval inh_pure_normal result_total.distinct(3))
+next
+  case (InhStarNormal A \<omega>_subst \<omega>\<^sub>A B res)
+  have mono: "\<omega>\<^sub>A\<lparr> get_store_total := get_store_total \<omega> \<rparr> \<ge> \<omega>"
+    by (smt (verit) InhStarNormal.hyps(1) InhStarNormal.prems(1) full_total_state.select_convs(1) full_total_state.select_convs(2) full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(1) inhale_mono less_eq_full_total_state_ext_def old.unit.exhaust)
+  hence "red_pure_exps_total ctxt (Some (\<omega>\<^sub>A\<lparr> get_store_total := get_store_total \<omega> \<rparr>)) es (\<omega>\<^sub>A\<lparr> get_store_total := get_store_total \<omega> \<rparr>) (Some vs)"
+    using InhStarNormal.prems(3) NoPerm NoUnfolding eval_with_larger_state
+    by blast
+  show ?case
+    apply simp
+    apply (rule red_inhale.InhStarNormal[where \<omega>''="\<omega>\<^sub>A\<lparr> get_store_total := get_store_total \<omega> \<rparr>"])
+     apply (rule InhStarNormal(3))
+            apply (simp add: InhStarNormal.prems(1))
+           apply simp
+          apply fact
+         apply simp
+    using inhale_only_changes_mask[OF InhStarNormal(1), of \<omega>\<^sub>A]
+    unfolding \<open>\<omega>_subst = _\<close>
+        apply force
+       apply simp
+    using InhStarNormal.prems(7,8)
+      apply (simp, simp)
+    apply (rule InhStarNormal(4))
+           apply (metis InhStarNormal.hyps(1) InhStarNormal.prems(1) full_total_state.select_convs(1) full_total_state.surjective full_total_state.update_convs(1) inhale_only_changes_mask)
+          apply (subst \<open>res = _\<close>)
+          apply simp
+         apply fact
+        apply simp
+        apply fact
+       apply simp
+    using inhale_only_changes_mask[OF InhStarNormal(1), of \<omega>\<^sub>A]
+    unfolding \<open>\<omega>_subst = _\<close>
+       apply (simp add: InhStarNormal.prems(5))
+      apply (simp add: InhStarNormal.prems(6))
+    using InhStarNormal.prems(7,8)
+    by simp_all
+next
+  case (InhImpTrue \<omega>_subst e A res)
+  hence "no_perm_pure_exp e" and "no_old_pure_exp e" and "no_result_pure_exp e" and "no_unfolding_pure_exp e"
+    by auto
+  show ?case
+    apply simp
+    apply (rule TotalInhaleExhale.InhImpTrue)
+     apply (rule eval_with_substitution(1); (rule InhImpTrue)?)
+    using InhImpTrue.prems(1)
+          apply blast
+         apply simp
+        apply fact+
+    using InhImpTrue.prems(1,2,3,4-8) InhImpTrue.IH
+    by simp
+next
+  case (InhImpFalse \<omega>_subst e res A)
+  hence "no_perm_pure_exp e" and "no_old_pure_exp e" and "no_result_pure_exp e" and "no_unfolding_pure_exp e"
+    by auto
+  show ?case
+    apply simp
+    apply (rule TotalInhaleExhale.InhImpFalse)
+     apply (rule eval_with_substitution(1); (rule InhImpFalse)?)
+    using InhImpFalse.prems(1)
+          apply blast
+         apply simp
+        apply fact+
+    using InhImpFalse.hyps(2) InhImpFalse.prems(1,2,4-6)
+    by auto
+next
+  case (InhCondAssertTrue \<omega>_subst e A res B)
+  hence "no_perm_pure_exp e" and "no_old_pure_exp e" and "no_result_pure_exp e" and "no_unfolding_pure_exp e"
+    by auto
+  show ?case
+    apply simp
+    apply (rule TotalInhaleExhale.InhCondAssertTrue)
+     apply (rule eval_with_substitution(1); (rule InhCondAssertTrue)?)
+    using InhCondAssertTrue.prems(1)
+          apply blast
+         apply simp
+        apply fact+
+    using InhCondAssertTrue
+    by auto
+next
+  case (InhCondAssertFalse \<omega>_subst e B res A)
+  hence "no_perm_pure_exp e" and "no_old_pure_exp e" and "no_result_pure_exp e" and "no_unfolding_pure_exp e"
+    by auto
+  show ?case
+    apply simp
+    apply (rule TotalInhaleExhale.InhCondAssertFalse)
+     apply (rule eval_with_substitution(1); (rule InhCondAssertFalse)?)
+    using InhCondAssertFalse.prems(1)
+          apply blast
+         apply simp
+        apply fact+
+    using InhCondAssertFalse
+    by auto
+qed auto
+
+
+lemma inhale_with_substitution_rev:
+  assumes "red_inhale ctxt StateCons A_subst \<omega> res"
+      and "A_subst = substitute_args_assertion A es"
+      and "red_pure_exps_total ctxt (Some \<omega>) es \<omega> (Some vs)"
+      and "supported_pred_body A"
+      and "no_unfolding_assertion A"  \<comment> \<open>Temporary restriction. Would be good if it could be lifted.\<close>
+      and "res \<noteq> RMagic"
+      and WfCons: "wf_total_consistency ctxt StateCons StateCons_t"
+      and NoPerm: "list_all no_perm_pure_exp es"
+      and NoUnfolding: "list_all no_unfolding_pure_exp es"
+    shows "red_inhale ctxt StateCons A (\<omega>\<lparr> get_store_total := nth_option vs \<rparr>) (map_result_total (\<lambda>\<omega>. \<omega>\<lparr> get_store_total := nth_option vs \<rparr>) res)"
+  using assms(1-6)
+proof (induction arbitrary: A)
+  case (InhAcc \<omega> e_r_subst r e_p_subst p W' f res)
+  obtain e_r e_p where "A = Atomic (Acc e_r f (PureExp e_p))"
+    using InhAcc(5)
+    apply (cases A; simp)
+    apply (rename_tac atm)
+    by (case_tac atm; simp; rename_tac perm; case_tac perm; simp)
+  show ?case
+  proof (cases res)
+    case RMagic
+    then show ?thesis
+      by (simp add: InhAcc.prems(5))
+  next
+    case RFailure
+    show ?thesis
+      apply (subst \<open>res = _\<close>)
+      apply (subst \<open>A = _\<close>)
+      apply (rule red_inhale.InhAcc)
+         apply (rule eval_with_substitution_rev(1))
+      using NoPerm NoUnfolding InhAcc \<open>A = _\<close>
+                   apply fastforce+
+        apply (rule eval_with_substitution_rev(1))
+      using NoPerm NoUnfolding InhAcc \<open>A = _\<close>
+                  apply fastforce+
+      using InhAcc.hyps(4) RFailure THResultFailure th_result_rel_failure_2
+      by fastforce
+  next
+    case (RNormal \<omega>')
+    hence "p \<ge> 0" and "W' \<noteq> {} \<and> (p > 0 \<longrightarrow> r \<noteq> Null)" and "\<omega>' \<in> W'"
+      using InhAcc.hyps(4) th_result_rel_normal
+      by auto
+    let ?W = "inhale_perm_single StateCons (\<omega>\<lparr> get_store_total := nth_option vs \<rparr>) (the_address r,f) (Some (Abs_preal p))"
+    have "r \<noteq> Null \<Longrightarrow> \<omega>'\<lparr> get_store_total := nth_option vs \<rparr> \<in> ?W"
+      apply (rule inhale_perm_single_diff_store)
+       apply (rule WfCons)
+      using \<open>\<omega>' \<in> W'\<close>[unfolded \<open>W' = _\<close>]
+      by auto
+    hence "r \<noteq> Null \<Longrightarrow> ?W \<noteq> {}"
+      by auto
+    show ?thesis
+      apply (subst \<open>A = _\<close>)
+      apply (rule red_inhale.InhAcc)
+         apply (rule eval_with_substitution_rev(1))
+      using NoPerm NoUnfolding InhAcc \<open>A = _\<close>
+                   apply fastforce+
+        apply (rule eval_with_substitution_rev(1))
+      using NoPerm NoUnfolding InhAcc \<open>A = _\<close>
+                  apply fastforce+
+      apply (subst \<open>res = _\<close>)
+      apply (simp only: map_result_total.simps)
+      using InhAcc.hyps(3) THResultNormal \<open>0 \<le> p\<close> \<open>W' \<noteq> {} \<and> (0 < p \<longrightarrow> r \<noteq> Null)\<close> \<open>\<omega>' \<in> W'\<close> \<open>_ \<Longrightarrow> _ \<in> ?W\<close> \<open>_ ==> ?W \<noteq> {}\<close>
+      by force
+  qed
+next
+  case (InhAccWildcard \<omega> e_r_subst r W' f res)
+  obtain e_r where "A = Atomic (Acc e_r f Wildcard)"
+    using InhAccWildcard.prems(1)
+    apply (cases A; simp)
+    apply (rename_tac atm)
+    by (case_tac atm; simp; rename_tac perm; case_tac perm; simp)
+  show ?case
+  proof (cases res)
+    case RMagic
+    then show ?thesis
+      using InhAccWildcard.prems(5)
+      by auto
+  next
+    case RFailure
+    then show ?thesis
+      apply (subst \<open>res = _\<close>)
+      apply (subst \<open>A = _\<close>)
+      apply (rule red_inhale.InhAccWildcard)
+        apply (rule eval_with_substitution_rev(1))
+      using NoPerm NoUnfolding InhAccWildcard \<open>A = _\<close>
+                  apply fastforce+
+      using InhAccWildcard.hyps(3) RFailure THResultFailure th_result_rel_failure_2
+      by fastforce
+  next
+    case (RNormal \<omega>')
+    hence "W' \<noteq> {} \<and> r \<noteq> Null" and "\<omega>' \<in> W'"
+      using InhAccWildcard.hyps(3) th_result_rel_normal
+      by auto
+    let ?W = "inhale_perm_single StateCons (\<omega>\<lparr> get_store_total := nth_option vs \<rparr>) (the_address r,f) None"
+    have "\<omega>'\<lparr> get_store_total := nth_option vs \<rparr> \<in> ?W"
+      apply (rule inhale_perm_single_diff_store)
+       apply (rule WfCons)
+      using \<open>\<omega>' \<in> W'\<close>[unfolded \<open>W' = _\<close>]
+      by auto
+    hence "?W \<noteq> {}"
+      by auto
+    show ?thesis
+      apply (subst \<open>A = _\<close>)
+      apply (rule red_inhale.InhAccWildcard)
+        apply (rule eval_with_substitution_rev(1))
+      using NoPerm NoUnfolding InhAccWildcard \<open>A = _\<close>
+                  apply fastforce+
+      apply (subst \<open>res = _\<close>)
+      apply (simp only: map_result_total.simps)
+      using InhAccWildcard.hyps(2) THResultNormal \<open>W' \<noteq> {} \<and> r \<noteq> Null\<close> \<open>\<omega>' \<in> W'\<close> \<open>_ \<in> ?W\<close> \<open>?W \<noteq> {}\<close>
+      by auto
+  qed
+next
+  case (InhAccPred \<omega> e_args v_args e_p p W' pid res)
+  obtain e_args e_p where "A = Atomic (AccPredicate pid e_args (PureExp e_p))"
+    using InhAccPred.prems(1)
+    apply (cases A; simp)
+    apply (rename_tac atm)
+    by (case_tac atm; simp; rename_tac perm; case_tac perm; simp)
+  show ?case
+  proof (cases res)
+    case RMagic
+    then show ?thesis
+      using InhAccPred.prems(5)
+      by auto
+  next
+    case RFailure
+    then show ?thesis
+      apply (subst \<open>res = _\<close>)
+      apply (subst \<open>A = _\<close>)
+      apply (rule red_inhale.InhAccPred)
+         apply (rule eval_with_substitution_rev(2))
+      using NoPerm NoUnfolding InhAccPred \<open>A = _\<close>
+                   apply fastforce+
+        apply (rule eval_with_substitution_rev(1))
+      using NoPerm NoUnfolding InhAccPred \<open>A = _\<close>
+                  apply fastforce+
+      using InhAccPred.hyps(4) RFailure THResultFailure th_result_rel_failure_2
+      by fastforce
+  next
+    case (RNormal \<omega>')
+    hence "W' \<noteq> {}" and "\<omega>' \<in> W'"
+      using InhAccPred.hyps(4) th_result_rel_normal
+      by auto
+    let ?W = "inhale_perm_single_pred ctxt StateCons (\<omega>\<lparr> get_store_total := nth_option vs \<rparr>) (pid,v_args) (Some (Abs_preal p))"
+    have "\<omega>'\<lparr> get_store_total := nth_option vs \<rparr> \<in> ?W"
+      apply (rule inhale_perm_single_pred_diff_store)
+       apply (rule WfCons)
+      using \<open>\<omega>' \<in> W'\<close>[unfolded \<open>W' = _\<close>]
+      by auto
+    hence "?W \<noteq> {}"
+      by auto
+    show ?thesis
+      apply (subst \<open>A = _\<close>)
+      apply (rule red_inhale.InhAccPred)
+         apply (rule eval_with_substitution_rev(2))
+      using NoPerm NoUnfolding InhAccPred \<open>A = _\<close>
+                   apply fastforce+
+        apply (rule eval_with_substitution_rev(1))
+      using NoPerm NoUnfolding InhAccPred \<open>A = _\<close>
+                  apply fastforce+
+      apply (subst \<open>res = _\<close>)
+      apply (simp only: map_result_total.simps)
+      using InhAccPred.hyps(4) RNormal THResultNormal \<open>_ \<in> ?W\<close> \<open>?W \<noteq> {}\<close> th_result_rel_normal
+      by force
+  qed
+next
+  case (InhAccPredWildcard \<omega> e_args v_args W' pid res)
+  obtain e_args where "A = Atomic (AccPredicate pid e_args Wildcard)"
+    using InhAccPredWildcard.prems(1)
+    apply (cases A; simp)
+    apply (rename_tac atm)
+    by (case_tac atm; simp; rename_tac perm; case_tac perm; simp)
+  show ?case
+  proof (cases res)
+    case RMagic
+    then show ?thesis
+      using InhAccPredWildcard.prems(5)
+      by auto
+  next
+    case RFailure
+    then show ?thesis
+      apply (subst \<open>res = _\<close>)
+      apply (subst \<open>A = _\<close>)
+      apply (rule red_inhale.InhAccPredWildcard)
+        apply (rule eval_with_substitution_rev(2))
+      using NoPerm NoUnfolding InhAccPredWildcard \<open>A = _\<close>
+                  apply fastforce+
+      using InhAccPredWildcard.hyps(3) RFailure THResultFailure th_result_rel_failure_2
+      by fastforce
+  next
+    case (RNormal \<omega>')
+    hence "W' \<noteq> {}" and "\<omega>' \<in> W'"
+      using InhAccPredWildcard.hyps(3) th_result_rel_normal
+      by auto
+    let ?W = "inhale_perm_single_pred ctxt StateCons (\<omega>\<lparr> get_store_total := nth_option vs \<rparr>) (pid,v_args) None"
+    have "\<omega>'\<lparr> get_store_total := nth_option vs \<rparr> \<in> ?W"
+      apply (rule inhale_perm_single_pred_diff_store)
+       apply (rule WfCons)
+      using \<open>\<omega>' \<in> W'\<close>[unfolded \<open>W' = _\<close>]
+      by auto
+    hence "?W \<noteq> {}"
+      by auto
+    show ?thesis
+      apply (subst \<open>A = _\<close>)
+      apply (rule red_inhale.InhAccPredWildcard)
+        apply (rule eval_with_substitution_rev(2))
+      using NoPerm NoUnfolding InhAccPredWildcard \<open>A = _\<close>
+                  apply fastforce+
+      apply (subst \<open>res = _\<close>)
+      apply (simp only: map_result_total.simps)
+      using InhAccPredWildcard.hyps(3) RNormal THResultNormal \<open>_ \<in> ?W\<close> \<open>?W \<noteq> {}\<close> th_result_rel_normal
+      by auto
+  qed
+next
+  case (InhPure \<omega> e_subst b)
+  hence "b"
+    by argo
+  obtain e where "A = Atomic (Pure e)"
+    using InhPure.prems(1)
+    apply (cases A; simp)
+    apply (rename_tac atm)
+    by (case_tac atm; simp; rename_tac perm; case_tac perm; simp)
+  show ?case
+    apply (subst \<open>b\<close>)
+    apply simp
+    apply (subst \<open>A = _\<close>)
+    apply (rule red_inhale.InhPure[where b=True, simplified])
+    apply (rule eval_with_substitution_rev(1))
+    using NoPerm NoUnfolding InhPure \<open>A = _\<close> \<open>b\<close>
+    by fastforce+
+next
+  case (InhStarNormal P_subst \<omega> \<omega>'' Q_subst res)
+  obtain P Q where "A = Star P Q"
+    using InhStarNormal.prems(1)
+    apply (cases A; simp)
+    apply (rename_tac atm)
+    by (case_tac atm; simp; rename_tac perm; case_tac perm; simp)
+  have "\<omega>'' \<ge> \<omega>"
+    using InhStarNormal.hyps(1) inhale_mono
+    by blast
+  show ?case
+    apply (subst \<open>A = _\<close>)
+    apply (rule red_inhale.InhStarNormal)
+     apply (rule InhStarNormal.IH(1)[simplified map_result_total.simps])
+    using InhStarNormal.prems \<open>A = P && Q\<close>
+         apply fastforce+
+    apply (rule InhStarNormal.IH(2))
+    using InhStarNormal.prems \<open>A = P && Q\<close>
+        apply fastforce+
+    using InhStarNormal.prems(2) NoPerm NoUnfolding \<open>\<omega> \<le> \<omega>''\<close> eval_with_larger_state
+       apply blast
+    using InhStarNormal.prems(3,4) \<open>A = P && Q\<close> \<open>res \<noteq> RMagic\<close>
+    by simp_all
+next
+  case (InhStarFailureMagic P_subst \<omega> resP Q_subst)
+  obtain P Q where "A = Star P Q"
+    using InhStarFailureMagic.prems(1)
+    apply (cases A; simp)
+    apply (rename_tac atm)
+    by (case_tac atm; simp; rename_tac perm; case_tac perm; simp)
+  show ?case
+    apply (subst \<open>A = _\<close>)
+    using InhStarFailureMagic.IH InhStarFailureMagic.hyps(2) InhStarFailureMagic.prems(1-5) \<open>A = P && Q\<close> red_inhale.InhStarFailureMagic
+    by fastforce
+next
+  case (InhImpTrue \<omega> e_subst P_subst res)
+  obtain e P where "A = Imp e P"
+    using InhImpTrue.prems(1)
+    apply (cases A; simp)
+    apply (rename_tac atm)
+    by (case_tac atm; simp; rename_tac perm; case_tac perm; simp)
+  show ?case
+    apply (subst \<open>A = _\<close>)
+    apply (rule red_inhale.InhImpTrue)
+     apply (rule eval_with_substitution_rev)
+    using NoPerm NoUnfolding InhImpTrue \<open>A = _\<close>
+    by fastforce+
+next
+  case (InhImpFalse \<omega> e_subst res A_subst)
+  obtain e P where "A = Imp e P"
+    using InhImpFalse.prems(1)
+    apply (cases A; simp)
+    apply (rename_tac atm)
+    by (case_tac atm; simp; rename_tac perm; case_tac perm; simp)
+  show ?case
+    apply (subst \<open>A = _\<close>)
+    apply (rule red_inhale.InhImpFalse)
+     apply (rule eval_with_substitution_rev)
+    using NoPerm NoUnfolding InhImpFalse \<open>A = _\<close>
+    by fastforce+
+next
+  case (InhCondAssertTrue \<omega> e_subst P_subst res B_subst)
+  obtain e P Q where "A = CondAssert e P Q"
+    using InhCondAssertTrue.prems(1)
+    apply (cases A; simp)
+    apply (rename_tac atm)
+    by (case_tac atm; simp; rename_tac perm; case_tac perm; simp)
+  show ?case
+    apply (subst \<open>A = _\<close>)
+    apply (rule red_inhale.InhCondAssertTrue)
+     apply (rule eval_with_substitution_rev)
+    using NoPerm NoUnfolding InhCondAssertTrue \<open>A = _\<close>
+    by fastforce+
+next
+  case (InhCondAssertFalse \<omega> e B res A)
+  obtain e P Q where "A = CondAssert e P Q"
+    using InhCondAssertFalse.prems(1)
+    apply (cases A; simp)
+    apply (rename_tac atm)
+    by (case_tac atm; simp; rename_tac perm; case_tac perm; simp)
+  show ?case
+    apply (subst \<open>A = _\<close>)
+    apply (rule red_inhale.InhCondAssertFalse)
+     apply (rule eval_with_substitution_rev)
+    using NoPerm NoUnfolding InhCondAssertFalse \<open>A = _\<close>
+    by fastforce+
+next
+  case (InhSubExpFailure A_subst \<omega>)
+  have sub: "direct_sub_expressions_assertion A_subst = map (\<lambda>e. substitute_args_expr e es) (direct_sub_expressions_assertion A)"
+    using InhSubExpFailure.prems(1) substitute_subexpr_assertion_commute
+    by fastforce
+  show ?case
+    apply (simp only: map_result_total.simps)
+    apply (rule red_inhale.InhSubExpFailure)
+    using sub InhSubExpFailure.hyps(1)
+     apply force
+    apply (rule eval_with_substitution_rev(2))
+              apply fact
+             apply simp
+            apply simp
+           apply (rule NoPerm)
+          apply (rule NoUnfolding)
+         apply fact
+        apply fact
+    using InhSubExpFailure.prems(3,4) assert_pred_subexp
+    by auto
+qed
 
 
 lemma framing_with_substitution:
   assumes "assertion_framing_state ctxt StateCons A (\<omega>\<lparr> get_store_total := nth_option vs \<rparr>)"
       and "red_pure_exps_total ctxt (Some \<omega>) es \<omega> (Some vs)"
+      and "supported_pred_body A"
+      and "no_unfolding_assertion A"  \<comment> \<open>Temporary restriction. Would be good if it could be lifted.\<close>
+      and WfCons: "wf_total_consistency ctxt StateCons StateCons_t"
+      and NoPerm: "list_all no_perm_pure_exp es"
+      and NoUnfolding: "list_all no_unfolding_pure_exp es"
     shows "assertion_framing_state ctxt StateCons (substitute_args_assertion A es) \<omega>"
-  sorry
-
-
-\<comment> \<open>Currently not used anywhere.\<close>
-lemma inhale_mono:
-  assumes "red_inhale ctxt StateCons A \<omega> (RNormal \<omega>')"
-  shows "\<omega> \<le> \<omega>'"
-  oops
+  using assms
+  unfolding assertion_framing_state_def
+  using inhale_with_substitution_rev map_result_total.simps(3)
+  by blast
 
 
 

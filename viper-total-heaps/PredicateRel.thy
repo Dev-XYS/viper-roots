@@ -479,8 +479,8 @@ lemma unfold_stmt_rel:
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
       and CtxtWfPred: "ctxt_pred_syn_wf ctxt_vpr"
-      (* and ArgsSimp: "e_args = [pure_exp.Var 0]" \<comment> \<open>We only support one predicate argument, which must be the first method argument.\<close> *)
-      and "True"
+      and ArgsRestriction: "list_all no_unfolding_pure_exp e_args \<and> list_all no_perm_pure_exp e_args"
+      and BodyNoUnfolding: "no_unfolding_assertion (syntactic_mult p pbody)"  \<comment> \<open>Should be lifted soon.\<close>
       and PermSimp: "e_p = ELit (LPerm p)" \<comment> \<open>We only support literals as the permission.\<close>
       and PermPos: "p > 0"
       and StepExhale:
@@ -555,6 +555,14 @@ proof (rule stmt_rel_intro)
     using rel_success_elim[OF StepExhale \<open>R \<omega> ns\<close> step_exh]
     by blast
 
+  \<comment> \<open>Simplification: permission is constant\<close>
+  have "v_p = p"
+    using TotalExpressions.RedLit_case[OF e_p_eval[simplified PermSimp]]
+    by auto
+  hence inh_perm_const: "Rep_preal (Abs_preal v_p) = p"
+    using one_preal.rep_eq one_preal_def Abs_preal_inverse \<open>0 \<le> v_p\<close>
+    by auto
+
   \<comment> \<open>Step 2: inhale\<close>
 
   have step_inhale:
@@ -564,11 +572,16 @@ proof (rule stmt_rel_intro)
     apply (subst substitute_synmult_commute[symmetric])
      apply (simp add: prat_non_negative)
     apply (rule inhale_with_substitution)
-     apply simp_all
-     apply fact
-    using e_args_eval
-      \<comment> \<open>Not provable without further restrictions.\<close>
-    sorry
+               apply simp_all
+           apply fact
+          apply (rule eval_with_different_pred_heap(2)[OF _ _ _ _ _ e_args_eval])
+    unfolding \<open>\<phi>\<^sub>d = _\<close>
+                apply (simp_all add: ArgsRestriction)
+    using SupportedPredBody prat_non_negative syntactic_mult_supported
+      apply force
+    using BodyNoUnfolding inh_perm_const
+     apply auto[1]
+    by fact
 
   have FramingSubst:
     "assertion_framing_state ctxt_vpr StateCons
@@ -578,18 +591,15 @@ proof (rule stmt_rel_intro)
      apply (simp add: PermPos order_less_imp_le)
     apply (rule framing_with_substitution)
     using FramingArgs[of p, unfolded assertion_self_framing_store_def, simplified]
-     apply blast
-    using e_args_eval
-      \<comment> \<open>Not provable without further restrictions.\<close>
-    sorry
-
-  \<comment> \<open>Simplification: permission is constant\<close>
-  have "v_p = p"
-    using TotalExpressions.RedLit_case[OF e_p_eval[simplified PermSimp]]
-    by auto
-  hence inh_perm_const: "Rep_preal (Abs_preal v_p) = p"
-    using one_preal.rep_eq one_preal_def Abs_preal_inverse \<open>0 \<le> v_p\<close>
-    by auto
+          apply blast
+         apply (rule eval_with_different_pred_heap(2)[OF _ _ _ _ _ e_args_eval])
+    unfolding \<open>\<phi>\<^sub>d = _\<close>
+               apply (simp_all add: ArgsRestriction)
+    using PermPos SupportedPredBody syntactic_mult_supported
+      apply auto[1]
+    using BodyNoUnfolding inh_perm_const
+     apply auto[1]
+    by fact
 
   have \<omega>'_rel: "\<omega>' = \<lparr> get_store_total = get_store_total \<omega>, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>' \<rparr>"
     by (simp add: \<open>\<omega>' = _\<close>)

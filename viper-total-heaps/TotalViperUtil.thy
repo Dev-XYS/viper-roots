@@ -60,6 +60,7 @@ fun pure_exp_pred_rec :: "(pure_exp \<Rightarrow> bool) \<Rightarrow> pure_exp \
 | "pure_exp_pred_rec p (pure_exp.Let e e_body) \<longleftrightarrow> pure_exp_pred p e \<and> pure_exp_pred p e_body"
 | "pure_exp_pred_rec p (PExists ty e) \<longleftrightarrow> pure_exp_pred p e"
 | "pure_exp_pred_rec p (PForall ty e) \<longleftrightarrow> pure_exp_pred p e"
+| "pure_exp_pred_rec p DummyExpr \<longleftrightarrow> True"
 
 fun
   atomic_assert_pred :: "(pure_exp atomic_assert \<Rightarrow> bool) \<Rightarrow> (pure_exp \<Rightarrow> bool) \<Rightarrow> (pure_exp atomic_assert) \<Rightarrow> bool" and
@@ -190,13 +191,29 @@ lemma supported_assertion_no_unfolding:
    apply (metis atomic_assert_pred_rec.simps(1) atomic_assert_pred_rec.simps(3) pure_exp_pred.elims(2) supported_atomic_assert.elims(2) supported_pure_exp_no_unfolding)
   using supported_pure_exp_no_unfolding by auto
 
-text \<open>supported predicate body\<close>
+
+subsubsection \<open>No result expressions\<close>
+
+fun no_result_pure_exp_no_rec :: "pure_exp \<Rightarrow> bool"
+  where
+    "no_result_pure_exp_no_rec Result = False"
+  | "no_result_pure_exp_no_rec _ = True"
+
+abbreviation no_result_pure_exp
+  where "no_result_pure_exp \<equiv> pure_exp_pred no_result_pure_exp_no_rec"
+
+abbreviation no_result_assertion
+  where "no_result_assertion \<equiv> assert_pred (\<lambda>_. True) (\<lambda>_. True) no_result_pure_exp_no_rec"
+
+
+subsubsection \<open>supported predicate body\<close>
 
 abbreviation supported_pred_expr
-  where "supported_pred_expr e \<equiv> no_perm_pure_exp e \<and> no_old_pure_exp e"
+  where "supported_pred_expr e \<equiv> no_perm_pure_exp e \<and> no_old_pure_exp e \<and> no_result_pure_exp e"
 
 abbreviation supported_pred_body
-  where "supported_pred_body A \<equiv> no_perm_assertion A \<and> no_old_assertion A"
+  where "supported_pred_body A \<equiv> no_perm_assertion A \<and> no_old_assertion A \<and> no_result_assertion A"
+
 
 subsection \<open>Free variables\<close>
 
@@ -217,6 +234,7 @@ fun free_var_pure_exp :: "pure_exp \<Rightarrow> var set"
 | "free_var_pure_exp (pure_exp.Let e e_body) = free_var_pure_exp e \<union> (shift_down_set (free_var_pure_exp e_body))"
 | "free_var_pure_exp (PExists ty e) = shift_down_set (free_var_pure_exp e)"
 | "free_var_pure_exp (PForall ty e) = shift_down_set (free_var_pure_exp e)"
+| "free_var_pure_exp DummyExpr = {}"
 
 fun
   free_var_atomic_assert :: "pure_exp atomic_assert \<Rightarrow> var set" where

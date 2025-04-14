@@ -58,4 +58,10 @@ lemma th_result_rel_magic:
   using assms
   by (cases) auto
 
+lemma th_result_rel_magic_2:
+  assumes "th_result_rel a b W RMagic"
+  shows "a \<and> \<not>b"
+  using assms
+  by (cases) auto
+
 end

@@ -66,6 +66,8 @@ datatype pure_exp =
   | PExists vtyp pure_exp
   | is_pforall: PForall vtyp pure_exp
 
+  | DummyExpr  \<comment> \<open>for ill-formed substitution\<close>
+
 datatype 'p exp_or_wildcard = PureExp 'p | Wildcard
 
 datatype 'p atomic_assert =

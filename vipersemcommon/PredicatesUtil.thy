@@ -32,20 +32,27 @@ fun syntactic_mult :: "real \<Rightarrow> assertion \<Rightarrow> assertion"
 
 hide_const predicate_decl.args function_decl.args method_decl.args
 fun substitute_args_expr :: "pure_exp \<Rightarrow> pure_exp list \<Rightarrow> pure_exp" where
-    "substitute_args_expr (Var x) args = args ! x"
+    "substitute_args_expr (Var x) args = (if x < length args then args ! x else DummyExpr)"  \<comment> \<open>Using \<^const>\<open>DummyExpr\<close> as the default value. Otherwise \<open>eval_with_substitution_rev\<close> is not provable.\<close>
   | "substitute_args_expr (Unop uop e) args = Unop uop (substitute_args_expr e args)"
   | "substitute_args_expr (Binop e1 bop e2) args = Binop (substitute_args_expr e1 args) bop (substitute_args_expr e2 args)"
   | "substitute_args_expr (CondExp cond e1 e2) args = CondExp (substitute_args_expr cond args) (substitute_args_expr e1 args) (substitute_args_expr e2 args)"
   | "substitute_args_expr (FieldAcc e f) args = FieldAcc (substitute_args_expr e args) f"
+  | "substitute_args_expr (Old l e) args = Old l (substitute_args_expr e args)"
+  | "substitute_args_expr (Perm e f) args = Perm (substitute_args_expr e args) f"
+  | "substitute_args_expr (PermPred pid es) args = PermPred pid (map (\<lambda>e. substitute_args_expr e args) es)"
+  | "substitute_args_expr (FunApp fid es) args = FunApp fid (map (\<lambda>e. substitute_args_expr e args) es)"
   | "substitute_args_expr (Unfolding pid es e) args = Unfolding pid (map (\<lambda>e. substitute_args_expr e args) es) (substitute_args_expr e args)"
+  | "substitute_args_expr (Let e lbody) args = Let (substitute_args_expr e args) (substitute_args_expr lbody args)"
+  | "substitute_args_expr (PExists ty e) args = PExists ty (substitute_args_expr e args)"
+  | "substitute_args_expr (PForall ty e) args = PForall ty (substitute_args_expr e args)"
   | "substitute_args_expr e _ = e"
 
 fun substitute_args_assertion :: "assertion \<Rightarrow> pure_exp list \<Rightarrow> assertion" where
     "substitute_args_assertion (Atomic (Pure e)) args = Atomic (Pure (substitute_args_expr e args))"
   | "substitute_args_assertion (Atomic (Acc e_r f (PureExp e_p))) args = Atomic (Acc (substitute_args_expr e_r args) f (PureExp (substitute_args_expr e_p args)))"
   | "substitute_args_assertion (Atomic (Acc e_r f Wildcard)) args = Atomic (Acc (substitute_args_expr e_r args) f Wildcard)"
-  | "substitute_args_assertion (Atomic (AccPredicate pid e_args (PureExp e_p))) args = Atomic (AccPredicate pid e_args (PureExp (substitute_args_expr e_p args)))"
-  | "substitute_args_assertion (Atomic (AccPredicate pid e_args Wildcard)) args = Atomic (AccPredicate pid e_args Wildcard)"
+  | "substitute_args_assertion (Atomic (AccPredicate pid e_args (PureExp e_p))) args = Atomic (AccPredicate pid (map (\<lambda>e. substitute_args_expr e args) e_args) (PureExp (substitute_args_expr e_p args)))"
+  | "substitute_args_assertion (Atomic (AccPredicate pid e_args Wildcard)) args = Atomic (AccPredicate pid (map (\<lambda>e. substitute_args_expr e args) e_args) Wildcard)"
   | "substitute_args_assertion (Imp e A) args = Imp (substitute_args_expr e args) (substitute_args_assertion A args)"
   | "substitute_args_assertion (Star A B) args = Star (substitute_args_assertion A args) (substitute_args_assertion B args)"
   | "substitute_args_assertion (CondAssert e A B) args = CondAssert (substitute_args_expr e args) (substitute_args_assertion A args) (substitute_args_assertion B args)"
