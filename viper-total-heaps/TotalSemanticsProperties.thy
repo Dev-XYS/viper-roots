@@ -798,6 +798,51 @@ next
 qed (fastforce intro: red_pure_exp_intros)+
 
 
+lemma eval_with_larger_state:
+  assumes "\<omega>' \<ge> \<omega>"
+      and "\<omega>_def = Some \<omega>"
+    shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t res \<Longrightarrow>
+           res = Val v \<Longrightarrow>
+           no_perm_pure_exp e \<Longrightarrow>
+           no_unfolding_pure_exp e \<Longrightarrow>
+           ctxt, Some \<omega>' \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t Val v"
+      and "red_pure_exps_total ctxt \<omega>_def es \<omega> rs \<Longrightarrow>
+           rs = Some vs \<Longrightarrow>
+           list_all no_perm_pure_exp es \<Longrightarrow>
+           list_all no_unfolding_pure_exp es \<Longrightarrow>
+           red_pure_exps_total ctxt (Some \<omega>') es \<omega>' (Some vs)"
+  using assms
+proof (induction arbitrary: \<omega>' v and \<omega>' vs rule: red_pure_exp_inducts)
+  case (RedVar \<omega> n v \<omega>_def)
+  then show ?case
+    by (fastforce elim: less_eq_full_total_stateE intro: red_pure_exp_intros)
+next
+  case (RedResult \<omega> v \<omega>_def)
+  then show ?case
+    by (fastforce elim: less_eq_full_total_stateE intro: red_pure_exp_intros)
+next
+  case (RedOld \<omega> l \<phi> \<omega>_def' \<omega>_def e v)
+  obtain \<phi>' where "get_trace_total \<omega>' l = Some \<phi>'" and "\<phi> \<le> \<phi>'"
+    using RedOld.hyps(1) less_eq_full_total_stateE[OF \<open>\<omega> \<le> \<omega>'\<close>]
+    by (metis domD domI)
+  show ?case
+    apply (rule TotalExpressions.RedOld)
+      apply fact
+     apply simp
+    apply (rule RedOld.IH(2))
+    using RedOld.prems
+        apply fastforce+
+    unfolding less_eq_full_total_state_ext_def
+    using RedOld.prems(4) \<open>\<phi> \<le> \<phi>'\<close> less_eq_full_total_stateD
+     apply fastforce
+    by (simp add: RedOld.hyps(2) RedOld.prems(5))
+next
+  case (RedField \<omega>_def e \<omega> a f v')
+  then show ?case
+    by (metis RedField_def_normalI extended_val.distinct(1) if_Some_iff less_eq_full_total_stateD_2 less_eq_valid_locs_subset_total_state list.pred_inject(2) pure_exp_pred_subexp sub_pure_exp_total.simps(3) subsetD)
+qed (fastforce intro: red_pure_exp_intros)+
+
+
 
 subsection \<open>Relation between exhale and sat\<close>
 
@@ -2474,15 +2519,6 @@ proof -
 qed
 
 
-lemma eval_with_larger_state:
-  assumes "red_pure_exps_total ctxt (Some \<omega>) es \<omega> (Some vs)"
-      and NoPerm: "list_all no_perm_pure_exp es"
-      and NoUnfolding: "list_all no_unfolding_pure_exp es"
-      and Larger: "\<omega>' \<ge> \<omega>"
-    shows "red_pure_exps_total ctxt (Some \<omega>') es \<omega>' (Some vs)"
-  sorry
-
-
 lemma inhale_with_substitution:
   assumes "red_inhale ctxt StateCons A \<omega>_subst res"
       and "\<omega>_subst = \<omega>\<lparr> get_store_total := nth_option vs \<rparr>"
@@ -2654,7 +2690,7 @@ next
   have mono: "\<omega>\<^sub>A\<lparr> get_store_total := get_store_total \<omega> \<rparr> \<ge> \<omega>"
     by (smt (verit) InhStarNormal.hyps(1) InhStarNormal.prems(1) full_total_state.select_convs(1) full_total_state.select_convs(2) full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(1) inhale_mono less_eq_full_total_state_ext_def old.unit.exhaust)
   hence "red_pure_exps_total ctxt (Some (\<omega>\<^sub>A\<lparr> get_store_total := get_store_total \<omega> \<rparr>)) es (\<omega>\<^sub>A\<lparr> get_store_total := get_store_total \<omega> \<rparr>) (Some vs)"
-    using InhStarNormal.prems(3) NoPerm NoUnfolding eval_with_larger_state
+    using InhStarNormal.prems(3) NoPerm NoUnfolding eval_with_larger_state(2)
     by blast
   show ?case
     apply simp
@@ -2994,7 +3030,7 @@ next
     apply (rule InhStarNormal.IH(2))
     using InhStarNormal.prems \<open>A = P && Q\<close>
         apply fastforce+
-    using InhStarNormal.prems(2) NoPerm NoUnfolding \<open>\<omega> \<le> \<omega>''\<close> eval_with_larger_state
+    using InhStarNormal.prems(2) NoPerm NoUnfolding \<open>\<omega> \<le> \<omega>''\<close> eval_with_larger_state(2)
        apply blast
     using InhStarNormal.prems(3,4) \<open>A = P && Q\<close> \<open>res \<noteq> RMagic\<close>
     by simp_all
