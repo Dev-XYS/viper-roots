@@ -1774,6 +1774,99 @@ qed
 
 
 
+subsection \<open>Inhale Properties\<close>
+
+
+lemma inhale_perm_single_mono:
+  assumes "\<omega>' \<in> inhale_perm_single StateCons \<omega> lh p_opt"
+  shows "\<omega> \<le> \<omega>'"
+proof -
+  from assms obtain q where "\<omega>' = upd_mh_loc_total_full \<omega> lh (get_mh_total_full \<omega> lh + q)"
+    unfolding inhale_perm_single_def
+    by blast
+  show ?thesis
+    unfolding \<open>\<omega>' = _\<close> less_eq_full_total_state_ext_def less_eq_total_state_ext_def
+    apply simp
+    apply (intro conjI)
+    using less_eq_nested_mask_def
+     apply fastforce
+    apply (cases "get_nm_total_full \<omega>")
+    apply (rename_tac mh fnm)
+    apply simp
+    apply (thin_tac _)
+    unfolding less_eq_nested_mask_def
+    apply (simp del: split_paired_All)
+    apply (intro conjI)
+     apply (simp add: le_funI padd_pgte)
+    apply (intro allI)
+    apply (case_tac "fnm lp")
+    by simp_all
+qed
+
+
+lemma inhale_perm_single_pred_mono:
+  assumes "\<omega>' \<in> inhale_perm_single_pred ctxt StateCons \<omega> lp p_opt"
+  shows "\<omega> \<le> \<omega>'"
+proof -
+  from assms obtain q and \<phi>_inh::"'a total_state" where "\<omega>' = (if q = 0 then \<omega> else add_to_lpm_nonzero_total_full \<omega> lp (Abs_posreal q) (get_nm_total \<phi>_inh))"
+    unfolding inhale_perm_single_pred_def
+    by blast
+  show ?thesis
+    unfolding \<open>\<omega>' = _\<close> less_eq_full_total_state_ext_def less_eq_total_state_ext_def
+    apply simp
+    apply (intro conjI)
+    using less_eq_nested_mask_def
+     apply fastforce
+    apply (intro impI)
+    apply (intro conjI)
+     apply fastforce
+    apply (cases "get_nm_total_full \<omega>")
+    apply (rename_tac mh fnm)
+    apply simp
+    apply (thin_tac "get_nm_total _ = _")
+    unfolding less_eq_nested_mask_def
+    apply (simp del: split_paired_All)
+    apply (intro allI)
+    apply (intro conjI)
+     apply (case_tac "fnm lp"; simp)
+     apply (meson less_eq_nested_mask_def nm_sum_is_bigger posreal_add_greater)
+    using less_eq_nested_mask_def nested_mask_le.simps
+    by blast
+qed
+
+
+lemma inhale_mono:
+  assumes "red_inhale ctxt StateCons A \<omega> res"
+      and "res = RNormal \<omega>'"
+    shows "\<omega> \<le> \<omega>'"
+  using assms
+proof (induction arbitrary: \<omega>')
+  case (InhAcc \<omega> e_r r e_p p W' f res)
+  then show ?case
+    by (metis inhale_perm_single_mono order_eq_refl singletonD th_result_rel_normal)
+next
+  case (InhAccWildcard \<omega> e_r r W' f res)
+  then show ?case
+    using inhale_perm_single_mono th_result_rel_normal
+    by blast
+next
+  case (InhAccPred \<omega> e_args v_args e_p p W' pred_id res)
+  then show ?case
+    using inhale_perm_single_pred_mono th_result_rel_normal
+    by blast
+next
+  case (InhAccPredWildcard \<omega> e_args v_args W' pred_id res)
+  then show ?case
+    using inhale_perm_single_pred_mono th_result_rel_normal
+    by blast
+next
+  case (InhPure \<omega> e b)
+  then show ?case
+    by (metis order_refl result_total.distinct(3) result_total.inject)
+qed auto
+
+
+
 subsection \<open>Substitution Properties\<close>
 
 
@@ -2379,12 +2472,6 @@ proof -
     using *
     by simp_all
 qed
-
-
-lemma inhale_mono:
-  assumes "red_inhale ctxt StateCons A \<omega> (RNormal \<omega>')"
-  shows "\<omega> \<le> \<omega>'"
-  sorry
 
 
 lemma eval_with_larger_state:
