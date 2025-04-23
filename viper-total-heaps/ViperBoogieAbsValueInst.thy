@@ -222,7 +222,7 @@ fun field_ty_fun_opt :: "'a ty_repr_bpl \<Rightarrow> 'a vb_field \<rightharpoon
 (*| "field_ty_fun_opt T (PredSnapshotField pred_loc) =
        map_option (\<lambda>p. (TFieldId T, [p, TConSingle (TFrameFragmentId T)])) (pred_snap_field_type T (fst pred_loc))" *)
   | "field_ty_fun_opt T (PredSnapshotField pred_loc) =
-       Some (TFieldId T, [TCon ''PredicateType_P'' [], TPrim TBool])"
+       map_option (\<lambda>p. (TFieldId T, [p, TPrim TBool])) (pred_snap_field_type T (fst pred_loc))"
   | "field_ty_fun_opt T (PredKnownFoldedField pred_loc) = 
        map_option (\<lambda>p. (TFieldId T, [p, TConSingle (TFrameFragmentId T)])) (pred_knownfolded_field_type T (fst pred_loc))"
   | "field_ty_fun_opt T (DummyField t1 t2) =
@@ -473,8 +473,7 @@ lemma field_ty_fun_two_tids:
   using assms
   apply (rule field_ty_fun_opt.elims)
      apply (metis (mono_tags, lifting) map_option_eq_Some prod.collapse prod.inject)
-    (* apply (metis (mono_tags, lifting) map_option_eq_Some prod.collapse prod.inject) *)
-    apply force
+    apply (metis (mono_tags, lifting) map_option_eq_Some prod.collapse prod.inject)
    apply (metis (mono_tags, lifting) map_option_eq_Some prod.collapse prod.inject)
   by (metis fst_conv option.distinct(1) option.inject)
 

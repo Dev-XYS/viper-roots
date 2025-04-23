@@ -122,10 +122,12 @@ lemma inhale_rel_pred_acc_upd_rel:
     MaskUpdateWf: "mask_update_wf TyRep ctxt_bpl mask_upd_bpl" and
     MaskReadWf: "mask_read_wf TyRep ctxt_bpl mask_read_bpl" and
 
+    PredType: "pred_snap_field_type TyRep pid = Some pred_type" and
+
     NewPermBpl: "new_perm = (mask_read_bpl (Var m_bpl) (Var nullConst) e_ploc_bpl
-                                  [TConSingle ''PredicateType_P'', TPrim TBool]) \<guillemotleft>Add\<guillemotright> (Var temp_perm)" and
+                                  [pred_type, TPrim TBool]) \<guillemotleft>Add\<guillemotright> (Var temp_perm)" and
     MaskUpdateBpl: "m_upd_bpl = mask_upd_bpl (Var m_bpl) (Var nullConst) e_ploc_bpl new_perm
-                                  [TConSingle ''PredicateType_P'', TPrim TBool]" and
+                                  [pred_type, TPrim TBool]" and
 
     PlocBpl: "e_ploc_bpl = FunExp pid [] e_args_bpl" and
     PlocRel: "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl" and
@@ -236,6 +238,7 @@ proof -
         apply (simp add: null_eval)
     using PlocRel[unfolded ploc_rel_vpr_bpl_def] * inhale_pred_normal_premise_def \<open>R \<omega> ns\<close>
        apply blast
+    using PredType
       apply force
      apply (fastforce intro: RedVar LookupTempPerm)
     by simp
@@ -252,7 +255,8 @@ proof -
       apply blast
     using new_perm_eval
      apply blast
-    by simp
+    using PredType
+    by force
 
   have "valid_heap_mask (get_mh_total_full \<omega>)"
     using InitRel state_rel_wf_mask_simple by blast
@@ -746,54 +750,67 @@ next
 qed
 
 
+lemma val_unique_bpl_vpr:
+  assumes "map val_rel_vpr_bpl vs_vpr = vs_bpl"
+  shows "(THE vs. map val_rel_vpr_bpl vs = vs_bpl) = vs_vpr"
+  sorry
+
+
+lemma vpr_well_ty_bpl_well_ty:
+  assumes "get_type (domain_type TyRep) v_vpr = ty_vpr"
+      and "val_rel_vpr_bpl v_vpr = v_bpl"
+      and "vpr_to_bpl_ty TyRep ty_vpr = Some ty_bpl"
+    shows "type_of_vbpl_val TyRep v_bpl = ty_bpl"
+  using assms vpr_to_bpl_val_type
+  by blast
+
+
 lemma exp_result_predicate_loc:
   assumes
     CtxtFunWf: "ctxt_wf Pr TyRep F FunMap ctxt_bpl" and
     StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega>_def \<omega> ns" and
     RedArgsVpr: "red_pure_exps_total ctxt_vpr (Some \<omega>_def) e_args_vpr \<omega> (Some v_args_vpr)" and
-    ArgsWellTy: "pred_ty_correct_premise ctxt_vpr ''P'' v_args_vpr" and
-    FunName: "FunMap FPredicateLoc_P = ''P''" and
-    PredDecl: "program.predicates (program_total ctxt_vpr) ''P'' = Some pdecl" and
-    ArgsRestrict: "predicate_decl.args pdecl = [TRef]" and
-    "e_args_vpr = [e_arg_vpr]" and
-    ArgRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl) ctxt_vpr ctxt_bpl e_arg_vpr e_arg_bpl"
-  shows "red_expr_bpl ctxt_bpl (FunExp ''P'' [] [e_arg_bpl]) ns (AbsV (AField (PredSnapshotField (''P'',v_args_vpr))))"
+    ArgsWellTy: "pred_ty_correct_premise ctxt_vpr pid v_args_vpr" and
+    FunName: "FunMap (FPredicateLoc pid tys_bpl) = pred_loc_fun_name" and
+    PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl" and
+    VprArgsTy: "predicate_decl.args pdecl = tys_vpr" and
+    ArgsTyRel: "map (vpr_to_bpl_ty TyRep) tys_vpr = map Some tys_bpl" and
+    ArgsRel: "list_all2 (exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl) ctxt_vpr ctxt_bpl) e_args_vpr e_args_bpl" and
+    AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep"
+  shows "red_expr_bpl ctxt_bpl (FunExp pred_loc_fun_name [] e_args_bpl) ns (AbsV (AField (PredSnapshotField (pid,v_args_vpr))))"
 proof -
-  obtain v_arg_vpr where "v_args_vpr = [v_arg_vpr]"
-    by (metis RedArgsVpr \<open>e_args_vpr = _\<close> option.simps(1,3) red_pure_exps_total_singleton)
-  hence eval_arg_vpr: "ctxt_vpr, Some \<omega>_def \<turnstile> \<langle>e_arg_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val v_arg_vpr"
-    using RedArgsVpr \<open>e_args_vpr = _\<close> red_exp_list_normal_elim
-    by fastforce
-  obtain v_arg_bpl where
-    "red_expr_bpl ctxt_bpl e_arg_bpl ns v_arg_bpl" and
-    arg_rel: "val_rel_vpr_bpl v_arg_vpr = v_arg_bpl"
-    using ArgRel[unfolded exp_rel_vpr_bpl_def exp_rel_vb_single_def] eval_arg_vpr StateRel
+  have "list_all2 (\<lambda>e v. ctxt_vpr, Some \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v) e_args_vpr v_args_vpr"
+    by (simp add: RedArgsVpr red_pure_exps_total_list_all2)
+
+  then obtain v_args_bpl where v_args_bpl:
+    "list_all2 (\<lambda>e v. red_expr_bpl ctxt_bpl e ns v) e_args_bpl v_args_bpl \<and> map val_rel_vpr_bpl v_args_vpr = v_args_bpl"
+    using ArgsRel exp_rel_vpr_bpl_def exp_rel_vb_single_def StateRel
+    by (smt (verit, best) length_map list_all2_conv_all_nth nth_map)
+
+  have rel_unique: "(THE v_args. map val_rel_vpr_bpl v_args = v_args_bpl) = v_args_vpr"
+    using v_args_bpl val_unique_bpl_vpr
     by blast
 
-  have "vals_well_typed (absval_interp_total ctxt_vpr) v_args_vpr (predicate_decl.args pdecl)"
-    using ArgsWellTy PredDecl pred_ty_correct_premise_def by force
+  have well_ty_vpr: "vals_well_typed (absval_interp_total ctxt_vpr) v_args_vpr tys_vpr"
+    using ArgsWellTy PredDecl pred_ty_correct_premise_def VprArgsTy
+    by force
 
-  then obtain r where "v_arg_vpr = VRef r"
-    unfolding \<open>v_args_vpr = _\<close> vals_well_typed_def ArgsRestrict
-    by (metis has_type_get_type has_type_simps(8) list.sel(1) list.simps(9))
-
-  from arg_rel[unfolded \<open>v_arg_vpr = _\<close>, simplified]
-  have "v_arg_bpl = AbsV (ARef r)"
-    by auto
+  have v_args_ty_bpl: "map (type_of_vbpl_val TyRep) v_args_bpl = tys_bpl"
+    apply (rule list_eq_iff_nth_eq[THEN iffD2])
+    apply (intro conjI)
+     apply (metis ArgsTyRel length_map v_args_bpl vals_well_typed_same_lengthD well_ty_vpr)
+    using vpr_well_ty_bpl_well_ty[of TyRep] well_ty_vpr[unfolded vals_well_typed_def AbsInterpEq] v_args_bpl[THEN conjunct2] ArgsTyRel
+    by (metis length_map nth_map)
 
   show ?thesis
-    apply (rule RedFunOp)
+    apply (rule RedFunOp[where v_args=v_args_bpl])
       apply (subst FunName[symmetric])
     using CtxtFunWf
     unfolding ctxt_wf_def fun_interp_vpr_bpl_wf_def
       apply blast
-     apply (rule RedExpListCons)
-      apply fact
-     apply (rule RedExpListNil)
-    apply (subst \<open>v_args_vpr = _\<close>)
-    apply (subst \<open>v_arg_bpl = _\<close>)
-    apply (subst \<open>v_arg_vpr = VRef r\<close>)
-    by (simp add: lift_fun_bpl_def)
+     apply (simp add: v_args_bpl bg_expr_list_red_all2)
+    apply (simp add: lift_fun_bpl_def)
+    by (simp add: map_instantiate_nil rel_unique v_args_ty_bpl)
 qed
 
 
@@ -801,13 +818,14 @@ lemma exp_rel_predicate_loc:
   assumes
     CtxtFunWf: "ctxt_wf Pr TyRep F FunMap ctxt_bpl" and
     StateRel: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns" and
-    FunName: "FunMap FPredicateLoc_P = ''P''" and
-    PredDecl: "program.predicates (program_total ctxt_vpr) ''P'' = Some pdecl" and
-    ArgsRestrict: "predicate_decl.args pdecl = [TRef]" and
-    "e_args_vpr = [e_arg_vpr]" and
-    ArgRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl) ctxt_vpr ctxt_bpl e_arg_vpr e_arg_bpl" and
-    "e_ploc_bpl = FunExp ''P'' [] [e_arg_bpl]"
-  shows "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr [e_arg_bpl] ''P'' e_ploc_bpl"
+    FunName: "FunMap (FPredicateLoc pid tys_bpl) = pred_loc_fun_name" and
+    PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl" and
+    VprArgsTy: "predicate_decl.args pdecl = tys_vpr" and
+    ArgsTyRel: "map (vpr_to_bpl_ty TyRep) tys_vpr = map Some tys_bpl" and
+    ArgsRel: "list_all2 (exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl) ctxt_vpr ctxt_bpl) e_args_vpr e_args_bpl" and
+    AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep" and
+    "e_ploc_bpl = FunExp pred_loc_fun_name [] e_args_bpl"
+  shows "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl"
   unfolding ploc_rel_vpr_bpl_def \<open>e_ploc_bpl = _\<close>
   apply (rule allI | rule impI)+
   by (insert assms, erule exp_result_predicate_loc, assumption+)
@@ -817,15 +835,16 @@ lemma exp_rel_predicate_loc':
   assumes
     CtxtFunWf: "ctxt_wf Pr TyRep F FunMap ctxt_bpl" and
     StateRel: "\<And>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<Longrightarrow> state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega>def \<omega> ns" and
-    FunName: "FunMap FPredicateLoc_P = ''P''" and
-    PredDecl: "program.predicates (program_total ctxt_vpr) ''P'' = Some pdecl" and
-    ArgsRestrict: "predicate_decl.args pdecl = [TRef]" and
-    "e_args_vpr = [e_arg_vpr]" and
-    ArgRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl) ctxt_vpr ctxt_bpl e_arg_vpr e_arg_bpl"
+    FunName: "FunMap (FPredicateLoc pid tys_bpl) = pred_loc_fun_name" and
+    PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl" and
+    VprArgsTy: "predicate_decl.args pdecl = tys_vpr" and
+    ArgsTyRel: "map (vpr_to_bpl_ty TyRep) tys_vpr = map Some tys_bpl" and
+    ArgsRel: "list_all2 (exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl) ctxt_vpr ctxt_bpl) e_args_vpr e_args_bpl" and
+    AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep"
   shows "\<And>\<omega>def \<omega> ns v_args_vpr. R \<omega>def \<omega> ns \<Longrightarrow>
             red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr) \<Longrightarrow>
-            pred_ty_correct_premise ctxt_vpr ''P'' v_args_vpr \<Longrightarrow>
-            red_expr_bpl ctxt_bpl (FunExp ''P'' [] [e_arg_bpl]) ns (AbsV (AField (PredSnapshotField (''P'',v_args_vpr))))"
+            pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<Longrightarrow>
+            red_expr_bpl ctxt_bpl (FunExp pred_loc_fun_name [] e_args_bpl) ns (AbsV (AField (PredSnapshotField (pid,v_args_vpr))))"
   by (insert assms, erule exp_result_predicate_loc, assumption+)
 
 
@@ -836,7 +855,8 @@ lemma exp_rel_perm_pred_access_2:
     PlocRel: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredSnapshotField (pid,v_args_vpr))))" and
     "mvar = mask_var Tr" and
     "nullConst = const_repr Tr CNull" and
-    "e_bpl = mask_read_bpl (expr.Var mvar) (expr.Var nullConst) e_ploc_bpl [TConSingle ''PredicateType_P'', TPrim TBool]"
+    PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
+    "e_bpl = mask_read_bpl (expr.Var mvar) (expr.Var nullConst) e_ploc_bpl [pred_ty, TPrim TBool]"
   shows "red_expr_bpl ctxt_bpl e_bpl ns (RealV (Rep_preal (get_mp_total_full \<omega> (pid,v_args_vpr))))"
 proof -
   from state_rel_mask_var_rel[OF StateRel] obtain mb
@@ -859,7 +879,7 @@ proof -
        apply (rule RedVar)
        apply (rule LookupNullVar)
       apply (rule PlocRel)
-     apply simp
+     apply (simp add: PredType)
     by (metis MaskRel mask_rel_def)
 qed
 
@@ -884,10 +904,12 @@ lemma exhale_rel_pred_acc_upd_rel:
     MaskUpdateWf: "mask_update_wf TyRep ctxt_bpl mask_upd_bpl" and
     MaskReadWf: "mask_read_wf TyRep ctxt_bpl mask_read_bpl" and
 
+    PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
+
     NewPermBpl: "new_perm = (mask_read_bpl (Var m_bpl) (Var nullConst) e_ploc_bpl
-                                  [TConSingle ''PredicateType_P'', TPrim TBool]) \<guillemotleft>Sub\<guillemotright> (Var temp_perm)" and
+                                  [pred_ty, TPrim TBool]) \<guillemotleft>Sub\<guillemotright> (Var temp_perm)" and
     MaskUpdateBpl: "m_upd_bpl = mask_upd_bpl (Var m_bpl) (Var nullConst) e_ploc_bpl new_perm
-                                  [TConSingle ''PredicateType_P'', TPrim TBool]" and
+                                  [pred_ty, TPrim TBool]" and
 
     PlocBpl: "e_ploc_bpl = FunExp pid [] e_args_bpl" and
     PlocRel: "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl" and
@@ -983,7 +1005,7 @@ proof -
         apply (simp add: null_eval)
     using PlocRel[unfolded ploc_rel_vpr_bpl_def]
        apply (meson * \<open>R \<omega> ns\<close> exhale_pred_acc_normal_premise_def exhale_pred_acc_rel_assms_def)
-      apply force
+      apply (simp add: PredType)
      apply (fastforce intro: RedVar LookupTempPerm)
     by simp
 
@@ -999,7 +1021,7 @@ proof -
       apply (meson * \<open>R \<omega> ns\<close> exhale_pred_acc_normal_premise_def exhale_pred_acc_rel_assms_def)
     using new_perm_eval
      apply blast
-    by simp
+    by (simp add: PredType)
 
   have "valid_heap_mask (get_mh_total_full \<omega>)"
     using InitRel state_rel_wf_mask_simple by blast

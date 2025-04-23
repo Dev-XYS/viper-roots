@@ -24,7 +24,7 @@ datatype fun_enum_bpl =
      | FIdenticalOnKnownLocs
      | FIsPredicateField
      | FIsWandField
-     | FPredicateLoc_P
+     | FPredicateLoc predicate_ident "bpl_ty list"
 
 text \<open>\<^typ>\<open>fun_enum_bpl\<close> enumerates the functions required for the encoding\<close>
 
@@ -506,48 +506,32 @@ lemma is_wand_field_fun_interp_single_wf:
 
 subsection \<open>Predicate Locations\<close>
 
-fun predicate_loc_P :: "'a sem_fun_bpl"
-  where "predicate_loc_P ts vs =
-           (case (ts, vs) of
-              ([], [AbsV (ARef r)]) \<Rightarrow> Some (AbsV (AField (PredSnapshotField (''P'', [VRef r]))))
-            | _ \<Rightarrow> None)"
+fun predicate_loc_bpl_fun :: "predicate_ident \<Rightarrow> ty list \<Rightarrow> 'a vbpl_absval absval_ty_fun \<Rightarrow> 'a sem_fun_bpl"
+  where "predicate_loc_bpl_fun pid tys_bpl A ts vs =
+           Some (AbsV (AField (PredSnapshotField (pid, THE v_args. map val_rel_vpr_bpl v_args = vs))))"
 
 lemma predicate_loc_P_fun_interp_single_wf:
   assumes WfTyRepr: "wf_ty_repr_bpl T"
-  shows "fun_interp_single_wf
-              (vbpl_absval_ty T)
-              (0, [TConSingle (TRefId T)], TCon (TFieldId T) [TCon ''PredicateType_P'' [], TPrim TBool])
-              predicate_loc_P"
+      and PredType: "pred_snap_field_type T pid = Some pred_ty"
+    shows "fun_interp_single_wf
+             (vbpl_absval_ty T)
+             (0, tys_bpl, TCon (TFieldId T) [pred_ty, TPrim TBool])
+             (predicate_loc_bpl_fun pid tys_bpl (vbpl_absval_ty T))"
   apply (rule fun_interp_single_wf_intro)
 proof -
   fix ts vs
   assume "length ts = 0"
      and "list_all closed ts"
-     and "length vs = length [TConSingle (TRefId T)]"
-     and 1: "map (type_of_vbpl_val T) vs = map (instantiate ts) [TConSingle (TRefId T)]"
-  hence "map (type_of_vbpl_val T) vs = [TConSingle (TRefId T)]"
+     and "length vs = length tys_bpl"
+     and "map (type_of_vbpl_val T) vs = map (instantiate ts) tys_bpl"
+  hence "ts = []"
     by simp
-  then obtain r where "vs = [AbsV (ARef r)]"
-    using ref_inversion_type_of_vbpl_val[OF WfTyRepr]
-    by blast
-  moreover have "ts = []"
-    using \<open>length ts = 0\<close>
-    by blast
-  ultimately have "predicate_loc_P ts vs = Some (AbsV (AField (PredSnapshotField (''P'', [VRef r]))))"
-    by simp
-  show "\<exists>v. predicate_loc_P ts vs = Some v \<and>
-            type_of_vbpl_val T v =
-            instantiate ts (TCon (TFieldId T) [TCon ''PredicateType_P'' [], TPrim TBool])"
-    apply (rule exI[of _ "AbsV (AField (PredSnapshotField (''P'', [VRef r])))"])
-    apply simp
-    by (simp add: \<open>ts = []\<close> \<open>vs = [AbsV (ARef r)]\<close>)
+  let ?v = "AbsV (AField (PredSnapshotField (pid, (THE v_args. map val_rel_vpr_bpl v_args = vs))))"
+  show "\<exists>v. predicate_loc_bpl_fun pid tys_bpl (vbpl_absval_ty T) ts vs = Some v \<and>
+            type_of_vbpl_val T v = instantiate ts (TCon (TFieldId T) [pred_ty, TPrim prim_ty.TBool])"
+    apply (rule exI[of _ ?v])
+    by (simp add: PredType \<open>ts = []\<close>)
 qed
-
-lemma predicate_loc_P_list_same:
-  shows "lift_fun_bpl (vbpl_absval_ty T) (0, [TConSingle (TRefId T)], TCon (TFieldId T) [TCon ''PredicateType_P'' [], TPrim TBool]) predicate_loc_P = predicate_loc_P"
-  apply standard+
-  apply (simp add: lift_fun_bpl_def)
-  oops
 
 
 subsection \<open>Global function map\<close>
@@ -582,8 +566,8 @@ fun fun_interp_vpr_bpl_aux :: "ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<
        (is_predicate_field, (2, [TCon (TFieldId T) [(TVar 0),(TVar 1)]], (TPrim TBool)))"
   | "fun_interp_vpr_bpl_aux Pr T F FIsWandField =
        (is_wand_field, (2, [TCon (TFieldId T) [(TVar 0),(TVar 1)]], (TPrim TBool)))"
-  | "fun_interp_vpr_bpl_aux Pr T F FPredicateLoc_P =
-       (predicate_loc_P, (0, [TConSingle (TRefId T)], TCon (TFieldId T) [TCon ''PredicateType_P'' [], TPrim TBool]))"
+  | "fun_interp_vpr_bpl_aux Pr T F (FPredicateLoc pid tys_bpl) =
+       (predicate_loc_bpl_fun pid tys_bpl (vbpl_absval_ty T), (0, tys_bpl, TCon (TFieldId T) [the (pred_snap_field_type T pid), TPrim TBool]))"
 
 fun fun_interp_vpr_bpl :: " ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> 
                                 fun_enum_bpl \<Rightarrow> 'a sem_fun_bpl"
