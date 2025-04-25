@@ -2072,13 +2072,14 @@ proof -
     by (metis OldHeap type_of_val.simps(2) vbpl_absval_ty.simps)
 qed   
 
-lemma heap_upd_ty_preserved_2_basic:
-  assumes OldHeap: "type_of_vbpl_val (ty_repr_basic A) (AbsV (AHeap hb)) = TConSingle ''HeapType''"
-      and FieldTy2: "type_of_vbpl_val (ty_repr_basic A) (AbsV (AField f)) = TCon ''Field'' [\<tau>, \<tau>']"
-      and NewVal: "type_of_vbpl_val (ty_repr_basic A) v = \<tau>'"
-    shows "type_of_vbpl_val (ty_repr_basic A) (AbsV (AHeap (hb ((r,f) \<mapsto> v)))) = TConSingle ''HeapType''"
-  using heap_upd_ty_preserved_2[OF wf_ty_repr_basic]
+lemma heap_upd_ty_preserved_2_concrete:
+  assumes wf_ty_repr: "wf_ty_repr_bpl (ty_repr_basic A\<lparr> pred_snap_field_type := PredFieldType \<rparr>)"
+      and OldHeap: "type_of_vbpl_val (ty_repr_basic A\<lparr> pred_snap_field_type := PredFieldType \<rparr>) (AbsV (AHeap hb)) = TConSingle ''HeapType''"
+      and FieldTy2: "type_of_vbpl_val (ty_repr_basic A\<lparr> pred_snap_field_type := PredFieldType \<rparr>) (AbsV (AField f)) = TCon ''Field'' [\<tau>, \<tau>']"
+      and NewVal: "type_of_vbpl_val (ty_repr_basic A\<lparr> pred_snap_field_type := PredFieldType \<rparr>) v = \<tau>'"
+    shows "type_of_vbpl_val (ty_repr_basic A\<lparr> pred_snap_field_type := PredFieldType \<rparr>) (AbsV (AHeap (hb ((r,f) \<mapsto> v)))) = TConSingle ''HeapType''"
+  using heap_upd_ty_preserved_2[OF wf_ty_repr]
   unfolding ty_repr_basic_def
-  by (metis FieldTy2 NewVal OldHeap tcon_enum_to_id.simps(2) tcon_enum_to_id.simps(3) ty_repr_basic_def ty_repr_bpl.select_convs(1))
+  by (metis FieldTy2 NewVal OldHeap tcon_enum_to_id.simps(2) tcon_enum_to_id.simps(3) ty_repr_basic_def ty_repr_bpl.select_convs(1) ty_repr_bpl.update_convs(2))
 
 end

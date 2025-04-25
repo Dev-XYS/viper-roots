@@ -261,10 +261,12 @@ lemma mask_inversion_eq_type_of_vbpl_val:
   using mask_inversion_type_of_vbpl_val[OF assms]
   by auto
   
-lemma mask_inversion_eq_type_of_vbpl_val_concrete: 
-  "type_of_vbpl_val (ty_repr_basic A) v = TConSingle ''MaskType'' = (\<exists>m. v = AbsV (AMask m) \<and> (id type_of_vbpl_val) (ty_repr_basic A) v = TConSingle ''MaskType'')"
-  using mask_inversion_eq_type_of_vbpl_val[OF wf_ty_repr_basic] 
-  by (auto simp: ty_repr_basic_def)
+lemma mask_inversion_eq_type_of_vbpl_val_concrete:
+  assumes wf_ty_repr: "wf_ty_repr_bpl ty_repr"
+      and "ty_repr = ty_repr_basic A\<lparr> pred_snap_field_type := PredFieldType \<rparr>"
+    shows "type_of_vbpl_val ty_repr v = TConSingle ''MaskType'' = (\<exists>m. v = AbsV (AMask m) \<and> (id type_of_vbpl_val) ty_repr v = TConSingle ''MaskType'')"
+  using mask_inversion_eq_type_of_vbpl_val[OF wf_ty_repr]
+  by (auto simp: ty_repr_basic_def \<open>ty_repr = _\<close>)
 
 lemma heap_inversion_eq_type_of_vbpl_val:
   assumes "wf_ty_repr_bpl TyRep"
@@ -273,9 +275,11 @@ lemma heap_inversion_eq_type_of_vbpl_val:
   by auto
 
 lemma heap_inversion_eq_type_of_vbpl_val_concrete:
-  "type_of_vbpl_val (ty_repr_basic A) v = TConSingle ''HeapType'' = (\<exists>h. v = AbsV (AHeap h) \<and> (id type_of_vbpl_val) (ty_repr_basic A) v = TConSingle ''HeapType'')"
-  using heap_inversion_eq_type_of_vbpl_val[OF wf_ty_repr_basic]
-  by (auto simp: ty_repr_basic_def)
+  assumes wf_ty_repr: "wf_ty_repr_bpl ty_repr"
+      and "ty_repr = ty_repr_basic A\<lparr> pred_snap_field_type := PredFieldType \<rparr>"
+    shows "type_of_vbpl_val ty_repr v = TConSingle ''HeapType'' = (\<exists>h. v = AbsV (AHeap h) \<and> (id type_of_vbpl_val) ty_repr v = TConSingle ''HeapType'')"
+  using heap_inversion_eq_type_of_vbpl_val[OF wf_ty_repr]
+  by (auto simp: ty_repr_basic_def \<open>ty_repr = _\<close>)
 
 lemma ref_inversion_eq_type_of_vbpl_val:
   assumes "wf_ty_repr_bpl TyRep"
@@ -284,9 +288,11 @@ lemma ref_inversion_eq_type_of_vbpl_val:
   by auto
 
 lemma ref_inversion_eq_type_of_vbpl_val_concrete:
-  "type_of_vbpl_val (ty_repr_basic A) v = TCon ''Ref'' [] = (\<exists>r. v = AbsV (ARef r) \<and> (id type_of_vbpl_val) (ty_repr_basic A) v = TCon ''Ref'' [])"
-  using ref_inversion_eq_type_of_vbpl_val[OF wf_ty_repr_basic]
-  by (auto simp add: ty_repr_basic_def)
+  assumes wf_ty_repr: "wf_ty_repr_bpl ty_repr"
+      and "ty_repr = ty_repr_basic A\<lparr> pred_snap_field_type := PredFieldType \<rparr>"
+    shows "type_of_vbpl_val ty_repr v = TCon ''Ref'' [] = (\<exists>r. v = AbsV (ARef r) \<and> (id type_of_vbpl_val) ty_repr v = TCon ''Ref'' [])"
+  using ref_inversion_eq_type_of_vbpl_val[OF wf_ty_repr]
+  by (auto simp add: ty_repr_basic_def \<open>ty_repr = _\<close>)
 
 lemma field_inversion_eq_type_of_vbpl_val:
   assumes "wf_ty_repr_bpl TyRep"
@@ -295,15 +301,16 @@ lemma field_inversion_eq_type_of_vbpl_val:
   by auto
 
 lemma field_inversion_eq_type_of_vbpl_val_concrete:
-  "(type_of_vbpl_val (ty_repr_basic A) v = TCon ''Field'' [t1, t2]) = (\<exists>f. v = AbsV (AField f) \<and> (id type_of_vbpl_val) (ty_repr_basic A) v = TCon ''Field'' [t1, t2])" 
+  assumes wf_ty_repr: "wf_ty_repr_bpl ty_repr"
+      and "ty_repr = ty_repr_basic A\<lparr> pred_snap_field_type := PredFieldType \<rparr>"
+    shows "(type_of_vbpl_val ty_repr v = TCon ''Field'' [t1, t2]) = (\<exists>f. v = AbsV (AField f) \<and> (id type_of_vbpl_val) ty_repr v = TCon ''Field'' [t1, t2])" 
 proof -
   have *: "TFieldId (ty_repr_basic A) = ''Field''"
     by (simp add: ty_repr_basic_def)
 
-  show ?thesis
-    using field_inversion_eq_type_of_vbpl_val[where ?TyRep = "ty_repr_basic A", OF wf_ty_repr_basic]    
-    unfolding *
-    by blast
+  thus ?thesis
+    using \<open>ty_repr = _\<close> field_inversion_type_of_vbpl_val_2 wf_ty_repr
+    by fastforce
 qed    
 
 lemma realv_inversion_type_of_vbpl_val:
@@ -312,10 +319,10 @@ lemma realv_inversion_type_of_vbpl_val:
   by auto
 
 lemmas inversion_type_of_vbpl_val_equalities =
- heap_inversion_eq_type_of_vbpl_val_concrete
- mask_inversion_eq_type_of_vbpl_val_concrete
- ref_inversion_eq_type_of_vbpl_val_concrete
- field_inversion_eq_type_of_vbpl_val_concrete
+  heap_inversion_eq_type_of_vbpl_val_concrete
+  mask_inversion_eq_type_of_vbpl_val_concrete
+  ref_inversion_eq_type_of_vbpl_val_concrete
+  field_inversion_eq_type_of_vbpl_val_concrete
 
 subsection \<open>Helper definitions\<close>
 
