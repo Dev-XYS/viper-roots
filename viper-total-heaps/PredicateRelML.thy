@@ -22,29 +22,29 @@ fun atomic_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) (no_de
     | _ => error("only support PredAccExhHint")
 
 fun pred_unfold_tac ctxt (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) atomic_exhale_hint inhale_hint =
-  (Rmsg' "Unfold Start" (resolve_tac ctxt @{thms unfold_stmt_rel}) ctxt) THEN'
-  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [#vpr_prog_def_thm basic_info] ctxt) ctxt) THEN'
-  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt) THEN'
-  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt) THEN'
-  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
-  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
-  (Rmsg' "Unfold" (resolve_tac ctxt [#consistency_wf_thm basic_info]) ctxt) THEN'
-  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info, @{thm default_state_rel_options_def}, @{thm state_rel_consistent}] ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt rule" (resolve_tac ctxt @{thms unfold_stmt_rel}) ctxt) THEN'
+  (Rmsg' "unfold stmt PredDecl" (assm_full_simp_solved_with_thms_tac [#vpr_prog_def_thm basic_info] ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt PredArgs" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt PredBody" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt CtxtPredWf" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt CtxtPredSF" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt WfCons" (resolve_tac ctxt [#consistency_wf_thm basic_info]) ctxt) THEN'
+  (Rmsg' "unfold stmt StateRelImpliesIntCons" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info, @{thm default_state_rel_options_def}, @{thm state_rel_consistent}] ctxt) ctxt) THEN'
 
-  (Rmsg' "Unfold Start" (resolve_tac ctxt @{thms extcons_fun_interp_irrelevant'}) ctxt) THEN'
-  (Rmsg' "Unfold Start" (forward_tac ctxt @{thms state_rel_consistent}) ctxt) THEN'
-  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [@{thm default_state_rel_options_def}, #tr_def_thm basic_info] ctxt) ctxt) THEN'
-  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt StateRelImpliesExtCons 1" (resolve_tac ctxt @{thms extcons_fun_interp_irrelevant'}) ctxt) THEN'
+  (Rmsg' "unfold stmt StateRelImpliesExtCons 2" (forward_tac ctxt @{thms state_rel_consistent}) ctxt) THEN'
+  (Rmsg' "unfold stmt StateRelImpliesExtCons 3" (assm_full_simp_solved_with_thms_tac [@{thm default_state_rel_options_def}, #tr_def_thm basic_info] ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt StateRelImpliesExtCons 4" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info, @{thm ty_repr_basic_def}] ctxt) ctxt) THEN'
 
-  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
-  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
-  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
-  (Rmsg' "Unfold PredDecl Lookup" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
-
-  (atomic_exhale_pred_acc_in_unfold_tac ctxt basic_info (#no_def_checks_tac_opt exhale_info) atomic_exhale_hint) THEN'
-  (Rmsg' "Unfold simp synmult" (simp_tac_with_thms [] ctxt) ctxt) THEN'
   (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
-  (Rmsg' "Unfold inhale" (inhale_rel_tac ctxt inhale_info inhale_hint) ctxt)
+  (Rmsg' "unfold stmt ArgsRestriction" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt BodyNoUnfolding" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt PermSimp" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt PermPos" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
+
+  (Rmsg' "unfold stmt StepExhale" (atomic_exhale_pred_acc_in_unfold_tac ctxt basic_info (#no_def_checks_tac_opt exhale_info) atomic_exhale_hint) ctxt) THEN'
+  (Rmsg' "unfold stmt simp synmult & subst" (asm_full_simp_tac ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt StepInhale" (inhale_rel_tac ctxt inhale_info inhale_hint) ctxt)
 
 \<close>
 

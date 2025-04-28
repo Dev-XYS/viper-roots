@@ -482,7 +482,6 @@ lemma unfold_stmt_rel:
       and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
-      and CtxtWfPred: "ctxt_pred_syn_wf ctxt_vpr"
       and ArgsRestriction: "list_all no_unfolding_pure_exp e_args \<and> list_all no_perm_pure_exp e_args"
       and BodyNoUnfolding: "no_unfolding_assertion (syntactic_mult p pbody)"  \<comment> \<open>Should be lifted soon.\<close>
       and PermSimp: "e_p = ELit (LPerm p)" \<comment> \<open>We only support literals as the permission.\<close>
@@ -497,7 +496,7 @@ lemma unfold_stmt_rel:
 proof (rule stmt_rel_intro)
   \<comment> \<open>Specialize predicate body restrictions and self-framing to the predicate in consideration\<close>
   have SupportedPredBody: "supported_pred_body pbody"
-    using CtxtWfPred PredBody PredDecl ctxt_pred_syn_wf_def
+    using CtxtPredWf PredBody PredDecl ctxt_pred_syn_wf_def
     by blast
   have SelfFraming: "assertion_self_framing ctxt_vpr StateCons pbody ty_args"
     using CtxtPredSF PredArgs PredBody PredDecl ctxt_pred_self_framing_inh_def
@@ -536,7 +535,7 @@ proof (rule stmt_rel_intro)
   have LabelCons: "\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> StateCons_t \<phi>"
     by (smt (verit, best) StateRelImpliesIntCons WfCons \<open>R \<omega> ns\<close> wf_total_consistency_def)
 
-  from inhale_simulates_unfold[OF UnfoldRel ExtCons WfCons Cons_t PredDecl PredBody CtxtWfPred FramingArgs _ LabelCons]
+  from inhale_simulates_unfold[OF UnfoldRel ExtCons WfCons Cons_t PredDecl PredBody CtxtPredWf FramingArgs _ LabelCons]
   obtain \<phi>\<^sub>d where
     \<phi>\<^sub>d: "\<phi>\<^sub>d = rm_from_lpm_total (get_total_full \<omega>) (pid,v_args) (Abs_preal v_p)" and
     step_inhale': "red_inhale ctxt_vpr StateCons (syntactic_mult (Rep_preal (Abs_preal v_p)) pbody)
@@ -831,6 +830,7 @@ lemma exp_rel_predicate_loc:
   by (insert assms, erule exp_result_predicate_loc, assumption+)
 
 
+(*
 lemma exp_rel_predicate_loc':
   assumes
     CtxtFunWf: "ctxt_wf Pr TyRep F FunMap ctxt_bpl" and
@@ -846,17 +846,18 @@ lemma exp_rel_predicate_loc':
             pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<Longrightarrow>
             red_expr_bpl ctxt_bpl (FunExp pred_loc_fun_name [] e_args_bpl) ns (AbsV (AField (PredSnapshotField (pid,v_args_vpr))))"
   by (insert assms, erule exp_result_predicate_loc, assumption+)
+*)
 
 
 lemma exp_rel_perm_pred_access_2:
   assumes
     MaskReadWf: "mask_read_wf TyRep ctxt_bpl mask_read_bpl" and
     StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega>def \<omega> ns" and
-    PlocRel: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredSnapshotField (pid,v_args_vpr))))" and
     "mvar = mask_var Tr" and
     "nullConst = const_repr Tr CNull" and
+    "e_bpl = mask_read_bpl (expr.Var mvar) (expr.Var nullConst) e_ploc_bpl [pred_ty, TPrim TBool]" and
     PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
-    "e_bpl = mask_read_bpl (expr.Var mvar) (expr.Var nullConst) e_ploc_bpl [pred_ty, TPrim TBool]"
+    PlocRel: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredSnapshotField (pid,v_args_vpr))))"
   shows "red_expr_bpl ctxt_bpl e_bpl ns (RealV (Rep_preal (get_mp_total_full \<omega> (pid,v_args_vpr))))"
 proof -
   from state_rel_mask_var_rel[OF StateRel] obtain mb

@@ -161,6 +161,23 @@ and
       ]
 \<close>
 
+ML \<open>
+
+\<comment> \<open>Prove a list of \<^const>\<open>exp_rel_vpr_bpl\<close>.\<close>
+fun exps_rel_tac_aux (info : exp_rel_info) ctxt t =
+  case t of 
+    @{term "Trueprop"} $ (_ $ Const (@{const_name Nil}, _)) => blast_tac ctxt
+  | _ => resolve_tac ctxt @{thms list_all2_Cons[THEN iffD2]} THEN'
+         resolve_tac ctxt @{thms conjI} THEN'
+         exp_rel_tac info ctxt THEN'
+         exps_rel_tac info ctxt
+
+and exps_rel_tac (info : exp_rel_info) ctxt =
+  (* SUBGOAL (fn (t,_) => (writeln (@{make_string} (case Logic.strip_assums_concl t of @{term "Trueprop"} $ (_ $ t') => t')); raise TERM ("debug", []))) *)
+  SUBGOAL (fn (t,i) => exps_rel_tac_aux info ctxt (Logic.strip_assums_concl t) i)
+
+\<close>
+
 ML
  \<open> fun field_access_rel_pre_tac_aux heap_read_wf_tac head_read_match_tac field_rel_single_tac ctxt =
     resolve_tac ctxt [@{thm exp_rel_field_access} OF [@{thm state_rel_state_rel0}]] THEN'

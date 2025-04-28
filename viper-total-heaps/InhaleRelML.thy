@@ -191,20 +191,20 @@ ML \<open>
     (Rmsg' "Inh Assume True \<Longrightarrow> True - Prove Assume Condition Holds" (fast_force_tac (add_simps @{thms inhale_acc_normal_premise_def} (ctxt addEs @{thms TotalExpressions.RedLit_case}) )) ctxt)
 
   fun inhale_rel_field_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info =
-    (Rmsg' "inh field acc upd 0" (resolve_tac ctxt @{thms inhale_rel_field_acc_upd_rel}) ctxt) THEN'
-    (Rmsg' "inh field acc upd 1" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd rule" (resolve_tac ctxt @{thms inhale_rel_field_acc_upd_rel}) ctxt) THEN'
+    (Rmsg' "inh field acc upd StateRel" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
     (Rmsg' "inh field acc upd aux var disjoint" (#aux_var_disj_tac info ctxt) ctxt) THEN'
-    (Rmsg' "inh field acc upd wf ty repr" (resolve_tac ctxt @{thms wf_ty_repr_basic}) ctxt) THEN'
-    (Rmsg' "inh field acc upd def mask and eval mask same" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
-    (Rmsg' "inh field acc upd ty interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-    (Rmsg' "inh field acc mask update wf concrete" (resolve_tac ctxt [ @{thm mask_update_wf_concrete} OF [#ctxt_wf_thm info, @{thm wf_ty_repr_basic}]]) ctxt) THEN'
-    (Rmsg' "inh field acc mask read wf concrete" (resolve_tac ctxt [ @{thm mask_read_wf_concrete} OF [#ctxt_wf_thm info, @{thm wf_ty_repr_basic}]]) ctxt) THEN'
-    (Rmsg' "inh field acc upd 2" (assm_full_simp_solved_with_thms_tac @{thms update_mask_concrete_def ty_repr_basic_def} ctxt) ctxt) THEN'
-    (Rmsg' "inh field acc upd 3" (assm_full_simp_solved_with_thms_tac @{thms read_mask_concrete_def ty_repr_basic_def} ctxt) ctxt) THEN'
-    (Rmsg' "inh field acc upd 4" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
-    (Rmsg' "inh field acc field rel" (#field_rel_single_tac info ctxt) ctxt) THEN'
-    (Rmsg' "inh field acc upd rcv rel" ((exp_rel_tac exp_rel_info ctxt) |> SOLVED') ctxt) THEN'
-    (Rmsg' "inh field acc upd wf statecons" (resolve_tac ctxt [#consistency_wf_thm info]) ctxt)
+    (Rmsg' "inh field acc upd WfTyRep" (resolve_tac ctxt [#wf_ty_repr_thm info]) ctxt) THEN'
+    (Rmsg' "inh field acc upd MaskVarDefSame" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd TyInterp" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd MaskUpdateWf" (resolve_tac ctxt [ @{thm mask_update_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]]) ctxt) THEN'
+    (Rmsg' "inh field acc upd MaskReadWf" (resolve_tac ctxt [ @{thm mask_read_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]]) ctxt) THEN'
+    (Rmsg' "inh field acc upd MaskUpdateBpl" (assm_full_simp_solved_with_thms_tac [@{thm update_mask_concrete_def}, #ty_repr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd \<open>new_perm = _\<close>" (assm_full_simp_solved_with_thms_tac [@{thm read_mask_concrete_def}, #ty_repr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd MaskVar" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd FieldRelSingle" (#field_rel_single_tac info ctxt) ctxt) THEN'
+    (Rmsg' "inh field acc upd RcvRel" ((exp_rel_tac exp_rel_info ctxt) |> SOLVED') ctxt) THEN'
+    (Rmsg' "inh field acc upd WfCons" (resolve_tac ctxt [#consistency_wf_thm info]) ctxt)
 
   fun atomic_inhale_field_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) inh_field_acc_hint =
     case inh_field_acc_hint of
@@ -230,32 +230,24 @@ ML \<open>
   end
 
   fun inhale_rel_pred_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info =
-    (* (SUBGOAL (fn (t,_) => raise TERM ("inh pred breakpoint", [t]))) THEN' *)
-    (Rmsg' "inh pred acc upd 0" (resolve_tac ctxt @{thms inhale_rel_pred_acc_upd_rel}) ctxt) THEN'
-    (Rmsg' "inh pred acc upd 1" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
+    (Rmsg' "inh pred acc upd rule" (resolve_tac ctxt @{thms inhale_rel_pred_acc_upd_rel}) ctxt) THEN'
+    (Rmsg' "inh pred acc upd StateRel" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd aux var disjoint" (#aux_var_disj_tac info ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd wf ty repr" (resolve_tac ctxt @{thms wf_ty_repr_basic}) ctxt) THEN'
-    (Rmsg' "inh pred acc upd def mask and eval mask same" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd ty interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd def mask and eval mask same" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd def mask and eval mask same" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc mask update wf concrete" (resolve_tac ctxt [ @{thm mask_update_wf_concrete} OF [#ctxt_wf_thm info, @{thm wf_ty_repr_basic}]]) ctxt) THEN'
-    (Rmsg' "inh pred acc mask read wf concrete" (resolve_tac ctxt [ @{thm mask_read_wf_concrete} OF [#ctxt_wf_thm info, @{thm wf_ty_repr_basic}]]) ctxt) THEN'
-    (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac @{thms update_mask_concrete_def ty_repr_basic_def} ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd 3" (assm_full_simp_solved_with_thms_tac @{thms update_mask_concrete_def read_mask_concrete_def ty_repr_basic_def} ctxt) ctxt) THEN'
-    (Rmsg' "intro mask lookup 5" (simp_tac_with_thms [] ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd ploc" (prove_ploc_rel ctxt info exp_rel_info) ctxt) THEN'
-    (Rmsg' "inh pred acc upd absinterpeq" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN'
-    (Rmsg' "intro mask lookup 5" (simp_tac_with_thms [] ctxt) ctxt)(*  THEN'
-    (SUBGOAL (fn (t,_) => raise TERM ("inh pred breakpoint", [t]))) THEN'
-    (Rmsg' "inh pred pred upd 3" (assm_full_simp_solved_with_thms_tac [ simplify ctxt (inst_spec @{cterm FPredicateLoc_P} OF [ simplify (add_simps @{thms ctxt_wf_def fun_interp_vpr_bpl_wf_def} (Simplifier.clear_simpset ctxt)) (#ctxt_wf_thm info) ])  ] ctxt) ctxt) THEN'
-    (* The above line applies (simp add: spec[OF CtxtWf[simplified ctxt_wf_def fun_interp_vpr_bpl_wf_def], of FPredicateLoc_P, simplified]).
-       Needs a better way to formulate this. *)
-    (Rmsg' "inh pred acc upd ty interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac [ (#vpr_prog_def_thm info) ] ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd progeq" (resolve_tac ctxt [#vpr_program_ctxt_eq_thm info]) ctxt) (* THEN'
-    (SUBGOAL (fn (t,_) => raise TERM ("inh pred breakpoint", [t]))) *) *)
+    (Rmsg' "inh pred acc upd WfTyRep" (resolve_tac ctxt [#wf_ty_repr_thm info]) ctxt) THEN'
+    (Rmsg' "inh pred acc upd MaskVarDefSame" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "inh pred acc upd TyInterp" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+    (Rmsg' "inh pred acc upd NullConst" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "inh pred acc upd MaskVar" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "inh pred acc upd MaskUpdateWf" (resolve_tac ctxt [ @{thm mask_update_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]]) ctxt) THEN'
+    (Rmsg' "inh pred acc upd MaskReadWf" (resolve_tac ctxt [ @{thm mask_read_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]]) ctxt) THEN'
+    (Rmsg' "inh pred acc upd PredType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
+    (* (SUBGOAL (fn (t,_) => raise TERM ("inh pred breakpoint", [t]))) THEN' *)
+    (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac [@{thm update_mask_concrete_def}, #ty_repr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "inh pred acc upd 3" (assm_full_simp_solved_with_thms_tac (#ty_repr_def_thm info::(@{thms update_mask_concrete_def read_mask_concrete_def})) ctxt) ctxt) THEN'
+    (Rmsg' "inh pred acc upd PlocBpl" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+    (Rmsg' "inh pred acc upd PlocRel" (prove_ploc_rel ctxt info exp_rel_info) ctxt) THEN'
+    (Rmsg' "inh pred acc upd AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info, @{thm ty_repr_basic_def}] ctxt) ctxt) THEN'
+    (Rmsg' "inh pred acc upd ProgEq" (simp_tac_with_thms [] ctxt) ctxt)
 
   fun atomic_inhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) inh_pred_acc_hint =
     case inh_pred_acc_hint of

@@ -130,7 +130,9 @@ fun rewrite_rel_general_tac ctxt =
       field_rel_single_tac : (Proof.context -> int -> tactic),
       aux_var_disj_tac: (Proof.context -> int -> tactic),
       type_interp_econtext: thm,
-      vpr_prog_def_thm: thm
+      vpr_prog_def_thm: thm,
+      ty_repr_def_thm: thm,
+      wf_ty_repr_thm: thm
   }
 
 
@@ -253,6 +255,17 @@ fun store_temporary_perm_tac ctxt (info: basic_stmt_rel_info) exp_rel_info looku
 
 \<close>
 
+
+\<comment> \<open>The following lemma solves schematic goals that look like \<open>Some (TConSingle ''Ref'')] = map Some (?tys_bpl vs p)\<close>.
+    Todo: Move somewhere else.\<close>
+
+lemma map_Some_inv:
+  assumes "list_all (HOL.Not \<circ> Option.is_none) l"
+  shows "l = map Some (map the l)"
+  using assms
+  by (induct l; simp add: Option.is_none_def)
+
+
 ML \<open>
 
 (* tactics for introducing facts into goals *)
@@ -287,7 +300,7 @@ fun intro_fact_mask_lookup_reduction ctxt (info: basic_stmt_rel_info) exp_rel_in
   (Rmsg' "intro mask lookup red 2" (resolve_tac ctxt @{thms mask_read_wf_concrete} THEN'
                                     resolve_tac ctxt [#ctxt_wf_thm info])
                                       ctxt) THEN'
-  (Rmsg' "intro mask lookup red 4" (resolve_tac ctxt @{thms wf_ty_repr_basic}) ctxt) THEN'
+  (Rmsg' "intro mask lookup red 4" (resolve_tac ctxt [#wf_ty_repr_thm info]) ctxt) THEN'
   (Rmsg' "intro mask lookup red 5" (blast_tac ctxt) ctxt) THEN'
   (Rmsg' "intro mask lookup red 6" (vpr_rcv_red_tac ctxt |> SOLVED') ctxt) THEN'
   (Rmsg' "intro mask lookup red 7" ((#field_rel_single_tac info) ctxt |> SOLVED') ctxt) THEN'
@@ -297,7 +310,7 @@ fun intro_fact_mask_lookup_reduction ctxt (info: basic_stmt_rel_info) exp_rel_in
   (Rmsg' "intro mask lookup red 11" (assm_full_simp_solved_with_thms_tac @{thms read_mask_concrete_def} ctxt) ctxt)
 
 fun prove_ploc_reduce ctxt (info: basic_stmt_rel_info) exp_rel_info =
-  (Rmsg' "prove ploc rel rule" (resolve_tac ctxt @{thms exp_result_predicate_loc}) ctxt) THEN'
+  (* (Rmsg' "prove ploc result rule" (resolve_tac ctxt @{thms exp_result_predicate_loc}) ctxt) THEN'
   (Rmsg' "intro mask lookup red 2" (resolve_tac ctxt [#ctxt_wf_thm info]) ctxt) THEN'
   (Rmsg' "intro mask lookup red 5" (blast_tac ctxt) ctxt) THEN'
   (Rmsg' "intro mask lookup 1" (simp_only_tac @{thms exhale_pred_acc_rel_assms_def} ctxt) ctxt) THEN'
@@ -308,34 +321,52 @@ fun prove_ploc_reduce ctxt (info: basic_stmt_rel_info) exp_rel_info =
   (Rmsg' "intro mask lookup 6" (simp_tac_with_thms [#vpr_program_ctxt_eq_thm info, #vpr_prog_def_thm info] ctxt) ctxt) THEN'
   (Rmsg' "intro mask lookup 8" (simp_tac_with_thms @{thms predicate_decl.defs} ctxt) ctxt) THEN'
   (Rmsg' "intro mask lookup 5" (simp_tac_with_thms [] ctxt) ctxt) THEN'
-  (Rmsg' "intro mask lookup red 10" (exp_rel_tac exp_rel_info ctxt) ctxt)
+  (Rmsg' "intro mask lookup red 10" (exp_rel_tac exp_rel_info ctxt) ctxt) THEN' *)
+
+  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
+  (Rmsg' "prove ploc rel rule" (resolve_tac ctxt @{thms exp_result_predicate_loc}) ctxt) THEN'
+  (Rmsg' "prove ploc rel CtxtFunWf" (resolve_tac ctxt [#ctxt_wf_thm info]) ctxt) THEN'
+  (Rmsg' "prove ploc rel StateRel" (blast_tac ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel RedArgsVpr" (fastforce_tac ctxt @{thms exhale_pred_acc_rel_assms_def}) ctxt) THEN'
+  (Rmsg' "prove ploc rel ArgsWellTy" (fastforce_tac ctxt @{thms exhale_pred_acc_rel_assms_def}) ctxt) THEN'
+  (Rmsg' "prove ploc rel FunName" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel PredDecl" (simp_tac_with_thms [#vpr_program_ctxt_eq_thm info, #vpr_prog_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel VprArgsTy" (simp_tac_with_thms @{thms predicate_decl.defs} ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel ArgsTyRel" (resolve_tac ctxt @{thms map_Some_inv} THEN'
+                                     assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel ArgsRel" (exps_rel_tac exp_rel_info ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt)
   (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) *)
 
 fun prove_ploc_rel ctxt (info: basic_stmt_rel_info) exp_rel_info =
   (Rmsg' "prove ploc rel rule" (resolve_tac ctxt @{thms exp_rel_predicate_loc}) ctxt) THEN'
-  (Rmsg' "intro mask lookup red 2" (resolve_tac ctxt [#ctxt_wf_thm info]) ctxt) THEN'
-  (Rmsg' "intro mask lookup red 5" (blast_tac ctxt) ctxt) THEN'
-  (Rmsg' "intro mask lookup 5" (simp_tac_with_thms [] ctxt) ctxt) THEN'
-  (Rmsg' "intro mask lookup 6" (simp_tac_with_thms [#vpr_program_ctxt_eq_thm info, #vpr_prog_def_thm info] ctxt) ctxt) THEN'
-  (Rmsg' "intro mask lookup 8" (simp_tac_with_thms @{thms predicate_decl.defs} ctxt) ctxt) THEN'
-  (Rmsg' "intro mask lookup 5" (simp_tac_with_thms [] ctxt) ctxt) THEN'
-  (Rmsg' "intro mask lookup red 10" (exp_rel_tac exp_rel_info ctxt) ctxt) THEN'
-  (Rmsg' "intro mask lookup 5" (simp_tac_with_thms [] ctxt) ctxt)
+  (Rmsg' "prove ploc rel CtxtFunWf" (resolve_tac ctxt [#ctxt_wf_thm info]) ctxt) THEN'
+  (Rmsg' "prove ploc rel StateRel" (blast_tac ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel FunName" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel PredDecl" (simp_tac_with_thms [#vpr_program_ctxt_eq_thm info, #vpr_prog_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel VprArgsTy" (simp_tac_with_thms @{thms predicate_decl.defs} ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel ArgsTyRel" (resolve_tac ctxt @{thms map_Some_inv} THEN'
+                                     assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel ArgsRel" (exps_rel_tac exp_rel_info ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel \<open>e_ploc_bpl = _\<close>" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt)
+
+(* the predicate name must be instantiated in exp_rel_perm_access_thm *)
 
 fun intro_fact_pred_mask_lookup_reduction ctxt (info: basic_stmt_rel_info) exp_rel_info exp_rel_perm_access_thm vpr_rcv_red_tac =
-  (Rmsg' "intro mask lookup red 1" (revcut_tac exp_rel_perm_access_thm) ctxt) THEN'
-  (* (Rmsg' "intro mask lookup" (resolve_tac ctxt [#ctxt_wf_thm info]) ctxt) THEN' *)
-  (Rmsg' "intro mask lookup red 2" (resolve_tac ctxt @{thms mask_read_wf_concrete} THEN'
-                                    resolve_tac ctxt [#ctxt_wf_thm info])
-                                      ctxt) THEN'
-  (Rmsg' "intro mask lookup red 4" (resolve_tac ctxt @{thms wf_ty_repr_basic}) ctxt) THEN'
-  (Rmsg' "intro mask lookup red 5" (blast_tac ctxt) ctxt) THEN'
-  (Rmsg' "intro mask lookup ploc" (prove_ploc_reduce ctxt info exp_rel_info) ctxt) THEN'
-  (Rmsg' "intro mask lookup" (simp_tac_with_thms [] ctxt) ctxt) THEN'
-  (Rmsg' "intro mask lookup" (simp_tac_with_thms [] ctxt) ctxt) THEN'
-  (Rmsg' "intro mask lookup" (simp_tac_with_thms [] ctxt) ctxt) THEN'
-  (Rmsg' "intro mask lookup" (simp_only_tac [#tr_def_thm info] ctxt) ctxt) THEN'
-  (Rmsg' "intro mask lookup" (simp_tac_with_thms @{thms read_mask_concrete_def fun_repr_concrete.simps tr_vpr_bpl.defs} ctxt) ctxt)
+  (Rmsg' "intro pred mask lookup revcut" (revcut_tac exp_rel_perm_access_thm) ctxt) THEN'
+  (Rmsg' "intro pred mask lookup MaskReadWf" (resolve_tac ctxt @{thms mask_read_wf_concrete} THEN'
+                                              resolve_tac ctxt [#ctxt_wf_thm info] THEN'
+                                              resolve_tac ctxt [#wf_ty_repr_thm info]) ctxt) THEN'
+  (Rmsg' "intro pred mask lookup StateRel" (blast_tac ctxt) ctxt) THEN'
+  (Rmsg' "intro pred mask lookup \<open>mvar = _\<close>" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+  (Rmsg' "intro pred mask lookup \<open>nullConst = _\<close>" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+  (Rmsg' "intro pred mask lookup \<open>e_bpl = _\<close>" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "intro pred mask lookup PredType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "intro pred mask lookup PlocRel" (prove_ploc_reduce ctxt info exp_rel_info) ctxt) THEN'
+  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
+  (Rmsg' "intro pred mask lookup cleanup 1?" (simp_only_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "intro pred mask lookup cleanup 2?" (simp_tac_with_thms @{thms read_mask_concrete_def fun_repr_concrete.simps tr_vpr_bpl.defs} ctxt) ctxt)
   (* THEN' (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) *)
 
 
