@@ -575,64 +575,68 @@ fun fun_interp_vpr_bpl :: " ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<Rig
     "fun_interp_vpr_bpl Pr T F fid = 
           (let (f,fdecl) = fun_interp_vpr_bpl_aux Pr T F fid in lift_fun_bpl (vbpl_absval_ty T) fdecl f)"
 
-fun fun_interp_vpr_bpl_concrete :: "ViperLang.program \<Rightarrow>  'a ty_repr_bpl \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> (fun_enum_bpl \<Rightarrow> fname) \<Rightarrow> ('a vbpl_absval) fun_interp"
-  where "fun_interp_vpr_bpl_concrete Pr T FieldMap FunMap fun_name = 
-         (if (\<exists>fid. FunMap fid = fun_name) then
-           Some (fun_interp_vpr_bpl Pr T FieldMap (SOME fid. FunMap fid = fun_name))
+fun fun_interp_vpr_bpl_concrete :: "ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> (fun_enum_bpl \<Rightarrow> fname) \<Rightarrow> fun_enum_bpl set \<Rightarrow> ('a vbpl_absval) fun_interp"
+  where "fun_interp_vpr_bpl_concrete Pr T FieldMap FunMap FunDom fun_name = 
+         (if (\<exists>fid. fid \<in> FunDom \<and> FunMap fid = fun_name) then
+           Some (fun_interp_vpr_bpl Pr T FieldMap (SOME fid. fid \<in> FunDom \<and> FunMap fid = fun_name))
          else
            None)"
 
 definition fun_interp_vpr_bpl_wf :: "ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> (fun_enum_bpl \<Rightarrow> fname) \<Rightarrow>
-                                      ('a vbpl_absval) fun_interp \<Rightarrow> bool"
-  where 
-   "fun_interp_vpr_bpl_wf Pr T FieldMap FunMap \<Gamma> = 
-         (\<forall>fid. \<Gamma> (FunMap fid) = Some (fun_interp_vpr_bpl Pr T FieldMap fid))"
+                                     fun_enum_bpl set \<Rightarrow> ('a vbpl_absval) fun_interp \<Rightarrow> bool"
+  where
+   "fun_interp_vpr_bpl_wf Pr T FieldMap FunMap FunDom \<Gamma> = 
+         (\<forall>fid \<in> FunDom. \<Gamma> (FunMap fid) = Some (fun_interp_vpr_bpl Pr T FieldMap fid))"
 
 lemma fun_interp_vpr_bpl_concrete_wf:
-  assumes "inj FunMap"
-  shows "fun_interp_vpr_bpl_wf Pr T FieldMap FunMap (fun_interp_vpr_bpl_concrete Pr T FieldMap FunMap)"
+  assumes "inj_on FunMap FunDom"
+  shows "fun_interp_vpr_bpl_wf Pr T FieldMap FunMap FunDom (fun_interp_vpr_bpl_concrete Pr T FieldMap FunMap FunDom)"
   unfolding fun_interp_vpr_bpl_wf_def
-proof (rule allI)
+proof (rule ballI)
   fix fid
+  assume "fid \<in> FunDom"
 
   have "\<exists>fid'. FunMap fid' = FunMap fid"
     by blast
 
-  moreover have "fid = (SOME fid'. FunMap fid' = FunMap fid)"
-    using \<open>inj FunMap\<close>
-    by (metis inv_def inv_f_f)
+  moreover have "fid = (SOME fid'. fid' \<in> FunDom \<and> FunMap fid' = FunMap fid)"
+    using \<open>inj_on FunMap FunDom\<close>
+    by (metis \<open>fid \<in> FunDom\<close> inv_into_def inv_into_f_f)
 
-  thus "fun_interp_vpr_bpl_concrete Pr T FieldMap FunMap (FunMap fid) = Some (fun_interp_vpr_bpl Pr T FieldMap fid)"
+  thus "fun_interp_vpr_bpl_concrete Pr T FieldMap FunMap FunDom (FunMap fid) = Some (fun_interp_vpr_bpl Pr T FieldMap fid)"
+    using \<open>fid \<in> FunDom\<close>
     by auto
 qed
 
 lemma fun_interp_vpr_bpl_concrete_lookup:
-  assumes "inj FunMap" and
-          "FunMap fid = fname"
-        shows "fun_interp_vpr_bpl_concrete Pr T FieldMap FunMap fname = Some (fun_interp_vpr_bpl Pr T FieldMap fid)"
-  using fun_interp_vpr_bpl_concrete_wf[OF assms(1)] assms(2)
+  assumes "inj_on FunMap FunDom"
+      and "fid \<in> FunDom"
+      and "FunMap fid = fname"
+    shows "fun_interp_vpr_bpl_concrete Pr T FieldMap FunMap FunDom fname = Some (fun_interp_vpr_bpl Pr T FieldMap fid)"
+  using fun_interp_vpr_bpl_concrete_wf[OF assms(1)] assms(2,3)
   unfolding fun_interp_vpr_bpl_wf_def
   by blast
 
 
-definition ctxt_wf :: "ViperLang.program \<Rightarrow>  'a ty_repr_bpl \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> (fun_enum_bpl \<Rightarrow> fname) \<Rightarrow> 'a econtext_bpl \<Rightarrow>  bool"
-  where "ctxt_wf Pr T FieldMap FunMap ctxt \<equiv> fun_interp_vpr_bpl_wf Pr T FieldMap FunMap (fun_interp ctxt)"
+definition ctxt_wf :: "ViperLang.program \<Rightarrow>  'a ty_repr_bpl \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> (fun_enum_bpl \<Rightarrow> fname) \<Rightarrow> fun_enum_bpl set \<Rightarrow> 'a econtext_bpl \<Rightarrow>  bool"
+  where "ctxt_wf Pr T FieldMap FunMap FunDom ctxt \<equiv> fun_interp_vpr_bpl_wf Pr T FieldMap FunMap FunDom (fun_interp ctxt)"
 
 lemma ctxt_wf_fun_interp:
-  assumes "ctxt_wf Pr T FieldMap FunMap ctxt"
-  shows "(fun_interp ctxt) (FunMap fid) = Some (fun_interp_vpr_bpl Pr T FieldMap fid)"
+  assumes "ctxt_wf Pr T FieldMap FunMap FunDom ctxt"
+      and "fid \<in> FunDom"
+    shows "(fun_interp ctxt) (FunMap fid) = Some (fun_interp_vpr_bpl Pr T FieldMap fid)"
   using assms
   unfolding ctxt_wf_def fun_interp_vpr_bpl_wf_def
   by fast
 
 lemma assume_state_normal:
-  assumes CtxtWf: "ctxt_wf Pr TyRep F FunMap ctxt" and
+  assumes CtxtWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt" and
           StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" and 
           FieldTr: "field_translation Tr = F" and
           Heq: "heap_var Tr = h" and
           Meq: "mask_var Tr = m" and
-          StateName: "FunMap FGoodState = state_name"
-        shows "red_expr_bpl ctxt (FunExp state_name [] [Var h, Var m]) ns (BoolV True)"
+          StateName: "FunMap FGoodState = state_name \<and> FGoodState \<in> FunDom"
+    shows "red_expr_bpl ctxt (FunExp state_name [] [Var h, Var m]) ns (BoolV True)"
 proof  -
   from StateRel obtain hb where
        HLookup: "lookup_var (var_context ctxt) ns h = Some (AbsV (AHeap hb))" and
@@ -665,13 +669,13 @@ proof  -
       apply rule
       apply (rule HLookup)
      apply rule
-    apply rule
+      apply rule
       apply (rule MLookup)
      apply rule    
     apply simp
     apply (rule lift_fun_decl_well_typed)
-         apply simp
         apply simp
+       apply simp
       apply simp
     using Hty Mty
      apply simp
@@ -680,8 +684,8 @@ proof  -
 qed
 
 lemma red_ast_bpl_identical_on_known_locs:
-  assumes CtxtWf: "ctxt_wf Pr TyRep F FunMap ctxt" and
-          "id_on_known_locs_name = FunMap FIdenticalOnKnownLocs" and
+  assumes CtxtWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt" and
+          "id_on_known_locs_name = FunMap FIdenticalOnKnownLocs \<and> FIdenticalOnKnownLocs \<in> FunDom" and
           TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and
           LookupDeclExhaleHeap: "lookup_var_decl (var_context ctxt) hvar_exh = Some (TConSingle (THeapId TyRep), None)" and
           LookupHeapVar: "lookup_var (var_context ctxt) ns hvar = Some (AbsV (AHeap h))" and
@@ -702,12 +706,12 @@ lemma red_ast_bpl_identical_on_known_locs:
 proof (rule red_ast_bpl_havoc_assume[OF LookupDeclExhaleHeap])
   show "red_expr_bpl ctxt (FunExp id_on_known_locs_name [] [expr.Var hvar, expr.Var hvar_exh, expr.Var mvar])
                           (update_var (var_context ctxt) ns hvar_exh (AbsV (AHeap h_new))) (BoolV True)"
-    apply (subst \<open>id_on_known_locs_name = _\<close>)
+    apply (subst \<open>id_on_known_locs_name = _ \<and> _\<close>[THEN conjunct1])
     apply (rule RedFunOp)
       apply (rule ctxt_wf_fun_interp[OF CtxtWf])
-
+      apply (rule \<open>id_on_known_locs_name = _ \<and> _\<close>[THEN conjunct2])
     using ExhaleHeapFresh
-    apply (fastforce intro: RedExpListCons RedExpListNil RedVar LookupHeapVar LookupMaskVar)
+     apply (fastforce intro: RedExpListCons RedExpListNil RedVar LookupHeapVar LookupMaskVar)
     apply simp
     apply (rule lift_fun_decl_well_typed)
         apply simp

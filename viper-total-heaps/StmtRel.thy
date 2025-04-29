@@ -836,12 +836,12 @@ lemma exhale_stmt_rel_inst_framing_inv:
 
 lemma exhale_stmt_rel_finish:
   assumes StateRel: "state_rel_def_same Pr StateCons (TyRep :: 'a ty_repr_bpl) Tr AuxPred ctxt \<omega> ns" and
-          CtxtWf: "ctxt_wf Pr TyRep F FunMap ctxt" and
+          CtxtWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt" and
           WfTyRepr: "wf_ty_repr_bpl TyRep" and
           ProgramTotal: "Pr = program_total ctxt_vpr" and
           DomainType:  "domain_type TyRep = absval_interp_total ctxt_vpr" and
           WellDefSame: "heap_var Tr = heap_var_def Tr \<and> mask_var Tr = mask_var_def Tr" and
-          "id_on_known_locs_name = FunMap FIdenticalOnKnownLocs" and
+          "id_on_known_locs_name = FunMap FIdenticalOnKnownLocs \<and> FIdenticalOnKnownLocs \<in> FunDom" and
           TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep" and
           "StateCons \<omega>' \<and>
              consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')" and
@@ -978,7 +978,7 @@ proof -
                            ((BigBlock name (Assign hvar (Var hvar_exh) # cs) str tr, cont), Normal ?ns1)"
     apply (subst \<open>hvar = _\<close>)+
     apply (subst \<open>mvar = _\<close>)+
-    apply (rule red_ast_bpl_identical_on_known_locs[OF CtxtWf \<open>id_on_known_locs_name = _\<close> \<open>type_interp ctxt = _\<close> LookupDeclExhaleHeap])
+    apply (rule red_ast_bpl_identical_on_known_locs[OF CtxtWf \<open>id_on_known_locs_name = _ \<and> _\<close> \<open>type_interp ctxt = _\<close> LookupDeclExhaleHeap])
           apply (rule LookupHeapVar)
          apply (rule LookupMaskVar)
     using ExhaleHeapFresh

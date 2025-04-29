@@ -32,9 +32,9 @@ ML \<open>
 
 \<close>
 
-method fun_interp_wf_aux_tac for fid :: fun_enum_bpl uses fun_wf_thm ty_repr_def wf_ty_repr_thm =
+method fun_interp_wf_aux_tac for fid :: fun_enum_bpl uses fun_wf_thm ty_repr_def wf_ty_repr_thm fun_repr_inj_thm =
       ((rule exI, rule conjI),
-      (rule fun_interp_vpr_bpl_concrete_lookup[OF fun_repr_concrete_inj, where ?fid=fid]),
+      (rule fun_interp_vpr_bpl_concrete_lookup[where ?fid=fid, OF fun_repr_inj_thm]),
       simp,
       (simp del: fun_interp_single_wf.simps fun_interp_single_wf_2.simps),
       (rule lift_fun_decl_fun_interp_single_wf_eq[OF _ fun_wf_thm[OF wf_ty_repr_thm], simplified]);
@@ -62,7 +62,8 @@ ML \<open>
     lookup_const_tac : (int -> tactic),
     finterp_eval_tac : (Proof.context -> term -> int -> tactic),
     fun_interp_inst_def_thm: thm,    
-    lookup_field_tac: (int -> tactic)
+    lookup_field_tac: (int -> tactic),
+    fun_repr_inj_thm: thm
   }
 
   fun extract_fun_enum_bpl t =
@@ -104,7 +105,7 @@ ML \<open>
       (* FunOp *)
        (Rmsg' "RedFunOp init"
          (simp_only_tac [#fun_interp_inst_def_thm axiom_tac_data] ctxt THEN'
-          resolve_tac ctxt @{thms fun_interp_vpr_bpl_concrete_lookup[OF fun_repr_concrete_inj]} THEN'
+          resolve_tac ctxt [@{thm fun_interp_vpr_bpl_concrete_lookup}] THEN'
           fast_tac (ctxt addIs @{thms fun_repr_concrete.simps})) ctxt) THEN'
       
        (* function arguments *)
@@ -151,18 +152,20 @@ fun finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr ctxt t =
      asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps [ty_repr_def, @{thm lift_fun_bpl_def}] ctxt)) THEN'
      asm_full_simp_tac (del_simps @{thms fun_upd_apply} (add_simps @{thms ty_repr_basic_def} ctxt))
   | Const (@{const_name FIsPredicateField}, _) =>
+     (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
      asm_full_simp_tac (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt)
      (* For some unknown reason, we could not delete those lemmas to prove this case.
         Todo: Investigate this. *)
   | _ =>
      asm_full_simp_tac (del_simps del_thms (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt))
 
-fun axiom_tac ctxt fun_interp_inst_def_thm lookup_const_thms lookup_fields_thms del_thms ty_repr_def wf_ty_repr =
+fun axiom_tac ctxt fun_interp_inst_def_thm lookup_const_thms lookup_fields_thms del_thms ty_repr_def wf_ty_repr fun_repr_inj_thm =
   let val axiom_tac_data : axiom_tac_data = { 
      lookup_const_tac = asm_full_simp_tac (del_simps del_thms (add_simps (@{thm lookup_full_ext_env_same} :: lookup_const_thms) ctxt)),
      lookup_field_tac = asm_full_simp_tac (del_simps del_thms (add_simps (@{thm lookup_full_ext_env_same} :: lookup_fields_thms) ctxt)),
      finterp_eval_tac = finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr,
-     fun_interp_inst_def_thm = fun_interp_inst_def_thm
+     fun_interp_inst_def_thm = fun_interp_inst_def_thm,
+     fun_repr_inj_thm = fun_repr_inj_thm
   }
   in (fn i => fn st => axiom_aux_tac ctxt lookup_const_thms del_thms axiom_tac_data i st)
   end

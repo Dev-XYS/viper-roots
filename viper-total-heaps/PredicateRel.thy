@@ -766,11 +766,11 @@ lemma vpr_well_ty_bpl_well_ty:
 
 lemma exp_result_predicate_loc:
   assumes
-    CtxtFunWf: "ctxt_wf Pr TyRep F FunMap ctxt_bpl" and
+    CtxtFunWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt_bpl" and
     StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega>_def \<omega> ns" and
     RedArgsVpr: "red_pure_exps_total ctxt_vpr (Some \<omega>_def) e_args_vpr \<omega> (Some v_args_vpr)" and
     ArgsWellTy: "pred_ty_correct_premise ctxt_vpr pid v_args_vpr" and
-    FunName: "FunMap (FPredicateLoc pid tys_bpl) = pred_loc_fun_name" and
+    FunName: "FunMap (FPredicateLoc pid tys_bpl) = pred_loc_fun_name \<and> FPredicateLoc pid tys_bpl \<in> FunDom" and
     PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl" and
     VprArgsTy: "predicate_decl.args pdecl = tys_vpr" and
     ArgsTyRel: "map (vpr_to_bpl_ty TyRep) tys_vpr = map Some tys_bpl" and
@@ -803,8 +803,8 @@ proof -
 
   show ?thesis
     apply (rule RedFunOp[where v_args=v_args_bpl])
-      apply (subst FunName[symmetric])
-    using CtxtFunWf
+      apply (subst FunName[THEN conjunct1, symmetric])
+    using CtxtFunWf FunName
     unfolding ctxt_wf_def fun_interp_vpr_bpl_wf_def
       apply blast
      apply (simp add: v_args_bpl bg_expr_list_red_all2)
@@ -815,9 +815,9 @@ qed
 
 lemma exp_rel_predicate_loc:
   assumes
-    CtxtFunWf: "ctxt_wf Pr TyRep F FunMap ctxt_bpl" and
+    CtxtFunWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt_bpl" and
     StateRel: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns" and
-    FunName: "FunMap (FPredicateLoc pid tys_bpl) = pred_loc_fun_name" and
+    FunName: "FunMap (FPredicateLoc pid tys_bpl) = pred_loc_fun_name \<and> FPredicateLoc pid tys_bpl \<in> FunDom" and
     PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl" and
     VprArgsTy: "predicate_decl.args pdecl = tys_vpr" and
     ArgsTyRel: "map (vpr_to_bpl_ty TyRep) tys_vpr = map Some tys_bpl" and

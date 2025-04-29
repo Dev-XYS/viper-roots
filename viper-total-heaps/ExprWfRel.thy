@@ -1300,12 +1300,12 @@ qed
 (* TODO: extract the common parts from this lemma *)
 lemma syn_field_access_valid_wf_rel:
   assumes 
-         CtxtWf: "ctxt_wf Pr TyRep F FunMap ctxt" and
+         CtxtWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt" and
          TyRepWf: "wf_ty_repr_bpl TyRep" and
          EmptyRunTypeContext: "rtype_interp ctxt = []" and
          StateRel: "\<And> \<omega>def \<omega> ns. R \<omega>def \<omega> ns \<Longrightarrow> state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" and
          ExpRel:   "exp_rel_vpr_bpl R ctxt_vpr ctxt e e_r_bpl" and
-         FunMap:   "FunMap FHasPerm = has_perm_name" and
+         FunMap:   "FunMap FHasPerm = has_perm_name \<and> FHasPerm \<in> FunDom" and
          MaskExp:  "e_m_bpl = Lang.Var (mask_var_def Tr)" and
          FieldRelSingle: "field_rel_single Pr TyRep Tr f e_f_bpl \<tau>_bpl" and
        TypeParams: "ts = [TConSingle (TNormalFieldId TyRep), \<tau>_bpl]"
@@ -1340,11 +1340,11 @@ proof (rule wf_rel_intro)
   have RedFunHasPerm: "\<And>r. red_expr_bpl ctxt e_r_bpl ns (AbsV (ARef r)) \<Longrightarrow>
                    red_expr_bpl ctxt (FunExp (FunMap FHasPerm) ts [e_m_bpl, e_r_bpl, e_f_bpl]) ns 
            (BoolV ((m_bpl (r, NormalField f_bpl \<tau>)) > 0))"
-        apply (subst \<open>ts = _\<close>)
-        apply (rule RedFunOp)
-          apply (rule ctxt_wf_fun_interp[OF CtxtWf])
-         apply (fastforce intro: RedExpListNil RedExpListCons RedMaskBpl RedFieldBpl)
-        apply simp
+    apply (subst \<open>ts = _\<close>)
+    apply (rule RedFunOp)
+      apply (rule ctxt_wf_fun_interp[OF CtxtWf FunMap[THEN conjunct2]])
+     apply (fastforce intro: RedExpListNil RedExpListCons RedMaskBpl RedFieldBpl)
+    apply simp
     apply (rule lift_fun_decl_well_typed)
     by (auto simp: vpr_to_bpl_ty_closed[OF TyRepWf FieldTyBpl] FieldTyBpl EmptyRunTypeContext)
   
@@ -1382,7 +1382,7 @@ proof (rule wf_rel_intro)
               ((BigBlock name (cmd.Assert (FunExp has_perm_name ts [e_m_bpl, e_r_bpl, e_f_bpl]) # cs) str tr, cont), Normal ns)
               ((BigBlock name cs str tr, cont), Normal ns)"
       using RedFunHasPerm[OF RedRcvBpl] BplHasPerm
-      by (auto simp: HOL.sym[OF FunMap] intro!: red_ast_bpl_one_simple_cmd Semantics.RedAssertOk)      
+      by (auto simp: HOL.sym[OF FunMap[THEN conjunct1]] intro!: red_ast_bpl_one_simple_cmd Semantics.RedAssertOk)      
     
     thus "?B" using R by blast
   qed
@@ -1425,7 +1425,7 @@ proof (rule wf_rel_intro)
               ((BigBlock name (cmd.Assert (FunExp has_perm_name ts [e_m_bpl, e_r_bpl, e_f_bpl]) # cs) str tr, cont), Normal ns)
               ((BigBlock name cs str tr, cont), Failure)"
       using RedFunHasPerm[OF RedRcvBpl] BplHasNoPerm
-      by (auto simp: HOL.sym[OF FunMap] intro!: red_ast_bpl_one_simple_cmd Semantics.RedAssertFail)
+      by (auto simp: HOL.sym[OF FunMap[THEN conjunct1]] intro!: red_ast_bpl_one_simple_cmd Semantics.RedAssertFail)
     thus "?B" by auto      
   qed
 qed
@@ -1434,7 +1434,7 @@ qed
 between the lemmas that show wf_rel_field_acc)\<close>
 lemma syn_field_access_writeable_wf_rel:
   assumes 
-         CtxtWf: "ctxt_wf Pr TyRep F FunMap ctxt" and
+         CtxtWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt" and
          TyRepWf: "wf_ty_repr_bpl TyRep" and
          MaskReadWf: "mask_read_wf TyRep ctxt (mask_read Tr)" and
          StateRel: "\<And> \<omega>def \<omega> ns. R \<omega>def \<omega> ns \<Longrightarrow> state_rel Pr StateCons TyRep Tr  AuxPred ctxt \<omega>def \<omega> ns" and
