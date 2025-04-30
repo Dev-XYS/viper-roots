@@ -749,16 +749,37 @@ next
 qed
 
 
+lemma val_unique_bpl_vpr_single:
+  assumes "val_rel_vpr_bpl v_vpr = v_bpl"
+    shows "(THE v. val_rel_vpr_bpl v = v_bpl) = v_vpr"
+  apply standard
+   apply (simp add: assms)
+  by (case_tac v; case_tac v_vpr; insert assms; fastforce)
+
 lemma val_unique_bpl_vpr:
   assumes "map val_rel_vpr_bpl vs_vpr = vs_bpl"
-  shows "(THE vs. map val_rel_vpr_bpl vs = vs_bpl) = vs_vpr"
-  sorry
+    shows "(THE vs. map val_rel_vpr_bpl vs = vs_bpl) = vs_vpr"
+  apply standard
+   apply (simp add: assms)
+  by (smt (verit) assms list.inj_map_strong val_unique_bpl_vpr_single)
+
+(*
+lemma val_inject_bpl_vpr_single:
+  assumes "(THE v. val_rel_vpr_bpl v = v_bpl1) =
+           (THE v. val_rel_vpr_bpl v = v_bpl2)"
+      and "val_rel_vpr_bpl v_vpr1 = v_bpl1"
+      and "val_rel_vpr_bpl v_vpr2 = v_bpl2"
+    shows "v_bpl1 = v_bpl2"
+  by (metis assms val_unique_bpl_vpr_single)
+*)
 
 lemma val_inject_bpl_vpr:
-  assumes "(THE v_args. map val_rel_vpr_bpl v_args = [AbsV (ARef r1)]) =
-           (THE v_args. map val_rel_vpr_bpl v_args = [AbsV (ARef r2)])"
-  shows "r1 = r2"
-  sorry
+  assumes "(THE vs. map val_rel_vpr_bpl vs = vs_bpl1) =
+           (THE vs. map val_rel_vpr_bpl vs = vs_bpl2)"
+      and "map val_rel_vpr_bpl vs_vpr1 = vs_bpl1"
+      and "map val_rel_vpr_bpl vs_vpr2 = vs_bpl2"
+    shows "vs_bpl1 = vs_bpl2"
+  by (metis assms val_unique_bpl_vpr)
 
 
 lemma vpr_well_ty_bpl_well_ty:
