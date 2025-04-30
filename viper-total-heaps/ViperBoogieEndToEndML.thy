@@ -36,6 +36,7 @@ method fun_interp_wf_aux_tac for fid :: fun_enum_bpl uses fun_wf_thm ty_repr_def
       ((rule exI, rule conjI),
       (rule fun_interp_vpr_bpl_concrete_lookup[where ?fid=fid, OF fun_repr_inj_thm]),
       simp,
+      simp,
       (simp del: fun_interp_single_wf.simps fun_interp_single_wf_2.simps),
       (rule lift_fun_decl_fun_interp_single_wf_eq[OF _ fun_wf_thm[OF wf_ty_repr_thm], simplified]);
       (simp add: ty_repr_def ty_repr_basic_def))
@@ -105,8 +106,9 @@ ML \<open>
       (* FunOp *)
        (Rmsg' "RedFunOp init"
          (simp_only_tac [#fun_interp_inst_def_thm axiom_tac_data] ctxt THEN'
-          resolve_tac ctxt [@{thm fun_interp_vpr_bpl_concrete_lookup}] THEN'
-          fast_tac (ctxt addIs @{thms fun_repr_concrete.simps})) ctxt) THEN'
+          resolve_tac ctxt [@{thm fun_interp_vpr_bpl_concrete_lookup} OF [#fun_repr_inj_thm axiom_tac_data]] THEN'
+          fast_tac (ctxt addIs @{thms fun_repr_concrete.simps})) ctxt THEN'
+          assm_full_simp_solved_tac ctxt) THEN'
       
        (* function arguments *)
        (fn i => fn st => axiom_aux_list_tac ctxt lookup_const_thms del_thms axiom_tac_data i st) THEN'

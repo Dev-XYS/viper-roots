@@ -610,8 +610,8 @@ qed
 
 lemma fun_interp_vpr_bpl_concrete_lookup:
   assumes "inj_on FunMap FunDom"
-      and "fid \<in> FunDom"
       and "FunMap fid = fname"
+      and "fid \<in> FunDom"
     shows "fun_interp_vpr_bpl_concrete Pr T FieldMap FunMap FunDom fname = Some (fun_interp_vpr_bpl Pr T FieldMap fid)"
   using fun_interp_vpr_bpl_concrete_wf[OF assms(1)] assms(2,3)
   unfolding fun_interp_vpr_bpl_wf_def
