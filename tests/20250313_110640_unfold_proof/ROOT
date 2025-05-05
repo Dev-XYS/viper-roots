@@ -1,9 +1,0 @@
-session a20250313_110640_test_proof = TotalViper +
-directories
-boogie_proofs
-"boogie_proofs/PAAdefinedness_proofs"
-"boogie_proofs/foo_proofs"
-method_proof_foo
-theories
-global_data_vpr
-end_to_end_proof
