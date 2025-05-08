@@ -510,7 +510,7 @@ fun predicate_loc_bpl_fun :: "predicate_ident \<Rightarrow> ty list \<Rightarrow
   where "predicate_loc_bpl_fun pid tys_bpl A ts vs =
            Some (AbsV (AField (PredSnapshotField (pid, THE v_args. map val_rel_vpr_bpl v_args = vs))))"
 
-lemma predicate_loc_P_fun_interp_single_wf:
+lemma predicate_loc_fun_interp_single_wf:
   assumes WfTyRepr: "wf_ty_repr_bpl T"
       and PredType: "pred_snap_field_type T pid = Some pred_ty"
     shows "fun_interp_single_wf

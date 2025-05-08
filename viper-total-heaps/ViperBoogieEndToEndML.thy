@@ -174,4 +174,10 @@ fun axiom_tac ctxt fun_interp_inst_def_thm lookup_const_thms lookup_fields_thms 
 
 \<close>
 
+method axiom_prove_ploc_inject =
+  (intro impI),
+  (intro conjI)?;
+  (insert val_inject_bpl_vpr');
+  fastforce
+
 end

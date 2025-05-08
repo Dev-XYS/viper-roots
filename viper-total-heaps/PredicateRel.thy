@@ -782,6 +782,22 @@ lemma val_inject_bpl_vpr:
   by (metis assms val_unique_bpl_vpr)
 
 
+lemma val_inject_bpl_vpr':
+  assumes "(THE vs. map val_rel_vpr_bpl vs = vs_bpl1) =
+           (THE vs. map val_rel_vpr_bpl vs = vs_bpl2)"
+      and "list_all (\<lambda>v_bpl. (\<exists>r. v_bpl = AbsV (ARef r)) \<or> (\<exists>i. v_bpl = IntV i) \<or> (\<exists>b. v_bpl = BoolV b) \<or> (\<exists>p. v_bpl = RealV p)) vs_bpl1"
+      and "list_all (\<lambda>v_bpl. (\<exists>r. v_bpl = AbsV (ARef r)) \<or> (\<exists>i. v_bpl = IntV i) \<or> (\<exists>b. v_bpl = BoolV b) \<or> (\<exists>p. v_bpl = RealV p)) vs_bpl2"
+    shows "vs_bpl1 = vs_bpl2"
+proof -
+  obtain vs_vpr1 vs_vpr2 where "map val_rel_vpr_bpl vs_vpr1 = vs_bpl1" and "map val_rel_vpr_bpl vs_vpr2 = vs_bpl2"
+    using assms(2,3)
+    by (smt (verit) Ball_set_list_all ex_map_conv val_rel_vpr_bpl.simps)
+  thus ?thesis
+    using assms(1)
+    by (simp add: val_unique_bpl_vpr)
+qed
+
+
 lemma vpr_well_ty_bpl_well_ty:
   assumes "get_type (domain_type TyRep) v_vpr = ty_vpr"
       and "val_rel_vpr_bpl v_vpr = v_bpl"
