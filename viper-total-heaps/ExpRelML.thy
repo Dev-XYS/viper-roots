@@ -137,7 +137,7 @@ and
     assm_full_simp_solved_tac ctxt THEN'
     ((fn i => fn st => exp_rel_tac info ctxt i st) |> SOLVED')
 and
-  field_access_rel_tac (info : exp_rel_info) ctxt = 
+  field_access_rel_tac (info : exp_rel_info) ctxt =
     (#field_access_rel_pre_tac info ctxt) THEN'
     ((fn i => fn st => exp_rel_tac info ctxt i st) |> SOLVED')
 and

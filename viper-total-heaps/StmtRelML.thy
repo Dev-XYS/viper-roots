@@ -169,10 +169,10 @@ ML \<open>
     (Rmsg' "Assign Rhs Rel" (exp_rel_tac exp_rel_info ctxt |> SOLVED') ctxt)   
 
 
-  fun field_rel_single_inst_tac field_rel_tac field_lookup_tac ctxt =
+  fun field_rel_single_inst_tac field_rel_tac field_lookup_tac ty_repr_def_thm ctxt =
     resolve_tac ctxt [@{thm field_rel_single_intro}] THEN'
     field_lookup_tac ctxt THEN'
-    (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) THEN'
+    (assm_full_simp_solved_with_thms_tac ty_repr_def_thm ctxt) THEN'
     field_rel_tac ctxt THEN'
     assm_full_simp_solved_with_thms_tac [] ctxt
 
