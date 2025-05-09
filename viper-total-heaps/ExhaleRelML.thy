@@ -270,8 +270,6 @@ ML \<open>
           (Rmsg' "Exh Prove Sufficient Perm - Introduce Facts Assert"
                 (EVERY' [ intro_fact_lookup_aux_var_tac ctxt lookup_aux_var_state_rel_thm,
                           intro_fact_pred_mask_lookup_reduction ctxt info exp_rel_info exp_rel_perm_access_thm
-                                                           (fn ctxt => resolve_tac ctxt @{thms exhale_pred_acc_rel_assms_args_eval} THEN'
-                                                                       fastforce_tac ctxt [])
                         ]) ctxt) THEN'
           (Rmsg' "Exh Prove Sufficient Perm - Red Assert" (prove_red_expr_bpl_tac ctxt |> SOLVED') ctxt) THEN'
           (Rmsg' "Exh Prove Sufficient Perm - Success Condition"
