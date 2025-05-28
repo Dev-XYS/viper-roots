@@ -151,7 +151,9 @@ next
   moreover have "fst \<omega>1 \<oplus> fst \<omega>2 = Some (Ag (get_store \<omega>1), Ag (get_trace \<omega>1))"
     by (metis (no_types, opaque_lifting) agreement.exhaust_sel asm0 core_is_smaller fst_conv get_store_def get_store_trace_comp get_trace_def greater_def smaller_compatible_core surjective_pairing)
   ultimately show ?thesis
-    by (smt (z3) asm0 get_state_def option.sel plus_prodIAlt)
+    unfolding \<open>Some r = _\<close>[symmetric]
+    apply simp
+    by (metis \<open>Some r = _\<close> asm0 get_state_def plus_prodIAlt)
 qed
 
 
@@ -188,9 +190,9 @@ lemma full_add_charact:
       and "Some (get_state x) = (get_state a) \<oplus> (get_state b)"
 proof -
   show "get_store x = get_store a"
-    by (smt (verit) agreement.exhaust_sel assms fst_conv get_store_def option.discI option.sel plus_state_def)
+    by (metis (no_types, opaque_lifting) assms get_store_trace_comp greater_def greater_prod_eq smaller_compatible)
   show "Some (get_state x) = (get_state a) \<oplus> (get_state b)" 
-    by (smt assms get_state_def option.exhaust_sel option.sel option.simps(3) plus_state_def snd_conv)
+    by (metis assms get_state_def plus_prodE)
 qed
 
 (*
