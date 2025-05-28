@@ -230,7 +230,7 @@ ML \<open>
       (Rmsg' "exhale havoc CtxtWf"  (resolve_tac ctxt [#ctxt_wf_thm info]) ctxt) THEN'
       (Rmsg' "exhale havoc WfTyRepr"  (resolve_tac ctxt [#wf_ty_repr_thm info]) ctxt) THEN'
       (Rmsg' "exhale havoc ProgramTotal" (resolve_tac ctxt [@{thm HOL.sym} OF [#vpr_program_ctxt_eq_thm info]]) ctxt) THEN'
-      (Rmsg' "exhale havoc DomainType" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN'
+      (Rmsg' "exhale havoc DomainType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
       (Rmsg' "exhale havoc WellDefSame" (assm_full_simp_solved_with_thms_tac [tr_thm] ctxt) ctxt) THEN'
       (Rmsg' "exhale havoc IdOnKnownLocsName" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
       (Rmsg' "exhale havoc TypeInterp" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
@@ -239,11 +239,11 @@ ML \<open>
                                        (resolve_tac ctxt @{thms extcons_fun_interp_irrelevant''}) THEN'
                                        (blast_tac ctxt) THEN'
                                        (assm_full_simp_solved_tac ctxt) THEN'
-                                       (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt)) ctxt) THEN'
+                                       (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt)) ctxt) THEN'
       (Rmsg' "exhale havoc ElemExhaleState" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
       (Rmsg' "exhale havoc HeapVar" (assm_full_simp_solved_with_thms_tac [tr_thm] ctxt) ctxt) THEN'
       (Rmsg' "exhale havoc MaskVar" (assm_full_simp_solved_with_thms_tac [tr_thm] ctxt) ctxt) THEN'
-      (Rmsg' "exhale havoc LookupDeclExhaleHeap" (assm_full_simp_solved_with_thms_tac [@{thm ty_repr_basic_def}, lookup_decl_exhale_heap_thm] ctxt) ctxt) THEN'
+      (Rmsg' "exhale havoc LookupDeclExhaleHeap" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info, lookup_decl_exhale_heap_thm] ctxt) ctxt) THEN'
       (Rmsg' "exhale havoc ExhaleHeapFresh" (#aux_var_disj_tac info ctxt) ctxt)
     end
 
@@ -367,7 +367,7 @@ ML \<open>
         (Rmsg' "MethodCall MethodSpecSubset" (assm_full_simp_solved_with_thms_tac [#method_pre_thm callee_data, #method_post_thm callee_data] ctxt) ctxt) THEN'
         (Rmsg' "MethodCall OnlyArgsInPre" (fastforce_tac ctxt [#method_pre_thm callee_data]) ctxt) THEN'
         (Rmsg' "MethodCall Empty Rinterp" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-        (Rmsg' "MethodCall DomainTyRep" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN'
+        (Rmsg' "MethodCall DomainTyRep" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info] ctxt) ctxt) THEN'
         (Rmsg' "MethodCall TyInterpBplEq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (Rmsg' "MethodCall StateRelConcrete" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (Rmsg' "MethodCall ArgsAreVars" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
