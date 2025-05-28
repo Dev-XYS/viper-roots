@@ -230,7 +230,7 @@ next
     apply (cases "get_trace_total \<omega> lbl")
     using red_stmt_total.cases[OF Label(2), simplified] Label.prems(1)
      apply (simp add: consistent_internal_total_full_def)
-     apply (smt (z3) full_total_state.cases_scheme full_total_state.select_convs(2) full_total_state.select_convs(3) full_total_state.update_convs(2) map_upd_Some_unfold)
+     apply (smt (verit, ccfv_threshold) full_total_state.select_convs(2) full_total_state.surjective full_total_state.update_convs(2) map_upd_Some_unfold update_trace_total.simps update_trace_total_hm_same)
     using red_stmt_total.cases[OF Label(2), simplified] Label.prems(1)
     by auto
 next

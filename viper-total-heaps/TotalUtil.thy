@@ -870,7 +870,17 @@ lemma map_upd_set_subset:
   assumes "B' \<subseteq> B" and "B \<inter> dom A = {}"
   shows "map_upd_set A B' f \<subseteq>\<^sub>m map_upd_set A B f"
   unfolding map_le_def map_upd_set_def
-  by (smt (z3) Diff_Diff_Int Diff_iff assms(1) assms(2) domIff empty_iff map_add_None map_add_def subsetD)
+proof
+  fix a
+  assume "a \<in> dom (A ++ (\<lambda>x. Some_if (x \<in> B') (f x)))"
+  then consider (inA) "a \<in> dom A \<and> a \<notin> B'" | (inB) "a \<in> B'"
+    by fastforce
+  thus "(A ++ (\<lambda>x. Some_if (x \<in> B') (f x))) a = (A ++ (\<lambda>x. Some_if (x \<in> B) (f x))) a"
+    apply cases
+     apply (simp_all add: map_add_def)
+    using assms
+    by auto
+qed
 
 lemma map_upd_set_subset2:
   assumes "dom A \<inter> B = {}"

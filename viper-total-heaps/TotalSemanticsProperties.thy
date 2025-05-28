@@ -3458,10 +3458,14 @@ proof (induction es arbitrary: vs)
     by (metis append1_eq_conv append_Nil option.sel red_exp_list_failure_Nil)
 next
   case (Cons a es)
+  hence "length ((a # es) @ [e]) = length (vs @ [v])"
+    by (meson list_all2_lengthD red_pure_exps_total_list_all2)
+  then obtain v vs' where "vs = v # vs'"
+    by (metis Suc_inject Suc_length_conv length_append_singleton)
   show ?case
     apply (intro conjI)
     using Cons
-     apply (smt (z3) Cons_eq_appendI butlast.simps(2) butlast_snoc list.sel(3) list_all2_Cons1 list_all2_Nil2 list_all2_red_pure_exps_total red_pure_exps_total_list_all2)
+     apply (metis Cons_eq_appendI \<open>vs = v # vs'\<close> list_all2_Cons list_all2_red_pure_exps_total red_pure_exps_total_list_all2)
     by (smt (verit, ccfv_threshold) Cons.IH Cons.prems append_eq_Cons_conv append_is_Nil_conv list.inject list.simps(3) red_exp_list_normal_elim)
 qed
 

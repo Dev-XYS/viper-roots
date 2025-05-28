@@ -355,7 +355,8 @@ lemma extcons_preserved_by_changing_0_locs':
            consistent_external ctxt \<phi>'"
   using assms(3-)
    apply (induction arbitrary: \<phi>' and \<phi>' rule: consistent_external_wrt_ploc_consistent_external.inducts)
-   apply (smt (z3) SatStep assms(1) ctxt_pred_self_framing_sat_def differ_only_in_0_perm_locs_def full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps pred_self_framing_def)
+  using assms(1)[unfolded ctxt_pred_self_framing_sat_def pred_self_framing_def]
+   apply (metis SatStep differ_only_in_0_perm_locs_def full_total_state.select_convs(1) full_total_state.select_convs(3) get_hh_total_full.simps)
 proof (rule SatAll)
   fix \<phi> \<phi>' :: "'a total_state"
   fix pred_id vs q nm'

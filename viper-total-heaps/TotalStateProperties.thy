@@ -1152,7 +1152,34 @@ lemma minus_full_total_state_only_mask_different_2:
 lemma minus_full_total_state:
   assumes "\<omega> \<succeq> \<omega>'"
   shows "\<omega> \<ominus> \<omega>' = \<omega> \<lparr> get_total_full := get_total_full \<omega> \<ominus> get_total_full \<omega>' \<rparr>" (is "_ = ?\<Delta>")
-  by (smt (z3) assms core_full_total_state_ext_def defined_def full_total_state.simps(3) full_total_state.simps(7) full_total_state.surjective minus_equiv_def minus_equiv_def_any_elem option.exhaust_sel option.sel option.simps(3) plus_full_total_state_ext_def)
+proof -
+  from assms minus_exists obtain \<omega>m
+    where PlusSome: "\<omega>' \<oplus> \<omega>m = Some \<omega>" and "\<omega>m \<succeq> |\<omega>|"
+    by force
+
+  hence "\<omega>m = \<omega> \<ominus> \<omega>'"
+    using minusI
+    by metis
+
+  from plus_Some_full_total_state_eq[OF PlusSome] have
+    PlusNM: "get_nm_total_full \<omega> = get_nm_total_full \<omega>' + get_nm_total_full \<omega>m"
+    by simp
+
+  from PlusSome have "get_store_total \<omega> = get_store_total \<omega>m \<and>
+                      get_trace_total \<omega> = get_trace_total \<omega>m \<and>
+                      get_hh_total_full \<omega> = get_hh_total_full \<omega>m \<and>
+                      full_total_state.more \<omega> = full_total_state.more \<omega>m"
+    by (metis \<open>\<omega>m = \<omega> \<ominus> \<omega>'\<close> core_is_smaller minus_equiv_def_any_elem minus_full_total_state_only_mask_different option.discI plus_full_total_state_ext_def)
+
+  hence "\<omega>m = ?\<Delta>"
+    using minus_total_state[OF greater_full_total_state_total_state[OF assms]]
+    by (smt (verit, ccfv_threshold) PlusSome \<open>\<omega>m \<succeq> |\<omega>|\<close> core_full_total_state_ext_def full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3) greater_full_total_state_total_state minusI plus_Some_full_total_state_total_state)
+
+  thus ?thesis
+    using \<open>\<omega>m = \<omega> \<ominus> \<omega>'\<close>
+    by argo
+qed
+
 
 lemma minus_full_total_state_mask:
   assumes "\<omega> \<succeq> \<omega>'"
