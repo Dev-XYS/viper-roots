@@ -7,13 +7,13 @@ ML \<open>
   fun post_framing_rel_init_tac ctxt (info : basic_stmt_rel_info) lookup_heap_var_thm lookup_mask_var_thm =
     (Rmsg' "Post Framing Init - Start" (resolve_tac ctxt [ @{thm post_framing_rel_aux} OF [#wf_ty_repr_thm info, #consistency_wf_thm info]]) ctxt) THEN'
     (Rmsg' "Post Framing Init - Type Interp" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-    (Rmsg' "Post Framing Init - Domain Type" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN'
+    (Rmsg' "Post Framing Init - Domain Type" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
     (Rmsg' "Post Framing Init - Program" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "Post Framing Init - Lookup Heap" 
-            (simp_tac_with_thms @{thms ty_repr_basic_def} ctxt THEN'
+            (simp_tac_with_thms [#ty_repr_def_thm info] ctxt THEN'
             resolve_tac ctxt [lookup_heap_var_thm]) ctxt) THEN'
     (Rmsg' "Post Framing Init - Lookup Mask" 
-            (simp_tac_with_thms @{thms ty_repr_basic_def} ctxt THEN'
+            (simp_tac_with_thms [#ty_repr_def_thm info] ctxt THEN'
              resolve_tac ctxt [lookup_mask_var_thm]) ctxt) THEN'
     (Rmsg' "Post Framing Init - Zero Mask" 
             (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
