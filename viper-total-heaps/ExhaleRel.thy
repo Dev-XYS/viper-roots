@@ -121,7 +121,7 @@ subsubsection \<open>Invariant instantiations\<close>
 text \<open>trivial invariant instantiation\<close>
 
 lemma true_is_assertion_red_invariant_exh:
-  shows "is_exh_rel_invariant ctxt_vpr (\<lambda>_.True) (\<lambda>_. True) (\<lambda>_. True) (\<lambda>_ _ _. True)"
+  shows "is_exh_rel_invariant ctxt_vpr StateCons (\<lambda>_. True) (\<lambda>_. True) (\<lambda>_ _ _. True)"
   unfolding is_exh_rel_invariant_def
   by auto
 

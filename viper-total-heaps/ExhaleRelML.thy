@@ -61,6 +61,7 @@ ML \<open>
     case hint of
       StarExhHint (left_hint, right_hint) =>
         (Rmsg' "ExhaleRel Star" (resolve_tac ctxt [@{thm exhale_rel_star_2}]) ctxt) THEN'
+        (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
         (Rmsg' "ExhaleRel Star exhale rel inv" (resolve_tac ctxt [#is_exh_rel_inv_thm info]) ctxt) THEN'
         (Rmsg' "ExhaleRel Star inv constraint on left assertion" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (exhale_rel_aux_tac ctxt info left_hint |> SOLVED') THEN'

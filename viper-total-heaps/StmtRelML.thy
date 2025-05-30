@@ -3,8 +3,10 @@ imports Boogie_Lang.HelperML ExprWfRelML StmtRel InhaleRelML ExhaleRelML Predica
 begin
 
 ML \<open>
-  val Rmsg' = run_and_print_if_fail_2_tac' 
-                  
+  val Rmsg' = run_and_print_if_fail_2_tac'
+
+  fun TRY' tac x = TRY (tac x);
+
   fun zero_mask_lookup_tac ctxt tr_def_thm =
     resolve_tac ctxt [@{thm boogie_const_rel_lookup_2[where ?const = CZeroMask]}] THEN'
     resolve_tac ctxt [@{thm state_rel_boogie_const_rel}] THEN'
@@ -12,16 +14,16 @@ ML \<open>
     assm_full_simp_solved_with_thms_tac [tr_def_thm] ctxt THEN'
     assm_full_simp_solved_tac ctxt
 
-  datatype 'a stmt_rel_hint = 
-    AtomicHint of 'a 
+  datatype 'a stmt_rel_hint =
+    AtomicHint of 'a
   | ScopeHint of thm * ('a stmt_rel_hint) (* lookup decl theorem for scoped variable, and hint for body *)
   | SeqnHint of ('a stmt_rel_hint) list
-  | IfHint of 
-       exp_wf_rel_info *       
+  | IfHint of
+       exp_wf_rel_info *
        exp_rel_info *
        ('a stmt_rel_hint) * (* thn branch *)
        ('a stmt_rel_hint)   (* els branch *)
-  | NoHint (* used for debugging purposes *)      
+  | NoHint (* used for debugging purposes *)
 
   type ('a, 'i, 'e) atomic_rel_tac = (Proof.context -> 'i inhale_rel_info -> 'e exhale_rel_info ->  basic_stmt_rel_info -> 'a -> int -> tactic)
 
@@ -32,14 +34,14 @@ ML \<open>
     exhale_rel_info: 'e exhale_rel_info
   }
 
- (* tactic to unfold current bigblock (or progress empty bigblock) for a stmt_rel goal, 
+ (* tactic to unfold current bigblock (or progress empty bigblock) for a stmt_rel goal,
     see comment for progress_red_bpl_rel_tac *)
  fun progress_stmt_rel_tac ctxt =
    resolve_tac ctxt @{thms stmt_rel_propagate_pre_2} THEN'
    progress_red_bpl_rel_tac ctxt
 
  fun stmt_rel_tac ctxt (info: ('a, 'i, 'e) stmt_rel_info) (stmt_rel_hint: 'a stmt_rel_hint) =
-    case stmt_rel_hint of 
+    case stmt_rel_hint of
       SeqnHint [] => (Rmsg' "Skip" (resolve_tac ctxt [@{thm stmt_rel_skip}]) ctxt)
     | SeqnHint [_] => error "SeqnHint with single node appears"
     | SeqnHint (h::hs) => stmt_rel_tac_seq ctxt info (h::hs)
@@ -48,30 +50,31 @@ ML \<open>
       in stmt_rel_single_stmt_tac, then "good state" assumptions would be expected) *)
     | ScopeHint (lookup_decl_thm, body_hint) =>
        (Rmsg' "Scope init" (resolve_tac ctxt [@{thm scoped_var_stmt_rel_simplify_tr} OF [#consistency_wf_thm (#basic_stmt_rel_info info)]]) ctxt) THEN'
-       (Rmsg' "Scope domain type eq" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN'
+       (Rmsg' "Scope domain type eq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm (#basic_stmt_rel_info info)] ctxt) ctxt) THEN'
        (Rmsg' "Scope type interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
        (Rmsg' "Scope empty rtype" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
        (Rmsg' "Scope state rel" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
        (Rmsg' "Scope progress to havoc" (progress_red_bpl_rel_tac ctxt) ctxt) THEN'
        (Rmsg' "Scope variable disjointness" (#aux_var_disj_tac (#basic_stmt_rel_info info) ctxt) ctxt) THEN'
        (Rmsg' "Scope lookup var decl" (assm_full_simp_solved_with_thms_tac [lookup_decl_thm] ctxt) ctxt) THEN'
-       (Rmsg' "Scope vpr to bpl ty" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN'
+       (Rmsg' "Scope vpr to bpl ty" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm (#basic_stmt_rel_info info)] ctxt) ctxt) THEN'
        (* TODO: add var tr0 equality *)
        (Rmsg' "Scope simplify translation record" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+       (Rmsg' "Scope CtxtProg" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
        (stmt_rel_tac ctxt info body_hint |> SOLVED')
     | _ => stmt_rel_single_stmt_tac ctxt info stmt_rel_hint
 and
      stmt_rel_tac_seq _ _ [] = K all_tac
    | stmt_rel_tac_seq ctxt (info: ('a, 'i, 'e) stmt_rel_info) [h] =
        stmt_rel_tac ctxt info h
-   | stmt_rel_tac_seq ctxt (info: ('a, 'i, 'e) stmt_rel_info) (h1 :: h2 :: hs) = 
+   | stmt_rel_tac_seq ctxt (info: ('a, 'i, 'e) stmt_rel_info) (h1 :: h2 :: hs) =
        resolve_tac ctxt [@{thm stmt_rel_seq_same_rel}] THEN'
        stmt_rel_tac ctxt info h1 THEN'
        stmt_rel_tac_seq ctxt info (h2 :: hs)
-and 
-     stmt_rel_single_stmt_tac _ _ NoHint = K all_tac         
+and
+     stmt_rel_single_stmt_tac _ _ NoHint = K all_tac
    | stmt_rel_single_stmt_tac ctxt (info: ('a, 'i, 'e) stmt_rel_info) hint_hd =
-    (* Each statement associated with a hint is translated by the actual encoding followed by 
+    (* Each statement associated with a hint is translated by the actual encoding followed by
        \<open>assume state(Heap, Mask)\<close>. This is why we apply a propagation rule first. *)
     (Rmsg' "stmt_rel_propagate_2_init" (resolve_tac ctxt [@{thm stmt_rel_propagate_3}]) ctxt) THEN'
     (
@@ -88,22 +91,22 @@ and
              (Rmsg' "If cond rel" (exp_rel_tac exp_rel_info ctxt |> SOLVED') ctxt)
            ) THEN'
            (
-            (* Apply propagation rule here, so that target program point in stmt_rel is a schematic 
-               variable for the recursive call to stmt_rel_tac (important, since then it is fine 
+            (* Apply propagation rule here, so that target program point in stmt_rel is a schematic
+               variable for the recursive call to stmt_rel_tac (important, since then it is fine
                to progress to an empty block essentially consuming all big blocks, instead of
                having to progress to the big block after the if-statement). Same for else-branch. *)
              simplify_continuation ctxt THEN'
              (Rmsg' "If3 Then" (resolve_tac ctxt [@{thm stmt_rel_propagate_2_same_rel}]) ctxt) THEN'
              (* rewrite then-branch, since block will be folded *)
-             (Rmsg' "If4 Then" (progress_stmt_rel_tac ctxt) ctxt) THEN'                    
+             (Rmsg' "If4 Then" (progress_stmt_rel_tac ctxt) ctxt) THEN'
              (stmt_rel_tac ctxt info thn_hint |> SOLVED') THEN'
              (Rmsg' "If5 Then" (progress_red_bpl_rel_tac ctxt) ctxt)
            ) THEN'
            (
             simplify_continuation ctxt THEN'
-            (Rmsg' "If3 Else" (resolve_tac ctxt [@{thm stmt_rel_propagate_2_same_rel}]) ctxt) THEN' 
+            (Rmsg' "If3 Else" (resolve_tac ctxt [@{thm stmt_rel_propagate_2_same_rel}]) ctxt) THEN'
             (* rewrite else-branch, since block will be folded *)
-            (Rmsg' "If4 Else" (progress_stmt_rel_tac ctxt) ctxt) THEN' 
+            (Rmsg' "If4 Else" (progress_stmt_rel_tac ctxt) ctxt) THEN'
             (stmt_rel_tac ctxt info els_hint |> SOLVED') THEN'
             (Rmsg' "If5 Else" (progress_red_bpl_rel_tac ctxt) ctxt)
            ) THEN'
@@ -121,8 +124,8 @@ and
 
 ML \<open>
 
-  datatype atomic_rel_hint = 
-     AssignHint of 
+  datatype atomic_rel_hint =
+     AssignHint of
        exp_wf_rel_info *
        exp_rel_info * (* for relating RHS of assignment *)
        thm (* lookup target theorem *)
@@ -138,7 +141,7 @@ ML \<open>
        (atomic_inhale_rel_hint inhale_rel_info) *
        atomic_exhale_rel_hint *
        (atomic_inhale_rel_hint inhale_rel_complete_hint)
-  | MethodCallHint of 
+  | MethodCallHint of
        string * (* callee name *)
        thm list * (* Boogie return variable lookup decl theorem *)
        (atomic_inhale_rel_hint inhale_rel_info) *
@@ -149,12 +152,13 @@ ML \<open>
   fun red_assign_tac ctxt (basic_stmt_rel_info : basic_stmt_rel_info) exp_wf_rel_info (exp_rel_info : exp_rel_info) lookup_bpl_target_thm =
     (Rmsg' "Assign 1" (resolve_tac ctxt [@{thm var_assign_rel_inst} OF [#consistency_wf_thm basic_stmt_rel_info]]) ctxt) THEN'
     (Rmsg' "Assign StateRel Eq" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
-    (Rmsg' "Assign Consistent" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
+    (Rmsg' "Assign Consistent" (assm_full_simp_solved_with_thms_tac @{thms state_rel_consistent} ctxt) ctxt) THEN'
     (Rmsg' "Assign VprTy" ((#var_context_vpr_tac basic_stmt_rel_info) ctxt |> SOLVED') ctxt) THEN'
     (Rmsg' "Assign TyRelWf" (simp_only_tac [#type_interp_econtext basic_stmt_rel_info] ctxt THEN'
-                        resolve_tac ctxt @{thms type_interp_rel_wf_vbpl_basic}) ctxt) THEN'
+                             resolve_tac ctxt @{thms type_interp_rel_wf_vbpl_no_domains} THEN'
+                             assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_stmt_rel_info] ctxt) ctxt) THEN'
     (Rmsg' "Assign EmptyRtype" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
-    
+
     (* well-def RHS *)
     (* begin *)
     (Rmsg' "Assign4" (resolve_tac ctxt [@{thm wf_rel_extend_1_same_rel}]) ctxt) THEN'
@@ -163,10 +167,10 @@ ML \<open>
     (* end *)
 
     (Rmsg' "Assign var translation" ( (#var_rel_tac basic_stmt_rel_info) ctxt |> SOLVED') ctxt) THEN'
-    
+
     (Rmsg' "Assign LHS Bpl Ty" (assm_full_simp_solved_with_thms_tac [lookup_bpl_target_thm] ctxt) ctxt) THEN'
-    (Rmsg' "Assign TyRel" (assm_full_simp_solved_with_thms_tac [@{thm ty_repr_basic_def}] ctxt) ctxt) THEN' 
-    (Rmsg' "Assign Rhs Rel" (exp_rel_tac exp_rel_info ctxt |> SOLVED') ctxt)   
+    (Rmsg' "Assign TyRel" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_stmt_rel_info] ctxt) ctxt) THEN'
+    (Rmsg' "Assign Rhs Rel" (exp_rel_tac exp_rel_info ctxt |> SOLVED') ctxt)
 
 
   fun field_rel_single_inst_tac field_rel_tac field_lookup_tac ty_repr_def_thm ctxt =
@@ -179,36 +183,37 @@ ML \<open>
   fun wf_writeable_field_rel_tac rcv_exp_rel_info (info : basic_stmt_rel_info) ctxt =
      (* need to first progress the configuration in case the currently active bigblock is not unfolded or
         if the current bigblock is empty *)
-     resolve_tac ctxt [@{thm wf_rel_extend_2_same_rel}] THEN' 
+     resolve_tac ctxt [@{thm wf_rel_extend_2_same_rel}] THEN'
      progress_tac ctxt THEN'
-     (Rmsg' "WfWriteableField1" (resolve_tac ctxt [@{thm syn_field_access_writeable_wf_rel} OF 
+     (Rmsg' "WfWriteableField1" (resolve_tac ctxt [@{thm syn_field_access_writeable_wf_rel} OF
                                                      [#ctxt_wf_thm info, #wf_ty_repr_thm info]
                                                   ]) ctxt) THEN'
-     (Rmsg' "WfWriteableField MaskRead Wf" (resolve_tac ctxt [@{thm mask_read_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]]) ctxt) THEN'
+     (Rmsg' "WfWriteableField MaskRead Wf" (resolve_tac ctxt [@{thm mask_read_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]]) ctxt THEN'
+                                            assm_full_simp_solved_tac ctxt) THEN'
      (Rmsg' "WfWriteableField2" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
      (Rmsg' "WfWriteableField3" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info, @{thm read_mask_concrete_def}] ctxt) ctxt) THEN'
      (Rmsg' "WfWriteableField6" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
      (Rmsg' "WfWriteableField7 (exp rel rcv)" (exp_rel_tac rcv_exp_rel_info ctxt) ctxt) THEN'
      (Rmsg' "WfWriteableField8" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
      (Rmsg' "WfWriteableField9 (single field rel)" ((#field_rel_single_tac info) ctxt) ctxt) THEN'
-     (Rmsg' "WfWriteableField10" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt)     
+     (Rmsg' "WfWriteableField10" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt)
 
   fun field_assign_rel_tac ctxt (info : basic_stmt_rel_info) atomic_hint =
-    (case atomic_hint of 
+    (case atomic_hint of
        FieldAssignHint (rcv_wf_rel_info, rhs_wf_rel_info, rcv_exp_rel_info, rhs_exp_rel_info) =>
        (Rmsg' "FieldAssign 1" (resolve_tac ctxt [@{thm field_assign_rel_inst} OF [#wf_ty_repr_thm info, #consistency_wf_thm info]]) ctxt) THEN'
        (Rmsg' "FieldAssign RStateRel" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
        (Rmsg' "FieldAssign HeapVarDefSame" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
-       (Rmsg' "FieldAssign DomainType" (assm_full_simp_solved_with_thms_tac @{thms ty_repr_basic_def} ctxt) ctxt) THEN'
+       (Rmsg' "FieldAssign DomainType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
        (Rmsg' "FieldAssign TypeInterp" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
-       (Rmsg' "FieldAssign HeapUpdWf" (resolve_tac ctxt [@{thm heap_update_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]])
-                                         ctxt) THEN'
+       (Rmsg' "FieldAssign HeapUpdWf" (resolve_tac ctxt [@{thm heap_update_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]] THEN'
+                                       assm_full_simp_solved_tac ctxt) ctxt) THEN'
        (* TODO: need to use wf_rel_extend *)
        (Rmsg' "FieldAssign7 (Wf Rcv)" (exp_wf_rel_non_trivial_tac rcv_wf_rel_info rcv_exp_rel_info ctxt) ctxt) THEN'
        (Rmsg' "FieldAssign8 (Wf Rhs)" (exp_wf_rel_non_trivial_tac rhs_wf_rel_info rhs_exp_rel_info ctxt) ctxt) THEN'
        (Rmsg' "FieldAssign9 (Wf Writeable Field)" (wf_writeable_field_rel_tac rcv_exp_rel_info info ctxt) ctxt) THEN'
        (Rmsg' "FieldAssign HeapVar" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
-       (Rmsg' "FieldAssign HeapUpdateBpl" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info, @{thm update_heap_concrete_def}, @{thm ty_repr_basic_def}] ctxt) ctxt) THEN'
+       (Rmsg' "FieldAssign HeapUpdateBpl" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info, @{thm update_heap_concrete_def}, #ty_repr_def_thm info] ctxt) ctxt) THEN'
        (Rmsg' "FieldAssign Exp Rel Rcv" (exp_rel_tac rcv_exp_rel_info ctxt) ctxt) THEN'
        (Rmsg' "FieldAssign FieldRel" ((#field_rel_single_tac info) ctxt) ctxt) THEN'
        (Rmsg' "FieldAssign Exp Rel Rhs" (exp_rel_tac rcv_exp_rel_info ctxt) ctxt)
@@ -216,13 +221,13 @@ ML \<open>
     | _ => error "field assign rel tac only handles field assignment"
     )
 
-  fun exhale_revert_state_relation ctxt (basic_info: basic_stmt_rel_info) = 
+  fun exhale_revert_state_relation ctxt (basic_info: basic_stmt_rel_info) =
     resolve_tac ctxt @{thms red_ast_bpl_rel_weaken_input} THEN'
     resolve_tac ctxt @{thms state_rel_set_def_to_eval} THEN'
     assm_full_simp_solved_tac ctxt THEN'
     resolve_tac ctxt @{thms red_ast_bpl_rel_input_implies_output} THEN'
     assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info] ctxt
-                                                                                   
+
   fun exhale_havoc_tac ctxt (info: basic_stmt_rel_info) (lookup_decl_exhale_heap_thm: thm) =
     let val tr_thm = #tr_def_thm info in
       (Rmsg' "exhale havoc 1" (resolve_tac ctxt @{thms exhale_stmt_rel_finish}) ctxt) THEN'
@@ -250,13 +255,13 @@ ML \<open>
   fun exhale_pure_no_havoc_tac ctxt =
     (Rmsg' "exhale no havoc init" (resolve_tac ctxt @{thms exhale_pure_stmt_rel_upd_havoc}) ctxt) THEN'
     (* The "ORELSE' blast_tac" case was added because for some reason simp_then_if_not_solved_blast_tac did not work.
-       For that example, when the goal was copied into the Isabelle GUI, then running simp_then_if_not_solved_blast_tac 
+       For that example, when the goal was copied into the Isabelle GUI, then running simp_then_if_not_solved_blast_tac
        worked. It is not clear why. *)
     (Rmsg' "exhale no havoc state rel" (simp_then_if_not_solved_blast_tac ctxt ORELSE' blast_tac ctxt) ctxt) THEN'
     (Rmsg' "exhale no havoc success cond" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "exhale no havoc pure assertion cond" (assm_full_simp_solved_tac ctxt) ctxt)
 
-  fun normal_exhale_rel_tac ctxt (info: 'a exhale_rel_info) (hint: 'a normal_exhale_rel_complete_hint) =    
+  fun normal_exhale_rel_tac ctxt (info: 'a exhale_rel_info) (hint: 'a normal_exhale_rel_complete_hint) =
     (Rmsg' "stmt rel exhale pre propagate" (resolve_tac ctxt @{thms exhale_rel_propagate_pre_no_inv_same_exh}) ctxt) THEN'
     (Rmsg' "stmt rel exhale propagate progress" (resolve_tac ctxt @{thms red_ast_bpl_rel_transitive} THEN' (progress_red_bpl_rel_tac ctxt)) ctxt) THEN'
 (*  old version: (Rmsg' "stmt rel exhale track well-def" (resolve_tac ctxt [@{thm red_ast_bpl_rel_weaken_input} OF @{thms state_rel_def_same_to_state_rel}] THEN' simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'*)
@@ -270,7 +275,7 @@ ML \<open>
       (Rmsg' "exhale revert state relation" (exhale_revert_state_relation ctxt (#basic_info info)) ctxt) THEN'
       (Rmsg' "stmt rel exhale progress" (progress_red_bpl_rel_tac ctxt) ctxt) THEN'
     (case (#lookup_decl_exhale_heap hint) of
-         SOME lookup_decl_exhale_heap_thm =>  
+         SOME lookup_decl_exhale_heap_thm =>
             (Rmsg' "stmt rel exhale havoc rel intro" (resolve_tac ctxt @{thms rel_intro_no_fail}) ctxt) THEN'
             exhale_havoc_tac ctxt (#basic_info info) lookup_decl_exhale_heap_thm
        | NONE => exhale_pure_no_havoc_tac ctxt
@@ -284,12 +289,12 @@ ML \<open>
   fun assert_rel_tac ctxt (info: 'a exhale_rel_info) (hint: 'a assert_rel_complete_hint) =
      exhale_rel_aux_tac ctxt info (#exhale_rel_hint hint) THEN'
     (Rmsg' "stmt rel assert reset state" ((#reset_state_tac hint) (#basic_info info) ctxt) ctxt)
-  
-  fun assert_rel_init_tac_standard setup_assert_state_tacs (basic_info: basic_stmt_rel_info) (setup_well_def_tac: Proof.context -> int -> tactic) ctxt =    
+
+  fun assert_rel_init_tac_standard setup_assert_state_tacs (basic_info: basic_stmt_rel_info) (setup_well_def_tac: Proof.context -> int -> tactic) ctxt =
     (Rmsg' "assert rel invariant" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "assert rel setup assert propagate" (resolve_tac ctxt @{thms exhale_rel_propagate_pre_no_inv}) ctxt) THEN'
-    (Rmsg' "assert rel setup assert state tac" 
-          ( EVERY'_red_ast_bpl_rel_transitive_custom ctxt 
+    (Rmsg' "assert rel setup assert state tac"
+          ( EVERY'_red_ast_bpl_rel_transitive_custom ctxt
             @{thm red_ast_bpl_rel_transitive_with_inv_capture_state[where ?Q="\<lambda>\<omega>. fst \<omega> = snd \<omega>"]}
            (map (fn tac => tac basic_info) setup_assert_state_tacs)) ctxt) THEN'
     (Rmsg' "assert rel show state rel capture init 1" (resolve_tac ctxt @{thms red_ast_bpl_rel_input_implies_output}) ctxt) THEN'
@@ -300,7 +305,7 @@ ML \<open>
        which is required by the lemma *)
     (Rmsg' "assert rel exhale rel capture state abstract" (resolve_tac ctxt @{thms exhale_rel_capture_state_abstract}) ctxt)
 
-  fun assert_rel_init_tac_pure (_: basic_stmt_rel_info) (setup_well_def_tac: Proof.context -> int -> tactic) ctxt =    
+  fun assert_rel_init_tac_pure (_: basic_stmt_rel_info) (setup_well_def_tac: Proof.context -> int -> tactic) ctxt =
     (Rmsg' "assert rel invariant" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "assert rel setup assert propagate" (resolve_tac ctxt @{thms exhale_rel_propagate_pre_no_inv_same_exh}) ctxt) THEN'
     (Rmsg' "stmt rel assert propagate progress" (resolve_tac ctxt @{thms red_ast_bpl_rel_transitive} THEN' (progress_red_bpl_rel_tac ctxt)) ctxt) THEN'
@@ -331,20 +336,28 @@ ML \<open>
       (Rmsg' "assert pure rel reset state finish 3" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
       (Rmsg' "assert pure rel reset state finish 3" (assm_full_simp_solved_tac ctxt) ctxt)
 
-                 
-  fun atomic_rel_inst_tac ctxt (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) (atomic_hint : atomic_rel_hint)  = 
-    (case atomic_hint of 
-        AssignHint (exp_wf_rel_info, exp_rel_info, lookup_bpl_target_thm) => 
+
+  fun atomic_rel_inst_tac ctxt (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) (atomic_hint : atomic_rel_hint)  =
+    (case atomic_hint of
+        AssignHint (exp_wf_rel_info, exp_rel_info, lookup_bpl_target_thm) =>
                red_assign_tac ctxt basic_info exp_wf_rel_info exp_rel_info lookup_bpl_target_thm
      |  FieldAssignHint _ => field_assign_rel_tac ctxt basic_info atomic_hint
-     | InhaleHint inh_complete_hint => 
+     | InhaleHint inh_complete_hint =>
         (Rmsg' "AtomincInh Start" (resolve_tac ctxt [#inhale_stmt_rel_thm inh_complete_hint]) ctxt) THEN'
         (Rmsg' "AtomincInh StateRel" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (Rmsg' "AtomincInh Invariant" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (inhale_rel_tac ctxt inhale_info (#inhale_rel_hint inh_complete_hint))
      | ExhaleHint (NormalExhCompleteHint exh_complete_hint) =>
         (Rmsg' "AtomicExh1 Start" (resolve_tac ctxt [(#exhale_stmt_rel_thm exh_complete_hint) OF [(#consistency_wf_thm basic_info)]]) ctxt) THEN'
-        (Rmsg' "AtomicExh2 Consistency" (fastforce_tac ctxt @{thms framing_exh_def}) ctxt) THEN'
+        (* (Rmsg' "AtomicExh2 Consistency" (fastforce_tac ctxt @{thms framing_exh_def}) ctxt) THEN' *)
+        (* (Rmsg' "AtomicExh2 Consistency" (simp_tac_with_thms @{thms framing_exh_def} ctxt) ctxt) THEN' *)
+        (Rmsg' "AtomicExh2 Consistency 0?" (TRY' (eresolve_tac ctxt @{thms conjE})) ctxt) THEN'
+        (Rmsg' "AtomicExh2 Consistency 1" (forward_tac ctxt @{thms state_rel_consistent}) ctxt) THEN'
+        (Rmsg' "AtomicExh2 Consistency 2" (assm_full_simp_solved_with_thms_tac [@{thm default_state_rel_options_def}, #tr_def_thm basic_info] ctxt) ctxt) THEN'
+        (Rmsg' "AtomicExh2 Consistency 3" (resolve_tac ctxt @{thms conjI}) ctxt) THEN'
+        (Rmsg' "AtomicExh2 Consistency 4" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+        (Rmsg' "AtomicExh2 Consistency 5" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info, @{thm extcons_fun_interp_irrelevant'}] ctxt) ctxt) THEN'
+        (* (Rmsg' "AtomicExh2 Consistency" (fastforce_tac ctxt @{thms framing_exh_def}) ctxt) THEN' *)
         (Rmsg' "AtomicExh3 Invariant" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (normal_exhale_rel_tac ctxt exhale_info exh_complete_hint)
      | ExhaleHint TrivialExhCompleteHint =>
@@ -352,17 +365,17 @@ ML \<open>
         (Rmsg' "AtomicExh Trivial State Rel Impies" (simp_then_if_not_solved_blast_tac ctxt) ctxt)
      | AssertHint assert_complete_hint =>
         (Rmsg' "AtomicAssert Start" (resolve_tac ctxt [#assert_stmt_rel_thm assert_complete_hint]) ctxt) THEN'
-        (Rmsg' "AtomicAssert Init" ((#init_tac assert_complete_hint) basic_info (#setup_well_def_state_tac assert_complete_hint basic_info) ctxt) ctxt) THEN' 
+        (Rmsg' "AtomicAssert Init" ((#init_tac assert_complete_hint) basic_info (#setup_well_def_state_tac assert_complete_hint basic_info) ctxt) ctxt) THEN'
         (assert_rel_tac ctxt exhale_info assert_complete_hint)
      | UnfoldHint (inhale_info, atomic_exhale_hint, inhale_hint) =>
         (pred_unfold_tac ctxt inhale_info exhale_info basic_info atomic_exhale_hint (#inhale_rel_hint inhale_hint))
-     | MethodCallHint (callee_name, rets_lookup_decl_thms, inhale_info_call, exhale_info_call, exh_pre_complete_hint, inh_post_complete_hint) => 
+     | MethodCallHint (callee_name, rets_lookup_decl_thms, inhale_info_call, exhale_info_call, exh_pre_complete_hint, inh_post_complete_hint) =>
         let val callee_data = Symtab.lookup (#method_data_table basic_info) callee_name |> Option.valOf in
         (Rmsg' "MethodCall Start" (resolve_tac ctxt [@{thm method_call_stmt_rel_inst} OF [#consistency_wf_thm basic_info, #consistency_down_mono_thm basic_info]]) ctxt) THEN'
         (Rmsg' "MethodCall Program Eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (Rmsg' "MethodCall ConsistencyEnabled" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info, @{thm default_state_rel_options_def}] ctxt) ctxt) THEN'
         (Rmsg' "MethodCall MdeclSome" (assm_full_simp_solved_with_thms_tac [#method_lookup_thm callee_data] ctxt) ctxt) THEN'
-        (Rmsg' "MethodCall MethodSpecsFramed" (EVERY' [eresolve_tac ctxt @{thms vpr_method_spec_correct_total_from_all}, 
+        (Rmsg' "MethodCall MethodSpecsFramed" (EVERY' [eresolve_tac ctxt @{thms vpr_method_spec_correct_total_from_all},
                                                   resolve_tac ctxt [#method_lookup_thm callee_data]]) ctxt) THEN'
         (Rmsg' "MethodCall MethodSpecSubset" (assm_full_simp_solved_with_thms_tac [#method_pre_thm callee_data, #method_post_thm callee_data] ctxt) ctxt) THEN'
         (Rmsg' "MethodCall OnlyArgsInPre" (fastforce_tac ctxt [#method_pre_thm callee_data]) ctxt) THEN'
@@ -374,12 +387,12 @@ ML \<open>
         (Rmsg' "MethodCall ArgsVarsEq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (Rmsg' "MethodCall ArgsSubsetVarTranslation" (#var_rel_tac basic_info ctxt) ctxt) THEN'
         (Rmsg' "MethodCall XsBplEq" (#var_rel_tac basic_info ctxt) ctxt) THEN'
-        (Rmsg' "MethodCall RetsSubsetVarTranslation" (#var_rel_tac basic_info ctxt) ctxt) THEN' 
+        (Rmsg' "MethodCall RetsSubsetVarTranslation" (#var_rel_tac basic_info ctxt) ctxt) THEN'
         (Rmsg' "MethodCall YsBplEq" (#var_rel_tac basic_info ctxt) ctxt) THEN'
         (Rmsg' "MethodCall ArgsAndRetsDisjoint" (assm_full_simp_solved_with_thms_tac [@{thm shift_and_add_def}] ctxt) ctxt) THEN'
         (Rmsg' "MethodCall Distinct Args" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (Rmsg' "MethodCall Distinct Rets" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-        (Rmsg' "MethodCall LookupDeclRetsBpl" (assm_full_simp_solved_with_thms_tac ([#method_rets_thm callee_data, @{thm ty_repr_basic_def}, @{thm shift_and_add_def}]@rets_lookup_decl_thms)  ctxt) ctxt) THEN'
+        (Rmsg' "MethodCall LookupDeclRetsBpl" (assm_full_simp_solved_with_thms_tac ([#method_rets_thm callee_data, #ty_repr_def_thm basic_info, @{thm shift_and_add_def}]@rets_lookup_decl_thms)  ctxt) ctxt) THEN'
         (Rmsg' "MethodCall Var Translation Pre Eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (Rmsg' "MethodCall Exhale Pre" ( simp_only_tac [#method_pre_thm callee_data] ctxt THEN'
                                          atomic_rel_inst_tac ctxt inhale_info_call exhale_info_call basic_info (ExhaleHint exh_pre_complete_hint)) ctxt) THEN'

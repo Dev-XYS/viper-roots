@@ -34,7 +34,7 @@ fun pred_unfold_tac ctxt (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (
   (Rmsg' "unfold stmt StateRelImpliesExtCons 1" (resolve_tac ctxt @{thms extcons_fun_interp_irrelevant'}) ctxt) THEN'
   (Rmsg' "unfold stmt StateRelImpliesExtCons 2" (forward_tac ctxt @{thms state_rel_consistent}) ctxt) THEN'
   (Rmsg' "unfold stmt StateRelImpliesExtCons 3" (assm_full_simp_solved_with_thms_tac [@{thm default_state_rel_options_def}, #tr_def_thm basic_info] ctxt) ctxt) THEN'
-  (Rmsg' "unfold stmt StateRelImpliesExtCons 4" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info, @{thm ty_repr_basic_def}] ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt StateRelImpliesExtCons 4" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info] ctxt) ctxt) THEN'
 
   (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
   (Rmsg' "unfold stmt ArgsRestriction" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'

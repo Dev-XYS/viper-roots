@@ -217,8 +217,8 @@ fun EVERY'_red_ast_bpl_rel_transitive _ [] = K all_tac
 fun EVERY'_red_ast_bpl_rel_transitive_refl ctxt tacs = 
     EVERY'_red_ast_bpl_rel_transitive ctxt tacs THEN'
     ((* old version: resolve_tac ctxt @{thms red_ast_bpl_rel_input_implies_output} THEN' *)
-      resolve_tac ctxt @{thms red_ast_bpl_rel_input_eq_output} THEN'
-      assm_full_simp_solved_tac ctxt
+      (Rmsg' "debug1" (resolve_tac ctxt @{thms red_ast_bpl_rel_input_eq_output}) ctxt) THEN'
+      (Rmsg' "debug2" (assm_full_simp_solved_tac ctxt) ctxt)
     )
 
 
