@@ -190,7 +190,7 @@ definition var_translation_example :: "ViperLang.var \<rightharpoonup> Lang.vnam
   where
     "var_translation_example \<equiv> map_of var_translation_example_list"
 
-fun fun_repr_concrete :: fun_repr_bpl 
+fun fun_repr_concrete :: fun_repr_bpl
   where 
     "fun_repr_concrete FReadHeap = ''readHeap''"
   | "fun_repr_concrete FUpdateHeap = ''updHeap''"
@@ -204,7 +204,11 @@ fun fun_repr_concrete :: fun_repr_bpl
   | "fun_repr_concrete FIdenticalOnKnownLocs = ''IdenticalOnKnownLocations''" 
   | "fun_repr_concrete FIsPredicateField = ''IsPredicateField''"
   | "fun_repr_concrete FIsWandField = ''IsWandField''"
-  | "fun_repr_concrete (FPredicateLoc pid _) = ''P''"
+  | "fun_repr_concrete (FPredicateLoc pid _) = pid"
+  | "fun_repr_concrete (FPredicateSMLoc pid _) = pid @ ''#sm''"
+  | "fun_repr_concrete FPredicateMaskField = ''PredicateMaskField''"
+  | "fun_repr_concrete FFrameFragment = ''FrameFragment''"
+  | "fun_repr_concrete FCombineFrames = ''CombineFrames''"
 
 lemma fun_repr_concrete_inj: "inj fun_repr_concrete"
   unfolding inj_def

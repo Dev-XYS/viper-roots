@@ -25,6 +25,10 @@ datatype fun_enum_bpl =
      | FIsPredicateField
      | FIsWandField
      | FPredicateLoc predicate_ident "bpl_ty list"
+     | FPredicateSMLoc predicate_ident "bpl_ty list"
+     | FPredicateMaskField
+     | FFrameFragment
+     | FCombineFrames
 
 text \<open>\<^typ>\<open>fun_enum_bpl\<close> enumerates the functions required for the encoding\<close>
 
@@ -458,6 +462,7 @@ lemma store_knownfolded_mask_fun_interp_single_wf:
   apply (rule fun_interp_single_wf_intro)
   by (clarsimp dest!: all_inversion_type_of_vbpl_val[OF WfTyRepr] deconstruct_list_length_2 lit_inversion_type_of_val split: val.split vbpl_absval.split)
 
+
 subsection \<open>Identical on known locations\<close>
 
 fun identical_on_known_locs ::  "'a sem_fun_bpl"
@@ -476,6 +481,7 @@ lemma identical_on_known_locs_fun_interp_single_wf:
               identical_on_known_locs"
   apply (rule fun_interp_single_wf_intro)
   by (clarsimp dest!: all_inversion_type_of_vbpl_val[OF WfTyRepr] split: val.split vbpl_absval.split)
+
 
 subsection \<open>IsPredicateField and IsWandField\<close>
 
@@ -534,6 +540,22 @@ proof -
 qed
 
 
+subsection \<open>Predicate Known-Folded Mask Field\<close>
+
+fun predicate_mask_field :: "'a sem_fun_bpl"
+  where "predicate_mask_field ts vs =
+          (case (ts, vs) of
+             ([t], [AbsV (AField (PredSnapshotField lp))]) \<Rightarrow> Some (AbsV (AField (PredKnownFoldedField lp)))
+           | _ \<Rightarrow> None)"
+
+lemma predicate_mask_field_fun_interp_single_wf:
+  assumes WfTyRepr: "wf_ty_repr_bpl T"
+  shows "fun_interp_single_wf (vbpl_absval_ty T) (1, [TCon (TFieldId T) [TVar 0, TConSingle (TFrameFragmentId T)]], TConSingle (TKnownFoldedMaskId T)) predicate_mask_field"
+  apply (rule fun_interp_single_wf_intro)
+  sorry
+  (* by (clarsimp dest!: all_inversion_type_of_vbpl_val[OF WfTyRepr] deconstruct_list_length_2 lit_inversion_type_of_val split: val.split vbpl_absval.split) *)
+
+
 subsection \<open>Global function map\<close>
 
 text \<open>TODO: this is currently not modular. Ideally, different modules would define these interpretations
@@ -568,6 +590,9 @@ fun fun_interp_vpr_bpl_aux :: "ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<
        (is_wand_field, (2, [TCon (TFieldId T) [(TVar 0),(TVar 1)]], (TPrim TBool)))"
   | "fun_interp_vpr_bpl_aux Pr T F (FPredicateLoc pid tys_bpl) =
        (predicate_loc_bpl_fun pid tys_bpl (vbpl_absval_ty T), (0, tys_bpl, TCon (TFieldId T) [the (pred_snap_field_type T pid), TPrim TBool]))"
+  | "fun_interp_vpr_bpl_aux Pr T F FPredicateMaskField =
+       (predicate_mask_field, (1, [TCon (TFieldId T) [TVar 0, TConSingle (TFrameFragmentId T)]], TConSingle (TKnownFoldedMaskId T)))"
+
 
 fun fun_interp_vpr_bpl :: " ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> 
                                 fun_enum_bpl \<Rightarrow> 'a sem_fun_bpl"
