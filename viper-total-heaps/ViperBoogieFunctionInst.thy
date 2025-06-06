@@ -27,8 +27,8 @@ datatype fun_enum_bpl =
      | FPredicateLoc predicate_ident "bpl_ty list"
      | FPredicateSMLoc predicate_ident "bpl_ty list"
      | FPredicateMaskField
-     | FFrameFragment
-     | FCombineFrames
+     (* | FFrameFragment *)
+     (* | FCombineFrames *)
 
 text \<open>\<^typ>\<open>fun_enum_bpl\<close> enumerates the functions required for the encoding\<close>
 
@@ -521,7 +521,7 @@ lemma predicate_loc_fun_interp_single_wf:
       and PredType: "pred_snap_field_type T pid = Some pred_ty"
     shows "fun_interp_single_wf
              (vbpl_absval_ty T)
-             (0, tys_bpl, TCon (TFieldId T) [pred_ty, TPrim TBool])
+             (0, tys_bpl, TCon (TFieldId T) [pred_ty, TConSingle (TFrameFragmentId T)])
              (predicate_loc_bpl_fun pid tys_bpl (vbpl_absval_ty T))"
   apply (rule fun_interp_single_wf_intro)
 proof -
@@ -534,7 +534,34 @@ proof -
     by simp
   let ?v = "AbsV (AField (PredSnapshotField (pid, (THE v_args. map val_rel_vpr_bpl v_args = vs))))"
   show "\<exists>v. predicate_loc_bpl_fun pid tys_bpl (vbpl_absval_ty T) ts vs = Some v \<and>
-            type_of_vbpl_val T v = instantiate ts (TCon (TFieldId T) [pred_ty, TPrim prim_ty.TBool])"
+            type_of_vbpl_val T v = instantiate ts (TCon (TFieldId T) [pred_ty, TConSingle (TFrameFragmentId T)])"
+    apply (rule exI[of _ ?v])
+    by (simp add: PredType \<open>ts = []\<close>)
+qed
+
+fun predicate_sm_loc_bpl_fun :: "predicate_ident \<Rightarrow> ty list \<Rightarrow> 'a vbpl_absval absval_ty_fun \<Rightarrow> 'a sem_fun_bpl"
+  where "predicate_sm_loc_bpl_fun pid tys_bpl A ts vs =
+           Some (AbsV (AField (PredKnownFoldedField (pid, THE v_args. map val_rel_vpr_bpl v_args = vs))))"
+
+lemma predicate_sm_loc_fun_interp_single_wf:
+  assumes WfTyRepr: "wf_ty_repr_bpl T"
+      and PredType: "pred_snap_field_type T pid = Some pred_ty"
+    shows "fun_interp_single_wf
+             (vbpl_absval_ty T)
+             (0, tys_bpl, TCon (TFieldId T) [pred_ty, TConSingle (TKnownFoldedMaskId T)])
+             (predicate_sm_loc_bpl_fun pid tys_bpl (vbpl_absval_ty T))"
+  apply (rule fun_interp_single_wf_intro)
+proof -
+  fix ts vs
+  assume "length ts = 0"
+     and "list_all closed ts"
+     and "length vs = length tys_bpl"
+     and "map (type_of_vbpl_val T) vs = map (instantiate ts) tys_bpl"
+  hence "ts = []"
+    by simp
+  let ?v = "AbsV (AField (PredKnownFoldedField (pid, (THE v_args. map val_rel_vpr_bpl v_args = vs))))"
+  show "\<exists>v. predicate_sm_loc_bpl_fun pid tys_bpl (vbpl_absval_ty T) ts vs = Some v \<and>
+            type_of_vbpl_val T v = instantiate ts (TCon (TFieldId T) [pred_ty, TConSingle (TKnownFoldedMaskId T)])"
     apply (rule exI[of _ ?v])
     by (simp add: PredType \<open>ts = []\<close>)
 qed
@@ -550,7 +577,7 @@ fun predicate_mask_field :: "'a sem_fun_bpl"
 
 lemma predicate_mask_field_fun_interp_single_wf:
   assumes WfTyRepr: "wf_ty_repr_bpl T"
-  shows "fun_interp_single_wf (vbpl_absval_ty T) (1, [TCon (TFieldId T) [TVar 0, TConSingle (TFrameFragmentId T)]], TConSingle (TKnownFoldedMaskId T)) predicate_mask_field"
+  shows "fun_interp_single_wf (vbpl_absval_ty T) (1, [TCon (TFieldId T) [TVar 0, TConSingle (TFrameFragmentId T)]], TCon (TFieldId T) [TVar 0, TConSingle (TKnownFoldedMaskId T)]) predicate_mask_field"
   apply (rule fun_interp_single_wf_intro)
   sorry
   (* by (clarsimp dest!: all_inversion_type_of_vbpl_val[OF WfTyRepr] deconstruct_list_length_2 lit_inversion_type_of_val split: val.split vbpl_absval.split) *)
@@ -589,9 +616,11 @@ fun fun_interp_vpr_bpl_aux :: "ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<
   | "fun_interp_vpr_bpl_aux Pr T F FIsWandField =
        (is_wand_field, (2, [TCon (TFieldId T) [(TVar 0),(TVar 1)]], (TPrim TBool)))"
   | "fun_interp_vpr_bpl_aux Pr T F (FPredicateLoc pid tys_bpl) =
-       (predicate_loc_bpl_fun pid tys_bpl (vbpl_absval_ty T), (0, tys_bpl, TCon (TFieldId T) [the (pred_snap_field_type T pid), TPrim TBool]))"
+       (predicate_loc_bpl_fun pid tys_bpl (vbpl_absval_ty T), (0, tys_bpl, TCon (TFieldId T) [the (pred_snap_field_type T pid), TConSingle (TFrameFragmentId T)]))"
+  | "fun_interp_vpr_bpl_aux Pr T F (FPredicateSMLoc pid tys_bpl) =
+       (predicate_sm_loc_bpl_fun pid tys_bpl (vbpl_absval_ty T), (0, tys_bpl, TCon (TFieldId T) [the (pred_snap_field_type T pid), TConSingle (TKnownFoldedMaskId T)]))"
   | "fun_interp_vpr_bpl_aux Pr T F FPredicateMaskField =
-       (predicate_mask_field, (1, [TCon (TFieldId T) [TVar 0, TConSingle (TFrameFragmentId T)]], TConSingle (TKnownFoldedMaskId T)))"
+       (predicate_mask_field, (1, [TCon (TFieldId T) [TVar 0, TConSingle (TFrameFragmentId T)]], TCon (TFieldId T) [TVar 0, TConSingle (TKnownFoldedMaskId T)]))"
 
 
 fun fun_interp_vpr_bpl :: " ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> 

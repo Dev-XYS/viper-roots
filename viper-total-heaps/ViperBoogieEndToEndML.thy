@@ -67,6 +67,12 @@ ML \<open>
     fun_repr_inj_thm: thm
   }
 
+  fun extract_fun_name t =
+    case Logic.strip_assums_concl t of
+      @{term "Trueprop"} $ t' => extract_fun_name t'
+    | Const (@{const_name HOL.eq}, _) $ _ $ fname => fname
+    | t => raise TERM ("cannot extract Boogie function name", [t])
+
   fun extract_fun_enum_bpl t =
     case t of 
       @{term "Trueprop"} $ t' => extract_fun_enum_bpl t'
@@ -107,15 +113,20 @@ ML \<open>
        (Rmsg' "RedFunOp init"
          (simp_only_tac [#fun_interp_inst_def_thm axiom_tac_data] ctxt THEN'
           resolve_tac ctxt [@{thm fun_interp_vpr_bpl_concrete_lookup} OF [#fun_repr_inj_thm axiom_tac_data]] THEN'
-          fast_tac (ctxt addIs @{thms fun_repr_concrete.simps})) ctxt THEN'
-          assm_full_simp_solved_tac ctxt) THEN'
+          (SUBGOAL (fn (t,i) => (let val fname = HOLogic.dest_string (extract_fun_name t) in
+             writeln (if String.isSuffix "#sm" fname then "a" else "b");
+             if not (String.isSuffix "#sm" fname)
+               then fast_tac (ctxt addIs @{thms fun_repr_concrete.simps}) i
+               else fast_tac (ctxt addIs [simp_thm ctxt (inst ctxt @{thm fun_repr_concrete.simps(14)} (HOLogic.mk_string (str_trimr fname 3))) @{thms append.simps}]) i
+             end
+          ))) THEN'
+          assm_full_simp_solved_tac ctxt) ctxt) THEN'
       
        (* function arguments *)
        (fn i => fn st => axiom_aux_list_tac ctxt lookup_const_thms del_thms axiom_tac_data i st) THEN'
        (* function interpretation evaluation *)
        (Rmsg' "RedFunOp finish"
-             (SUBGOAL (fn (t,i) => (#finterp_eval_tac axiom_tac_data) ctxt (extract_fun_enum_bpl (Logic.strip_assums_concl t)) i) 
-                                            |> SOLVED') ctxt),
+          (SUBGOAL (fn (t,i) => (#finterp_eval_tac axiom_tac_data) ctxt (extract_fun_enum_bpl (Logic.strip_assums_concl t)) i) |> SOLVED') ctxt),
 
        (* Lit *)
        K all_tac,
@@ -153,8 +164,15 @@ fun finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr ctxt t =
   | Const (@{const_name FReadMask}, _) =>
      asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps [ty_repr_def, @{thm lift_fun_bpl_def}] ctxt)) THEN'
      asm_full_simp_tac (del_simps @{thms fun_upd_apply} (add_simps @{thms ty_repr_basic_def} ctxt))
+  | Const (@{const_name FReadKnownFoldedMask}, _) =>
+     asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps [ty_repr_def, @{thm lift_fun_bpl_def}] ctxt)) THEN'
+     asm_full_simp_tac (del_simps @{thms fun_upd_apply} (add_simps @{thms ty_repr_basic_def} ctxt))
   | Const (@{const_name FIsPredicateField}, _) =>
      (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
+     asm_full_simp_tac (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt)
+  | Const (@{const_name FPredicateMaskField}, _) =>
+     asm_full_simp_tac (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt)
+  | Const (@{const_name FPredicateLoc}, _) $ _ $ _ =>
      asm_full_simp_tac (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt)
      (* For some unknown reason, we could not delete those lemmas to prove this case.
         Todo: Investigate this. *)

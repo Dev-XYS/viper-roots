@@ -23,9 +23,9 @@ datatype boogie_const =
      | CWritePerm
      | CNull     
      | CZeroMask
-     \<comment>\<open>the following constants are not required in the proof generation subset 
      | CKnownFoldedZeroMask
-     | CEmptyFrame    \<close>
+     \<comment>\<open>the following constants are not required in the proof generation subset 
+     | CEmptyFrame\<close>
 
 text \<open>The following records tracks options controlling whether certain parts of the state relation should
       or should not be enforced.\<close>
@@ -415,8 +415,8 @@ fun boogie_const_val :: "boogie_const => ('a vbpl_val)"
   | "boogie_const_val CWritePerm = RealV 1"
   | "boogie_const_val CNull = AbsV (ARef Null)"
   | "boogie_const_val CZeroMask = AbsV (AMask zero_mask_bpl)"
- \<comment>\<open> | "boogie_const_val CKnownFoldedZeroMask = AbsV (AKnownFoldedMask (\<lambda> _. False))"
-    | "boogie_const_val CEmptyFrame = AbsV (AFrame EmptyFrame)" \<close>
+  | "boogie_const_val CKnownFoldedZeroMask = AbsV (AKnownFoldedMask (\<lambda> _. False))"
+  \<comment>\<open>| "boogie_const_val CEmptyFrame = AbsV (AFrame EmptyFrame)"\<close>
 
 fun boogie_const_ty :: "'a ty_repr_bpl \<Rightarrow> boogie_const => bpl_ty"
   where
@@ -424,8 +424,8 @@ fun boogie_const_ty :: "'a ty_repr_bpl \<Rightarrow> boogie_const => bpl_ty"
   | "boogie_const_ty T CWritePerm = TPrim TReal"
   | "boogie_const_ty T CNull = TConSingle (TRefId T)"
   | "boogie_const_ty T CZeroMask = TConSingle (TMaskId T)"
-\<comment>\<open>  | "boogie_const_ty T CKnownFoldedZeroMask = TConSingle (TKnownFoldedMaskId T)"
-  | "boogie_const_ty T CEmptyFrame = TConSingle (TFrameFragmentId T)"\<close>
+  | "boogie_const_ty T CKnownFoldedZeroMask = TConSingle (TKnownFoldedMaskId T)"
+  \<comment>\<open>| "boogie_const_ty T CEmptyFrame = TConSingle (TFrameFragmentId T)"\<close>
 
 
 lemma boogie_const_val_well_ty: "type_of_vbpl_val T (boogie_const_val c) = boogie_const_ty T c"  

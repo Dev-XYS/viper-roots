@@ -219,12 +219,10 @@ qed (auto)
 fun field_ty_fun_opt :: "'a ty_repr_bpl \<Rightarrow> 'a vb_field \<rightharpoonup> (tcon_id \<times> ty list)"
   where 
     "field_ty_fun_opt T (NormalField field_id vty) = map_option (\<lambda>t.(TFieldId T, [TConSingle (TNormalFieldId T), t])) (vpr_to_bpl_ty T vty)"
-(*| "field_ty_fun_opt T (PredSnapshotField pred_loc) =
-       map_option (\<lambda>p. (TFieldId T, [p, TConSingle (TFrameFragmentId T)])) (pred_snap_field_type T (fst pred_loc))" *)
   | "field_ty_fun_opt T (PredSnapshotField pred_loc) =
-       map_option (\<lambda>p. (TFieldId T, [p, TPrim TBool])) (pred_snap_field_type T (fst pred_loc))"
+       map_option (\<lambda>p. (TFieldId T, [p, TConSingle (TFrameFragmentId T)])) (pred_snap_field_type T (fst pred_loc))"
   | "field_ty_fun_opt T (PredKnownFoldedField pred_loc) = 
-       map_option (\<lambda>p. (TFieldId T, [p, TConSingle (TFrameFragmentId T)])) (pred_knownfolded_field_type T (fst pred_loc))"
+       map_option (\<lambda>p. (TFieldId T, [p, TConSingle (TKnownFoldedMaskId T)])) (pred_snap_field_type T (fst pred_loc))"
   | "field_ty_fun_opt T (DummyField t1 t2) =
        Some_if (closed t1 \<and> closed t2) (TFieldId T, [t1, t2])"
 

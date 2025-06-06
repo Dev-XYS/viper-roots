@@ -125,9 +125,9 @@ lemma inhale_rel_pred_acc_upd_rel:
     PredType: "pred_snap_field_type TyRep pid = Some pred_type" and
 
     NewPermBpl: "new_perm = (mask_read_bpl (Var m_bpl) (Var nullConst) e_ploc_bpl
-                                  [pred_type, TPrim TBool]) \<guillemotleft>Add\<guillemotright> (Var temp_perm)" and
+                                  [pred_type, TConSingle (TFrameFragmentId TyRep)]) \<guillemotleft>Add\<guillemotright> (Var temp_perm)" and
     MaskUpdateBpl: "m_upd_bpl = mask_upd_bpl (Var m_bpl) (Var nullConst) e_ploc_bpl new_perm
-                                  [pred_type, TPrim TBool]" and
+                                  [pred_type, TConSingle (TFrameFragmentId TyRep)]" and
 
     PlocBpl: "e_ploc_bpl = FunExp pid [] e_args_bpl" and
     PlocRel: "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl" and
@@ -239,7 +239,7 @@ proof -
     using PlocRel[unfolded ploc_rel_vpr_bpl_def] * inhale_pred_normal_premise_def \<open>R \<omega> ns\<close>
        apply blast
     using PredType
-      apply force
+      apply simp
      apply (fastforce intro: RedVar LookupTempPerm)
     by simp
 
@@ -898,7 +898,7 @@ lemma exp_rel_perm_pred_access_2:
     StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega>def \<omega> ns" and
     "mvar = mask_var Tr" and
     "nullConst = const_repr Tr CNull" and
-    "e_bpl = mask_read_bpl (expr.Var mvar) (expr.Var nullConst) e_ploc_bpl [pred_ty, TPrim TBool]" and
+    "e_bpl = mask_read_bpl (expr.Var mvar) (expr.Var nullConst) e_ploc_bpl [pred_ty, TConSingle (TFrameFragmentId TyRep)]" and
     PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
     PlocRel: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredSnapshotField (pid,v_args_vpr))))"
   shows "red_expr_bpl ctxt_bpl e_bpl ns (RealV (Rep_preal (get_mp_total_full \<omega> (pid,v_args_vpr))))"
@@ -951,9 +951,9 @@ lemma exhale_rel_pred_acc_upd_rel:
     PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
 
     NewPermBpl: "new_perm = (mask_read_bpl (Var m_bpl) (Var nullConst) e_ploc_bpl
-                                  [pred_ty, TPrim TBool]) \<guillemotleft>Sub\<guillemotright> (Var temp_perm)" and
+                                  [pred_ty, TConSingle (TFrameFragmentId TyRep)]) \<guillemotleft>Sub\<guillemotright> (Var temp_perm)" and
     MaskUpdateBpl: "m_upd_bpl = mask_upd_bpl (Var m_bpl) (Var nullConst) e_ploc_bpl new_perm
-                                  [pred_ty, TPrim TBool]" and
+                                  [pred_ty, TConSingle (TFrameFragmentId TyRep)]" and
 
     PlocBpl: "e_ploc_bpl = FunExp pid [] e_args_bpl" and
     PlocRel: "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl" and

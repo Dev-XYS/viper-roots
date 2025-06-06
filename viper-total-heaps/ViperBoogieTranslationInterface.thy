@@ -20,12 +20,12 @@ definition update_mask_concrete :: "fun_repr_bpl \<Rightarrow> boogie_expr \<Rig
 
 lemma vpr_to_bpl_ty_closed:
   assumes   "wf_ty_repr_bpl TyRep" and
-            "vpr_to_bpl_ty TyRep vty = Some t" 
+            "vpr_to_bpl_ty TyRep vty = Some t"
           shows "closed t"
   apply (rule vpr_to_bpl_ty.elims[OF assms(2)])
   using assms(1)
   unfolding wf_ty_repr_bpl_def
-  by (auto simp: map_option_case split:option.split_asm) 
+  by (auto simp: map_option_case split:option.split_asm)
 
 lemma instantiate_nil_id: "instantiate [] = id"
   by auto
@@ -55,7 +55,7 @@ lemma list_all_comp:
 
 
 lemma heap_wf_concrete:
-  assumes 
+  assumes
     CtxtWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt" and
     TyRepWf: "wf_ty_repr_bpl TyRep" and
     InFunDom: "FReadHeap \<in> FunDom"
@@ -72,10 +72,10 @@ lemma heap_wf_concrete:
     apply ((rule RedExpListCons, blast)+, rule RedExpListNil)
    apply (simp del: vbpl_absval_ty_opt.simps)
    apply (rule lift_fun_decl_well_typed)
-       apply simp       
+       apply simp
   using field_ty_fun_two_params
-      apply fastforce    
-  using list_all_comp[OF field_ty_fun_opt_closed_args[OF TyRepWf]] closed_instantiate 
+      apply fastforce
+  using list_all_comp[OF field_ty_fun_opt_closed_args[OF TyRepWf]] closed_instantiate
      apply (metis TyRepWf closed.simps(3) field_ty_fun_opt_closed instantiate.simps(3) snd_conv)
     apply (rule field_ty_fun_two_params)
      apply blast
@@ -85,11 +85,11 @@ lemma heap_wf_concrete:
     apply (metis field_ty_fun_opt_tcon fst_conv list_all_simps(1) snd_eqD)
 
    apply (rule field_ty_fun_two_params)
-    apply blast    
+    apply blast
   by (fastforce elim: cons_exp_elim simp: select_heap_aux_def)+
 
 lemma heap_update_wf_concrete:
-  assumes 
+  assumes
     CtxtWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt" and
     TyRepWf: "wf_ty_repr_bpl TyRep" and
     InFunDom: "FUpdateHeap \<in> FunDom"
@@ -100,7 +100,7 @@ lemma heap_update_wf_concrete:
    apply (rule impI)
    apply (unfold update_heap_concrete_def)
    apply (red_fun_op_bpl_tac1 CtxtWf: CtxtWf InFunDom)
-  using closed_map_instantiate[OF field_ty_fun_opt_closed_args[OF TyRepWf]] 
+  using closed_map_instantiate[OF field_ty_fun_opt_closed_args[OF TyRepWf]]
      apply (metis TyRepWf case_prod_conv field_ty_fun_opt_closed_args snd_def)
     apply (rule field_ty_fun_two_params)
      apply blast
@@ -115,13 +115,13 @@ lemma heap_update_wf_concrete:
   apply simp
   using closed_map_instantiate[OF field_ty_fun_opt_closed_args[OF TyRepWf]] field_ty_fun_two_params field_ty_fun_opt_tcon
   by (blast elim: cons_exp_elim)
-    
+
 lemma mask_read_wf_concrete:
-  assumes 
+  assumes
     CtxtWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt" and
     TyRepWf: "wf_ty_repr_bpl TyRep" and
     InFunDom: "FReadMask \<in> FunDom"
-  shows "mask_read_wf TyRep ctxt (read_mask_concrete FunMap)"   
+  shows "mask_read_wf TyRep ctxt (read_mask_concrete FunMap)"
 
   unfolding mask_read_wf_def
   apply (rule allI)+
@@ -129,14 +129,14 @@ lemma mask_read_wf_concrete:
    apply (rule impI)
    apply (unfold read_mask_concrete_def)
    apply (red_fun_op_bpl_tac1 CtxtWf: CtxtWf InFunDom)
-  using closed_map_instantiate[OF field_ty_fun_opt_closed_args[OF TyRepWf]] 
+  using closed_map_instantiate[OF field_ty_fun_opt_closed_args[OF TyRepWf]]
      apply (metis TyRepWf case_prod_conv field_ty_fun_opt_closed_args snd_def)
     apply (rule field_ty_fun_two_params)
      apply blast
     apply (insert field_ty_fun_opt_closed_args[OF TyRepWf])
     apply simp
   using closed_instantiate
-    apply (metis field_ty_fun_opt_tcon fst_conv list_all_simps(1) snd_eqD)   
+    apply (metis field_ty_fun_opt_tcon fst_conv list_all_simps(1) snd_eqD)
    apply (rule field_ty_fun_two_params)
     apply blast
    apply simp
@@ -145,11 +145,11 @@ lemma mask_read_wf_concrete:
   by (blast elim: cons_exp_elim)
 
 lemma mask_update_wf_concrete:
-  assumes 
+  assumes
     CtxtWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt" and
     TyRepWf: "wf_ty_repr_bpl TyRep" and
     InFunDom: "FUpdateMask \<in> FunDom"
-  shows "mask_update_wf TyRep ctxt (update_mask_concrete FunMap)"  
+  shows "mask_update_wf TyRep ctxt (update_mask_concrete FunMap)"
   unfolding mask_update_wf_def
 
   apply (rule allI)+
@@ -157,14 +157,14 @@ lemma mask_update_wf_concrete:
    apply (rule impI)
    apply (unfold update_mask_concrete_def)
    apply (red_fun_op_bpl_tac1 CtxtWf: CtxtWf InFunDom)
-  using closed_map_instantiate[OF field_ty_fun_opt_closed_args[OF TyRepWf]] 
+  using closed_map_instantiate[OF field_ty_fun_opt_closed_args[OF TyRepWf]]
      apply (metis TyRepWf case_prod_conv field_ty_fun_opt_closed_args snd_def)
     apply (rule field_ty_fun_two_params)
      apply blast
     apply (insert field_ty_fun_opt_closed_args[OF TyRepWf])
     apply simp
   using closed_instantiate
-    apply (metis field_ty_fun_opt_tcon fst_conv list_all_simps(1) snd_eqD)   
+    apply (metis field_ty_fun_opt_tcon fst_conv list_all_simps(1) snd_eqD)
    apply (rule field_ty_fun_two_params)
     apply blast
    apply simp
@@ -183,7 +183,7 @@ fun fun_translation_example :: "ViperLang.function_ident \<rightharpoonup> Lang.
   where "fun_translation_example _ = None"
 
 definition var_translation_example_list :: "(ViperLang.var \<times> Lang.vname) list"
-  where 
+  where
     "var_translation_example_list = [(0,5)]"
 
 definition var_translation_example :: "ViperLang.var \<rightharpoonup> Lang.vname"
@@ -191,7 +191,7 @@ definition var_translation_example :: "ViperLang.var \<rightharpoonup> Lang.vnam
     "var_translation_example \<equiv> map_of var_translation_example_list"
 
 fun fun_repr_concrete :: fun_repr_bpl
-  where 
+  where
     "fun_repr_concrete FReadHeap = ''readHeap''"
   | "fun_repr_concrete FUpdateHeap = ''updHeap''"
   | "fun_repr_concrete FReadMask = ''readMask''"
@@ -201,14 +201,14 @@ fun fun_repr_concrete :: fun_repr_bpl
   | "fun_repr_concrete FGoodState = ''state''"
   | "fun_repr_concrete FGoodMask = ''GoodMask''"
   | "fun_repr_concrete FHasPerm = ''HasDirectPerm''"
-  | "fun_repr_concrete FIdenticalOnKnownLocs = ''IdenticalOnKnownLocations''" 
+  | "fun_repr_concrete FIdenticalOnKnownLocs = ''IdenticalOnKnownLocations''"
   | "fun_repr_concrete FIsPredicateField = ''IsPredicateField''"
   | "fun_repr_concrete FIsWandField = ''IsWandField''"
   | "fun_repr_concrete (FPredicateLoc pid _) = pid"
   | "fun_repr_concrete (FPredicateSMLoc pid _) = pid @ ''#sm''"
   | "fun_repr_concrete FPredicateMaskField = ''PredicateMaskField''"
-  | "fun_repr_concrete FFrameFragment = ''FrameFragment''"
-  | "fun_repr_concrete FCombineFrames = ''CombineFrames''"
+  (* | "fun_repr_concrete FFrameFragment = ''FrameFragment''" *)
+  (* | "fun_repr_concrete FCombineFrames = ''CombineFrames''" *)
 
 lemma fun_repr_concrete_inj: "inj fun_repr_concrete"
   unfolding inj_def
@@ -240,7 +240,7 @@ lemma inj_tcon_enum_to_id: "inj tcon_enum_to_id"
 text \<open>Type representation instantiation without predicates and domains\<close>
 
 definition ty_repr_basic :: "('a \<Rightarrow> abs_type) \<Rightarrow> 'a ty_repr_bpl"
-  where "ty_repr_basic A = 
+  where "ty_repr_basic A =
      \<lparr>  tcon_id_repr = tcon_enum_to_id,
         pred_snap_field_type = (\<lambda>_. None),
         pred_knownfolded_field_type = (\<lambda>_. None),
@@ -255,7 +255,7 @@ subsection \<open>Helper inversion lemmas\<close>
 
 text \<open>Here, we prove inversion lemmas on \<^const>\<open>type_of_vbpl_val\<close> in terms of specific equalities,
       where the type representation is instantiated to \<^const>\<open>ty_repr_basic\<close>.
-      General versions of inversion lemmas are already proved in a different theory via implications. 
+      General versions of inversion lemmas are already proved in a different theory via implications.
       For some generated proofs, it is useful to phrase the inversion as an equality (where one direction is trivial)
       and where the type representation is instantiated.
 \<close>
@@ -269,7 +269,7 @@ lemma mask_inversion_eq_type_of_vbpl_val:
   shows "type_of_vbpl_val TyRep v = TConSingle (TMaskId TyRep) = (\<exists>m. v = AbsV (AMask m) \<and> (id type_of_vbpl_val) TyRep v = TConSingle (TMaskId TyRep))"
   using mask_inversion_type_of_vbpl_val[OF assms]
   by auto
-  
+
 lemma mask_inversion_eq_type_of_vbpl_val_concrete:
   assumes wf_ty_repr: "wf_ty_repr_bpl ty_repr"
       and "ty_repr = ty_repr_basic A\<lparr> pred_snap_field_type := PredFieldType \<rparr>"
@@ -277,10 +277,23 @@ lemma mask_inversion_eq_type_of_vbpl_val_concrete:
   using mask_inversion_eq_type_of_vbpl_val[OF wf_ty_repr]
   by (auto simp: ty_repr_basic_def \<open>ty_repr = _\<close>)
 
+lemma knownfolded_mask_inversion_eq_type_of_vbpl_val:
+  assumes "wf_ty_repr_bpl TyRep"
+  shows "type_of_vbpl_val TyRep v = TConSingle (TKnownFoldedMaskId TyRep) = (\<exists>m. v = AbsV (AKnownFoldedMask m) \<and> (id type_of_vbpl_val) TyRep v = TConSingle (TKnownFoldedMaskId TyRep))"
+  using knownfolded_mask_inversion_type_of_vbpl_val[OF assms]
+  by auto
+
+lemma knownfolded_mask_inversion_eq_type_of_vbpl_val_concrete:
+  assumes wf_ty_repr: "wf_ty_repr_bpl ty_repr"
+      and "ty_repr = ty_repr_basic A\<lparr> pred_snap_field_type := PredFieldType \<rparr>"
+    shows "type_of_vbpl_val ty_repr v = TConSingle ''PMaskType'' = (\<exists>m. v = AbsV (AKnownFoldedMask m) \<and> (id type_of_vbpl_val) ty_repr v = TConSingle ''PMaskType'')"
+  using knownfolded_mask_inversion_eq_type_of_vbpl_val[OF wf_ty_repr]
+  by (auto simp: ty_repr_basic_def \<open>ty_repr = _\<close>)
+
 lemma heap_inversion_eq_type_of_vbpl_val:
   assumes "wf_ty_repr_bpl TyRep"
   shows "type_of_vbpl_val TyRep v = TConSingle (THeapId TyRep) = (\<exists>h. v = AbsV (AHeap h) \<and> (id type_of_vbpl_val) TyRep v = TConSingle (THeapId TyRep))"
-  using heap_inversion_type_of_vbpl_val[OF assms]  
+  using heap_inversion_type_of_vbpl_val[OF assms]
   by auto
 
 lemma heap_inversion_eq_type_of_vbpl_val_concrete:
@@ -312,7 +325,7 @@ lemma field_inversion_eq_type_of_vbpl_val:
 lemma field_inversion_eq_type_of_vbpl_val_concrete:
   assumes wf_ty_repr: "wf_ty_repr_bpl ty_repr"
       and "ty_repr = ty_repr_basic A\<lparr> pred_snap_field_type := PredFieldType \<rparr>"
-    shows "(type_of_vbpl_val ty_repr v = TCon ''Field'' [t1, t2]) = (\<exists>f. v = AbsV (AField f) \<and> (id type_of_vbpl_val) ty_repr v = TCon ''Field'' [t1, t2])" 
+    shows "(type_of_vbpl_val ty_repr v = TCon ''Field'' [t1, t2]) = (\<exists>f. v = AbsV (AField f) \<and> (id type_of_vbpl_val) ty_repr v = TCon ''Field'' [t1, t2])"
 proof -
   have *: "TFieldId (ty_repr_basic A) = ''Field''"
     by (simp add: ty_repr_basic_def)
@@ -320,11 +333,16 @@ proof -
   thus ?thesis
     using \<open>ty_repr = _\<close> field_inversion_type_of_vbpl_val_2 wf_ty_repr
     by fastforce
-qed    
+qed
 
 lemma realv_inversion_type_of_vbpl_val:
   "type_of_val A v = TPrim TReal = (\<exists>i. v = RealV i \<and> (id type_of_val) A v = TPrim TReal)"
   using VCExprHelper.treal_realv
+  by auto
+
+lemma boolv_inversion_type_of_vbpl_val:
+  "type_of_val A v = TPrim TBool = (\<exists>i. v = BoolV i \<and> (id type_of_val) A v = TPrim TBool)"
+  using VCExprHelper.tbool_boolv
   by auto
 
 lemmas inversion_type_of_vbpl_val_equalities =
@@ -338,17 +356,17 @@ subsection \<open>Helper definitions\<close>
 text \<open>Since currently Carbon always generates the same constants and global variables in the same order,
 one can use the following variable name mapping for the constants.\<close>
 
-\<comment>\<open>TODO: ideally the constants representation is generated by the verifier instead of hard-coded to 
+\<comment>\<open>TODO: ideally the constants representation is generated by the verifier instead of hard-coded to
 be more robust to changes in the verifier\<close>
 
 fun const_repr_basic :: "boogie_const \<Rightarrow> vname"
-  where 
-    "const_repr_basic CNoPerm = 2"
-  | "const_repr_basic CWritePerm = 3"
+  where
+    "const_repr_basic CNoPerm = 3"
+  | "const_repr_basic CWritePerm = 4"
   | "const_repr_basic CNull = 0"
   | "const_repr_basic CZeroMask = 1"
-\<comment>\<open>  | "const_repr_basic CKnownFoldedZeroMask = 2"
-  | "const_repr_basic CEmptyFrame = 5"\<close>
+  | "const_repr_basic CKnownFoldedZeroMask = 2"
+  \<comment> \<open>| "const_repr_basic CEmptyFrame = 5"\<close>
 
 lemma inj_const_repr_basic: "inj const_repr_basic"
   unfolding inj_def
@@ -357,12 +375,12 @@ lemma inj_const_repr_basic: "inj const_repr_basic"
   apply (rename_tac c1 c2)
   by (case_tac c1; case_tac c2; simp)
 
-lemma const_repr_basic_bound: "const_repr_basic c = x \<Longrightarrow> x \<le> 3"
+lemma const_repr_basic_bound: "const_repr_basic c = x \<Longrightarrow> x \<le> 4"
   by (cases c) auto
 
-lemma range_const_repr_basic: "range (const_repr_basic) = {0,1,2,3}"
-proof -   
-  have "UNIV = {CNoPerm, CWritePerm, CNull, CZeroMask}"
+lemma range_const_repr_basic: "range (const_repr_basic) = {0,1,2,3,4}"
+proof -
+  have "UNIV = {CNoPerm, CWritePerm, CNull, CZeroMask, CKnownFoldedZeroMask}"
     apply standard
      apply standard
      apply (case_tac x; simp)
@@ -376,20 +394,20 @@ proof -
     by blast
 qed
 
-lemma const_repr_basic_bound_2: "\<forall>x \<in> range const_repr_basic. x \<ge> 0 \<and> x \<le> 3"
+lemma const_repr_basic_bound_2: "\<forall>x \<in> range const_repr_basic. x \<ge> 0 \<and> x \<le> 4"
   using const_repr_basic_bound
-  by fastforce  
+  by fastforce
 
 subsubsection \<open> \<^const>\<open>const_repr_basic\<close> helper lemmas \<close>
 
-lemma lookup_no_perm_const: 
+lemma lookup_no_perm_const:
   assumes "boogie_const_rel const_repr_basic \<Lambda> ns"
-  shows "lookup_var \<Lambda> ns 2 = Some (boogie_const_val CNoPerm)"
+  shows "lookup_var \<Lambda> ns 3 = Some (boogie_const_val CNoPerm)"
   by (rule boogie_const_rel_lookup_2[OF assms]) auto
 
-lemma lookup_write_perm_const: 
+lemma lookup_write_perm_const:
   assumes "boogie_const_rel const_repr_basic \<Lambda> ns"
-  shows "lookup_var \<Lambda> ns 3 = Some (boogie_const_val CWritePerm)"
+  shows "lookup_var \<Lambda> ns 4 = Some (boogie_const_val CWritePerm)"
   by (rule boogie_const_rel_lookup_2[OF assms]) auto
 
 lemma lookup_null_const:
@@ -397,9 +415,14 @@ lemma lookup_null_const:
   shows "lookup_var \<Lambda> ns 0 = Some (boogie_const_val CNull)"
   by (rule boogie_const_rel_lookup_2[OF assms]) auto
 
-lemma lookup_zero_mask_const: 
+lemma lookup_zero_mask_const:
   assumes "boogie_const_rel const_repr_basic \<Lambda> ns"
   shows "lookup_var \<Lambda> ns 1 = Some (boogie_const_val CZeroMask)"
+  by (rule boogie_const_rel_lookup_2[OF assms]) auto
+
+lemma lookup_false_mask_const:
+  assumes "boogie_const_rel const_repr_basic \<Lambda> ns"
+  shows "lookup_var \<Lambda> ns 2 = Some (boogie_const_val CKnownFoldedZeroMask)"
   by (rule boogie_const_rel_lookup_2[OF assms]) auto
 
 lemmas lookup_boogie_const_concrete_lemmas =
@@ -407,6 +430,7 @@ lemmas lookup_boogie_const_concrete_lemmas =
   lookup_write_perm_const
   lookup_null_const
   lookup_zero_mask_const
+  lookup_false_mask_const
 
 subsubsection \<open>Boogie field lookups\<close>
 

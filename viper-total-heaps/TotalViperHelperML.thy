@@ -61,4 +61,19 @@ and the following tactic fails, since the first impI succeeds and thus forces an
 
 \<close>
 
+
+ML \<open>
+
+fun simp_thm ctxt thm ths =
+  Simplifier.simplify (add_simps ths(Simplifier.clear_simpset ctxt)) thm
+
+fun inst ctxt thm t =
+  Drule.infer_instantiate' ctxt [SOME (Thm.cterm_of ctxt t)] thm
+
+fun str_trimr s c =
+  Substring.string (Substring.trimr c (Substring.full s))
+
+\<close>
+
+
 end
