@@ -116,6 +116,10 @@ ML \<open>
           (SUBGOAL (fn (t,i) => (let val fname = HOLogic.dest_string (extract_fun_name t) in
              writeln (if String.isSuffix "#sm" fname then "a" else "b");
              if not (String.isSuffix "#sm" fname)
+               \<comment> \<open>\<^const>\<open>fun_repr_concrete\<close> of \<^const>\<open>FPredicateLoc\<close> and \<^const>\<open>FPredicateSMLoc\<close> is too general.
+                   If we do not make the case distinction here, the resolution of a function name like "P#sm"
+                   will default to \<^const>\<open>FPredicateLoc\<close>.
+                   Possible alternative solution: change the order in the definition of \<^const>\<open>fun_repr_concrete\<close>.\<close>
                then fast_tac (ctxt addIs @{thms fun_repr_concrete.simps}) i
                else fast_tac (ctxt addIs [simp_thm ctxt (inst ctxt @{thm fun_repr_concrete.simps(14)} (HOLogic.mk_string (str_trimr fname 3))) @{thms append.simps}]) i
              end
