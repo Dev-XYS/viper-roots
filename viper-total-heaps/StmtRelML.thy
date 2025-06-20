@@ -141,6 +141,12 @@ ML \<open>
        (atomic_inhale_rel_hint inhale_rel_info) *
        atomic_exhale_rel_hint *
        (atomic_inhale_rel_hint inhale_rel_complete_hint)
+  | FoldHint of
+       exp_wf_rel_info *
+       exp_rel_info *
+       (atomic_exhale_rel_hint exhale_rel_info) *
+       (atomic_exhale_rel_hint normal_exhale_rel_complete_hint) *
+       atomic_inhale_rel_hint
   | MethodCallHint of
        string * (* callee name *)
        thm list * (* Boogie return variable lookup decl theorem *)
@@ -221,13 +227,6 @@ ML \<open>
     | _ => error "field assign rel tac only handles field assignment"
     )
 
-  fun exhale_revert_state_relation ctxt (basic_info: basic_stmt_rel_info) =
-    resolve_tac ctxt @{thms red_ast_bpl_rel_weaken_input} THEN'
-    resolve_tac ctxt @{thms state_rel_set_def_to_eval} THEN'
-    assm_full_simp_solved_tac ctxt THEN'
-    resolve_tac ctxt @{thms red_ast_bpl_rel_input_implies_output} THEN'
-    assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info] ctxt
-
   fun exhale_havoc_tac ctxt (info: basic_stmt_rel_info) (lookup_decl_exhale_heap_thm: thm) =
     let val tr_thm = #tr_def_thm info in
       (Rmsg' "exhale havoc 1" (resolve_tac ctxt @{thms exhale_stmt_rel_finish}) ctxt) THEN'
@@ -268,6 +267,7 @@ ML \<open>
     (Rmsg' "stmt rel exhale track well-def propagate" (resolve_tac ctxt @{thms red_ast_bpl_rel_transitive}) ctxt) THEN'
     (Rmsg' "stmt rel exhale track well-def" (resolve_tac ctxt @{thms red_ast_bpl_rel_to_state_rel} THEN' simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
     (Rmsg' "setup well-def state exhale" ((#setup_well_def_state_tac hint) (#basic_info info) ctxt) ctxt) THEN'
+    (SUBGOAL (fn (t,_) => raise TERM ("breakpoint 1", [t]))) THEN'
     exhale_rel_aux_tac ctxt info (#exhale_rel_hint hint) THEN'
     (Rmsg' "stmt rel exhale havoc pre propagate" (resolve_tac ctxt @{thms rel_propagate_pre_2_only_state_rel}) ctxt) THEN'
     (* apply transitive rule such to make sure that the active big block before exhale_finish_tac is unfolded *)
@@ -369,6 +369,8 @@ ML \<open>
         (assert_rel_tac ctxt exhale_info assert_complete_hint)
      | UnfoldHint (inhale_info, atomic_exhale_hint, inhale_hint) =>
         (pred_unfold_tac ctxt inhale_info exhale_info basic_info atomic_exhale_hint (#inhale_rel_hint inhale_hint))
+     | FoldHint (exp_wf_rel_info, exp_rel_info, exhale_info, exhale_hint, atomic_inhale_hint) =>
+        (pred_fold_tac ctxt exp_wf_rel_info exp_rel_info inhale_info exhale_info basic_info exhale_hint atomic_inhale_hint)
      | MethodCallHint (callee_name, rets_lookup_decl_thms, inhale_info_call, exhale_info_call, exh_pre_complete_hint, inh_post_complete_hint) =>
         let val callee_data = Symtab.lookup (#method_data_table basic_info) callee_name |> Option.valOf in
         (Rmsg' "MethodCall Start" (resolve_tac ctxt [@{thm method_call_stmt_rel_inst} OF [#consistency_wf_thm basic_info, #consistency_down_mono_thm basic_info]]) ctxt) THEN'

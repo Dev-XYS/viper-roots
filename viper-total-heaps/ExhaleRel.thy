@@ -13,8 +13,8 @@ definition exhale_rel ::
   where "exhale_rel R R' Q ctxt_vpr StateCons P ctxt assertion_vpr \<gamma> \<gamma>' \<equiv>
          rel_general (uncurry (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> Q assertion_vpr \<omega>def \<omega>)) (uncurry R')
            \<comment>\<open>The well-definedness state remains the same\<close>
-           (\<lambda> \<omega>0_\<omega> \<omega>0_\<omega>'. (fst \<omega>0_\<omega>) = (fst \<omega>0_\<omega>') \<and> red_exhale ctxt_vpr StateCons (fst \<omega>0_\<omega>) assertion_vpr (snd \<omega>0_\<omega>) (RNormal (snd \<omega>0_\<omega>')))
-           (\<lambda> \<omega>0_\<omega>. red_exhale ctxt_vpr StateCons (fst \<omega>0_\<omega>) assertion_vpr (snd \<omega>0_\<omega>) RFailure)
+           (\<lambda> \<omega>0_\<omega> \<omega>0_\<omega>'. (fst \<omega>0_\<omega>) = (fst \<omega>0_\<omega>') \<and> red_exhale ctxt_vpr (fst \<omega>0_\<omega>) assertion_vpr (snd \<omega>0_\<omega>) (RNormal (snd \<omega>0_\<omega>')))
+           (\<lambda> \<omega>0_\<omega>. red_exhale ctxt_vpr (fst \<omega>0_\<omega>) assertion_vpr (snd \<omega>0_\<omega>) RFailure)
            P ctxt \<gamma> \<gamma>'"
 
 text \<open>The above definition directly introduces the invariant assertion \<^term>\<open>Q\<close>. The definition 
@@ -33,14 +33,13 @@ subsection \<open>Basic rules\<close>
 lemma exhale_rel_intro:
   assumes "\<And> \<omega>0 \<omega> \<omega>' ns. R \<omega>0 \<omega> ns \<Longrightarrow>
                       Q assertion_vpr \<omega>0 \<omega> \<Longrightarrow>
-                      red_exhale ctxt_vpr StateCons \<omega>0 assertion_vpr \<omega> (RNormal \<omega>') \<Longrightarrow>
+                      red_exhale ctxt_vpr \<omega>0 assertion_vpr \<omega> (RNormal \<omega>') \<Longrightarrow>
                       \<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>0 \<omega>' ns'" and
           "\<And> \<omega>0 \<omega> ns. R \<omega>0 \<omega> ns \<Longrightarrow>
                       Q assertion_vpr \<omega>0 \<omega> \<Longrightarrow>
-                      red_exhale ctxt_vpr StateCons \<omega>0 assertion_vpr \<omega> RFailure \<Longrightarrow>
+                      red_exhale ctxt_vpr \<omega>0 assertion_vpr \<omega> RFailure \<Longrightarrow>
                       \<exists>\<gamma>'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Failure)"
   shows "exhale_rel R R' Q ctxt_vpr StateCons P ctxt assertion_vpr \<gamma> \<gamma>'"
-  using assms
   using assms
   unfolding exhale_rel_def
   by (auto intro: rel_intro)
@@ -50,7 +49,7 @@ lemma exhale_rel_intro_2:
     "\<And>\<omega>0 \<omega> ns res. 
       R \<omega>0 \<omega> ns \<Longrightarrow> 
       Q assertion_vpr \<omega>0 \<omega> \<Longrightarrow>
-      red_exhale ctxt_vpr StateCons \<omega>0 assertion_vpr \<omega> res \<Longrightarrow>
+      red_exhale ctxt_vpr \<omega>0 assertion_vpr \<omega> res \<Longrightarrow>
       rel_vpr_aux (\<lambda>\<omega>' ns. R' \<omega>0 \<omega>' ns) P ctxt \<gamma> \<gamma>' ns res"
   shows "exhale_rel R R' Q ctxt_vpr StateCons P ctxt assertion_vpr \<gamma> \<gamma>'"
   using assms
@@ -61,7 +60,7 @@ lemma exhale_rel_normal_elim:
   assumes "exhale_rel R R' Q ctxt_vpr StateCons P ctxt assertion_vpr \<gamma> \<gamma>'" 
       and "R \<omega>0 \<omega> ns"
       and "Q assertion_vpr \<omega>0 \<omega>"
-      and "red_exhale ctxt_vpr StateCons \<omega>0 assertion_vpr \<omega> (RNormal \<omega>')"
+      and "red_exhale ctxt_vpr \<omega>0 assertion_vpr \<omega> (RNormal \<omega>')"
   shows "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>0 \<omega>' ns'"
   using assms
   unfolding exhale_rel_def rel_general_def
@@ -69,10 +68,10 @@ lemma exhale_rel_normal_elim:
 
 lemma exhale_rel_failure_elim:
   assumes "exhale_rel R R' Q ctxt_vpr StateCons P ctxt assertion_vpr \<gamma> \<gamma>'"
-     and  "R \<omega>0 \<omega> ns"
-     and  "Q assertion_vpr \<omega>0 \<omega>"
-     and  "red_exhale ctxt_vpr StateCons \<omega>0 assertion_vpr \<omega> RFailure"
-        shows "\<exists>\<gamma>'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Failure)"  
+      and "R \<omega>0 \<omega> ns"
+      and "Q assertion_vpr \<omega>0 \<omega>"
+      and "red_exhale ctxt_vpr \<omega>0 assertion_vpr \<omega> RFailure"
+    shows "\<exists>\<gamma>'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Failure)"  
   using assms
   unfolding exhale_rel_def rel_general_def
   by simp
@@ -81,7 +80,7 @@ lemma exhale_rel_elim_2:
   assumes "exhale_rel R R' Q ctxt_vpr StateCons P ctxt assertion_vpr \<gamma> \<gamma>'"
       and "R \<omega>0 \<omega> ns"
       and "Q assertion_vpr \<omega>0 \<omega>"
-      and "red_exhale ctxt_vpr StateCons \<omega>0 assertion_vpr \<omega> res"
+      and "red_exhale ctxt_vpr \<omega>0 assertion_vpr \<omega> res"
     shows "rel_vpr_aux (\<lambda>\<omega>' ns. R' \<omega>0 \<omega>' ns) P ctxt \<gamma> \<gamma>' ns res"
   using assms
   unfolding exhale_rel_def rel_vpr_aux_def rel_general_def
@@ -94,7 +93,7 @@ definition is_exh_rel_invariant
   where "is_exh_rel_invariant ctxt StateCons cond_assert cond_exp Q \<equiv>
           (\<forall> A1 A2 \<omega>def \<omega>. Q (A1 && A2) \<omega>def \<omega> \<and> cond_assert A1 \<longrightarrow>
                   (Q A1 \<omega>def \<omega>) \<and> 
-                  (\<forall>\<omega>'. red_exhale ctxt StateCons \<omega>def A1 \<omega> (RNormal \<omega>') \<longrightarrow> Q A2 \<omega>def \<omega>')) \<and>
+                  (\<forall>\<omega>'. red_exhale ctxt \<omega>def A1 \<omega> (RNormal \<omega>') \<longrightarrow> Q A2 \<omega>def \<omega>')) \<and>
           (\<forall> e A \<omega>def \<omega>. Q (assert.Imp e A) \<omega>def \<omega> \<and> cond_exp e \<longrightarrow>
                          ctxt, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<longrightarrow> Q A \<omega>def \<omega>) \<and>
           (\<forall> e A B \<omega>def \<omega> b. Q (assert.CondAssert e A B) \<omega>def \<omega> \<and> cond_exp e \<longrightarrow>
@@ -104,7 +103,7 @@ definition is_exh_rel_invariant
 lemma is_exh_rel_invariant_intro:
   assumes "\<And> A1 A2 \<omega>def \<omega>. Q (A1 && A2) \<omega>def \<omega> \<Longrightarrow> cond_assert A1 \<Longrightarrow> Q A1 \<omega>def \<omega>" and
           "\<And> A1 A2 \<omega>def \<omega> \<omega>'. Q (A1 && A2) \<omega>def \<omega>  \<Longrightarrow> cond_assert A1
-                                                    \<Longrightarrow> red_exhale ctxt StateCons \<omega>def A1 \<omega> (RNormal \<omega>') 
+                                                    \<Longrightarrow> red_exhale ctxt \<omega>def A1 \<omega> (RNormal \<omega>') 
                                                    \<Longrightarrow> Q A2 \<omega>def \<omega>'" and
           "\<And> e A \<omega>def \<omega>. Q (assert.Imp e A) \<omega>def \<omega> \<Longrightarrow> cond_exp e \<Longrightarrow> 
                     ctxt, Some \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t (Val (VBool True)) \<Longrightarrow> Q A \<omega>def \<omega>"
@@ -131,7 +130,7 @@ definition framing_exh
   where "framing_exh ctxt_vpr StateCons A \<omega>def \<omega> \<equiv>
            StateCons \<omega>def \<and> consistent_external ctxt_vpr (get_total_full \<omega>) \<and>
            valid_heap_mask (get_mh_total_full \<omega>def) \<and>
-           (\<exists>\<omega>_inh \<omega>sum. \<omega>_inh \<oplus> \<omega> = Some \<omega>sum \<and> \<omega>def \<succeq> \<omega>sum \<and> assertion_framing_state ctxt_vpr StateCons A \<omega>_inh)"  
+           (\<exists>\<omega>_inh \<omega>sum. \<omega>_inh \<oplus> \<omega> = Some \<omega>sum \<and> \<omega>def \<succeq> \<omega>sum \<and> assertion_framing_state ctxt_vpr StateCons A \<omega>_inh)"
 
 lemma framing_exhI:
   assumes "StateCons \<omega>def"
@@ -204,7 +203,7 @@ next
   fix A1 A2 \<omega>def \<omega> \<omega>'
   assume FramingExh: "framing_exh ctxt_vpr StateCons (A1 && A2) \<omega>def \<omega>" and
          NoPermA1: "no_perm_assertion A1 \<and> no_unfolding_assertion A1" and
-         RedExh: "red_exhale ctxt_vpr StateCons \<omega>def A1 \<omega> (RNormal \<omega>')"
+         RedExh: "red_exhale ctxt_vpr \<omega>def A1 \<omega> (RNormal \<omega>')"
 
   from FramingExh obtain \<omega>_inh \<omega>sum
     where \<omega>def_valid: "StateCons \<omega>def" "consistent_external ctxt_vpr (get_total_full \<omega>)" "valid_heap_mask (get_mh_total_full \<omega>def)" and
@@ -462,7 +461,7 @@ subsection \<open>Structural rules\<close>
 lemma exhale_rel_star_0: 
   assumes Invariant1: "\<And> \<omega>def \<omega>. Q (A1 && A2) \<omega>def \<omega> \<Longrightarrow> Q A1 \<omega>def \<omega>"
       and Invariant2: "\<And> \<omega>def \<omega>. Q (A1 && A2) \<omega>def \<omega> \<Longrightarrow> 
-                                  (\<And>\<omega>'. red_exhale ctxt_vpr StateCons \<omega>def A1 \<omega> (RNormal \<omega>') \<Longrightarrow> Q A2 \<omega>def \<omega>')"
+                                  (\<And>\<omega>'. red_exhale ctxt_vpr \<omega>def A1 \<omega> (RNormal \<omega>') \<Longrightarrow> Q A2 \<omega>def \<omega>')"
       and ExhRelA1: "exhale_rel R1 R2 Q ctxt_vpr StateCons P ctxt A1 \<gamma>1 \<gamma>2"
       and ExhRelA2: "exhale_rel R2 R3 Q ctxt_vpr StateCons P ctxt A2 \<gamma>2 \<gamma>3"
     shows "exhale_rel R1 R3 Q ctxt_vpr StateCons P ctxt (A1 && A2) \<gamma>1 \<gamma>3"
@@ -484,7 +483,7 @@ lemma exhale_rel_star_0:
 lemma exhale_rel_star:
   assumes Invariant1: "\<And> \<omega>def \<omega>. Q (A1 && A2) \<omega>def \<omega> \<Longrightarrow> Q A1 \<omega>def \<omega>"
       and Invariant2: "\<And> \<omega>def \<omega>. Q (A1 && A2) \<omega>def \<omega> \<Longrightarrow>
-                                  (\<And>\<omega>'. red_exhale ctxt_vpr StateCons \<omega>def A1 \<omega> (RNormal \<omega>') \<Longrightarrow> Q A2 \<omega>def \<omega>')"
+                                  (\<And>\<omega>'. red_exhale ctxt_vpr \<omega>def A1 \<omega> (RNormal \<omega>') \<Longrightarrow> Q A2 \<omega>def \<omega>')"
       and ExhRelA1: "exhale_rel R R Q ctxt_vpr StateCons P ctxt A1 \<gamma>1 \<gamma>2"
       and ExhRelA2: "exhale_rel R R Q ctxt_vpr StateCons P ctxt A2 \<gamma>2 \<gamma>3"
     shows "exhale_rel R R Q ctxt_vpr StateCons P ctxt (A1 && A2) \<gamma>1 \<gamma>3"  
@@ -525,11 +524,11 @@ proof (simp only: uncurry.simps,
     apply fastforce
     by simp
 next
-  let ?Success = "\<lambda>\<omega> \<omega>'. fst \<omega> = fst \<omega>' \<and> red_exhale ctxt_vpr StateCons (fst \<omega>) (assert.Imp cond A) (snd \<omega>) (RNormal (snd \<omega>'))"
+  let ?Success = "\<lambda>\<omega> \<omega>'. fst \<omega> = fst \<omega>' \<and> red_exhale ctxt_vpr (fst \<omega>) (assert.Imp cond A) (snd \<omega>) (RNormal (snd \<omega>'))"
   let ?SuccessExp = "\<lambda>\<omega> \<omega>'. \<omega> = \<omega>' \<and> (\<exists>v. ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>cond;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v)"
-  let ?SuccessThn = "\<lambda>\<omega> \<omega>'. fst \<omega> = fst \<omega>' \<and> red_exhale ctxt_vpr StateCons (fst \<omega>) A (snd \<omega>) (RNormal (snd \<omega>'))"
-  let ?Fail ="\<lambda>\<omega>. red_exhale ctxt_vpr StateCons (fst \<omega>) (assert.Imp cond A) (snd \<omega>) RFailure"
-  let ?FailThn = "\<lambda>\<omega>. red_exhale ctxt_vpr StateCons (fst \<omega>) A (snd \<omega>) RFailure"
+  let ?SuccessThn = "\<lambda>\<omega> \<omega>'. fst \<omega> = fst \<omega>' \<and> red_exhale ctxt_vpr (fst \<omega>) A (snd \<omega>) (RNormal (snd \<omega>'))"
+  let ?Fail ="\<lambda>\<omega>. red_exhale ctxt_vpr (fst \<omega>) (assert.Imp cond A) (snd \<omega>) RFailure"
+  let ?FailThn = "\<lambda>\<omega>. red_exhale ctxt_vpr (fst \<omega>) A (snd \<omega>) RFailure"
   let ?FailExp = "\<lambda>\<omega>. ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>cond;snd \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
 
   show "rel_general (\<lambda>a ns. R (fst a) (snd a) ns \<and> Q A (fst a) (snd a)) (\<lambda>a. R (fst a) (snd a)) ?SuccessThn ?FailThn P ctxt (thn_hd, convert_list_to_cont thn_tl (KSeq next cont)) (next, cont)"
@@ -611,14 +610,14 @@ proof (simp only: uncurry.simps,
        rule rel_general_cond, 
        fastforce intro: rel_general_conseq_input_output[OF ExpWfRel[simplified wf_rel_def]])
 
-  let ?Success = "\<lambda>\<omega> \<omega>'. fst \<omega> = fst \<omega>' \<and> red_exhale ctxt_vpr StateCons (fst \<omega>) (CondAssert cond A B) (snd \<omega>) (RNormal (snd \<omega>'))"
+  let ?Success = "\<lambda>\<omega> \<omega>'. fst \<omega> = fst \<omega>' \<and> red_exhale ctxt_vpr (fst \<omega>) (CondAssert cond A B) (snd \<omega>) (RNormal (snd \<omega>'))"
   let ?SuccessExp = "\<lambda>\<omega> \<omega>'. \<omega> = \<omega>' \<and> (\<exists>v. ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>cond;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v)"
-  let ?SuccessThn = "\<lambda>\<omega> \<omega>'. fst \<omega> = fst \<omega>' \<and> red_exhale ctxt_vpr StateCons (fst \<omega>) A (snd \<omega>) (RNormal (snd \<omega>'))"
-  let ?SuccessElse = "\<lambda>\<omega> \<omega>'. fst \<omega> = fst \<omega>' \<and> red_exhale ctxt_vpr StateCons (fst \<omega>) B (snd \<omega>) (RNormal (snd \<omega>'))"
+  let ?SuccessThn = "\<lambda>\<omega> \<omega>'. fst \<omega> = fst \<omega>' \<and> red_exhale ctxt_vpr (fst \<omega>) A (snd \<omega>) (RNormal (snd \<omega>'))"
+  let ?SuccessElse = "\<lambda>\<omega> \<omega>'. fst \<omega> = fst \<omega>' \<and> red_exhale ctxt_vpr (fst \<omega>) B (snd \<omega>) (RNormal (snd \<omega>'))"
 
-  let ?Fail ="\<lambda>\<omega>. red_exhale ctxt_vpr StateCons (fst \<omega>) (CondAssert cond A B) (snd \<omega>) RFailure"
-  let ?FailThn = "\<lambda>\<omega>. red_exhale ctxt_vpr StateCons (fst \<omega>) A (snd \<omega>) RFailure"
-  let ?FailElse = "\<lambda>\<omega>. red_exhale ctxt_vpr StateCons (fst \<omega>) B (snd \<omega>) RFailure"
+  let ?Fail ="\<lambda>\<omega>. red_exhale ctxt_vpr (fst \<omega>) (CondAssert cond A B) (snd \<omega>) RFailure"
+  let ?FailThn = "\<lambda>\<omega>. red_exhale ctxt_vpr (fst \<omega>) A (snd \<omega>) RFailure"
+  let ?FailElse = "\<lambda>\<omega>. red_exhale ctxt_vpr (fst \<omega>) B (snd \<omega>) RFailure"
   let ?FailExp = "\<lambda>\<omega>. ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>cond;snd \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
 
   from ThnRel
@@ -745,7 +744,7 @@ definition exhale_acc_normal_premise
 
 lemma exhale_acc_normal_red_exhale:
   assumes "exhale_acc_normal_premise ctxt StateCons e_r f e_p p r \<omega>0 \<omega> \<omega>'"
-  shows "red_exhale ctxt StateCons \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> (RNormal \<omega>')"
+  shows "red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> (RNormal \<omega>')"
   apply (rule red_exhale_acc_normalI)
       apply (insert assms[simplified exhale_acc_normal_premise_def exhale_field_acc_rel_assms_def exhale_field_acc_rel_perm_success_def])
       apply blast
@@ -755,8 +754,8 @@ lemma exhale_acc_normal_red_exhale:
   by presburger
 
 lemma exhale_rel_field_acc:
-  assumes WfSubexp:  "exprs_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> Q (Atomic (Acc e_rcv_vpr f (PureExp e_p))) \<omega>def \<omega>) ctxt_vpr StateCons P ctxt [e_rcv_vpr, e_p] \<gamma> \<gamma>2"
-      and CorrectPermRel:  
+  assumes WfSubexp: "exprs_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> Q (Atomic (Acc e_rcv_vpr f (PureExp e_p))) \<omega>def \<omega>) ctxt_vpr StateCons P ctxt [e_rcv_vpr, e_p] \<gamma> \<gamma>2"
+      and CorrectPermRel:
             "\<And>r p. rel_general (uncurry R) (R' r p)
                   (\<lambda> \<omega>0_\<omega> \<omega>0_\<omega>'. \<omega>0_\<omega> = \<omega>0_\<omega>' \<and> 
                                   exhale_field_acc_rel_assms ctxt_vpr StateCons e_rcv_vpr f e_p r p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>)  \<and>
@@ -766,13 +765,13 @@ lemma exhale_rel_field_acc:
                   P ctxt \<gamma>2 \<gamma>3"    
       and UpdExhRel: "\<And>r p. rel_general (R' r p) (uncurry R) \<comment>\<open>Here, the simulation needs to revert back to R\<close>
                       (\<lambda> \<omega>0_\<omega> \<omega>0_\<omega>'. fst \<omega>0_\<omega> = fst \<omega>0_\<omega>' \<and> exhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) (snd \<omega>0_\<omega>'))
-                      (\<lambda>_. False) 
+                      (\<lambda>_. False)
                       P ctxt \<gamma>3 \<gamma>'"
     shows "exhale_rel R R Q ctxt_vpr StateCons P ctxt (Atomic (Acc e_rcv_vpr f (PureExp e_p))) \<gamma> \<gamma>'"
 proof (rule exhale_rel_intro_2)
   fix \<omega>0 \<omega> ns res
   assume R0:"R \<omega>0 \<omega> ns" and "Q (Atomic (Acc e_rcv_vpr f (PureExp e_p))) \<omega>0 \<omega>"
-  assume "red_exhale ctxt_vpr StateCons \<omega>0 (Atomic (Acc e_rcv_vpr f (PureExp e_p))) \<omega> res"
+  assume "red_exhale ctxt_vpr  \<omega>0 (Atomic (Acc e_rcv_vpr f (PureExp e_p))) \<omega> res"
   
   thus "rel_vpr_aux (R \<omega>0) P ctxt \<gamma> \<gamma>' ns res"
   proof cases
@@ -988,7 +987,7 @@ lemma exhale_rel_pure:
 proof (rule exhale_rel_intro)
   fix \<omega>0 \<omega> \<omega>' ns
   assume "R \<omega>0 \<omega> ns" and "Q (Atomic (Pure e_vpr)) \<omega>0 \<omega>" and
-         RedExh: "red_exhale ctxt_vpr StateCons \<omega>0 (Atomic (Pure e_vpr)) \<omega> (RNormal \<omega>')"
+         RedExh: "red_exhale ctxt_vpr \<omega>0 (Atomic (Pure e_vpr)) \<omega> (RNormal \<omega>')"
 
   from this have RedExpVpr: "ctxt_vpr, Some \<omega>0 \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
    by (metis (full_types) ExhPure_case exh_if_total.elims result_total.distinct(5))
@@ -1014,11 +1013,10 @@ proof (rule exhale_rel_intro)
 next
   fix \<omega>0 \<omega> ns
   assume "R \<omega>0 \<omega> ns" and "Q (Atomic (Pure e_vpr)) \<omega>0 \<omega>" and 
-         "red_exhale ctxt_vpr StateCons \<omega>0 (Atomic (Pure e_vpr)) \<omega> RFailure"
+         "red_exhale ctxt_vpr \<omega>0 (Atomic (Pure e_vpr)) \<omega> RFailure"
 
-  from this consider
-                 (Subfailure) "ctxt_vpr, Some \<omega>0 \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
-                 | (RedExpVpr) "ctxt_vpr, Some \<omega>0 \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+  from this consider (Subfailure) "ctxt_vpr, Some \<omega>0 \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+                    | (RedExpVpr) "ctxt_vpr, Some \<omega>0 \<turnstile> \<langle>e_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
     by (metis (full_types) ExhPure_case exh_if_total_failure)
 
   thus "\<exists>\<gamma>'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Failure)"
@@ -1135,7 +1133,7 @@ lemma exhale_rel_pred_acc:
 subsection \<open>Misc\<close>
 
 lemma exhale_rel_refl:
-  assumes "\<And> \<omega>0 \<omega> res. red_exhale ctxt_vpr StateCons \<omega>0 A \<omega> res \<Longrightarrow> (res \<noteq> RFailure \<and> (\<forall> \<omega>'. res = RNormal \<omega>' \<longrightarrow> \<omega>' = \<omega>)) "
+  assumes "\<And> \<omega>0 \<omega> res. red_exhale ctxt_vpr \<omega>0 A \<omega> res \<Longrightarrow> (res \<noteq> RFailure \<and> (\<forall> \<omega>'. res = RNormal \<omega>' \<longrightarrow> \<omega>' = \<omega>)) "
   shows "exhale_rel R R Q ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>"
   apply (rule exhale_rel_intro)
   using red_ast_bpl_refl assms
@@ -1144,7 +1142,7 @@ lemma exhale_rel_refl:
 lemma exhale_rel_true: "exhale_rel R R Q ctxt_vpr StateCons P ctxt (Atomic (Pure (ELit (ViperLang.LBool True)))) \<gamma> \<gamma>"
 proof (rule exhale_rel_refl)
   fix \<omega>0 \<omega> res
-  assume "red_exhale ctxt_vpr StateCons \<omega>0 (Atomic (Pure (ELit (ViperLang.lit.LBool True)))) \<omega> res"
+  assume "red_exhale ctxt_vpr \<omega>0 (Atomic (Pure (ELit (ViperLang.lit.LBool True)))) \<omega> res"
   thus "res \<noteq> RFailure \<and> (\<forall>\<omega>'. res = RNormal \<omega>' \<longrightarrow> \<omega>' = \<omega>)"
     by (cases) (auto elim: red_pure_exp_total_elims)
 qed

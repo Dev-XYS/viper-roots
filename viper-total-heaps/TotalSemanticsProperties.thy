@@ -733,14 +733,14 @@ lemma eval_exhale_sat_helper:
          no_perm_pure_exp e \<Longrightarrow>
          no_old_pure_exp e \<Longrightarrow>
          ctxt, None \<turnstile> \<langle>e; \<lparr> get_store_total = get_store_total \<omega>,
-                            get_trace_total = \<lambda>x. None,
+                            get_trace_total = trace,
                             get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>\<rangle> [\<Down>]\<^sub>t Val v"
     and "red_pure_exps_total ctxt \<omega>_def es \<omega> (Some vs) \<Longrightarrow>
          list_all no_perm_pure_exp es \<Longrightarrow>
          list_all no_old_pure_exp es \<Longrightarrow>
          red_pure_exps_total ctxt None es
            \<lparr> get_store_total = get_store_total \<omega>,
-             get_trace_total = \<lambda>x. None,
+             get_trace_total = trace,
              get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr> (Some vs)"
   using eval_exhale_sat_helper_helper
   by fastforce+
@@ -894,11 +894,11 @@ lemma mp_sub_twice:
   by auto
 
 lemma exhale_diff_sat:
-  assumes "red_exhale ctxt R \<omega>\<^sub>0 A \<omega> res" and "res = RNormal \<omega>'"
+  assumes "red_exhale ctxt \<omega>\<^sub>0 A \<omega> res" and "res = RNormal \<omega>'"
       and "supported_pred_body A"
       and "consistent_external ctxt (get_total_full \<omega>)"
     shows "sat ctxt (\<lparr> get_store_total = get_store_total \<omega>,
-                       get_trace_total = Map.empty,
+                       get_trace_total = trace,
                        get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>)
                (get_mh_total_full \<omega> - get_mh_total_full \<omega>')
                (get_mp_total_full \<omega> - get_mp_total_full \<omega>')
@@ -950,8 +950,9 @@ next
     apply standard
     using eval_exhale_sat_helper(2)[OF IH(2)] es_sup
            apply blast
-    using IH(8) eval_exhale_sat_helper(1)[OF IH(3)]
-          apply simp
+          apply (rule eval_exhale_sat_helper(1)[OF IH(3)])
+    using IH(8)
+           apply (simp, simp)
          apply (simp add: 1)
     using IH.hyps(1) \<omega>' exhale_mh_diff
         apply blast
@@ -999,14 +1000,14 @@ next
     show "mp_split (get_mp_total_full \<omega> - get_mp_total_full \<omega>') mp\<^sub>A mp\<^sub>B"
       by (metis IH.hyps(1) IH.hyps(2) IH.prems(1) exhale_smaller(2) mp\<^sub>A_def mp\<^sub>B_def mp_sub_twice)
     show "sat ctxt \<lparr> get_store_total = get_store_total \<omega>,
-                     get_trace_total = \<lambda>x. None,
+                     get_trace_total = trace,
                      get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
               (get_mh_total_full \<omega> - get_mh_total_full \<omega>_int)
               (get_mp_total_full \<omega> - get_mp_total_full \<omega>_int)
               A"
       using IH.IH(1) IH.prems(2) by fastforce
     show "sat ctxt \<lparr> get_store_total = get_store_total \<omega>,
-                     get_trace_total = \<lambda>x. None,
+                     get_trace_total = trace,
                      get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
               (get_mh_total_full \<omega>_int - get_mh_total_full \<omega>')
               (get_mp_total_full \<omega>_int - get_mp_total_full \<omega>')
@@ -1026,7 +1027,7 @@ next
   show ?case
     apply standard
     using IH.hyps IH.prems(2) eval_exhale_sat_helper
-      apply force
+      apply fastforce
      apply (metis IH.prems(1) result_total.inject same_mh_diff)
     by (metis IH.prems(1) result_total.inject same_mp_diff)
 next
@@ -1915,6 +1916,25 @@ qed auto
 subsection \<open>Substitution Properties\<close>
 
 
+lemma substitute_subexpr_expr_commute:
+  assumes "\<not> (\<exists>x. e = Var x)"
+  shows "map (\<lambda>e. substitute_args_expr e eargs) (sub_pure_exp_total e) = sub_pure_exp_total (substitute_args_expr e eargs)"
+  using assms
+  by (induction e; simp)
+
+
+lemma substitute_subexpr_assertion_commute:
+  shows "map (\<lambda>e. substitute_args_expr e eargs) (direct_sub_expressions_assertion A) = direct_sub_expressions_assertion (substitute_args_assertion A eargs)"
+  apply (induction A; simp?)
+  apply (rename_tac atm)
+  apply (case_tac atm; simp?)
+   apply (rename_tac e_r f perm)
+   apply (case_tac perm; simp?)
+  apply (rename_tac pid e_args perm)
+  apply (case_tac perm; simp?)
+  done
+
+
 lemma eval_with_substitution:
   assumes "red_pure_exps_total ctxt (Some \<omega>\<^sub>0) eargs \<omega> (Some vargs)"
       and "\<omega>_def = Some (\<omega>\<^sub>0\<lparr> get_store_total := nth_option vargs \<rparr>)"
@@ -2012,6 +2032,122 @@ next
 qed (fastforce intro: red_pure_exp_intros)+
 
 
+lemma eval_with_substitution_failure:
+  assumes "red_pure_exps_total ctxt (Some \<omega>\<^sub>0) eargs \<omega> (Some vargs)"
+      and "\<omega>_def = Some (\<omega>\<^sub>0\<lparr> get_store_total := nth_option vargs \<rparr>)"
+      and "\<omega>_subst = \<omega>\<lparr> get_store_total := nth_option vargs \<rparr>"
+    shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>_subst\<rangle> [\<Down>]\<^sub>t res \<Longrightarrow>
+           res = VFailure \<Longrightarrow>
+           no_perm_pure_exp e \<Longrightarrow>
+           no_old_pure_exp e \<Longrightarrow>
+           no_result_pure_exp e \<Longrightarrow>
+           no_unfolding_pure_exp e \<Longrightarrow>
+           ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>substitute_args_expr e eargs;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+      and "red_pure_exps_total ctxt \<omega>_def es \<omega>_subst rs \<Longrightarrow>
+           rs = None \<Longrightarrow>
+           list_all no_perm_pure_exp es \<Longrightarrow>
+           list_all no_old_pure_exp es \<Longrightarrow>
+           list_all no_result_pure_exp es \<Longrightarrow>
+           list_all no_unfolding_pure_exp es \<Longrightarrow>
+           red_pure_exps_total ctxt (Some \<omega>\<^sub>0) (map (\<lambda>e. substitute_args_expr e eargs) es) \<omega> None"
+  using assms
+proof (induction arbitrary: \<omega>\<^sub>0 \<omega> and \<omega>\<^sub>0 \<omega> rule: red_pure_exp_inducts)
+  case (RedBinopRightFailure \<omega>_def e1 \<omega>_subst v1 e2 bop)
+  show ?case
+    apply simp
+    apply (rule TotalExpressions.RedBinopRightFailure)
+       apply (rule eval_with_substitution(1); (rule RedBinopRightFailure)?)
+           apply simp
+    using RedBinopRightFailure.prems(2-5)
+          apply fastforce+
+      apply (metis RedBinopRightFailure.IH(4) RedBinopRightFailure.prems(2-8) pure_exp_pred.simps pure_exp_pred_rec.simps(4))
+     apply (simp add: RedBinopRightFailure.hyps(1))
+    using RedBinopRightFailure.hyps(2) RedBinopRightFailure.prems(7)
+    by auto
+next
+  case (RedBinopOpFailure \<omega>_def e1 \<omega>_subst v1 e2 v2 bop)
+  show ?case
+    apply simp
+    apply (rule TotalExpressions.RedBinopOpFailure)
+       apply (rule eval_with_substitution(1); (rule RedBinopOpFailure)?)
+           apply simp
+    using RedBinopOpFailure.prems(2-5)
+          apply fastforce+
+      apply (rule eval_with_substitution(1); (rule RedBinopOpFailure)?)
+          apply simp
+    using RedBinopOpFailure.prems(2-5)
+         apply fastforce+
+    using RedBinopOpFailure.hyps(1) RedBinopOpFailure.prems(7)
+     apply fastforce
+    by fact
+next
+  case (RedCondExpTrue \<omega>_def e1 \<omega>_subst e2 r e3)
+  show ?case
+    apply simp
+    apply (rule TotalExpressions.RedCondExpTrue)
+     apply (rule eval_with_substitution(1); (rule RedCondExpTrue)?)
+         apply simp
+    using RedCondExpTrue.prems(2-5)
+        apply fastforce+
+    by (metis RedCondExpTrue.IH(4) RedCondExpTrue.prems(1-8) pure_exp_pred.simps pure_exp_pred_rec.simps(5))
+next
+  case (RedCondExpFalse \<omega>_def e1 \<omega>_subst e3 r e2)
+  show ?case
+    apply simp
+    apply (rule TotalExpressions.RedCondExpFalse)
+     apply (rule eval_with_substitution(1); (rule RedCondExpFalse)?)
+         apply simp
+    using RedCondExpFalse.prems(2-5)
+        apply fastforce+
+    by (metis RedCondExpFalse.IH(4) RedCondExpFalse.prems(1-8) pure_exp_pred.simps pure_exp_pred_rec.simps(5))
+next
+  case (RedField \<omega>_def e \<omega>_subst a f v)
+  have "VFailure = (if (if_Some (\<lambda>res. (a,f) \<in> get_valid_locs res) (Some \<omega>\<^sub>0)) then Val v else VFailure)"
+    apply simp
+    using RedField.prems(1)[unfolded \<open>\<omega>_def = _\<close>, simplified]
+    unfolding get_valid_locs_def
+    by auto
+  show ?case
+    apply simp
+    apply (subst \<open>VFailure = _\<close>)
+    apply (rule TotalExpressions.RedField)
+     apply (rule eval_with_substitution(1); (rule RedField)?)
+         apply simp
+    using RedField.prems(2-5)
+        apply fastforce+
+    using RedField.hyps RedField.prems(8) by auto
+next
+  case (RedFieldNullFailure \<omega>_def e \<omega>_subst f)
+  show ?case
+    apply simp
+    apply (rule TotalExpressions.RedFieldNullFailure)
+    apply (rule eval_with_substitution(1); (rule RedFieldNullFailure)?)
+        apply simp
+    using RedFieldNullFailure.prems(2-5)
+    by fastforce+
+next
+  case (RedSubFailure e' \<omega>_def \<omega>_subst)
+  show ?case
+    apply (rule TotalExpressions.RedSubFailure)
+     apply (metis RedSubFailure.hyps list.map_disc_iff sub_pure_exp_total.simps(11) substitute_subexpr_expr_commute)
+    by (metis RedSubFailure.IH(2) RedSubFailure.hyps RedSubFailure.prems(2-8) pure_exp_pred_subexp sub_pure_exp_total.simps(11) substitute_subexpr_expr_commute)
+next
+  case (RedExpListCons \<omega>_def e \<omega>_subst v es res res')
+  show ?case
+    apply simp
+    apply (rule TotalExpressions.RedExpListCons)
+      apply (rule eval_with_substitution(1); (rule RedExpListCons)?)
+          apply simp
+    using RedExpListCons.prems(2-5)
+         apply fastforce+
+     apply (rule RedExpListCons.IH; (rule RedExpListCons)?)
+    using RedExpListCons.hyps RedExpListCons.prems(1)
+         apply blast
+    using RedExpListCons.prems(2-5)
+    by fastforce+
+qed (auto intro: red_pure_exp_intros)
+
+
 lemma subst_var_eval_rev:
   assumes "e_subst = substitute_args_expr e eargs"
       and "\<exists>x. e = Var x"
@@ -2051,25 +2187,6 @@ proof -
   show ?thesis
     by (metis \<open>e = Var x\<close> assms(1,3,4) eval_is_deterministic_single eval_xth extended_val.discI substitute_args_expr.simps(1))
 qed
-
-
-lemma substitute_subexpr_expr_commute:
-  assumes "\<not> (\<exists>x. e = Var x)"
-  shows "map (\<lambda>e. substitute_args_expr e eargs) (sub_pure_exp_total e) = sub_pure_exp_total (substitute_args_expr e eargs)"
-  using assms
-  by (induction e; simp)
-
-
-lemma substitute_subexpr_assertion_commute:
-  shows "map (\<lambda>e. substitute_args_expr e eargs) (direct_sub_expressions_assertion A) = direct_sub_expressions_assertion (substitute_args_assertion A eargs)"
-  apply (induction A; simp?)
-  apply (rename_tac atm)
-  apply (case_tac atm; simp?)
-   apply (rename_tac e_r f perm)
-   apply (case_tac perm; simp?)
-  apply (rename_tac pid e_args perm)
-  apply (case_tac perm; simp?)
-  done
 
 
 lemma eval_with_substitution_rev:
@@ -2463,6 +2580,10 @@ next
       by (metis RedSubFailure.IH(2) RedSubFailure.hyps RedSubFailure.prems(1-7) length_greater_0_conv length_map pure_exp_pred_subexp TotalExpressions.RedSubFailure)
   qed
 qed (fastforce intro: red_pure_exp_intros)+
+
+
+
+subsubsection \<open>Inhale\<close>
 
 
 lemma inhale_perm_single_diff_store:
@@ -3133,6 +3254,503 @@ lemma framing_with_substitution:
   unfolding assertion_framing_state_def
   using inhale_with_substitution_rev map_result_total.simps(3)
   by blast
+
+
+
+subsubsection \<open>Exhale\<close>
+
+
+lemma exhale_with_substitution:
+  assumes "red_exhale ctxt \<omega>_def_subst A \<omega>_subst res"
+      and "\<omega>_def_subst = \<omega>_def\<lparr> get_store_total := nth_option vs \<rparr>"
+      and "\<omega>_subst = \<omega>\<lparr> get_store_total := nth_option vs \<rparr>"
+      and "res = RNormal \<omega>'"
+      and "red_pure_exps_total ctxt (Some \<omega>_def) es \<omega> (Some vs)"
+      and "get_store_total \<omega>'' = get_store_total \<omega>"
+      and "get_trace_total \<omega>'' = get_trace_total \<omega>"
+      and "get_total_full \<omega>'' = get_total_full \<omega>'"
+      and "supported_pred_body A"
+      and "no_unfolding_assertion A"
+      and ArgsNoPerm: "list_all no_perm_pure_exp es"
+      and ArgsNoUnfolding: "list_all no_unfolding_pure_exp es"
+    shows "red_exhale ctxt \<omega>_def (substitute_args_assertion A es) \<omega> (RNormal \<omega>'')"
+  using assms(1,3-10)
+proof (induction arbitrary: \<omega> \<omega>' \<omega>'')
+  case (ExhAcc mh \<omega>_subst e_r r e_p p a f)
+  have normal: "(0 \<le> p \<and> (if r = Null then p = 0 else Abs_preal p \<le> mh (a, f))) = True"
+    using exh_if_total_normal[OF ExhAcc.prems(2)]
+    by blast
+  have "RNormal \<omega>'' = exh_if_total (0 \<le> p \<and> (if r = Null then p = 0 else Abs_preal p \<le> mh (a, f)))
+          (if r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a, f) (Abs_preal p))"
+    apply (simp add: exh_if_total_normal[OF ExhAcc.prems(2)])
+    apply (intro conjI)
+    using ExhAcc.prems(1,2,4-6) normal
+     apply fastforce
+    apply (intro impI)
+    apply (rule full_total_state.equality; simp add: ExhAcc)
+    apply (rule total_state.equality; simp add: ExhAcc)
+    using ExhAcc.prems(1) ExhAcc.prems(2) normal
+     apply auto[1]
+    apply (insert ExhAcc.prems(2)[unfolded \<open>\<omega>_subst = _\<close>, simplified normal, simplified])
+    apply simp
+    unfolding \<open>a = _\<close>
+    by fastforce
+
+  show ?case
+    apply simp
+    apply (subst \<open>RNormal \<omega>'' = _\<close>)
+    apply (rule red_exhale.ExhAcc)
+       apply (simp add: ExhAcc.hyps(1) ExhAcc.prems(1))
+      apply (rule eval_with_substitution(1); (rule ExhAcc)?)
+           apply (simp add: assms(2))
+          apply simp
+    using ExhAcc.prems(7)
+         apply (simp, simp, simp)
+    using ExhAcc.prems(8)
+      apply simp
+     apply (rule eval_with_substitution(1); (rule ExhAcc)?)
+          apply (simp add: assms(2))
+         apply simp
+    using ExhAcc.prems(7)
+        apply (simp, simp, simp)
+    using ExhAcc.prems(8)
+     apply simp
+    by fact
+next
+  case (ExhAccWildcard mh \<omega>_subst e_r r a f q)
+  have normal: "(mh (a, f) \<noteq> 0 \<and> r \<noteq> Null) = True"
+    using exh_if_total_normal[OF ExhAccWildcard.prems(2)]
+    by blast
+  have "RNormal \<omega>'' = exh_if_total (mh (a, f) \<noteq> 0 \<and> r \<noteq> Null) (dec_mh_loc_total_full \<omega> (a, f) q)"
+    apply (simp add: exh_if_total_normal[OF ExhAccWildcard.prems(2)])
+    apply (rule full_total_state.equality; simp add: ExhAccWildcard)
+    apply (rule total_state.equality; simp add: ExhAccWildcard)
+    using ExhAccWildcard.prems(1) ExhAccWildcard.prems(2) normal
+     apply auto[1]
+    apply (insert ExhAccWildcard.prems(2)[unfolded \<open>\<omega>_subst = _\<close>, simplified normal, simplified])
+    unfolding \<open>a = _\<close>
+    by fastforce
+
+  show ?case
+    apply simp
+    apply (subst \<open>RNormal \<omega>'' = _\<close>)
+    apply (rule red_exhale.ExhAccWildcard)
+       apply (simp add: ExhAccWildcard.hyps(1) ExhAccWildcard.prems(1))
+      apply (rule eval_with_substitution(1); (rule ExhAccWildcard)?)
+           apply (simp add: assms(2))
+          apply simp
+    using ExhAccWildcard.prems(7)
+         apply (simp, simp, simp)
+    using ExhAccWildcard.prems(8)
+      apply simp
+     apply fact
+    by (simp add: ExhAccWildcard.hyps(4))
+next
+  case (ExhAccPred mp \<omega>_subst e_args v_args e_p p pid pdecl pbody)
+  have normal: "p \<ge> 0 \<and> mp (pid, v_args) \<ge> Abs_preal p"
+    using exh_if_total_normal[OF ExhAccPred.prems(2)]
+    by blast
+  have "RNormal \<omega>'' = exh_if_total (p \<ge> 0 \<and> mp (pid,v_args) \<ge> Abs_preal p) (exhale_pred \<omega> (pid,v_args) (Abs_preal p))"
+    apply (simp add: exh_if_total_normal[OF ExhAccPred.prems(2)])
+    unfolding exhale_pred_def
+    apply (rule full_total_state.equality)
+       apply (simp add: ExhAccPred)
+      apply (simp add: ExhAccPred)
+     defer
+     apply (simp add: ExhAccPred)
+    apply (rule total_state.equality)
+      apply (simp add: ExhAccPred)
+      apply (insert ExhAccPred.prems(2)[unfolded \<open>\<omega>_subst = _\<close>, simplified normal, simplified])
+      apply (simp add: exhale_pred_def del: rm_from_lpm_total_full.simps)
+      apply fastforce
+     apply (simp add: exhale_pred_def del: rm_from_lpm_total_full.simps)
+    using ExhAccPred.prems(6)
+     apply fastforce
+    by fastforce
+
+  show ?case
+    apply simp
+    apply (subst \<open>RNormal \<omega>'' = _\<close>)
+    apply (rule red_exhale.ExhAccPred)
+    using ExhAccPred.hyps(1) ExhAccPred.prems(1)
+         apply force
+        apply (rule eval_with_substitution(2); (rule ExhAccPred)?)
+             apply (simp add: assms(2))
+            apply simp
+    using ExhAccPred.prems(7)
+           apply (simp, simp, simp)
+    using ExhAccPred.prems(8)
+        apply simp
+       apply (rule eval_with_substitution(1); (rule ExhAccPred)?)
+            apply (simp add: assms(2))
+           apply simp
+    using ExhAccPred.prems(7)
+          apply (simp, simp, simp)
+    using ExhAccPred.prems(8)
+       apply simp
+    by fact+
+next
+  case (ExhAccPredWildcard mp \<omega>_subst e_args v_args pid q pdecl pbody)
+  have normal: "mp (pid, v_args) \<noteq> 0"
+    using exh_if_total_normal[OF ExhAccPredWildcard.prems(2)]
+    by blast
+  have "RNormal \<omega>'' = exh_if_total (mp (pid, v_args) \<noteq> 0) (exhale_pred \<omega> (pid,v_args) q)"
+    apply (simp add: normal)
+    unfolding exhale_pred_def
+    apply (rule full_total_state.equality)
+       apply (simp add: ExhAccPredWildcard)
+      apply (simp add: ExhAccPredWildcard)
+     defer
+     apply (simp add: ExhAccPredWildcard)
+    apply (rule total_state.equality)
+      apply (simp add: ExhAccPredWildcard)
+      apply (insert ExhAccPredWildcard.prems(2)[unfolded \<open>\<omega>_subst = _\<close>, simplified normal, simplified])
+      apply (simp add: exhale_pred_def del: rm_from_lpm_total_full.simps)
+      apply fastforce
+     apply (simp add: exhale_pred_def del: rm_from_lpm_total_full.simps)
+    using ExhAccPredWildcard.prems(6)
+     apply fastforce
+    by fastforce
+
+  show ?case
+    apply simp
+    apply (subst \<open>RNormal \<omega>'' = _\<close>)
+    apply (rule red_exhale.ExhAccPredWildcard)
+    using ExhAccPredWildcard.hyps(1) ExhAccPredWildcard.prems(1)
+         apply force
+        apply (rule eval_with_substitution(2); (rule ExhAccPredWildcard)?)
+             apply (simp add: assms(2))
+            apply simp
+    using ExhAccPredWildcard.prems(7)
+           apply (simp, simp, simp)
+    using ExhAccPredWildcard.prems(8)
+        apply simp
+    by fact+
+next
+  case (ExhPure e \<omega>_subst b)
+  have normal: "b = True"
+    using ExhPure.prems(2) exh_if_total_normal
+    by blast
+  have "RNormal \<omega>'' = exh_if_total b \<omega>"
+    apply (simp add: normal)
+    apply (rule full_total_state.equality; simp add: ExhPure)
+    apply (rule total_state.equality)
+    using ExhPure.prems(1) ExhPure.prems(2) exh_if_total_normal_2
+    by fastforce+
+
+  show ?case
+    apply simp
+    apply (subst \<open>RNormal \<omega>'' = _\<close>)
+    apply (rule red_exhale.ExhPure)
+    apply (rule eval_with_substitution(1); (rule ExhPure)?)
+         apply (simp add: assms(2))
+        apply simp
+    using ExhPure.prems(7)
+       apply (simp, simp, simp)
+    using ExhPure.prems(8)
+    by simp
+next
+  case (ExhStarNormal A \<omega>_subst \<omega>\<^sub>A_subst B res)
+  define \<omega>\<^sub>A where "\<omega>\<^sub>A = \<omega>\<^sub>A_subst\<lparr> get_store_total := get_store_total \<omega> \<rparr>"
+  show ?case
+    apply simp
+    apply (rule red_exhale.ExhStarNormal)
+     apply (rule ExhStarNormal.IH(1)[where ?\<omega>''=\<omega>\<^sub>A])
+            apply fact
+           apply simp
+          apply fact
+    unfolding \<omega>\<^sub>A_def
+         apply simp
+        apply (metis ExhStarNormal.hyps(1) ExhStarNormal.prems(1) exhale_only_changes_total_state_aux full_total_state.ext_inject full_total_state.surjective full_total_state.update_convs(1))
+       apply simp
+    using ExhStarNormal.prems(7)
+      apply auto[1]
+    using ExhStarNormal.prems(8)
+     apply auto[1]
+    apply (rule ExhStarNormal.IH(2)[where ?\<omega>''=\<omega>''])
+           apply (metis ExhStarNormal.hyps(1) ExhStarNormal.prems(1) exhale_only_changes_total_state_aux full_total_state.select_convs(1) full_total_state.surjective full_total_state.update_convs(1))
+          apply fact
+         apply (metis (no_types, lifting) ArgsNoPerm ArgsNoUnfolding ExhStarNormal.hyps(1) ExhStarNormal.prems(1) ExhStarNormal.prems(3) exhale_only_changes_total_state_aux full_total_state.select_convs(1) full_total_state.select_convs(2) full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(1) get_hh_total_full.simps list_all_length red_pure_exp_only_differ_on_mask(2))
+        apply (simp add: ExhStarNormal.prems(4))
+       apply (metis ExhStarNormal.hyps(1) ExhStarNormal.prems(1) ExhStarNormal.prems(5) exhale_only_changes_total_state_aux full_total_state.select_convs(2) full_total_state.surjective full_total_state.update_convs(1))
+      apply (simp add: ExhStarNormal.prems(6))
+    using ExhStarNormal.prems(7)
+     apply auto[1]
+    using ExhStarNormal.prems(8)
+    by auto
+next
+  case (ExhStarFailure A \<omega>_subst B)
+  show ?case
+    using ExhStarFailure.prems(2)
+    by blast
+next
+  case (ExhImpTrue e \<omega>_subst A res)
+  show ?case
+    apply simp
+    apply (rule red_exhale.ExhImpTrue)
+     apply (rule eval_with_substitution(1); (rule ExhImpTrue)?)
+    using assms(2)
+          apply blast
+         apply simp
+    using ExhImpTrue.prems(7)
+        apply (simp, simp, simp)
+    using ExhImpTrue.prems(8)
+     apply auto[1]
+    apply (rule ExhImpTrue.IH(1))
+           apply fact+
+    using ExhImpTrue.prems(7)
+     apply auto[1]
+    using ExhImpTrue.prems(8)
+    by auto
+next
+  case (ExhImpFalse e \<omega>_subst A)
+  hence "\<omega>'' = \<omega>"
+    by force
+  show ?case
+    apply simp
+    apply (unfold \<open>\<omega>'' = \<omega>\<close>)
+    apply (rule red_exhale.ExhImpFalse)
+    apply (rule eval_with_substitution(1); (rule ExhImpFalse)?)
+    using assms(2)
+         apply blast
+        apply simp
+    using ExhImpFalse.prems(7)
+       apply (simp, simp, simp)
+    using ExhImpFalse.prems(8)
+    by auto
+next
+  case (ExhCondTrue e \<omega>_subst A res B)
+  show ?case
+    apply simp
+    apply (rule red_exhale.ExhCondTrue)
+     apply (rule eval_with_substitution(1); (rule ExhCondTrue)?)
+    using assms(2)
+          apply blast
+         apply simp
+    using ExhCondTrue.prems(7)
+        apply (simp, simp, simp)
+    using ExhCondTrue.prems(8)
+     apply auto[1]
+    apply (rule ExhCondTrue.IH(1))
+           apply fact+
+    using ExhCondTrue.prems(7)
+     apply auto[1]
+    using ExhCondTrue.prems(8)
+    by auto
+next
+  case (ExhCondFalse e \<omega>_subst B res A)
+  show ?case
+    apply simp
+    apply (rule red_exhale.ExhCondFalse)
+     apply (rule eval_with_substitution(1); (rule ExhCondFalse)?)
+    using assms(2)
+          apply blast
+         apply simp
+    using ExhCondFalse.prems(7)
+        apply (simp, simp, simp)
+    using ExhCondFalse.prems(8)
+     apply auto[1]
+    apply (rule ExhCondFalse.IH(1))
+           apply fact+
+    using ExhCondFalse.prems(7)
+     apply auto[1]
+    using ExhCondFalse.prems(8)
+    by auto
+next
+  case (ExhSubExpFailure A \<omega>_subst)
+  then show ?case
+    by blast
+qed
+
+
+lemma exhale_with_substitution_failure:
+  assumes "red_exhale ctxt \<omega>_def_subst A \<omega>_subst res"
+      and "\<omega>_def_subst = \<omega>_def\<lparr> get_store_total := nth_option vs \<rparr>"
+      and "\<omega>_subst = \<omega>\<lparr> get_store_total := nth_option vs \<rparr>"
+      and "res = RFailure"
+      and "red_pure_exps_total ctxt (Some \<omega>_def) es \<omega> (Some vs)"
+      and "supported_pred_body A"
+      and "no_unfolding_assertion A"
+      and ArgsNoPerm: "list_all no_perm_pure_exp es"
+      and ArgsNoUnfolding: "list_all no_unfolding_pure_exp es"
+    shows "red_exhale ctxt \<omega>_def (substitute_args_assertion A es) \<omega> RFailure"
+  using assms(1,3-7)
+proof (induction arbitrary: \<omega>)
+  case (ExhAcc mh \<omega>_subst e_r r e_p p a f)
+  have normal: "(0 \<le> p \<and> (if r = Null then p = 0 else Abs_preal p \<le> mh (a, f))) = False"
+    using exh_if_total_failure[OF ExhAcc.prems(2)]
+    by blast
+  hence "RFailure = exh_if_total (0 \<le> p \<and> (if r = Null then p = 0 else Abs_preal p \<le> mh (a, f)))
+          (if r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a, f) (Abs_preal p))"
+    by auto
+  show ?case
+    apply simp
+    apply (subst \<open>RFailure = _\<close>)
+    apply (rule red_exhale.ExhAcc)
+       apply (simp add: ExhAcc.hyps(1) ExhAcc.prems(1))
+      apply (rule eval_with_substitution(1); (rule ExhAcc)?)
+           apply (simp add: assms(2))
+          apply simp
+    using ExhAcc.prems(4)
+         apply (simp, simp, simp)
+    using ExhAcc.prems(5)
+      apply simp
+     apply (rule eval_with_substitution(1); (rule ExhAcc)?)
+          apply (simp add: assms(2))
+         apply simp
+    using ExhAcc.prems(4)
+        apply (simp, simp, simp)
+    using ExhAcc.prems(5)
+     apply simp
+    by fact
+next
+  case (ExhAccWildcard mh \<omega>_subst e_r r a f q)
+  have normal: "(mh (a, f) \<noteq> 0 \<and> r \<noteq> Null) = False"
+    using exh_if_total_failure[OF ExhAccWildcard.prems(2)]
+    by blast
+  hence "RFailure = exh_if_total (mh (a, f) \<noteq> 0 \<and> r \<noteq> Null) (dec_mh_loc_total_full \<omega> (a, f) q)"
+    by auto
+  show ?case
+    apply simp
+    apply (subst \<open>RFailure = _\<close>)
+    apply (rule red_exhale.ExhAccWildcard)
+       apply (simp add: ExhAccWildcard.hyps(1) ExhAccWildcard.prems(1))
+      apply (rule eval_with_substitution(1); (rule ExhAccWildcard)?)
+           apply (simp add: assms(2))
+          apply simp
+    using ExhAccWildcard.prems(4)
+         apply (simp, simp, simp)
+    using ExhAccWildcard.prems(5)
+      apply simp
+     apply fact
+    by (simp add: ExhAccWildcard.hyps(4))
+next
+  case (ExhAccPred mp \<omega>_subst e_args v_args e_p p pid pdecl pbody)
+  have normal: "\<not> (p \<ge> 0 \<and> mp (pid, v_args) \<ge> Abs_preal p)"
+    using exh_if_total_failure[OF ExhAccPred.prems(2)]
+    by blast
+  hence "RFailure = exh_if_total (p \<ge> 0 \<and> mp (pid,v_args) \<ge> Abs_preal p) (exhale_pred \<omega> (pid,v_args) (Abs_preal p))"
+    by auto
+  show ?case
+    apply simp
+    apply (subst \<open>RFailure = _\<close>)
+    apply (rule red_exhale.ExhAccPred)
+    using ExhAccPred.hyps(1) ExhAccPred.prems(1)
+         apply force
+        apply (rule eval_with_substitution(2); (rule ExhAccPred)?)
+             apply (simp add: assms(2))
+            apply simp
+    using ExhAccPred.prems(4)
+           apply (simp, simp, simp)
+    using ExhAccPred.prems(5)
+        apply simp
+       apply (rule eval_with_substitution(1); (rule ExhAccPred)?)
+            apply (simp add: assms(2))
+           apply simp
+    using ExhAccPred.prems(4)
+          apply (simp, simp, simp)
+    using ExhAccPred.prems(5)
+       apply simp
+    by fact+
+next
+  case (ExhAccPredWildcard mp \<omega>_subst e_args v_args pid q pdecl pbody)
+  have normal: "\<not> (mp (pid, v_args) \<noteq> 0)"
+    using exh_if_total_failure[OF ExhAccPredWildcard.prems(2)]
+    by blast
+  hence "RFailure = exh_if_total (mp (pid, v_args) \<noteq> 0) (exhale_pred \<omega> (pid,v_args) q)"
+    by auto
+  show ?case
+    apply simp
+    apply (subst \<open>RFailure = _\<close>)
+    apply (rule red_exhale.ExhAccPredWildcard)
+    using ExhAccPredWildcard.hyps(1) ExhAccPredWildcard.prems(1)
+         apply force
+        apply (rule eval_with_substitution(2); (rule ExhAccPredWildcard)?)
+             apply (simp add: assms(2))
+            apply simp
+    using ExhAccPredWildcard.prems(4)
+           apply (simp, simp, simp)
+    using ExhAccPredWildcard.prems(5)
+        apply simp
+    by fact+
+next
+  case (ExhPure e \<omega>_subst b)
+  have normal: "b = False"
+    using ExhPure.prems(2) exh_if_total_failure
+    by blast
+  have "RFailure = exh_if_total b \<omega>"
+    by (simp add: normal)
+
+  show ?case
+    apply simp
+    apply (subst \<open>RFailure = _\<close>)
+    apply (rule red_exhale.ExhPure)
+    apply (rule eval_with_substitution(1); (rule ExhPure)?)
+         apply (simp add: assms(2))
+        apply simp
+    using ExhPure.prems(4)
+       apply (simp, simp, simp)
+    using ExhPure.prems(5)
+    by simp
+next
+  case (ExhStarNormal A \<omega>_subst \<omega>\<^sub>A_subst B res)
+  define \<omega>\<^sub>A where "\<omega>\<^sub>A = \<omega>\<^sub>A_subst\<lparr> get_store_total := get_store_total \<omega> \<rparr>"
+  show ?case
+    apply simp
+    apply (rule red_exhale.ExhStarNormal)
+     apply (rule exhale_with_substitution[where ?\<omega>''=\<omega>\<^sub>A]; (rule ExhStarNormal)?)
+             apply (simp add: assms(2))
+            apply simp
+           apply (simp add: \<omega>\<^sub>A_def)
+          apply (metis ExhStarNormal.hyps(1) ExhStarNormal.prems(1) \<omega>\<^sub>A_def exhale_only_changes_total_state_aux full_total_state.ext_inject full_total_state.surjective full_total_state.update_convs(1))
+         apply (simp add: \<omega>\<^sub>A_def)
+    using ExhStarNormal.prems(4)
+        apply auto[1]
+    using ExhStarNormal.prems(5)
+       apply auto[1]
+      apply (simp add: ArgsNoPerm)
+     apply (simp add: ArgsNoUnfolding)
+    apply (rule ExhStarNormal.IH(2))
+        apply (metis ExhStarNormal.hyps(1) ExhStarNormal.prems(1) \<omega>\<^sub>A_def exhale_only_changes_total_state_aux full_total_state.select_convs(1) full_total_state.surjective full_total_state.update_convs(1))
+       apply fact
+      apply (metis (no_types, lifting) ArgsNoPerm ArgsNoUnfolding ExhStarNormal.hyps(1) ExhStarNormal.prems(1) ExhStarNormal.prems(3) \<omega>\<^sub>A_def exhale_only_changes_total_state_aux full_total_state.select_convs(1) full_total_state.select_convs(2) full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(1) get_hh_total_full.simps list_all_length red_pure_exp_only_differ_on_mask(2))
+    using ExhStarNormal.prems(4)
+     apply auto[1]
+    using ExhStarNormal.prems(5)
+    by auto
+next
+  case (ExhStarFailure A \<omega>_subst B)
+  then show ?case
+    by (metis assert_pred.elims(2) assert_pred_rec.simps(4) red_exhale.ExhStarFailure substitute_args_assertion.simps(7))
+next
+  case (ExhImpTrue e \<omega>_subst A res)
+  then show ?case
+    by (metis assert_pred.elims(2) assert_pred_rec.simps(2) assms(2) eval_with_substitution(1) red_exhale.ExhImpTrue substitute_args_assertion.simps(6))
+next
+  case (ExhImpFalse e \<omega>_subst A)
+  then show ?case
+    by fastforce
+next
+  case (ExhCondTrue e \<omega>_subst A res B)
+  then show ?case
+    by (metis assert_pred.elims(2) assert_pred_rec.simps(3) assms(2) eval_with_substitution(1) red_exhale.ExhCondTrue substitute_args_assertion.simps(8))
+next
+  case (ExhCondFalse e \<omega>_subst B res A)
+  then show ?case
+    by (metis assert_pred.elims(2) assert_pred_rec.simps(3) assms(2) eval_with_substitution(1) red_exhale.ExhCondFalse substitute_args_assertion.simps(8))
+next
+  case (ExhSubExpFailure A \<omega>_subst)
+  show ?case
+    apply (rule red_exhale.ExhSubExpFailure)
+     apply (subst substitute_subexpr_assertion_commute[symmetric])
+     apply (simp add: ExhSubExpFailure.hyps(1))
+    apply (subst substitute_subexpr_assertion_commute[symmetric])
+    apply (rule eval_with_substitution_failure(2); (rule ExhSubExpFailure)?)
+         apply (simp add: assms(2))
+        apply simp
+    using ExhSubExpFailure.prems(4,5) assert_pred_subexp
+    by blast+
+qed
 
 
 

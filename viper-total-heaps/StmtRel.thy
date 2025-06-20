@@ -664,7 +664,7 @@ lemma exhale_stmt_rel:
       and InvHolds: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> Q A \<omega> \<omega>"
       and UpdHavoc: "rel_general (uncurry Rexh) (\<lambda>\<omega> ns. R_out (snd \<omega>) ns)
                (\<lambda>\<omega> \<omega>'. \<comment>\<open>the current evaluation state was reached by exhaling A from the current well-definedness state\<close>
-                       red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
+                       red_exhale ctxt_vpr (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
                        \<comment>\<open>the updated state is a havoc of the current evaluation state\<close>
                        snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 }) \<and>
                        StateCons (snd \<omega>') \<and>
@@ -723,7 +723,7 @@ lemma exhale_stmt_rel_inst:
       and ExhRel: "exhale_rel (rel_ext_eq R) (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt) Q ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>2"
       and UpdHavoc: "rel_general (uncurry (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt)) (\<lambda>\<omega> ns. R_out (snd \<omega>) ns)
                (\<lambda>\<omega> \<omega>'. \<comment>\<open>the current evaluation state was reached by exhaling A from the current well-definedness state\<close>
-                       red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
+                       red_exhale ctxt_vpr (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
                        \<comment>\<open>the updated state is a havoc of the current evaluation state\<close>
                        snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 }) \<and>
                        StateCons (snd \<omega>') \<and>
@@ -762,7 +762,7 @@ proof (rule stmt_rel_intro)
   hence "\<omega> = \<omega>'"
   proof (rule RedExhaleNormal_case')
     fix \<omega>_exh
-    assume RedExh: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (Pure (ELit (ViperLang.lit.LBool True)))) \<omega> (RNormal \<omega>_exh)"
+    assume RedExh: "red_exhale ctxt_vpr \<omega> (Atomic (Pure (ELit (ViperLang.lit.LBool True)))) \<omega> (RNormal \<omega>_exh)"
        and HavocState: "\<omega>' \<in> havoc_locs_state ctxt_vpr \<omega>_exh
                                { loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full \<omega>) p) \<and>
                                       nm_loc_sum loc (get_nm_total_full \<omega>_exh) 0 }"
@@ -809,7 +809,7 @@ lemma exhale_stmt_rel_inst_no_inv:
       and "exhale_rel (rel_ext_eq R) (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt) (\<lambda>_ _ _. True) ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>2"
 
       and UpdHavoc: "rel_general (uncurry (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt)) (\<lambda>\<omega> ns. R (snd \<omega>) ns)
-               (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
+               (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
                        snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 }) \<and>
                        StateCons (snd \<omega>') \<and>
                        consistent_external ctxt_vpr (get_total_full (snd \<omega>'))
@@ -824,7 +824,7 @@ lemma exhale_stmt_rel_inst_framing_inv:
       and InvHolds: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> framing_exh ctxt_vpr StateCons A \<omega> \<omega>"
       and ExhRel: "exhale_rel (rel_ext_eq R) (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt) (framing_exh ctxt_vpr StateCons) ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>2"
       and UpdHavoc: "rel_general (uncurry (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt)) (\<lambda>\<omega> ns. (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt) (snd \<omega>) ns)
-               (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
+               (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
                        snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 }) \<and>
                        StateCons (snd \<omega>') \<and>
                        consistent_external ctxt_vpr (get_total_full (snd \<omega>'))
@@ -1066,7 +1066,7 @@ lemma exhale_pure_stmt_rel_upd_havoc:
   assumes RelImp: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> R_out (snd \<omega>) ns"
       and SuccessImp:
         "\<And> \<omega> \<omega>'. Success \<omega> \<omega>' \<Longrightarrow>
-                 red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
+                 red_exhale ctxt_vpr (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
                  snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({loc. get_mh_total_full (fst \<omega>) loc > 0 \<and> get_mh_total_full (snd \<omega>) loc = 0})"
       and "is_pure A"
     shows "rel_general R (\<lambda>\<omega> ns. R_out (snd \<omega>) ns)
@@ -1104,7 +1104,7 @@ lemma assert_stmt_rel:
       state.\<close>
       and ResetState: "rel_general (uncurry Rexh) (\<lambda>\<omega> ns. R (snd \<omega>) ns)
                                    (\<lambda> \<omega>1 \<omega>2. snd \<omega>2 = fst \<omega>1 \<and>
-                                             red_exhale ctxt_vpr StateCons (fst \<omega>1) A (fst \<omega>1) (RNormal (snd \<omega>1)))
+                                             red_exhale ctxt_vpr (fst \<omega>1) A (fst \<omega>1) (RNormal (snd \<omega>1)))
                                    (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'
                       \<or> red_ast_bpl_rel R R P ctxt \<gamma> \<gamma>'"
                  (is "?ResetFromExhale \<or> ?ResetFromStart")
@@ -1118,7 +1118,7 @@ proof (rule stmt_rel_intro_2)
     fix \<omega>'
     assume "res = RNormal \<omega>'"
 
-    with RedStmt obtain \<omega>_exh where RedExh: "red_exhale ctxt_vpr StateCons \<omega> A \<omega> (RNormal \<omega>_exh)" and "\<omega> = \<omega>'"
+    with RedStmt obtain \<omega>_exh where RedExh: "red_exhale ctxt_vpr \<omega> A \<omega> (RNormal \<omega>_exh)" and "\<omega> = \<omega>'"
       by (auto elim: RedAssertNormal_case)
 
 
@@ -1149,7 +1149,7 @@ proof (rule stmt_rel_intro_2)
   next
     assume "res = RFailure"
 
-    with RedStmt have RedExh: "red_exhale ctxt_vpr StateCons \<omega> A \<omega> RFailure"
+    with RedStmt have RedExh: "red_exhale ctxt_vpr \<omega> A \<omega> RFailure"
       by (auto elim: RedAssertFailure_case)
 
     thus "\<exists>c'. red_ast_bpl P ctxt (\<gamma>, Normal ns) c' \<and> snd c' = Failure"
@@ -1173,7 +1173,7 @@ lemma assert_stmt_rel_inst:
       and ResetState: "rel_general (uncurry R')
                                           (\<lambda> \<omega> ns. state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt (snd \<omega>) ns)
                                           (\<lambda> \<omega>1 \<omega>2. snd \<omega>2 = fst \<omega>1 \<and>
-                                             red_exhale ctxt_vpr StateCons (fst \<omega>1) A (fst \<omega>1) (RNormal (snd \<omega>1)))
+                                             red_exhale ctxt_vpr (fst \<omega>1) A (fst \<omega>1) (RNormal (snd \<omega>1)))
                                           (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'"
     shows "stmt_rel (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt) (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt) ctxt_vpr StateCons \<Lambda>_vpr P ctxt
                     (ViperLang.Assert A) \<gamma> \<gamma>'"
@@ -1204,7 +1204,7 @@ lemma exhale_rel_capture_state_abstract:
 
 lemma assert_reset_state_pure:
   assumes Success: "\<And> \<omega> \<omega>'.  Success \<omega> \<omega>' \<Longrightarrow> snd \<omega>' = fst \<omega> \<and>
-                              red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>))"
+                              red_exhale ctxt_vpr (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>))"
       and "is_pure A"
       and \<comment>\<open>as long as the evaluation state is the same, relation is preserved\<close>
           RelImplies: "\<And> \<omega> \<omega>' ns. R \<omega> ns \<Longrightarrow> snd \<omega> = snd \<omega>' \<Longrightarrow>  R' \<omega>' ns"
@@ -1213,7 +1213,7 @@ proof (rule rel_intro)
   fix \<omega> ns \<omega>'
   assume "R \<omega> ns" and "Success \<omega> \<omega>'"
 
-  with Success have "snd \<omega>' = fst \<omega>" and "red_exhale ctxt_vpr StateCons (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>))"
+  with Success have "snd \<omega>' = fst \<omega>" and "red_exhale ctxt_vpr (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>))"
     by blast+
 
   hence "fst \<omega> = snd \<omega>"
@@ -2550,7 +2550,7 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
         (* from \<open>red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Exhale (method_decl.pre mdecl')) ?\<omega>0 resPre\<close>
              RedExhPre *)
         obtain \<omega>pre_exh_aux where
-          RedExh: "red_exhale ctxt_vpr StateCons ?\<omega>0 (method_decl.pre mdecl) ?\<omega>0 (RNormal \<omega>pre_exh_aux)"
+          RedExh: "red_exhale ctxt_vpr ?\<omega>0 (method_decl.pre mdecl) ?\<omega>0 (RNormal \<omega>pre_exh_aux)"
           using SuccessHavoc red_stmt_total_inversion_thms(8)
           by blast
 
@@ -2594,7 +2594,7 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
           by simp
         moreover have "red_inhale ctxt_vpr StateCons (method_decl.pre mdecl) ?\<omega>0_rets_empty (RNormal (?\<omega>0_rets \<ominus> ?\<omega>pre_exh_aux_rets))"
         proof -
-          have RedExhRets: "red_exhale ctxt_vpr StateCons ?\<omega>0_rets (method_decl.pre mdecl) ?\<omega>0_rets (RNormal ?\<omega>pre_exh_aux_rets)"
+          have RedExhRets: "red_exhale ctxt_vpr ?\<omega>0_rets (method_decl.pre mdecl) ?\<omega>0_rets (RNormal ?\<omega>pre_exh_aux_rets)"
             apply (rule exhale_same_on_free_var[OF RedExh]) \<comment>\<open>using that the return variables do not appear in the precondition\<close>
             using StoreSameOnArgs MethodSpecSubset
             by auto

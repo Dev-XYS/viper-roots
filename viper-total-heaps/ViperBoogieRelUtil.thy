@@ -58,14 +58,14 @@ qed
 
 lemma store_temporary_perm_rel:
   assumes
-  StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" (is "?R \<omega>def \<omega> ns") and
-  RedPerm:  "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)" and
-  ExpRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt) ctxt_vpr ctxt e_vpr e_bpl" and
-         DisjAux: "temp_var \<notin> {heap_var Tr, mask_var Tr, heap_var_def Tr, mask_var_def Tr} \<union> ran (var_translation Tr) \<union> 
-                     ran (field_translation Tr) \<union> range (const_repr Tr) \<union> dom AuxPred" and
-         LookupTyTemp: "lookup_var_ty (var_context ctxt) temp_var = Some (TPrim TReal)" and
-         TyInterp:  "type_interp ctxt = vbpl_absval_ty TyRep" and
-         EmptyRtype: "rtype_interp ctxt = []" 
+    StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" (is "?R \<omega>def \<omega> ns") and
+    RedPerm:  "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)" and
+    ExpRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt) ctxt_vpr ctxt e_vpr e_bpl" and
+    DisjAux: "temp_var \<notin> {heap_var Tr, mask_var Tr, heap_var_def Tr, mask_var_def Tr} \<union> ran (var_translation Tr) \<union> 
+                ran (field_translation Tr) \<union> range (const_repr Tr) \<union> dom AuxPred" and
+    LookupTyTemp: "lookup_var_ty (var_context ctxt) temp_var = Some (TPrim TReal)" and
+    TyInterp:  "type_interp ctxt = vbpl_absval_ty TyRep" and
+    EmptyRtype: "rtype_interp ctxt = []" 
   shows "\<exists>ns'. red_ast_bpl P ctxt (((BigBlock name (Lang.Assign temp_var e_bpl # cs) s tr), cont), Normal ns)
                                    ((BigBlock name cs s tr, cont), Normal ns') \<and>
                 (state_rel Pr StateCons TyRep Tr (AuxPred(temp_var \<mapsto> pred_eq (RealV p))) ctxt \<omega>def \<omega> ns')"

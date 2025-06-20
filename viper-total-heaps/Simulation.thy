@@ -266,7 +266,7 @@ text \<open>\<close>
 lemma rel_propagate_pre_success:
   assumes NoFailure: "\<And> \<omega>. \<not> Fail \<omega>"
       and "red_ast_bpl_rel (\<lambda> \<omega> ns. (\<exists>\<omega>'. Success \<omega> \<omega>') \<and> R0 \<omega> ns) R1 P ctxt \<gamma>0 \<gamma>1"
-      and    "rel_general R1 R2 Success Fail P ctxt \<gamma>1 \<gamma>2"
+      and "rel_general R1 R2 Success Fail P ctxt \<gamma>1 \<gamma>2"
     shows "rel_general R0 R2 Success Fail P ctxt \<gamma>0 \<gamma>2"
 proof (rule rel_intro)
   fix \<omega> ns \<omega>'

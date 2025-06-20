@@ -59,9 +59,9 @@ lemma exhale_pred_body_part_extcons_wrt_ploc:
   assumes "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
       and "ViperLang.predicate_decl.body pdecl = Some pbody"
       and "vals_well_typed (absval_interp_total ctxt) vs (predicate_decl.args pdecl)"
-      and "\<omega> = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi> \<rparr>"
+      and "\<omega> = \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi> \<rparr>"
       and "consistent_external ctxt \<phi>"
-      and "red_exhale ctxt StateCons \<omega>0 (syntactic_mult (Rep_preal p) pbody) \<omega> (RNormal \<omega>')"
+      and "red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal p) pbody) \<omega> (RNormal \<omega>')"
       and "get_nm_total_full \<omega>' + nm_exh = get_nm_total_full \<omega>"
       and "ctxt_pred_syn_wf ctxt"
     shows "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) (pid,vs) p"
@@ -318,7 +318,7 @@ subsection \<open>Preserved by Exhale\<close>
 
 lemma extcons_preserved_by_red_exhale:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
-      and "red_exhale ctxt StateCons \<omega>0 A \<omega> (RNormal \<omega>')"
+      and "red_exhale ctxt \<omega>0 A \<omega> (RNormal \<omega>')"
       and "ctxt_pred_syn_wf ctxt"
     shows "consistent_external ctxt (get_total_full \<omega>')"
 proof
@@ -400,7 +400,7 @@ lemma extcons_preserved_by_red_stmt_exhale:
     shows "consistent_external ctxt (get_total_full \<omega>')"
 proof -
   from assms(3) obtain \<omega>_exh where
-    exh: "red_exhale ctxt StateCons \<omega> A \<omega> (RNormal \<omega>_exh)" and
+    exh: "red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>_exh)" and
     havoc: "\<omega>' \<in> havoc_locs_state ctxt \<omega>_exh
       { loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full \<omega>) p) \<and> nm_loc_sum loc (get_nm_total_full \<omega>_exh) 0 }"
     by (blast elim: red_stmt_total.cases)
@@ -602,20 +602,28 @@ proof -
     pred_decl: "ViperLang.predicates (program_total ctxt) pid = Some pdecl" and
     pred_body: "ViperLang.predicate_decl.body pdecl = Some pbody" and
     ty: "vals_well_typed (absval_interp_total ctxt) vs (predicate_decl.args pdecl)" and
-    "\<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>" and
-    red_exh: "red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal (Abs_preal p)) pbody) \<omega>0 (RNormal \<omega>1')" and
+    "\<omega>0 = \<omega>\<lparr> get_store_total := nth_option vs \<rparr>" and
+    red_exh: "red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal (Abs_preal p)) pbody) \<omega>0 (RNormal \<omega>1')" and
     "\<omega>1 = \<omega>\<lparr> get_total_full := get_total_full \<omega>1' \<rparr>" and
     nm_exh: "get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0" and
     "\<omega>' = add_to_lpm_total_full \<omega>1 (pid,vs) (if Abs_preal p = 0 then None else Some (Abs_posreal (Abs_preal p), nm_exh))"
     apply (rule FoldRelNormal_case[OF fold_rel])
     by simp
 
-  have exhaled_extcons: "consistent_external ctxt (get_total_full \<omega>1)"
-    by (metis \<open>\<omega>0 = _\<close> \<open>\<omega>1 = _\<close> red_exh assms(1) assms(3) extcons_preserved_by_red_exhale full_total_state.ext_inject full_total_state.surjective full_total_state.update_convs(3))
+  have "consistent_external ctxt (get_total_full \<omega>0)"
+    by (simp add: \<open>\<omega>0 = _\<close> assms(1))
+  hence "consistent_external ctxt (get_total_full \<omega>1')"
+    using assms(3) extcons_preserved_by_red_exhale red_exh
+    by blast
+  hence exhaled_extcons: "consistent_external ctxt (get_total_full \<omega>1)"
+    by (simp add: \<open>\<omega>1 = _\<close>)
 
+  have \<omega>0_expanded: "\<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = get_trace_total \<omega>, get_total_full = get_total_full \<omega> \<rparr>"
+    unfolding \<open>\<omega>0 = _\<close>
+    by simp
   have folded_extcons: "consistent_external_wrt_ploc ctxt ((get_total_full \<omega>1)\<lparr> get_nm_total := nm_exh \<rparr>) (pid,vs) (Abs_preal p)"
-    using exhale_pred_body_part_extcons_wrt_ploc[OF pred_decl pred_body ty \<open>\<omega>0 = _\<close> assms(1) red_exh _ assms(3), of nm_exh]
-    by (smt (verit, ccfv_SIG) \<open>\<omega>0 = _\<close> \<open>\<omega>1 = _\<close> exhale_only_changes_total_state_aux full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3) get_hh_total_full.simps get_nm_total_full.simps nm_exh old.unit.exhaust red_exh total_state.surjective total_state.update_convs(2))
+    using exhale_pred_body_part_extcons_wrt_ploc[OF pred_decl pred_body ty \<omega>0_expanded assms(1) red_exh _ assms(3), of nm_exh]
+    by (smt (verit, ccfv_SIG) \<omega>0_expanded \<open>\<omega>1 = _\<close> exhale_only_changes_total_state_aux full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3) get_hh_total_full.simps get_nm_total_full.simps nm_exh old.unit.exhaust red_exh total_state.surjective total_state.update_convs(2))
 
   show ?thesis
   proof (cases "Abs_preal p = 0")
@@ -963,7 +971,7 @@ qed
 
 
 lemma exhale_inhale_normal:
-  assumes RedExh: "red_exhale ctxt StateCons \<omega>def A \<omega> res"
+  assumes RedExh: "red_exhale ctxt \<omega>def A \<omega> res"
       and "res = RNormal \<omega>'"
       and "mono_prop_downward StateCons"
       and "no_perm_assertion A \<and> no_unfolding_assertion A"

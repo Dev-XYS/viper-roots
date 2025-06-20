@@ -136,8 +136,8 @@ fun exh_if_total :: "bool \<Rightarrow> 'a full_total_state \<Rightarrow> 'a res
 definition exhale_pred :: "'a full_total_state \<Rightarrow> 'a predicate_loc \<Rightarrow> preal \<Rightarrow> 'a full_total_state" where
   "exhale_pred \<omega> lp p = rm_from_lpm_total_full \<omega> lp p"
 
-inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool"
-  for ctxt :: "'a total_context" and R :: "'a full_total_state \<Rightarrow> bool" and \<omega>0 :: "'a full_total_state" where
+inductive red_exhale :: "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> 'a result_total \<Rightarrow> bool"
+  for ctxt :: "'a total_context" and \<omega>0 :: "'a full_total_state" where
 
 \<comment>\<open>exhale acc(e.f, p)\<close>
   ExhAcc:
@@ -146,7 +146,7 @@ inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
      ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
      a = the_address r
    \<rbrakk> \<Longrightarrow>
-   red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega>
+   red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega>
      (exh_if_total (p \<ge> 0 \<and> (if r = Null then p = 0 else mh (a,f) \<ge> Abs_preal p))
                    (if r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a,f) (Abs_preal p)))"
 
@@ -159,7 +159,7 @@ inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
      If \<^prop>\<open>mh (a,f) \<noteq> 0\<close> does not hold, then the exhale fails and the value of q is irrelevant. \<close>
      mh (a,f) \<noteq> 0 \<and> r \<noteq> Null \<Longrightarrow> q > 0 \<and> mh (a,f) > q
    \<rbrakk> \<Longrightarrow>
-   red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f Wildcard)) \<omega>
+   red_exhale ctxt \<omega>0 (Atomic (Acc e_r f Wildcard)) \<omega>
      (exh_if_total (mh (a,f) \<noteq> 0 \<and> r \<noteq> Null)
                    (dec_mh_loc_total_full \<omega> (a,f) q))"
 
@@ -168,69 +168,69 @@ inductive red_exhale :: "'a total_context \<Rightarrow> ('a full_total_state \<R
   "\<lbrakk> mp = get_mp_total_full \<omega>;
      red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args);
      ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p);
-     ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl);
-     ViperLang.predicate_decl.body pred_decl = Some pred_body
+     ViperLang.predicates (program_total ctxt) pid = Some pdecl;
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pdecl);
+     ViperLang.predicate_decl.body pdecl = Some pbody
    \<rbrakk> \<Longrightarrow>
-   red_exhale ctxt R \<omega>0 (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<omega>
-     (exh_if_total (p \<ge> 0 \<and> mp (pred_id, v_args) \<ge> Abs_preal p)
-                   (exhale_pred \<omega> (pred_id, v_args) (Abs_preal p)))"
+   red_exhale ctxt \<omega>0 (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega>
+     (exh_if_total (p \<ge> 0 \<and> mp (pid, v_args) \<ge> Abs_preal p)
+                   (exhale_pred \<omega> (pid, v_args) (Abs_preal p)))"
 | ExhAccPredWildcard:
   "\<lbrakk> mp = get_mp_total_full \<omega>;
      red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args);
      \<comment>\<open>q satisfies the right-hand side if \<^prop>\<open>mp (pred_id, v_args) \<noteq> 0\<close> (thm prat_exists_strictly_smaller_nonzero).
      If \<^prop>\<open>mp (pred_id, v_args) \<noteq> 0\<close> does not hold, then the exhale fails and the value of q is irrelevant.\<close>
-     mp (pred_id, v_args) \<noteq> 0 \<Longrightarrow> q > 0 \<and> mp (pred_id, v_args) > q;
-     ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pred_decl);
-     ViperLang.predicate_decl.body pred_decl = Some pred_body
+     mp (pid, v_args) \<noteq> 0 \<Longrightarrow> q > 0 \<and> mp (pid, v_args) > q;
+     ViperLang.predicates (program_total ctxt) pid = Some pdecl;
+     vals_well_typed (absval_interp_total ctxt) v_args (ViperLang.predicate_decl.args pdecl);
+     ViperLang.predicate_decl.body pdecl = Some pbody
    \<rbrakk> \<Longrightarrow>
-   red_exhale ctxt R \<omega>0 (Atomic (AccPredicate pred_id e_args Wildcard)) \<omega>
-     (exh_if_total (mp (pred_id, v_args) \<noteq> 0)
-                   (exhale_pred \<omega> (pred_id, v_args) q))"
+   red_exhale ctxt \<omega>0 (Atomic (AccPredicate pid e_args Wildcard)) \<omega>
+     (exh_if_total (mp (pid, v_args) \<noteq> 0)
+                   (exhale_pred \<omega> (pid, v_args) q))"
 
 | ExhPure:
   "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<rbrakk> \<Longrightarrow>
-   red_exhale ctxt R \<omega>0 (Atomic (Pure e)) \<omega> (exh_if_total b \<omega>)"
+   red_exhale ctxt \<omega>0 (Atomic (Pure e)) \<omega> (exh_if_total b \<omega>)"
 
 \<comment>\<open>exhale A && B\<close>
 | ExhStarNormal:
-  "\<lbrakk> red_exhale ctxt R \<omega>0 A \<omega> (RNormal \<omega>');
-     red_exhale ctxt R \<omega>0 B \<omega>' res
+  "\<lbrakk> red_exhale ctxt \<omega>0 A \<omega> (RNormal \<omega>');
+     red_exhale ctxt \<omega>0 B \<omega>' res
    \<rbrakk> \<Longrightarrow>
-   red_exhale ctxt R \<omega>0 (A && B) \<omega> res"
+   red_exhale ctxt \<omega>0 (A && B) \<omega> res"
 | ExhStarFailure:
-  "\<lbrakk> red_exhale ctxt R \<omega>0 A \<omega> RFailure \<rbrakk> \<Longrightarrow>
-   red_exhale ctxt R \<omega>0 (A && B) \<omega> RFailure"
+  "\<lbrakk> red_exhale ctxt \<omega>0 A \<omega> RFailure \<rbrakk> \<Longrightarrow>
+   red_exhale ctxt \<omega>0 (A && B) \<omega> RFailure"
 
 \<comment>\<open>exhale A \<longrightarrow> B\<close>
 | ExhImpTrue:
   "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
-     red_exhale ctxt R \<omega>0 A \<omega> res
+     red_exhale ctxt \<omega>0 A \<omega> res
    \<rbrakk> \<Longrightarrow>
-   red_exhale ctxt R \<omega>0 (Imp e A) \<omega> res"
+   red_exhale ctxt \<omega>0 (Imp e A) \<omega> res"
 | ExhImpFalse:
   "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False) \<rbrakk> \<Longrightarrow>
-   red_exhale ctxt R \<omega>0 (Imp e A) \<omega> (RNormal \<omega>)"
+   red_exhale ctxt \<omega>0 (Imp e A) \<omega> (RNormal \<omega>)"
 
 \<comment>\<open>exhale e ? A : B\<close>
 | ExhCondTrue:
   "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True);
-     red_exhale ctxt R \<omega>0 A \<omega> res
+     red_exhale ctxt \<omega>0 A \<omega> res
    \<rbrakk> \<Longrightarrow>
-   red_exhale ctxt R \<omega>0 (CondAssert e A B) \<omega> res"
+   red_exhale ctxt \<omega>0 (CondAssert e A B) \<omega> res"
 | ExhCondFalse:
   "\<lbrakk> ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False);
-     red_exhale ctxt R \<omega>0 B \<omega> res
+     red_exhale ctxt \<omega>0 B \<omega> res
    \<rbrakk> \<Longrightarrow>
-   red_exhale ctxt R \<omega>0 (CondAssert e A B) \<omega> res"
+   red_exhale ctxt \<omega>0 (CondAssert e A B) \<omega> res"
 
 \<comment>\<open>If a \<^emph>\<open>direct\<close> subexpression is not well-defined, then this results in failure.\<close>
 | ExhSubExpFailure:
   "\<lbrakk> direct_sub_expressions_assertion A \<noteq> [];
      red_pure_exps_total ctxt (Some \<omega>0) (direct_sub_expressions_assertion A) \<omega> None
    \<rbrakk> \<Longrightarrow>
-   red_exhale ctxt R \<omega>0 A \<omega> RFailure"
+   red_exhale ctxt \<omega>0 A \<omega> RFailure"
 
 
 end

@@ -304,7 +304,7 @@ lemma unfold_preserves_internal_consistency_total:
 subsection \<open>Fold preserves internal consistency\<close>
 
 lemma exhale_0_state_same:
-  assumes "red_exhale ctxt R \<omega>0 (syntactic_mult 0 A) \<omega> (RNormal \<omega>')"
+  assumes "red_exhale ctxt \<omega>0 (syntactic_mult 0 A) \<omega> (RNormal \<omega>')"
   shows "\<omega>' = \<omega>"
   using assms
 proof (induction A arbitrary: \<omega> \<omega>')
@@ -454,8 +454,8 @@ proof -
     "ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl" and
     "ViperLang.predicate_decl.body pred_decl = Some pred_body" and
     "vals_well_typed (absval_interp_total ctxt) vs (predicate_decl.args pred_decl)" and
-    \<omega>0: "\<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>" and
-    exh: "red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal p) pred_body) \<omega>0 (RNormal \<omega>1')" and
+    \<omega>0: "\<omega>0 = \<omega>\<lparr> get_store_total := nth_option vs \<rparr>" and
+    exh: "red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal p) pred_body) \<omega>0 (RNormal \<omega>1')" and
     \<omega>1: "\<omega>1 = \<omega>\<lparr> get_total_full := get_total_full \<omega>1' \<rparr>" and
     nm_sub: "get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0" and
     \<omega>': "\<omega>' = add_to_lpm_total_full \<omega>1 (pred_id,vs) (if p = 0 then None else Some (Abs_posreal p, nm_exh))"

@@ -132,16 +132,16 @@ ML \<open>
        exp_wf_rel_info *
        exp_rel_info *
        thm * (* auxiliary variable lookup var ty theorem *)
-       thm *  (* auxiliary variable lookup var from state relation theorem *)
+       thm * (* auxiliary variable lookup var from state relation theorem *)
        thm (* expression relation permission access theorem *)
   | PredAccExhHint of
        exp_wf_rel_info *
        exp_rel_info *
        thm * (* auxiliary variable lookup var ty theorem *)
-       thm *  (* auxiliary variable lookup var from state relation theorem *)
+       thm * (* auxiliary variable lookup var from state relation theorem *)
        thm (* expression relation permission access theorem *)
 
-  fun exh_no_def_checks_tac ctxt (info: basic_stmt_rel_info) : int -> tactic  =
+  fun exh_no_def_checks_tac ctxt (info: basic_stmt_rel_info) : int -> tactic =
     resolve_tac ctxt [ @{thm framing_exhI_exprs_wf_rel} OF [ #consistency_down_mono_thm info ] ] THEN'
     blast_tac ctxt THEN' (* framing_exh *)
     assm_full_simp_solved_tac ctxt THEN'  (* subexpression equality *)
@@ -229,6 +229,7 @@ ML \<open>
   fun atomic_exhale_field_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) exh_field_acc_hint =
     case exh_field_acc_hint of
       FieldAccExhHint (exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm, exp_rel_perm_access_thm) =>
+          (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
         (Rmsg' "ExhField 1" (resolve_tac ctxt @{thms exhale_rel_field_acc}) ctxt) THEN'
           (Rmsg' "ExhField wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'
           (Rmsg' "ExhField unfold current bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'
@@ -314,7 +315,8 @@ ML \<open>
                                       assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd PredType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd NewPermBpl" (simp_tac_with_thms @{thms update_mask_concrete_def} ctxt) ctxt) THEN'
-    (Rmsg' "exh pred upd MaskUpdateBpl" (assm_full_simp_solved_with_thms_tac @{thms read_mask_concrete_def update_mask_concrete_def} ctxt) ctxt) THEN'
+    (Rmsg' "exh pred upd MaskUpdateBpl" (simp_tac_with_thms @{thms read_mask_concrete_def update_mask_concrete_def} ctxt THEN'
+                                        assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd PlocBpl" (simp_tac_with_thms [] ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd PlocRel" (prove_ploc_rel ctxt info exp_rel_info) ctxt) THEN'
     (Rmsg' "exh pred upd AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
@@ -348,6 +350,14 @@ ML \<open>
          atomic_exhale_field_acc_tac ctxt info no_def_checks_tac_opt atomic_exh_hint
     | PredAccExhHint _ =>
          atomic_exhale_pred_acc_tac ctxt info no_def_checks_tac_opt atomic_exh_hint
+
+
+  fun exhale_revert_state_relation ctxt (basic_info: basic_stmt_rel_info) =
+    resolve_tac ctxt @{thms red_ast_bpl_rel_weaken_input} THEN'
+    resolve_tac ctxt @{thms state_rel_set_def_to_eval} THEN'
+    simp_then_if_not_solved_blast_tac ctxt THEN'
+    resolve_tac ctxt @{thms red_ast_bpl_rel_input_implies_output} THEN'
+    assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info] ctxt
 
 \<close>
 

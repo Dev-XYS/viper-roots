@@ -114,7 +114,7 @@ lemma intcons_preserved_by_red_exhale_stmt:
     shows "consistent_internal_total_full \<omega>'"
 proof -
   from assms(2) obtain \<omega>_exh locset where
-    "red_exhale ctxt consistent_internal_total_full \<omega> A \<omega> (RNormal \<omega>_exh)" and
+    "red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>_exh)" and
     "\<omega>' \<in> havoc_locs_state ctxt \<omega>_exh locset"
     by (blast elim: RedExhale_case)
   hence "consistent_internal_total_full \<omega>_exh"

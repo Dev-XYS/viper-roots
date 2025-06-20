@@ -1563,7 +1563,7 @@ subsection \<open>Exhale\<close>
 
 
 lemma exhale_only_changes_total_state_aux:
-  assumes "red_exhale ctxt R \<omega>def A \<omega> res" and "res = RNormal \<omega>'"
+  assumes "red_exhale ctxt \<omega>def A \<omega> res" and "res = RNormal \<omega>'"
     shows "get_store_total \<omega>' = get_store_total \<omega> \<and>
            get_trace_total \<omega>' = get_trace_total \<omega> \<and>
            get_hh_total_full \<omega>' = get_hh_total_full \<omega>"
@@ -1707,7 +1707,7 @@ lemma rm_from_lpm_total_full_smaller:
 
 
 lemma exhale_normal_result_smaller':
-  assumes "red_exhale ctxt StateCons \<omega>def A \<omega> (RNormal \<omega>')"
+  assumes "red_exhale ctxt \<omega>def A \<omega> (RNormal \<omega>')"
     shows "\<omega>' \<le>  \<omega>"
   using assms
 proof (induction A arbitrary: \<omega> \<omega>')
@@ -1758,7 +1758,7 @@ qed (auto elim: red_exhale.cases)
 
 
 lemma exhale_normal_result_smaller:
-  assumes "red_exhale ctxt StateCons \<omega>def A \<omega> res" and
+  assumes "red_exhale ctxt \<omega>def A \<omega> res" and
           "res = RNormal \<omega>'"
         shows "\<omega> \<succeq> \<omega>'"
   apply (rule full_total_state_gte_implies_succ)
@@ -1770,7 +1770,7 @@ lemma exhale_normal_result_smaller:
 
 \<comment> \<open>Almost the same as the lemma above, just extracting mh and mp.\<close>
 lemma exhale_smaller:
-  assumes "red_exhale ctxt R \<omega>_def A \<omega> (RNormal \<omega>')"
+  assumes "red_exhale ctxt \<omega>_def A \<omega> (RNormal \<omega>')"
     shows "\<And>x. get_mh_total_full \<omega> x \<ge> get_mh_total_full \<omega>' x"
       and "\<And>x. get_mp_total_full \<omega> x \<ge> get_mp_total_full \<omega>' x"
 proof -
@@ -1808,7 +1808,7 @@ qed
 
 
 lemma exhale_pure_normal_same:
-  assumes "red_exhale ctxt R \<omega>def A \<omega> res" 
+  assumes "red_exhale ctxt \<omega>def A \<omega> res" 
       and "res = RNormal \<omega>'"
       and "is_pure A"
     shows "\<omega> = \<omega>'"
@@ -1864,7 +1864,7 @@ qed
 
 
 lemma exhale_fraction:
-  assumes "red_exhale ctxt StateCons \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
+  assumes "red_exhale ctxt \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
       and "get_fnm_total_full \<omega>' lp = Some (p', nm')"
     shows "\<exists>p nm. get_fnm_total_full \<omega> lp = Some (p, nm) \<and> p \<ge> p' \<and> nm' = (Rep_posreal (p' / p)) *\<^sub>s nm"
   using assms
@@ -1952,7 +1952,7 @@ next
   then show ?case
   proof cases
     case True
-    hence "red_exhale ctxt StateCons \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
+    hence "red_exhale ctxt \<omega>\<^sub>0 A \<omega> (RNormal \<omega>')"
       using IH.prems(1) eval_is_deterministic(1)
       by (blast elim: ExhImp_case)
     then show ?thesis
@@ -1971,8 +1971,8 @@ next
 next
   case IH: (Star A B)
   then obtain \<omega>\<^sub>A where
-    redA: "red_exhale ctxt StateCons \<omega>\<^sub>0 A \<omega> (RNormal \<omega>\<^sub>A)" and
-    redB: "red_exhale ctxt StateCons \<omega>\<^sub>0 B \<omega>\<^sub>A (RNormal \<omega>')"
+    redA: "red_exhale ctxt \<omega>\<^sub>0 A \<omega> (RNormal \<omega>\<^sub>A)" and
+    redB: "red_exhale ctxt \<omega>\<^sub>0 B \<omega>\<^sub>A (RNormal \<omega>')"
     by (auto elim: ExhStar_case)
 
   from IH(2)[OF redB IH(4)] obtain p\<^sub>A nm\<^sub>A where
@@ -2851,7 +2851,7 @@ lemma red_exhale_accI:
       and "a = the_address r"      
       and "\<omega>' = (if r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a,f) (Abs_preal p))" (is "\<omega>' = ?\<omega>def")      
       and "res = exh_if_total (p \<ge> 0 \<and> (if r = Null then p = 0 else get_mh_total_full \<omega> (a,f) \<ge> Abs_preal p)) \<omega>'" 
-    shows "red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> res"
+    shows "red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> res"
   unfolding \<open>res = _\<close> \<open>\<omega>' = _\<close>
   apply (rule ExhAcc)
   using assms
@@ -2859,13 +2859,13 @@ lemma red_exhale_accI:
 
 
 lemma exhale_same_on_free_var:
-  assumes "red_exhale ctxt StateCons \<omega>def1 A \<omega>1 res1"
+  assumes "red_exhale ctxt \<omega>def1 A \<omega>1 res1"
       and "res2 = map_result_total (\<lambda>\<omega>. \<omega> \<lparr> get_store_total := get_store_total \<omega>2 \<rparr>) res1"
       and "\<And> x. x \<in> free_var_assertion A \<Longrightarrow> get_store_total \<omega>1 x = get_store_total \<omega>2 x"
       and "get_trace_total \<omega>1 = get_trace_total \<omega>2 \<and> get_total_full \<omega>1 = get_total_full \<omega>2"
       and "get_trace_total \<omega>def1 = get_trace_total \<omega>def2 \<and> get_total_full \<omega>def1 = get_total_full \<omega>def2"
       and "supported_assertion A"      
-    shows "red_exhale ctxt StateCons \<omega>def2 A \<omega>2 res2"
+    shows "red_exhale ctxt \<omega>def2 A \<omega>2 res2"
   using assms
 proof (induction arbitrary: \<omega>2 res2)
   case (ExhAcc mh \<omega> e_r r e_p p a f)
@@ -2924,10 +2924,10 @@ next
 next
   case (ExhStarNormal A \<omega> \<omega>'' B res)
   let ?\<omega>''2 = "\<omega>'' \<lparr> get_store_total := get_store_total \<omega>2 \<rparr>"
-  from ExhStarNormal have RedExhA: "red_exhale ctxt StateCons \<omega>def2 A \<omega>2 (RNormal ?\<omega>''2)"
+  from ExhStarNormal have RedExhA: "red_exhale ctxt \<omega>def2 A \<omega>2 (RNormal ?\<omega>''2)"
     by auto
 
-  moreover have "red_exhale ctxt StateCons \<omega>def2 B ?\<omega>''2 (map_result_total (get_store_total_update (\<lambda>_. get_store_total ?\<omega>''2)) res)"
+  moreover have "red_exhale ctxt \<omega>def2 B ?\<omega>''2 (map_result_total (get_store_total_update (\<lambda>_. get_store_total ?\<omega>''2)) res)"
   proof (rule ExhStarNormal.IH(2))
     fix x
     assume "x \<in> free_var_assertion B"

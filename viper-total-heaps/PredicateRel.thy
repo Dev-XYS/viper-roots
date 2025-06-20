@@ -14,14 +14,15 @@ lemma inhale_pred_non_empty_implies_well_typed:
   by fastforce
 
 
+\<comment> \<open>The following definition needs a well-definedness state, because in fold statement, the inhale
+    happens after exhale, and the argument and permission evaluation holds only in the initial state.\<close>
 definition inhale_pred_normal_premise
-  where "inhale_pred_normal_premise ctxt StateCons pid e_args e_p vs p \<omega> \<omega>' \<equiv>
-       pred_ty_correct_premise ctxt pid vs \<and>
-       red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some vs) \<and>
-       ctxt, Some \<omega> \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and>
-       p \<ge> 0 \<and>
-       (let W' = inhale_perm_single_pred ctxt StateCons \<omega> (pid,vs) (Some (Abs_preal p)) in
-         (W' \<noteq> {} \<and> \<omega>' \<in> W'))"
+  where "inhale_pred_normal_premise ctxt StateCons pid e_args e_p vs p \<omega>_def \<omega> \<omega>' \<equiv>
+           pred_ty_correct_premise ctxt pid vs \<and>
+           red_pure_exps_total ctxt (Some \<omega>_def) e_args \<omega> (Some vs) \<and>
+           ctxt, Some \<omega>_def \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and>
+           p \<ge> 0 \<and>
+           (let W' = inhale_perm_single_pred ctxt StateCons \<omega> (pid,vs) (Some (Abs_preal p)) in \<omega>' \<in> W')"
 
 
 lemma inhale_predicate_acc_rel:
@@ -34,8 +35,8 @@ lemma inhale_predicate_acc_rel:
                          (\<lambda> \<omega>. (ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t (Val (VPerm p)) \<and> p < 0))
                          P ctxt \<gamma>2 \<gamma>3"
       and UpdInhRel: "\<And>vs p. rel_general (R' vs p) R \<comment>\<open>Here, the simulation needs to revert back to R\<close>
-                         (inhale_pred_normal_premise ctxt_vpr StateCons pred_id e_args e_p vs p)
-                         (\<lambda> \<omega>. False) P ctxt \<gamma>3 \<gamma>'"
+                         (\<lambda>\<omega> \<omega>'. inhale_pred_normal_premise ctxt_vpr StateCons pred_id e_args e_p vs p \<omega> \<omega> \<omega>')
+                         (\<lambda>\<omega>. False) P ctxt \<gamma>3 \<gamma>'"
     shows "inhale_rel R Q ctxt_vpr StateCons P ctxt (Atomic (AccPredicate pred_id e_args (PureExp e_p))) \<gamma> \<gamma>'"
 proof (rule inhale_rel_intro_2)
   fix \<omega> ns res
@@ -63,7 +64,7 @@ proof (rule inhale_rel_intro_2)
       by blast+
 
     with InhAccPred and \<open>res = _\<close>
-    have InhNormalPremise: "inhale_pred_normal_premise ctxt_vpr StateCons pred_id e_args e_p v_args p \<omega> \<omega>'"
+    have InhNormalPremise: "inhale_pred_normal_premise ctxt_vpr StateCons pred_id e_args e_p v_args p \<omega> \<omega> \<omega>'"
       unfolding inhale_pred_normal_premise_def
       by (simp add: inhale_pred_non_empty_implies_well_typed)
 
@@ -137,8 +138,8 @@ lemma inhale_rel_pred_acc_upd_rel:
 
   shows "rel_general R
            (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl)
-           (\<lambda> \<omega> \<omega>'. inhale_pred_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr p \<omega> \<omega>')
-           (\<lambda> \<omega>. False) P ctxt_bpl
+           (\<lambda>\<omega> \<omega>'. inhale_pred_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr p \<omega> \<omega> \<omega>')
+           (\<lambda>\<omega>. False) P ctxt_bpl
            (BigBlock name ((Assign m_bpl m_upd_bpl) # cs) str tr, cont)
            (BigBlock name cs str tr, cont)"
 
@@ -148,7 +149,7 @@ lemma inhale_rel_pred_acc_upd_rel:
 proof -
   fix \<omega> ns \<omega>'
   assume "R \<omega> ns"
-     and *: "inhale_pred_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr p \<omega> \<omega>'"
+     and *: "inhale_pred_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr p \<omega> \<omega> \<omega>'"
 
   hence InitRel: "state_rel_def_same Pr StateCons TyRep Tr
                                      (AuxPred(temp_perm \<mapsto> pred_eq (RealV p))) ctxt_bpl \<omega> ns"
@@ -348,6 +349,43 @@ proof -
 qed
 
 
+lemma inhale_pred_acc_rel_assms_perm_eval:
+  assumes "inhale_pred_normal_premise ctxt StateCons pred_id e_args e_p v_args v_p \<omega>_def \<omega> \<omega>'"
+  shows "ctxt, Some \<omega>_def \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
+  using assms
+  unfolding inhale_pred_normal_premise_def
+  by blast
+
+
+
+subsection \<open>Exhale\<close>
+
+\<comment> \<open>Todo: Move stuff here.\<close>
+
+
+
+subsection \<open>Misc\<close>
+
+
+lemma bpl_assert_true_is_skip:
+  assumes "rel_general R R' Success Fail P ctxt (BigBlock name cs s tr, cont) \<gamma>'"
+    shows "rel_general R R' Success Fail P ctxt (BigBlock name (cmd.Assert (Lit (LBool True)) # cs) s tr, cont) \<gamma>'"
+  apply (rule rel_propagate_pre_assert_2)
+    apply (rule RedLit)
+   apply simp
+  apply (simp add: assms)
+  done
+
+
+lemma red_bpl_assert_true:
+  shows "rel_general R R (=) (\<lambda>_. False) P ctxt (BigBlock name (cmd.Assert (Lit (LBool True)) # cs) s tr, cont) (BigBlock name cs s tr, cont)"
+  apply (rule rel_propagate_pre_assert_2)
+    apply (rule RedLit)
+   apply simp
+  apply (rule rel_general_success_refl)
+  by simp_all
+
+
 
 subsection \<open>Inhale Simulates Unfold\<close>
 
@@ -488,8 +526,8 @@ lemma unfold_stmt_rel:
       and PermPos: "p > 0"
       and StepExhale:
           "rel_general R R'
-             (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> (RNormal \<omega>'))
-             (\<lambda>\<omega>. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> RFailure)
+             (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> (RNormal \<omega>'))
+             (\<lambda>\<omega>. red_exhale ctxt_vpr \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> RFailure)
              P ctxt_bpl \<gamma> \<gamma>\<^sub>2"
       and StepInhale: "inhale_rel R' (assertion_framing_state ctxt_vpr StateCons) ctxt_vpr StateCons P ctxt_bpl (syntactic_mult p (substitute_args_assertion pbody e_args)) \<gamma>\<^sub>2 \<gamma>'"
     shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Unfold pid e_args (PureExp e_p)) \<gamma> \<gamma>'"
@@ -550,7 +588,7 @@ proof (rule stmt_rel_intro)
     apply (simp only: perm_suff \<open>v_p \<ge> 0\<close>)
     by (simp add: exhale_pred_def \<phi>\<^sub>d)
 
-  hence step_exh: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> (RNormal ?\<omega>\<^sub>d)"
+  hence step_exh: "red_exhale ctxt_vpr \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> (RNormal ?\<omega>\<^sub>d)"
     using ExhAccPred
     by (metis PredArgs PredBody PredDecl args_well_ty e_args_eval e_p_eval)
 
@@ -638,7 +676,7 @@ next
       using PermSimp TotalExpressions.RedLit_case e_p_eval PermPos
       by fastforce
 
-    have step_exhale: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> RFailure"
+    have step_exhale: "red_exhale ctxt_vpr \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> RFailure"
       using ExhAccPred[OF _ e_args_eval e_p_eval PredDecl _ PredBody, where ?mp="get_mp_total_full \<omega>"] v_p_fail' PredDecl args_well_ty pdecl'
       by auto
     show ?thesis
@@ -646,7 +684,7 @@ next
       by blast
   next
     case RedSubExpressionFailure
-    have step_exhale: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> RFailure"
+    have step_exhale: "red_exhale ctxt_vpr \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> RFailure"
       apply (rule ExhSubExpFailure)
       using RedSubExpressionFailure
       by simp_all
@@ -678,13 +716,13 @@ lemma unfold_exhale_pred_rel:
                  (\<lambda>_. False)
                  P ctxt_bpl \<gamma>\<^sub>3 \<gamma>'"
     shows "rel_general R R
-             (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> (RNormal \<omega>'))
-             (\<lambda>\<omega>. red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> RFailure)
+             (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> (RNormal \<omega>'))
+             (\<lambda>\<omega>. red_exhale ctxt_vpr \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> RFailure)
              P ctxt_bpl \<gamma> \<gamma>'"
 proof (rule rel_intro)
   fix \<omega> ns \<omega>'
   assume "R \<omega> ns"
-     and exh: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> (RNormal \<omega>')"
+     and exh: "red_exhale ctxt_vpr \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> (RNormal \<omega>')"
 
   then obtain mp v_args p pdecl where
     "mp = get_mp_total_full \<omega>" and
@@ -726,7 +764,7 @@ next
 
   fix \<omega> ns
   assume "R \<omega> ns"
-  assume exh: "red_exhale ctxt_vpr StateCons \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> RFailure"
+  assume exh: "red_exhale ctxt_vpr \<omega> (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<omega> RFailure"
   thus "\<exists>c'. snd c' = Failure \<and> red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) c'"
   proof cases
     case (ExhAccPred mp v_args p pdecl pbody)
@@ -1155,6 +1193,340 @@ proof -
   qed
 qed
 
+
+
+subsection \<open>Fold\<close>
+
+
+lemma framing_subst_exprs_wf_rel:
+  assumes ConsistencyDownwardsMono: "mono_prop_downward_ord StateCons"
+      and "\<And>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<Longrightarrow>
+              red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr) \<and>
+              framing_exh ctxt_vpr StateCons A (\<omega>def\<lparr> get_store_total := nth_option v_args_vpr \<rparr>) (\<omega>\<lparr> get_store_total := nth_option v_args_vpr \<rparr>)"
+      and "es = direct_sub_expressions_assertion (substitute_args_assertion A e_args_vpr)"
+      and ArgsConstraint: "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) e_args_vpr"
+      and AssertionConstraint: "no_perm_assertion A \<and> no_old_assertion A \<and> no_unfolding_assertion A \<and> no_result_assertion A"
+    shows "exprs_wf_rel R ctxt_vpr StateCons P ctxt_bpl es \<gamma> \<gamma>"
+proof (cases "es = []")
+  case True
+  then show ?thesis
+    using exprs_wf_rel_Nil
+    by blast
+next
+  case False
+  show ?thesis
+    unfolding exprs_wf_rel_def
+    apply (rule wf_rel_intro)
+    using red_ast_bpl_refl
+     apply blast
+  proof (rule ccontr)
+    fix \<omega>def \<omega> ns
+    assume "R \<omega>def \<omega> ns"
+       and direct_expr_eval_assms: "red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega> None"
+    hence args_eval: "red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)"
+      and "framing_exh ctxt_vpr StateCons A (\<omega>def\<lparr> get_store_total := nth_option v_args_vpr \<rparr>) (\<omega>\<lparr> get_store_total := nth_option v_args_vpr \<rparr>)"
+      using assms(2)
+      by simp_all
+
+    let ?\<omega>def_subst = "\<omega>def\<lparr> get_store_total := nth_option v_args_vpr \<rparr>"
+    let ?\<omega>_subst = "\<omega>\<lparr> get_store_total := nth_option v_args_vpr \<rparr>"
+    from \<open>framing_exh _ _ _ _ _\<close>
+    obtain \<omega>inh \<omega>sum where
+      "\<omega>inh \<oplus> ?\<omega>_subst = Some \<omega>sum" and
+      "?\<omega>def_subst \<succeq> \<omega>sum" and
+      "assertion_framing_state ctxt_vpr StateCons A \<omega>inh"
+      by (metis framing_exh_def)
+
+    have direct_expr_eval_nofail': "\<And>res. red_pure_exps_total ctxt_vpr (Some \<omega>inh) (direct_sub_expressions_assertion A) \<omega>inh res \<Longrightarrow> res \<noteq> None"
+      using \<open>assertion_framing_state _ _ _ _\<close>[unfolded assertion_framing_state_def assertion_self_framing_store_def]
+      by (metis InhSubExpFailure option.distinct(1) red_exp_list_failure_Nil)
+
+    hence direct_expr_eval_nofail: "\<And>res. red_pure_exps_total ctxt_vpr (Some ?\<omega>def_subst) (direct_sub_expressions_assertion A) ?\<omega>_subst res \<Longrightarrow> res \<noteq> None"
+      sorry
+
+    have "es = map (\<lambda>e. substitute_args_expr e e_args_vpr) (direct_sub_expressions_assertion A)"
+      by (simp add: assms(3) substitute_subexpr_assertion_commute)
+
+    from eval_with_substitution_rev(2)[OF args_eval _ _ _ _ direct_expr_eval_assms this]
+    show False
+      by (metis ArgsConstraint AssertionConstraint Ball_set_list_all direct_expr_eval_nofail assert_pred_subexp)
+  qed
+qed
+
+
+lemma fold_stmt_rel:
+  assumes PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl"
+      and PredArgs: "predicate_decl.args pdecl = ty_args"
+      and PredBody: "predicate_decl.body pdecl = Some pbody"
+      and CtxtPredWf: "ctxt_pred_syn_wf ctxt_vpr"
+      and CtxtPredSF: "ctxt_pred_self_framing_inh ctxt_vpr StateCons"
+      and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
+      and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
+      and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
+      and ArgsRestriction: "list_all no_unfolding_pure_exp e_args_vpr \<and> list_all no_perm_pure_exp e_args_vpr"
+      and BodyNoUnfolding: "no_unfolding_assertion (syntactic_mult p pbody)"  \<comment> \<open>Should be lifted soon.\<close>
+      and PermSimp: "e_p_vpr = ELit (LPerm p)" \<comment> \<open>We only support literals as the permission.\<close>
+      and PermPos: "p > 0"
+      and StepWfSubexp: "exprs_wf_rel (rel_ext_eq R) ctxt_vpr StateCons P ctxt_bpl (e_args_vpr @ [e_p_vpr]) \<gamma> \<gamma>\<^sub>2"
+      and StepPermPos: "rel_general R R (=) (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>2 \<gamma>\<^sub>3"
+      and StepExhale:
+            "\<And>v_args_vpr v_p_vpr.
+                exhale_rel (rel_ext_eq R) (\<lambda>_ \<omega> ns. R \<omega> ns)
+                  (\<lambda>_ \<omega>def \<omega>. framing_exh ctxt_vpr StateCons (syntactic_mult p pbody) (\<omega>def\<lparr> get_store_total := nth_option v_args_vpr \<rparr>) (\<omega>\<lparr> get_store_total := nth_option v_args_vpr \<rparr>) \<and>
+                              red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr))
+                  ctxt_vpr StateCons P ctxt_bpl
+                  (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<gamma>\<^sub>3 \<gamma>\<^sub>4"
+      and StepInhale:
+            "\<And>v_args_vpr v_p_vpr.
+                rel_general (\<lambda>\<omega>_def_\<omega> ns. R (snd \<omega>_def_\<omega>) ns \<and> ctxt_vpr, (Some (fst \<omega>_def_\<omega>)) \<turnstile> \<langle>e_p_vpr; snd \<omega>_def_\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_vpr)) (\<lambda>\<omega>_def_\<omega> ns. R' (snd \<omega>_def_\<omega>) ns)
+                  (\<lambda>\<omega>_def_\<omega> \<omega>_def_\<omega>'. inhale_pred_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr v_p_vpr (fst \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>'))
+                  (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>4 \<gamma>'"
+    shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Fold pid e_args_vpr (PureExp e_p_vpr)) \<gamma> \<gamma>'"
+proof (rule stmt_rel_intro)
+  fix \<omega> ns \<omega>'
+  assume "R \<omega> ns" and
+         "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Fold pid e_args_vpr (PureExp e_p_vpr)) \<omega> (RNormal \<omega>')"
+  then obtain v_args v_p where
+    v_args_eval: "red_pure_exps_total ctxt_vpr (Some \<omega>) e_args_vpr \<omega> (Some v_args)" and
+    v_p_eval: "ctxt_vpr, (Some \<omega>) \<turnstile> \<langle>e_p_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
+    "v_p > 0" and
+    fold_rel: "fold_rel ctxt_vpr pid v_args (Abs_preal v_p) \<omega> (RNormal \<omega>')"
+    by (fastforce elim: RedFold_case)
+  obtain pdecl' pbody' \<omega>0 \<omega>1 \<omega>1' nm_exh where
+    "ViperLang.predicates (program_total ctxt_vpr) pid = Some pdecl'" and
+    "ViperLang.predicate_decl.body pdecl' = Some pbody'" and
+    v_args_ty: "vals_well_typed (absval_interp_total ctxt_vpr) v_args (predicate_decl.args pdecl')" and
+    "\<omega>0 = \<omega>\<lparr> get_store_total := nth_option v_args \<rparr>" and
+    exh: "red_exhale ctxt_vpr \<omega>0 (syntactic_mult (Rep_preal (Abs_preal v_p)) pbody') \<omega>0 (RNormal \<omega>1')" and
+    "\<omega>1 = \<omega>\<lparr> get_total_full := get_total_full \<omega>1' \<rparr>" and
+    "get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0" and
+    "\<omega>' = add_to_lpm_nonzero_total_full \<omega>1 (pid,v_args) (Abs_posreal (Abs_preal v_p)) nm_exh"
+    apply (rule FoldRelNormal_case[OF fold_rel])
+    by simp
+  hence "pdecl' = pdecl" and "pbody' = pbody"
+    using PredBody PredDecl \<open>_ = Some pbody'\<close> \<open>_ = Some pdecl'\<close>
+    by auto
+  have "v_p = p"
+    using PermSimp TotalExpressions.RedLit_case v_p_eval
+    by fastforce
+  hence "Rep_preal (Abs_preal v_p) = p"
+    using Abs_preal_inverse \<open>0 < v_p\<close>
+    by auto
+
+  have "rel_ext_eq R \<omega> \<omega> ns"
+    using \<open>R \<omega> ns\<close>
+    by blast
+
+  \<comment> \<open>First step: well-formedness\<close>
+  have "red_pure_exps_total ctxt_vpr (Some \<omega>) (e_args_vpr @ [e_p_vpr]) \<omega> (Some (v_args @ [VPerm v_p]))"
+    by (simp add: v_args_eval v_p_eval red_pure_exps_append_success)
+  from StepWfSubexp[THEN exprs_wf_rel_normal_elim, OF \<open>rel_ext_eq R \<omega> \<omega> ns\<close> this]
+  obtain ns\<^sub>2 where
+    ns\<^sub>2: "red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>\<^sub>2, Normal ns\<^sub>2) \<and> rel_ext_eq R \<omega> \<omega> ns\<^sub>2"
+    by blast
+
+  \<comment> \<open>Second step: permission positive\<close>
+  with StepPermPos[THEN rel_success_elim]
+  obtain ns\<^sub>3 where
+    ns\<^sub>3: "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>2, Normal ns\<^sub>2) (\<gamma>\<^sub>3, Normal ns\<^sub>3) \<and> rel_ext_eq R \<omega> \<omega> ns\<^sub>3"
+    by blast
+
+  \<comment> \<open>Third step: exhale\<close>
+  have intcons: "StateCons (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>)"
+    using StateRelImpliesIntCons WfCons \<open>rel_ext_eq R \<omega> \<omega> ns\<close> total_consistency_store_update_2
+    by blast
+  have framing_exh: "framing_exh ctxt_vpr StateCons (syntactic_mult p pbody)
+          (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>)"
+    apply (rule framing_exhI[where ?\<omega>_inh="upd_nm_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) 0" and ?\<omega>sum="\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>"])
+         apply (rule intcons)
+    using StateRelImpliesExtCons \<open>R \<omega> ns\<close>
+        apply force
+       apply (smt (verit, best) WfCons get_mh_total_full.simps intcons wf_total_consistency_def)
+      apply (metis CtxtPredSF PredBody PredDecl \<open>pdecl' = pdecl\<close> assertion_self_framing_def assertion_self_framing_store_def ctxt_pred_self_framing_inh_def full_total_state.cases_scheme full_total_state.select_convs(1) full_total_state.update_convs(1) update_nm_total_full_store_unchanged update_store_total.simps v_args_ty)
+    unfolding plus_full_total_state_ext_def
+     apply simp
+    unfolding plus_total_state_ext_def
+     apply simp
+     apply (simp add: commutative core_is_smaller core_total_state_ext_def defined_def option.discI)
+    using succ_refl
+    by blast
+
+  moreover have exh_subst: "red_exhale ctxt_vpr \<omega> (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<omega> (RNormal \<omega>1)"
+    apply (rule exhale_with_substitution)
+               apply (rule exh[unfolded \<open>Rep_preal (Abs_preal v_p) = p\<close> \<open>pbody' = pbody\<close>])
+              apply (rule \<open>\<omega>0 = _\<close>)+
+            apply simp
+           apply (rule v_args_eval)
+          apply (simp add: \<open>\<omega>1 = _\<close>)
+         apply (simp add: \<open>\<omega>1 = _\<close>)
+        apply (simp add: \<open>\<omega>1 = _\<close>)
+    using PredDecl WfCons \<open>Rep_preal (Abs_preal v_p) = p\<close> \<open>pbody' = pbody\<close> \<open>pdecl' = pdecl\<close> \<open>predicate_decl.body pdecl' = Some pbody'\<close> ctxt_pred_syn_wf_def prat_non_negative syntactic_mult_supported total_consistency_ctxt_wf(1)
+       apply blast
+    using BodyNoUnfolding
+      apply auto[1]
+    by (simp_all add: ArgsRestriction)
+
+  ultimately obtain ns\<^sub>4 where ns\<^sub>4: "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>3, Normal ns\<^sub>3) (\<gamma>\<^sub>4, Normal ns\<^sub>4) \<and> R \<omega>1 ns\<^sub>4"
+    using StepExhale[THEN exhale_rel_normal_elim, OF conjunct2[OF ns\<^sub>3]] v_args_eval
+    by auto
+
+  \<comment> \<open>Fourth step: inhale\<close>
+  let ?\<omega>_def_\<omega> = "(\<omega>, \<omega>1)"
+  let ?\<omega>_def_\<omega>' = "(\<omega>, \<omega>')"
+  have "inhale_pred_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args v_p (fst ?\<omega>_def_\<omega>) (snd ?\<omega>_def_\<omega>) (snd ?\<omega>_def_\<omega>')"
+    unfolding inhale_pred_normal_premise_def
+    apply simp
+    apply (intro conjI)
+        apply (simp add: \<open>_ = Some pdecl'\<close> pred_ty_correct_premise_def v_args_ty)
+       apply (metis (mono_tags, lifting) ArgsRestriction Ball_set_list_all exh_subst exhale_only_changes_total_state_aux red_pure_exp_only_differ_on_mask(2) v_args_eval)
+      apply (metis PermSimp \<open>v_p = p\<close> red_pure_exp_total_red_pure_exps_total.RedLit val_of_lit.simps(3))
+    using \<open>0 < v_p\<close>
+     apply auto[1]
+    unfolding inhale_perm_single_pred_def
+    apply (rule CollectI)
+    apply (rule exI[of _ \<omega>'])
+    apply (rule exI[of _ "get_total_full \<omega>0\<lparr> get_nm_total := nm_exh \<rparr>"])
+    apply (rule exI[of _ "Abs_preal v_p"])
+    apply (intro conjI)
+         apply simp
+        apply simp
+       apply (rule exhale_pred_body_part_extcons_wrt_ploc[OF _ _ _ _ _ exh])
+             apply fact+
+          apply (rule full_total_state.equality; simp)
+          apply (simp add: \<open>\<omega>0 = _\<close>)
+    using StateRelImpliesExtCons \<open>R \<omega> ns\<close> \<open>\<omega>0 = _\<close>
+         apply force
+    using \<open>\<omega>1 = _\<close> \<open>get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0\<close>
+        apply fastforce
+       apply fact
+      apply (metis \<open>\<omega>1 = _\<close> exh exhale_only_changes_total_state_aux full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3) get_hh_total_full.elims total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
+    using \<open>0 < v_p\<close> \<open>\<omega>' = _\<close> positive_real_preal
+     apply force
+    using StateRelImpliesIntCons WfCons \<open>R \<omega> ns\<close> \<open>red_stmt_total _ _ _ _ _ _\<close> total_consistency_red_stmt_preserve
+    by blast
+
+  with StepInhale[THEN rel_success_elim, OF _ this, simplified, where ?ns=ns\<^sub>4]
+  obtain ns' where ns': "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>4, Normal ns\<^sub>4) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
+    by (metis ns\<^sub>4 fst_conv inhale_pred_normal_premise_def snd_conv)
+
+  show "\<exists>ns'. red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
+    apply (rule exI[of _ ns'])
+    apply (intro conjI)
+    using ns\<^sub>2 ns\<^sub>3 ns\<^sub>4 ns' red_ast_bpl_transitive
+     apply meson
+    using ns'
+    by blast
+
+next
+
+  fix \<omega> ns
+  assume "R \<omega> ns"
+     and "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Fold pid e_args_vpr (PureExp e_p_vpr)) \<omega> RFailure"
+
+  then consider
+    (SubExprFail) "red_pure_exps_total ctxt_vpr (Some \<omega>) (sub_expressions (Fold pid e_args_vpr (PureExp e_p_vpr))) \<omega> None" |
+     (PermNonPos) "\<exists>v_args v_p. red_pure_exps_total ctxt_vpr (Some \<omega>) e_args_vpr \<omega> (Some v_args) \<and>
+                     ctxt_vpr, (Some \<omega>) \<turnstile> \<langle>e_p_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p) \<and> v_p \<le> 0" |
+        (ExhFail) "\<exists>v_args v_p. red_pure_exps_total ctxt_vpr (Some \<omega>) e_args_vpr \<omega> (Some v_args) \<and>
+                     ctxt_vpr, (Some \<omega>) \<turnstile> \<langle>e_p_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p) \<and> v_p > 0 \<and>
+                     fold_rel ctxt_vpr pid v_args (Abs_preal v_p) \<omega> RFailure"
+    using RedFoldFailure_case
+    by metis
+
+  thus "\<exists>c'. snd c' = Failure \<and> red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) c'"
+  proof cases
+    case SubExprFail
+    hence "red_pure_exps_total ctxt_vpr (Some \<omega>) (e_args_vpr @ [e_p_vpr]) \<omega> None"
+      by simp
+    from StepWfSubexp[THEN exprs_wf_rel_failure_elim, OF _ this]
+    show ?thesis
+      using \<open>R \<omega> ns\<close>
+      by blast
+  next
+    case PermNonPos
+    then show ?thesis
+      using PermPos PermSimp TotalExpressions.RedLit_case
+      by fastforce
+  next
+    case ExhFail
+    then obtain v_args v_p where
+      v_args_eval: "red_pure_exps_total ctxt_vpr (Some \<omega>) e_args_vpr \<omega> (Some v_args)" and
+      v_p_eval: "ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and
+      "0 < v_p" and
+      "fold_rel ctxt_vpr pid v_args (Abs_preal v_p) \<omega> RFailure"
+      by blast
+    then obtain pdecl' pbody' \<omega>0 where
+      "ViperLang.predicates (program_total ctxt_vpr) pid = Some pdecl'" and
+      "ViperLang.predicate_decl.body pdecl' = Some pbody'" and
+      v_args_ty: "vals_well_typed (absval_interp_total ctxt_vpr) v_args (predicate_decl.args pdecl')" and
+      "\<omega>0 = \<omega>\<lparr> get_store_total := nth_option v_args \<rparr>" and
+      exh: "red_exhale ctxt_vpr \<omega>0 (syntactic_mult (Rep_preal (Abs_preal v_p)) pbody') \<omega>0 RFailure"
+      by (fastforce elim: FoldRelFailure_case)
+    hence "pdecl' = pdecl" and "pbody' = pbody"
+      using PredBody PredDecl \<open>_ = Some pbody'\<close> \<open>_ = Some pdecl'\<close>
+      by auto
+    have "v_p = p"
+      using PermSimp TotalExpressions.RedLit_case v_p_eval
+      by fastforce
+    hence "Rep_preal (Abs_preal v_p) = p"
+      using Abs_preal_inverse \<open>0 < v_p\<close>
+      by auto
+
+    have "rel_ext_eq R \<omega> \<omega> ns"
+      using \<open>R \<omega> ns\<close>
+      by blast
+
+    \<comment> \<open>First step: well-formedness\<close>
+    have "red_pure_exps_total ctxt_vpr (Some \<omega>) (e_args_vpr @ [e_p_vpr]) \<omega> (Some (v_args @ [VPerm v_p]))"
+      by (simp add: v_args_eval v_p_eval red_pure_exps_append_success)
+    from StepWfSubexp[THEN exprs_wf_rel_normal_elim, OF \<open>rel_ext_eq R \<omega> \<omega> ns\<close> this]
+    obtain ns\<^sub>2 where
+      ns\<^sub>2: "red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>\<^sub>2, Normal ns\<^sub>2) \<and> rel_ext_eq R \<omega> \<omega> ns\<^sub>2"
+      by blast
+
+    \<comment> \<open>Second step: permission positive\<close>
+    with StepPermPos[THEN rel_success_elim]
+    obtain ns\<^sub>3 where
+      ns\<^sub>3: "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>2, Normal ns\<^sub>2) (\<gamma>\<^sub>3, Normal ns\<^sub>3) \<and> rel_ext_eq R \<omega> \<omega> ns\<^sub>3"
+      by blast
+
+    \<comment> \<open>Third step: exhale (failure)\<close>
+    have intcons: "StateCons (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>)"
+      using StateRelImpliesIntCons WfCons \<open>rel_ext_eq R \<omega> \<omega> ns\<close> total_consistency_store_update_2
+      by blast
+    have framing_exh: "framing_exh ctxt_vpr StateCons (syntactic_mult p pbody)
+            (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>)"
+      apply (rule framing_exhI[where ?\<omega>_inh="upd_nm_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) 0" and ?\<omega>sum="\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>"])
+           apply (rule intcons)
+      using StateRelImpliesExtCons \<open>R \<omega> ns\<close>
+          apply force
+         apply (smt (verit, best) WfCons get_mh_total_full.simps intcons wf_total_consistency_def)
+        apply (metis CtxtPredSF PredBody PredDecl \<open>pdecl' = pdecl\<close> assertion_self_framing_def assertion_self_framing_store_def ctxt_pred_self_framing_inh_def full_total_state.cases_scheme full_total_state.select_convs(1) full_total_state.update_convs(1) update_nm_total_full_store_unchanged update_store_total.simps v_args_ty)
+      unfolding plus_full_total_state_ext_def
+       apply simp
+      unfolding plus_total_state_ext_def
+       apply simp
+       apply (simp add: commutative core_is_smaller core_total_state_ext_def defined_def option.discI)
+      using succ_refl
+      by blast
+
+    moreover have exh_subst: "red_exhale ctxt_vpr \<omega> (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<omega> RFailure"
+      apply (rule exhale_with_substitution_failure)
+              apply (rule exh[unfolded \<open>Rep_preal (Abs_preal v_p) = p\<close> \<open>pbody' = pbody\<close>])
+             apply (rule \<open>\<omega>0 = _\<close>)+
+           apply simp
+          apply (rule v_args_eval)
+      using PredDecl WfCons \<open>Rep_preal (Abs_preal v_p) = p\<close> \<open>pbody' = pbody\<close> \<open>pdecl' = pdecl\<close> \<open>predicate_decl.body pdecl' = Some pbody'\<close> ctxt_pred_syn_wf_def prat_non_negative syntactic_mult_supported total_consistency_ctxt_wf(1)
+         apply blast
+      using BodyNoUnfolding
+        apply auto[1]
+      by (simp_all add: ArgsRestriction)
+
+    ultimately show ?thesis
+      using StepExhale[THEN exhale_rel_failure_elim]
+      by (metis ns\<^sub>2 ns\<^sub>3 red_ast_bpl_transitive snd_conv v_args_eval)
+  qed
+qed
 
 
 end

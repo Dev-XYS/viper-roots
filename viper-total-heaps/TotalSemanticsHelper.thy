@@ -65,14 +65,14 @@ lemmas red_inhale_elims =
 
 subsubsection \<open>Exhale\<close>
 
-inductive_cases ExhAcc_case: "red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f perm)) \<omega> (RNormal \<omega>')"
-inductive_cases ExhAccPred_case: "red_exhale ctxt R \<omega>0 (Atomic (AccPredicate pid e_args perm)) \<omega> (RNormal \<omega>')"
-inductive_cases ExhAccPredWildcard_case: "red_exhale ctxt R \<omega>0 (Atomic (AccPredicate pid e_args Wildcard)) \<omega> (RNormal \<omega>')"
-inductive_cases ExhImp_case: "red_exhale ctxt R \<omega>0 (Imp e A) \<omega> (RNormal \<omega>')"
-inductive_cases ExhStar_case: "red_exhale ctxt R \<omega>0 (A && B) m_pm res"
+inductive_cases ExhAcc_case: "red_exhale ctxt \<omega>0 (Atomic (Acc e_r f perm)) \<omega> (RNormal \<omega>')"
+inductive_cases ExhAccPred_case: "red_exhale ctxt \<omega>0 (Atomic (AccPredicate pid e_args perm)) \<omega> (RNormal \<omega>')"
+inductive_cases ExhAccPredWildcard_case: "red_exhale ctxt \<omega>0 (Atomic (AccPredicate pid e_args Wildcard)) \<omega> (RNormal \<omega>')"
+inductive_cases ExhImp_case: "red_exhale ctxt \<omega>0 (Imp e A) \<omega> (RNormal \<omega>')"
+inductive_cases ExhStar_case: "red_exhale ctxt \<omega>0 (A && B) m_pm res"
 
 lemma ExhPure_case:
-  assumes "red_exhale ctxt R \<omega>0 (Atomic (Pure e)) \<omega> res"
+  assumes "red_exhale ctxt \<omega>0 (Atomic (Pure e)) \<omega> res"
       and "\<And>b. ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<Longrightarrow> res = (exh_if_total b \<omega>) \<Longrightarrow> P"
       and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<Longrightarrow> res = RFailure \<Longrightarrow> P"
     shows "P"

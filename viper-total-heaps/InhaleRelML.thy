@@ -156,7 +156,7 @@ ML \<open>
               intro_fact_lookup_aux_var_tac ctxt lookup_aux_var_state_rel_thm]) ctxt) THEN'
       (Rmsg' "Inh Prove Perm Nonnegative - Boogie Expression Reduction" (prove_red_expr_bpl_tac ctxt) ctxt) THEN'
       (Rmsg' "Inh Prove Perm Nonnegative - Success Condition" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-      (Rmsg' "Inh Prove Perm Nonnegative - Finalize 1" (resolve_tac ctxt @{thms rel_general_success_refl}) ctxt) THEN'
+      (Rmsg' "Inh Prove Perm Nonnegative - Finalize 1" (resolve_tac ctxt @{thms rel_general_success_refl_2}) ctxt) THEN'
        (* We add RedLit_case to deal with the case when the permission is a literal *)
       (Rmsg' "Inh Prove Perm Nonnegative - Finalize 2" (fast_force_tac (ctxt addEs @{thms TotalExpressions.RedLit_case})) ctxt) THEN'
       (Rmsg' "Inh Prove Perm Nonnegative - Finalize 3" (assm_full_simp_solved_tac ctxt) ctxt)
@@ -183,7 +183,7 @@ ML \<open>
    (* We add RedLit_case to deal with the case when the permission is a literal *)
    (Rmsg' "Inh Assume Rcv Non-Null - Prove Assume Condition Holds" (fast_force_tac (add_simps @{thms inhale_acc_normal_premise_def} (ctxt addEs @{thms TotalExpressions.RedLit_case}) )) ctxt)
 
-  fun true_implies_true_tac ctxt _ _ _ =
+  fun true_implies_true_tac ctxt =
     (Rmsg' "Inh Assume True \<Longrightarrow> True - Init 1" (resolve_tac ctxt @{thms rel_propagate_pre_assume}) ctxt) THEN'
     (Rmsg' "Inh Assume True \<Longrightarrow> True - Init 2" (resolve_tac ctxt @{thms conjI}) ctxt) THEN'
     (Rmsg' "Inh Assume True \<Longrightarrow> True - Synthesize Assume Condition" (prove_red_expr_bpl_tac ctxt) ctxt) THEN'
@@ -214,7 +214,7 @@ ML \<open>
         (Rmsg' "InhField 1" (resolve_tac ctxt @{thms inhale_field_acc_rel}) ctxt) THEN'
           (*(Rmsg' "InhField wf rcv" ((exp_wf_rel_non_trivial_tac exp_wf_rel_info exp_rel_info ctxt) |> SOLVED') ctxt) THEN'
           (Rmsg' "InhField wf perm" ((exp_wf_rel_non_trivial_tac exp_wf_rel_info exp_rel_info ctxt) |> SOLVED') ctxt) THEN'*)
-          (Rmsg' "ExhField wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'
+          (Rmsg' "InhField wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'
           (Rmsg' "InhField unfold current bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'
           (Rmsg' "InhField 2 propagate" (resolve_tac ctxt @{thms rel_propagate_pre_2}) ctxt) THEN'
             (Rmsg' "InhField 2b red_ast_bpl_relI" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
@@ -265,7 +265,8 @@ ML \<open>
             (Rmsg' "InhField 2b red_ast_bpl_relI" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
             (store_temporary_inh_perm_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
             (prove_perm_non_negative_inh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
-            (true_implies_true_tac ctxt info exp_rel_info lookup_aux_var_state_rel_thm) THEN'
+            (true_implies_true_tac ctxt) THEN'
+            (SUBGOAL (fn (t,_) => raise TERM ("breakpoint probe", [t]))) THEN'
             (inhale_rel_pred_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info)
     | _ => error("only support PredicateAccInhHint")
 

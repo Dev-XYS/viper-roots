@@ -145,7 +145,7 @@ inductive red_stmt_total :: "'a total_context \<Rightarrow> ('a full_total_state
 always has at least one failure transition. This is in-sync with the Carbon implementation.\<close>
 
 | RedExhale:
-  "\<lbrakk> red_exhale ctxt R \<omega> A \<omega> (RNormal \<omega>_exh);
+  "\<lbrakk> red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>_exh);
      \<comment> \<open>\<omega>' \<in> havoc_locs_state ctxt \<omega>_exh ({loc. get_mh_total_full \<omega> loc > 0 \<and> get_mh_total_full \<omega>_exh loc = 0})\<close>
      \<comment>\<open>We havoc all locations \<^term>\<open>l\<close> for which both of the following conditions hold:
          (1) there is no direct permission to \<^term>\<open>l\<close> after the exhale
@@ -157,13 +157,13 @@ always has at least one failure transition. This is in-sync with the Carbon impl
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Exhale A) \<omega> (RNormal \<omega>')"
 | RedExhaleFailure:
-  "\<lbrakk> red_exhale ctxt R \<omega> A \<omega> RFailure \<rbrakk> \<Longrightarrow>
+  "\<lbrakk> red_exhale ctxt \<omega> A \<omega> RFailure \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Exhale A) \<omega> RFailure"
 | RedAssert:
-  "\<lbrakk> red_exhale ctxt R \<omega> A \<omega> (RNormal \<omega>_exh) \<rbrakk> \<Longrightarrow>
+  "\<lbrakk> red_exhale ctxt \<omega> A \<omega> (RNormal \<omega>_exh) \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Assert A) \<omega> (RNormal \<omega>)"
 | RedAssertFailure:
-  "\<lbrakk> red_exhale ctxt R \<omega> A \<omega> RFailure \<rbrakk> \<Longrightarrow>
+  "\<lbrakk> red_exhale ctxt \<omega> A \<omega> RFailure \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Assert A) \<omega> RFailure"
 
 \<comment>\<open>TODO: Add semantics for \<^term>\<open>Assume A\<close>. \<close>
@@ -276,10 +276,16 @@ always has at least one failure transition. This is in-sync with the Carbon impl
 | RedFold:
   "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
      ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p);
-     v_p \<ge> 0;
+     v_p > 0;
      fold_rel ctxt pred_id v_args (Abs_preal v_p) \<omega> res
    \<rbrakk> \<Longrightarrow>
    red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args (PureExp e_p)) \<omega> res"
+| RedFoldFailure:
+  "\<lbrakk> red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args);
+     ctxt, (Some \<omega>) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p);
+     v_p \<le> 0
+   \<rbrakk> \<Longrightarrow>
+   red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args (PureExp e_p)) \<omega> RFailure"
 
 (*
 | RedFoldWildcard:
@@ -343,6 +349,7 @@ inductive_cases RedScope_case: "red_stmt_total ctxt R \<Lambda> (Scope \<tau> sc
 inductive_cases RedUnfold_case: "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
 inductive_cases RedUnfoldFailure_case: "red_stmt_total ctxt R \<Lambda> (Unfold pred_id e_args (PureExp e_p)) \<omega> RFailure"
 inductive_cases RedFold_case: "red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args (PureExp e_p)) \<omega> (RNormal \<omega>')"
+inductive_cases RedFoldFailure_case: "red_stmt_total ctxt R \<Lambda> (Fold pred_id e_args (PureExp e_p)) \<omega> RFailure"
 inductive_cases RedFieldAssign_case: "red_stmt_total ctxt R \<Lambda> (FieldAssign e_r f e) \<omega> (RNormal \<omega>')"
 inductive_cases RedMethodCall_case: "red_stmt_total ctxt R \<Lambda> (MethodCall ys m es) \<omega> (RNormal \<omega>')"
 inductive_cases RedHavoc_case: "red_stmt_total ctxt R \<Lambda> (Havoc x) \<omega> res"
@@ -510,7 +517,7 @@ lemma red_exhale_acc_normalI:
       and "a = the_address r"
       and "p \<ge> 0 \<and> (if r = Null then p = 0 else get_mh_total_full \<omega> (a,f) \<ge> Abs_preal p)" (is "?Success")
       and "\<omega>' = (if r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a,f) (Abs_preal p))" (is "\<omega>' = ?\<omega>def")
-    shows "red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> (RNormal \<omega>')"
+    shows "red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> (RNormal \<omega>')"
 proof -
   have Eq: "RNormal \<omega>' = exh_if_total ?Success ?\<omega>def"
     using assms
@@ -527,7 +534,7 @@ lemma red_exhale_acc_failureI:
       and "ctxt, (Some \<omega>0) \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
       and "a = the_address r"
       and "\<not>(p \<ge> 0 \<and> (if r = Null then p = 0 else get_mh_total_full \<omega> (a,f) \<ge> Abs_preal p))" (is "\<not>?Success")
-    shows "red_exhale ctxt R \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> RFailure"
+    shows "red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> RFailure"
 proof -
   have Eq: "RFailure = exh_if_total ?Success (if r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a,f) (Abs_preal p))"
     using assms

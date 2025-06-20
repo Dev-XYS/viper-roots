@@ -31,21 +31,23 @@ inductive fold_rel :: "'a total_context \<Rightarrow> predicate_ident \<Rightarr
   FoldRelNormal:
   "\<lbrakk> ViperLang.predicates (program_total ctxt) pid = Some pdecl;
      ViperLang.predicate_decl.body pdecl = Some pbody;
-     vals_well_typed (absval_interp_total ctxt) vs (predicate_decl.args pdecl); \<comment> \<open>Todo: reconsider this\<close>
-     \<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>;
-     red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal q) pbody) \<omega>0 (RNormal \<omega>1');
+     vals_well_typed (absval_interp_total ctxt) vs (predicate_decl.args pdecl);
+     \<omega>0 = \<omega>\<lparr> get_store_total := nth_option vs \<rparr>;
+     red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal q) pbody) \<omega>0 (RNormal \<omega>1');
      \<omega>1 = \<omega>\<lparr> get_total_full := get_total_full \<omega>1' \<rparr>;
      get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0;
-     \<omega>' = add_to_lpm_total_full \<omega>1 (pid,vs) (if q = 0 then None else Some (Abs_posreal q, nm_exh))
+     q > 0;
+     \<omega>' = add_to_lpm_nonzero_total_full \<omega>1 (pid,vs) (Abs_posreal q) nm_exh
    \<rbrakk> \<Longrightarrow>
    fold_rel ctxt pid vs q \<omega> (RNormal \<omega>')"
 | FoldRelFailure:
-  "\<lbrakk> ViperLang.predicates (program_total ctxt) pred_id = Some pred_decl;
-     ViperLang.predicate_decl.body pred_decl = Some pred_body;
-     \<omega>0 = \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = get_total_full \<omega> \<rparr>;
-     red_exhale ctxt (\<lambda>_. True) \<omega>0 (syntactic_mult (Rep_preal q) pred_body) \<omega>0 RFailure
+  "\<lbrakk> ViperLang.predicates (program_total ctxt) pid = Some pdecl;
+     ViperLang.predicate_decl.body pdecl = Some pbody;
+     vals_well_typed (absval_interp_total ctxt) vs (predicate_decl.args pdecl);
+     \<omega>0 = \<omega>\<lparr> get_store_total := nth_option vs \<rparr>;
+     red_exhale ctxt \<omega>0 (syntactic_mult (Rep_preal q) pbody) \<omega>0 RFailure
    \<rbrakk> \<Longrightarrow>
-   fold_rel ctxt pred_id vs q \<omega> RFailure"
+   fold_rel ctxt pid vs q \<omega> RFailure"
 
 inductive_cases FoldRelNormal_case: "fold_rel ctxt pred_id vs q \<omega> (RNormal \<omega>')"
 inductive_cases FoldRelFailure_case: "fold_rel ctxt pred_id vs q \<omega> RFailure"
