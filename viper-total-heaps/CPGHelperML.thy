@@ -350,6 +350,18 @@ fun prove_ploc_rel ctxt (info: basic_stmt_rel_info) exp_rel_info =
   (Rmsg' "prove ploc rel AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
   (Rmsg' "prove ploc rel \<open>e_ploc_bpl = _\<close>" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt)
 
+fun prove_ploc_rel' ctxt (info: basic_stmt_rel_info) exp_rel_info =
+  (Rmsg' "prove ploc rel rule" (resolve_tac ctxt @{thms exp_rel_predicate_loc'}) ctxt) THEN'
+  (Rmsg' "prove ploc rel CtxtFunWf" (resolve_tac ctxt [#ctxt_wf_thm info]) ctxt) THEN'
+  (Rmsg' "prove ploc rel StateRel" (fastforce_tac ctxt []) ctxt) THEN'
+  (Rmsg' "prove ploc rel FunName" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel PredDecl" (simp_tac_with_thms [#vpr_program_ctxt_eq_thm info, #vpr_prog_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel VprArgsTy" (simp_tac_with_thms @{thms predicate_decl.defs} ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel ArgsTyRel" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel ArgsRel" (exps_rel_tac exp_rel_info ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "prove ploc rel \<open>e_ploc_bpl = _\<close>" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt)
+
 (* The predicate name must be instantiated in exp_rel_perm_access_thm *)
 (* The Boogie expression of predicate location is obtained with the function below. *)
 

@@ -70,6 +70,32 @@ fun normal_exhale_rel_tac ctxt (info: 'a exhale_rel_info) (hint: 'a normal_exhal
   (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
   exhale_rel_aux_tac ctxt info (#exhale_rel_hint hint)
 
+
+fun inhale_rel_pred_acc_upd_rel_tac' ctxt (info: basic_stmt_rel_info) exp_rel_info =
+  (Rmsg' "inh pred acc upd rule" (resolve_tac ctxt @{thms inhale_rel_pred_acc_upd_rel'}) ctxt) THEN'
+  (Rmsg' "inh pred acc upd StateRelIn" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
+  (Rmsg' "inh pred acc upd StateRelOut" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
+  (Rmsg' "inh pred acc upd AuxDomTemp" (#aux_var_disj_tac info ctxt) ctxt) THEN'
+  (Rmsg' "inh pred acc upd AuxDomMask" (#aux_var_disj_tac info ctxt) ctxt) THEN'
+  (Rmsg' "inh pred acc upd WfTyRep" (resolve_tac ctxt [#wf_ty_repr_thm info]) ctxt) THEN'
+  (Rmsg' "inh pred acc upd MaskVarDefDiff" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "inh pred acc upd TyInterp" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "inh pred acc upd NullConst" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "inh pred acc upd MaskVar" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "inh pred acc upd MaskUpdateWf" (resolve_tac ctxt [ @{thm mask_update_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]]) ctxt THEN'
+                                          assm_full_simp_solved_tac ctxt) THEN'
+  (Rmsg' "inh pred acc upd MaskReadWf" (resolve_tac ctxt [ @{thm mask_read_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]]) ctxt THEN'
+                                        assm_full_simp_solved_tac ctxt) THEN'
+  (Rmsg' "inh pred acc upd PredType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (* (SUBGOAL (fn (t,_) => raise TERM ("inh pred breakpoint", [t]))) THEN' *)
+  (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac [@{thm update_mask_concrete_def}, #ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "inh pred acc upd 3" (assm_full_simp_solved_with_thms_tac (#ty_repr_def_thm info::(@{thms update_mask_concrete_def read_mask_concrete_def})) ctxt) ctxt) THEN'
+  (Rmsg' "inh pred acc upd PlocBpl" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+  (Rmsg' "inh pred acc upd PlocRel" (prove_ploc_rel' ctxt info exp_rel_info) ctxt) THEN'
+  (Rmsg' "inh pred acc upd AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info, @{thm ty_repr_basic_def}] ctxt) ctxt) THEN'
+  (Rmsg' "inh pred acc upd ProgEq" (simp_tac_with_thms [] ctxt) ctxt)
+
+
 fun atomic_inhale_pred_acc_in_fold_tac ctxt (info: basic_stmt_rel_info) inh_pred_acc_hint =
   case inh_pred_acc_hint of
     PredicateAccInhHint (exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm) =>
@@ -79,8 +105,10 @@ fun atomic_inhale_pred_acc_in_fold_tac ctxt (info: basic_stmt_rel_info) inh_pred
       (store_temporary_inh_perm_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
       (Rmsg' "InhPred (fold) perm non-neg (always true)" (resolve_tac ctxt @{thms bpl_assert_true_is_skip}) ctxt) THEN'
       (true_implies_true_tac ctxt) THEN'
-      (inhale_rel_pred_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info)
+      (Rmsg' "InhPred (fold) propagate (reset state rel)" (resolve_tac ctxt @{thms rel_propagate_post_3}) ctxt) THEN'
+      (inhale_rel_pred_acc_upd_rel_tac' ctxt (info: basic_stmt_rel_info) exp_rel_info)
   | _ => error("Fold only supports PredicateAccInhHint")
+
 
 fun pred_fold_tac ctxt exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) exhale_hint atomic_inhale_hint =
   (Rmsg' "fold stmt rule" (resolve_tac ctxt @{thms fold_stmt_rel}) ctxt) THEN'
@@ -98,7 +126,6 @@ fun pred_fold_tac ctxt exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_
   (Rmsg' "fold stmt StateRelImpliesExtCons 3" (assm_full_simp_solved_with_thms_tac [@{thm default_state_rel_options_def}, #tr_def_thm basic_info] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt StateRelImpliesExtCons 4" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info] ctxt) ctxt) THEN'
 
-  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
   (Rmsg' "fold stmt ArgsRestriction" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt BodyNoUnfolding" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt PermSimp" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
@@ -109,12 +136,13 @@ fun pred_fold_tac ctxt exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_
   (Rmsg' "fold stmt StepPermPos (always assert true)" (resolve_tac ctxt @{thms red_bpl_assert_true}) ctxt) THEN'
   (Rmsg' "fold stmt simp synmult" (simp_tac_with_thms [] ctxt) ctxt) THEN'
 
-  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
-  (Rmsg' "fold stmt propagate state reset" (resolve_tac ctxt @{thms exhale_rel_propagate_post}) ctxt) THEN'
+  (* (Rmsg' "fold stmt propagate state reset" (resolve_tac ctxt @{thms exhale_rel_propagate_post}) ctxt) THEN' *)
   (normal_exhale_rel_tac ctxt exhale_info exhale_hint) THEN'
-  (Rmsg' "fold stmt state reset after exhale" (exhale_revert_state_relation ctxt basic_info) ctxt) THEN'
+  (* (Rmsg' "fold stmt state reset after exhale" (exhale_revert_state_relation ctxt basic_info) ctxt) THEN' *)
 
-  (atomic_inhale_pred_acc_in_fold_tac ctxt basic_info atomic_inhale_hint) (* THEN'
+  (atomic_inhale_pred_acc_in_fold_tac ctxt basic_info atomic_inhale_hint) THEN'
+
+  (exhale_revert_state_relation ctxt basic_info) (* THEN'
 
   (SUBGOAL (fn (t,_) => raise TERM ("breakpoint head", [t]))) *)
 

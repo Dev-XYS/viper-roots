@@ -254,8 +254,15 @@ qed
 
 lemma rel_propagate_post_2:
   assumes "rel_general R0 R0 Success Fail P ctxt \<gamma>0 \<gamma>1"
-      and    "red_ast_bpl_rel R0 R0 P ctxt \<gamma>1 \<gamma>2"
+      and "red_ast_bpl_rel R0 R0 P ctxt \<gamma>1 \<gamma>2"
     shows "rel_general R0 R0 Success Fail P ctxt \<gamma>0 \<gamma>2"
+  using assms rel_propagate_post
+  by blast
+
+lemma rel_propagate_post_3:
+  assumes "rel_general R0 R0 Success Fail P ctxt \<gamma>0 \<gamma>1"
+      and "red_ast_bpl_rel R0 R1 P ctxt \<gamma>1 \<gamma>2"
+    shows "rel_general R0 R1 Success Fail P ctxt \<gamma>0 \<gamma>2"
   using assms rel_propagate_post
   by blast
 

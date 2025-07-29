@@ -357,7 +357,7 @@ ML \<open>
     resolve_tac ctxt @{thms state_rel_set_def_to_eval} THEN'
     simp_then_if_not_solved_blast_tac ctxt THEN'
     resolve_tac ctxt @{thms red_ast_bpl_rel_input_implies_output} THEN'
-    assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info] ctxt
+    assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info, @{thm state_rel_aux_pred_remove}] ctxt
 
 \<close>
 

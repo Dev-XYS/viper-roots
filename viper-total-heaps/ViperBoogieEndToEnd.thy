@@ -738,7 +738,7 @@ proof (rule allI | rule impI)+
             assume ?Case2
             from this obtain \<omega>body where
               RedBodyVpr: "red_stmt_total ctxt_vpr StateCons ?\<Lambda> ?mbody ?\<omega>pre' (RNormal \<omega>body)" and
-              RedExhPost: "red_exhale ctxt_vpr StateCons \<omega>body (method_decl.post mdecl) \<omega>body RFailure"
+              RedExhPost: "red_exhale ctxt_vpr \<omega>body (method_decl.post mdecl) \<omega>body RFailure"
               by (auto elim: red_stmt_total_inversion_thms)
 
             from stmt_rel_normal_elim[OF BodyRel Rpre_old_upd] RedBodyVpr obtain nsbody
