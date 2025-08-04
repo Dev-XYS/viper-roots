@@ -266,7 +266,7 @@ ML \<open>
             (store_temporary_inh_perm_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
             (prove_perm_non_negative_inh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
             (true_implies_true_tac ctxt) THEN'
-            (SUBGOAL (fn (t,_) => raise TERM ("breakpoint probe", [t]))) THEN'
+            (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint probe", [t]))) THEN' *)
             (inhale_rel_pred_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info)
     | _ => error("only support PredicateAccInhHint")
 

@@ -1305,7 +1305,9 @@ lemma fold_stmt_rel:
             "\<And>v_args_vpr v_p_vpr.
                 rel_general (\<lambda>\<omega>_def_\<omega> ns. R'' (fst \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>) ns \<and> ctxt_vpr, (Some (fst \<omega>_def_\<omega>)) \<turnstile> \<langle>e_p_vpr; snd \<omega>_def_\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_vpr)) (\<lambda>\<omega>_def_\<omega> ns. R' (snd \<omega>_def_\<omega>) ns)
                   (\<lambda>\<omega>_def_\<omega> \<omega>_def_\<omega>'. fst \<omega>_def_\<omega> = fst \<omega>_def_\<omega>' \<and> inhale_pred_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr v_p_vpr (fst \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>'))
-                  (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>4 \<gamma>'"
+                  (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>4 \<gamma>\<^sub>5"
+      and StepMaskUpdate:
+            "rel_general R' R' (=) (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>5 \<gamma>'"
     shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Fold pid e_args_vpr (PureExp e_p_vpr)) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro)
   fix \<omega> ns \<omega>'
@@ -1433,13 +1435,19 @@ proof (rule stmt_rel_intro)
     by blast
 
   with StepInhale[THEN rel_success_elim, OF _ this, simplified, where ?ns=ns\<^sub>4]
-  obtain ns' where ns': "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>4, Normal ns\<^sub>4) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
+  obtain ns\<^sub>5 where ns\<^sub>5: "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>4, Normal ns\<^sub>4) (\<gamma>\<^sub>5, Normal ns\<^sub>5) \<and> R' \<omega>' ns\<^sub>5"
     by (metis ns\<^sub>4 fst_conv inhale_pred_normal_premise_def snd_conv)
+
+  \<comment> \<open>Fifth step: known-folded permission mask update\<close>
+  with StepMaskUpdate[THEN rel_success_elim]
+  obtain ns' where
+    ns': "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>5, Normal ns\<^sub>5) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
+    by blast
 
   show "\<exists>ns'. red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
     apply (rule exI[of _ ns'])
     apply (intro conjI)
-    using ns\<^sub>2 ns\<^sub>3 ns\<^sub>4 ns' red_ast_bpl_transitive
+    using ns\<^sub>2 ns\<^sub>3 ns\<^sub>4 ns\<^sub>5 ns' red_ast_bpl_transitive
      apply meson
     using ns'
     by blast

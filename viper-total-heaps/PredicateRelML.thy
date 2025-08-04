@@ -106,7 +106,8 @@ fun atomic_inhale_pred_acc_in_fold_tac ctxt (info: basic_stmt_rel_info) inh_pred
       (Rmsg' "InhPred (fold) perm non-neg (always true)" (resolve_tac ctxt @{thms bpl_assert_true_is_skip}) ctxt) THEN'
       (true_implies_true_tac ctxt) THEN'
       (Rmsg' "InhPred (fold) propagate (reset state rel)" (resolve_tac ctxt @{thms rel_propagate_post_3}) ctxt) THEN'
-      (inhale_rel_pred_acc_upd_rel_tac' ctxt (info: basic_stmt_rel_info) exp_rel_info)
+      (inhale_rel_pred_acc_upd_rel_tac' ctxt (info: basic_stmt_rel_info) exp_rel_info) THEN'
+      (exhale_revert_state_relation ctxt info)
   | _ => error("Fold only supports PredicateAccInhHint")
 
 
@@ -142,9 +143,19 @@ fun pred_fold_tac ctxt exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_
 
   (atomic_inhale_pred_acc_in_fold_tac ctxt basic_info atomic_inhale_hint) THEN'
 
-  (exhale_revert_state_relation ctxt basic_info) (* THEN'
+  (Rmsg' "fold stmt good state after inhale propagate 1" (resolve_tac ctxt @{thms rel_propagate_pre_2_only_state_rel}) ctxt) THEN'
+  (Rmsg' "fold stmt good state after inhale progress 1" ((progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm basic_info) (#tr_def_thm basic_info))) ctxt) THEN'
+  (Rmsg' "fold stmt good state after inhale propagate 2" (resolve_tac ctxt @{thms rel_propagate_pre_2_only_state_rel}) ctxt) THEN'
+  (Rmsg' "fold stmt good state after inhale progress 2" ((progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm basic_info) (#tr_def_thm basic_info))) ctxt) THEN'
 
-  (SUBGOAL (fn (t,_) => raise TERM ("breakpoint head", [t]))) *)
+  (SUBGOAL (fn (t,_) => raise TERM ("breakpoint head", [t]))) THEN'
+
+  (Rmsg' "fold stmt test1" (resolve_tac ctxt @{thms rel_general_success_refl}) ctxt) THEN'
+  (Rmsg' "fold stmt test2" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
+  (Rmsg' "fold stmt test3" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) (* THEN'
+
+  (Rmsg' "Progress Good State" ((progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm basic_info) (#tr_def_thm basic_info)) ORELSE' (progress_red_bpl_rel_tac ctxt)) ctxt)
+  THEN' (SUBGOAL (fn (t,_) => raise TERM ("breakpoint head", [t]))) *)
 
 
 fun exh_in_fold_no_def_checks_tac ctxt (info: basic_stmt_rel_info) : int -> tactic =
