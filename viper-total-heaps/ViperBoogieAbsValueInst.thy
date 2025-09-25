@@ -29,16 +29,16 @@ datatype (discs_sels) 'a vb_field =
 \<comment>\<open>implementation detail\<close>
 codatatype 'a frame_fragment = EmptyFrame | LiftFrame 'a | CombineFrame "'a frame_fragment" "'a frame_fragment"
 
-datatype 'a vbpl_absval = 
+datatype 'a vbpl_absval =
     ARef ref
   | ADomainVal 'a
 \<comment>\<open>implementation detail\<close>
   | AField "'a vb_field"
   | AHeap "(ref \<times> 'a vb_field) \<rightharpoonup> ('a vbpl_absval) bpl_val"
-  | AMask "(ref \<times> 'a vb_field) \<Rightarrow> real"                      
-  | AKnownFoldedMask "(ref \<times> 'a vb_field) \<Rightarrow> bool"         
+  | AMask "(ref \<times> 'a vb_field) \<Rightarrow> real"
+  | AKnownFoldedMask "(ref \<times> 'a vb_field) \<Rightarrow> bool"
   | AFrame "(('a vbpl_absval) bpl_val) frame_fragment"
-  | ADummy tcon_id "bpl_ty list" 
+  | ADummy tcon_id "bpl_ty list"
 
 text \<open>The reason for including \<^const>\<open>ADummy\<close> is that the Boogie interface requires that every type 
 is inhabited. We will need to make sure that \<^term>\<open>ADummy tcon_id ts\<close> is mapped to \<^term>\<open>TCon tcon_id ts\<close> 
