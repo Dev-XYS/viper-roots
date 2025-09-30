@@ -157,11 +157,11 @@ lemma heap_rel_stable_2:
 lemma heap_rel_stable_2_well_typed:
   assumes "heap_rel Pr tr_field h hb0" and
         Heap0WellTy: "vbpl_absval_ty_opt TyRep (AHeap hb0) = Some (THeapId TyRep, [])" and
-        Heap1WellTy:  "vbpl_absval_ty_opt TyRep (AHeap hb1) = Some (THeapId TyRep, [])"
-shows "\<exists> hb'. heap_rel Pr tr_field h hb' \<and>
-              vbpl_absval_ty_opt TyRep (AHeap hb') = Some (THeapId TyRep, []) \<and>
-                (\<forall> loc_bpl \<in> vpr_heap_locations_bpl Pr tr_field. hb' loc_bpl = hb0 loc_bpl) \<and>
-                (\<forall> loc_bpl. loc_bpl \<notin> vpr_heap_locations_bpl Pr tr_field \<longrightarrow> hb' loc_bpl = hb1 loc_bpl)"
+        Heap1WellTy: "vbpl_absval_ty_opt TyRep (AHeap hb1) = Some (THeapId TyRep, [])"
+  shows "\<exists> hb'. heap_rel Pr tr_field h hb' \<and>
+                vbpl_absval_ty_opt TyRep (AHeap hb') = Some (THeapId TyRep, []) \<and>
+                  (\<forall> loc_bpl \<in> vpr_heap_locations_bpl Pr tr_field. hb' loc_bpl = hb0 loc_bpl) \<and>
+                  (\<forall> loc_bpl. loc_bpl \<notin> vpr_heap_locations_bpl Pr tr_field \<longrightarrow> hb' loc_bpl = hb1 loc_bpl)"
 proof -
   from split_fun_aux[where ?P = "\<lambda>loc_bpl. loc_bpl \<in> vpr_heap_locations_bpl Pr tr_field"] obtain hb'
     where HeapProperties:

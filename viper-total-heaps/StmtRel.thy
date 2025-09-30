@@ -858,21 +858,27 @@ lemma exhale_stmt_rel_finish:
                                                    Assume (FunExp id_on_known_locs_name [] [Var hvar, Var hvar_exh, Var mvar]) #
                                                    Assign hvar (Var hvar_exh) #
                                                    cs) str tr, cont), Normal ns)
-                             ((BigBlock name cs str tr, cont), Normal ns') \<and>
+                                  ((BigBlock name cs str tr, cont), Normal ns') \<and>
                state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega>' ns'" (is "\<exists>ns'. ?red ns' \<and> ?rel ns'")
 proof -
   from state_rel_heap_var_rel[OF StateRel]
-  obtain hb where   LookupHeapVarTy: "lookup_var_ty (var_context ctxt) (heap_var Tr) = Some (TConSingle (THeapId TyRep))" and
-                    LookupHeapVar: "lookup_var (var_context ctxt) ns (heap_var Tr) = Some (AbsV (AHeap hb))" and
-                    HeapVarWellTy: "vbpl_absval_ty_opt TyRep (AHeap hb) = Some (THeapId TyRep, [])" and
-                    HeapRel: "heap_rel Pr (field_translation Tr) (get_hh_total_full \<omega>) hb" and
-                    HeapVprWellTy: "total_heap_well_typed Pr (domain_type TyRep) (get_hh_total_full \<omega>)"
-      unfolding heap_var_rel_def
-      by blast
+  obtain hb where
+    LookupHeapVarTy: "lookup_var_ty (var_context ctxt) (heap_var Tr) = Some (TConSingle (THeapId TyRep))" and
+    LookupHeapVar: "lookup_var (var_context ctxt) ns (heap_var Tr) = Some (AbsV (AHeap hb))" and
+    HeapVarWellTy: "vbpl_absval_ty_opt TyRep (AHeap hb) = Some (THeapId TyRep, [])" and
+    HeapRel: "heap_rel Pr (field_translation Tr) (get_hh_total_full \<omega>) hb" and
+    HeapVprWellTy: "total_heap_well_typed Pr (domain_type TyRep) (get_hh_total_full \<omega>)"
+    unfolding heap_var_rel_def
+    by blast
+
+  with state_rel_heap_knownfolded_var_rel[OF StateRel] have
+    HeapKnownFoldedRel: "heap_knownfolded_rel (program_total ctxt_vpr) (field_translation Tr) (get_nm_total_full \<omega>) hb"
+    by (simp add: ProgramTotal heap_knownfolded_var_rel_def)
 
   from state_rel_mask_var_rel[OF StateRel]
-  obtain mb where LookupMaskVar: "lookup_var (var_context ctxt) ns (mask_var Tr) = Some (AbsV (AMask mb))" and
-                  MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb"
+  obtain mb where
+    LookupMaskVar: "lookup_var (var_context ctxt) ns (mask_var Tr) = Some (AbsV (AMask mb))" and
+    MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) mb"
     unfolding mask_var_rel_def
     by blast
 
@@ -881,9 +887,11 @@ proof -
     unfolding field_rel_def
     by blast
 
-  from this obtain hb' where *: "heap_rel (program_total ctxt_vpr) (field_translation Tr) (get_hh_total_full \<omega>') hb'" and
-                   **: "vbpl_absval_ty_opt TyRep (AHeap hb') = Some (THeapId TyRep, [])"
-    using  construct_bpl_heap_from_vpr_heap_correct[OF WfTyRepr havoc_locs_state_well_typed_heap[OF \<open>\<omega>' \<in> _\<close>] DomainType]
+  from this obtain hb' where
+    *: "heap_rel (program_total ctxt_vpr) (field_translation Tr) (get_hh_total_full \<omega>') hb'" and
+    **: "vbpl_absval_ty_opt TyRep (AHeap hb') = Some (THeapId TyRep, [])" and
+    ***: "heap_knownfolded_rel (program_total ctxt_vpr) (field_translation Tr) (get_nm_total_full \<omega>') hb'"
+    using construct_bpl_heap_from_vpr_heap_correct[OF WfTyRepr havoc_locs_state_well_typed_heap[OF \<open>\<omega>' \<in> _\<close>] DomainType]
     by blast
 
   \<comment>\<open>We derive a heap which coincides with \<^term>\<open>hb'\<close> on the locations related to Viper locations
@@ -894,11 +902,14 @@ proof -
      state relation). \<close>
 
   obtain hb'' where
-            NewHeapRel: "heap_rel (program_total ctxt_vpr) (field_translation Tr) (get_hh_total_full \<omega>') hb''" and
-            NewHeapWellTy: "vbpl_absval_ty_opt TyRep (AHeap hb'') = Some (THeapId TyRep, [])" and
-            NewHeapProperty:
-                "\<forall> loc_bpl. loc_bpl \<notin> (vpr_heap_locations_bpl (program_total ctxt_vpr) (field_translation Tr) ) \<longrightarrow>
-                                                     hb'' loc_bpl = hb loc_bpl"
+    NewHeapRel: "heap_rel (program_total ctxt_vpr) (field_translation Tr) (get_hh_total_full \<omega>') hb''" and
+    NewHeapWellTy: "vbpl_absval_ty_opt TyRep (AHeap hb'') = Some (THeapId TyRep, [])" and
+    NewHeapProperty:
+      "\<forall> loc_bpl. loc_bpl \<notin> (vpr_heap_locations_bpl (program_total ctxt_vpr) (field_translation Tr)) \<longrightarrow>
+           hb'' loc_bpl = hb loc_bpl" and
+    NewHeapProperty2:
+      "\<forall> loc_bpl \<in> (vpr_heap_locations_bpl (program_total ctxt_vpr) (field_translation Tr)).
+           hb'' loc_bpl = hb' loc_bpl"
     using heap_rel_stable_2_well_typed[OF * ** HeapVarWellTy]
     by blast
 
@@ -909,15 +920,15 @@ proof -
 
     show "hb (r, NormalField f t) = hb'' (r, NormalField f t)"
 
-     \<comment>\<open>Need to put the type \<^typ>\<open>(ref \<times> 'a vb_field) set\<close> explicitly here, otherwise the proof does not work
+    \<comment>\<open>Need to put the type \<^typ>\<open>(ref \<times> 'a vb_field) set\<close> explicitly here, otherwise the proof does not work
        (most likely due to the type parameter).\<close>
-    proof (cases "(r, NormalField f t) \<in> (vpr_heap_locations_bpl Pr (field_translation Tr)  :: (ref \<times> 'a vb_field) set)")
+    proof (cases "(r, NormalField f t) \<in> (vpr_heap_locations_bpl Pr (field_translation Tr) :: (ref \<times> 'a vb_field) set)")
       case True
       from this obtain heap_loc where
-         HeapLocProperties:
-         "r = Address (fst heap_loc)"
-         "declared_fields Pr (snd heap_loc) = Some t"
-         "(field_translation Tr) (snd heap_loc) = Some f"
+        HeapLocProperties:
+        "r = Address (fst heap_loc)"
+        "declared_fields Pr (snd heap_loc) = Some t"
+        "(field_translation Tr) (snd heap_loc) = Some f"
         unfolding vpr_heap_locations_bpl_def
         by blast
 
@@ -961,7 +972,7 @@ proof -
         by (metis is_NormalField_def)
     next
       case False
-      hence "(r,f) \<notin> vpr_heap_locations_bpl (program_total ctxt_vpr) (field_translation Tr)"
+      hence "(r, f) \<notin> vpr_heap_locations_bpl (program_total ctxt_vpr) (field_translation Tr)"
         unfolding vpr_heap_locations_bpl_def
         by force
       thus ?thesis
@@ -1055,6 +1066,19 @@ proof -
 
     thus "binder_state ?ns2 = Map.empty"
       by (simp add: update_var_binder_same)
+  next
+    have *: "get_nm_total_full \<omega> = get_nm_total_full \<omega>'"
+      using \<open>\<omega>' \<in> _\<close> havoc_locs_state_same_mask
+      by fastforce
+    show "heap_knownfolded_var_rel (knownfolded_state_rel_opt (state_rel_opt Tr)) Pr
+            (var_context ctxt) (field_translation Tr) (heap_var Tr) \<omega>' ?ns2"
+      unfolding heap_knownfolded_var_rel_def
+      apply (rule exI[of _ hb''])
+      apply (intro conjI)
+       apply (simp add: \<open>hvar = _\<close>)
+      using NewHeapProperty \<open>Pr = _\<close> HeapKnownFoldedRel *
+      unfolding heap_knownfolded_rel_def vpr_heap_locations_bpl_def
+      by simp
   qed (insert assms, auto)
 
   ultimately show "\<exists>ns'. ?red ns' \<and> ?rel ns'"

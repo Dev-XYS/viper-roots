@@ -293,22 +293,23 @@ proof -
     apply (simp only: state_rel_def)
     apply (simp only: state_rel0_def, intro conjI)
     using state_rel_wf_mask_simple[OF InitRel] \<omega>'
-                    apply (simp, simp)
+                     apply (simp, simp)
     using \<omega>'_extcons \<omega>'
-                  apply blast
-                 apply (simp add: TyInterp)
-                apply (rule store_rel_stable[where ?\<omega>=\<omega> and ?ns=ns])
+                   apply blast
+                  apply (simp add: TyInterp)
+                 apply (rule store_rel_stable[where ?\<omega>=\<omega> and ?ns=ns])
     using InitRel state_rel_store_rel
-                  apply blast
-                 apply (metis * inhale_perm_single_pred_store_same inhale_pred_normal_premise_def)
-                apply (metis InitRel MaskVar state_rel_disj_mask_store update_var_other)
-               apply (simp add: Disj)
-              apply (simp, simp, simp)
-           defer defer defer defer
-           apply (metis InitRel MaskVar field_rel_stable mask_var_disjoint state_rel_field_rel state_rel_state_rel0 update_var_other)
-          apply (metis InitRel MaskVar boogie_const_rel_stable mask_var_disjoint state_rel_boogie_const_rel state_rel_state_rel0 update_var_other)
-         defer
-         apply (metis (no_types, lifting) InitRel' MaskVar aux_vars_pred_sat_def domI mask_var_disjoint state_rel_aux_pred_sat_lookup state_rel_state_rel0 update_var_other)
+                   apply blast
+                  apply (metis * inhale_perm_single_pred_store_same inhale_pred_normal_premise_def)
+                 apply (metis InitRel MaskVar state_rel_disj_mask_store update_var_other)
+                apply (simp add: Disj)
+               apply (simp, simp, simp)
+            defer defer defer defer
+    subgoal sorry
+    apply (metis InitRel MaskVar field_rel_stable mask_var_disjoint state_rel_field_rel state_rel_state_rel0 update_var_other)
+    apply (metis InitRel MaskVar boogie_const_rel_stable mask_var_disjoint state_rel_boogie_const_rel state_rel_state_rel0 update_var_other)
+    defer
+    apply (metis (no_types, lifting) InitRel' MaskVar aux_vars_pred_sat_def domI mask_var_disjoint state_rel_aux_pred_sat_lookup state_rel_state_rel0 update_var_other)
   proof -
     let ?ns' = "update_var (var_context ctxt_bpl) ns m_bpl
                   (AbsV (AMask (mb((Null, PredSnapshotField (pid,v_args_vpr)) :=
@@ -1156,19 +1157,20 @@ proof -
     apply (simp only: state_rel_def)
     apply (simp only: state_rel0_def, intro conjI)
     using state_rel_wf_mask_simple[OF InitRel] \<open>\<omega>' = _\<close>
-                    apply (simp, simp)
+                     apply (simp, simp)
     using \<omega>'_extcons \<open>\<omega>' = _\<close>
-                  apply blast
-                 apply (simp add: TyInterp)
-                apply (rule store_rel_stable[where ?\<omega>=\<omega> and ?ns=ns])
+                   apply blast
+                  apply (simp add: TyInterp)
+                 apply (rule store_rel_stable[where ?\<omega>=\<omega> and ?ns=ns])
     using InitRel state_rel_store_rel
-                  apply blast
-                 apply (simp add: \<open>\<omega>' = _\<close>)
+                   apply blast
+                  apply (simp add: \<open>\<omega>' = _\<close>)
     using InitRel MaskVar state_rel_disj_mask_store
-                apply fastforce
-               apply (simp add: Disj)
-              apply (simp, simp, simp)
-           defer defer defer defer
+                 apply fastforce
+                apply (simp add: Disj)
+               apply (simp, simp, simp)
+            defer defer defer defer
+    subgoal sorry
            apply (metis InitRel MaskVar field_rel_stable mask_var_disjoint state_rel_field_rel state_rel_state_rel0 update_var_other)
           apply (metis InitRel MaskVar boogie_const_rel_stable mask_var_disjoint state_rel_boogie_const_rel state_rel_state_rel0 update_var_other)
          defer
@@ -1757,28 +1759,29 @@ proof -
     apply (rule StateRelOut)
     apply (simp only: state_rel_def)
     apply (simp only: state_rel0_def, intro conjI)
-                    apply (metis * InitRel' \<open>\<omega>def_\<omega> = _\<close> \<open>\<omega>def_\<omega>' = _\<close> fst_eqD state_rel_wf_mask_def_simple)
+                     apply (metis * InitRel' \<open>\<omega>def_\<omega> = _\<close> \<open>\<omega>def_\<omega>' = _\<close> fst_eqD state_rel_wf_mask_def_simple)
     using \<open>valid_heap_mask (get_mh_total_full \<omega>)\<close> mh_same
-                   apply force
+                    apply force
     using \<omega>'_extcons \<omega>'
-                  apply (metis * InitRel' \<open>\<omega>def_\<omega> = _\<close> \<open>\<omega>def_\<omega>' = _\<close> fst_conv state_rel_consistent)
-                 apply (simp add: TyInterp)
-                apply (rule store_rel_stable[where ?\<omega>=\<omega> and ?ns=ns])
+                   apply (metis * InitRel' \<open>\<omega>def_\<omega> = _\<close> \<open>\<omega>def_\<omega>' = _\<close> fst_conv state_rel_consistent)
+                  apply (simp add: TyInterp)
+                 apply (rule store_rel_stable[where ?\<omega>=\<omega> and ?ns=ns])
     using InitRel state_rel_store_rel
-                  apply blast
-                 apply (simp add: \<omega>')
-                apply (metis InitRel MaskVar state_rel_disj_mask_store update_var_other)
-               apply (simp add: Disj)
+                   apply blast
+                  apply (simp add: \<omega>')
+                 apply (metis InitRel MaskVar state_rel_disj_mask_store update_var_other)
+                apply (simp add: Disj)
     using InitRel state_rel_disjoint apply fastforce
-              apply (metis * InitRel \<open>\<omega>def_\<omega> = _\<close> \<open>\<omega>def_\<omega>' = _\<close> fstI inhale_perm_single_pred_store_same inhale_pred_normal_premise_def snd_conv state_rel_eval_welldef_eq)
-             apply (metis * InitRel \<open>\<omega>def_\<omega> = _\<close> \<open>\<omega>def_\<omega>' = _\<close> inhale_perm_single_pred_trace_same inhale_pred_normal_premise_def split_pairs state_rel_eval_welldef_eq)
-            apply (metis * InitRel' \<open>\<omega>def_\<omega> = _\<close> \<open>\<omega>def_\<omega>' = _\<close> fst_eqD inhale_perm_single_pred_heap_same inhale_pred_normal_premise_def sndI state_rel_eval_welldef_eq)
-           defer defer defer defer
+               apply (metis * InitRel \<open>\<omega>def_\<omega> = _\<close> \<open>\<omega>def_\<omega>' = _\<close> fstI inhale_perm_single_pred_store_same inhale_pred_normal_premise_def snd_conv state_rel_eval_welldef_eq)
+              apply (metis * InitRel \<open>\<omega>def_\<omega> = _\<close> \<open>\<omega>def_\<omega>' = _\<close> inhale_perm_single_pred_trace_same inhale_pred_normal_premise_def split_pairs state_rel_eval_welldef_eq)
+             apply (metis * InitRel' \<open>\<omega>def_\<omega> = _\<close> \<open>\<omega>def_\<omega>' = _\<close> fst_eqD inhale_perm_single_pred_heap_same inhale_pred_normal_premise_def sndI state_rel_eval_welldef_eq)
+            defer defer defer defer
+    subgoal sorry
            apply (metis InitRel MaskVar field_rel_stable mask_var_disjoint state_rel_field_rel state_rel_state_rel0 update_var_other)
-          apply (metis InitRel MaskVar boogie_const_rel_stable mask_var_disjoint state_rel_boogie_const_rel state_rel_state_rel0 update_var_other)
-         defer
+    apply (metis InitRel MaskVar boogie_const_rel_stable mask_var_disjoint state_rel_boogie_const_rel state_rel_state_rel0 update_var_other)
+    defer
     using InitRel'[unfolded state_rel_def state_rel0_def]
-         apply (metis InitRel MaskVar aux_vars_pred_sat_stable mask_var_disjoint state_rel_aux_vars_pred_sat state_rel_state_rel0 update_var_other)
+    apply (metis InitRel MaskVar aux_vars_pred_sat_stable mask_var_disjoint state_rel_aux_vars_pred_sat state_rel_state_rel0 update_var_other)
   proof -
     let ?ns' = "update_var (var_context ctxt_bpl) ns m_bpl
                   (AbsV (AMask (mb((Null, PredSnapshotField (pid,v_args_vpr)) :=
