@@ -288,27 +288,27 @@ lemma is_inhabited_tcon_enum:
 
 text \<open>Below it would be nice to write the heap equation directly in terms of \<^term>\<open>type_of_val\<close>, but
       the termination obligations are not in the form that I expect. Instead, we prove the heap equation
-      in terms of \<^term>\<open>type_of_val\<close> later and exchange the equations in the simpset. 
+      in terms of \<^term>\<open>type_of_val\<close> later and exchange the equations in the simpset.
       IMPORTANT: If you add any equations here here or change the order, then the simpset change below
                  must be adjusted. \<close>
 function (sequential) vbpl_absval_ty_opt :: "'a ty_repr_bpl \<Rightarrow> 'a vbpl_absval \<rightharpoonup> (tcon_id \<times> bpl_ty list)"
-  where 
+  where
    "vbpl_absval_ty_opt T (ARef r) = Some (TRefId T, [])"
  | "vbpl_absval_ty_opt T (AField vb_field) = (field_ty_fun_opt T vb_field)"
  | "vbpl_absval_ty_opt T (ADomainVal v) = map_option (\<lambda>tid. (tid, [])) (domain_translation T (domain_type T v))"
  | "vbpl_absval_ty_opt T (AHeap h) = 
       Some_if 
-         (\<forall>r::ref. \<forall> f :: 'a vb_field. \<forall>fieldKind t :: bpl_ty. \<forall> v :: 'a vbpl_val. 
-             h (r, f) = Some v \<and> field_ty_fun_opt T f = Some (TFieldId T, [fieldKind, t]) \<longrightarrow> 
+         (\<forall>r::ref. \<forall> f :: 'a vb_field. \<forall>fieldKind t :: bpl_ty. \<forall> v :: 'a vbpl_val.
+             h (r, f) = Some v \<and> field_ty_fun_opt T f = Some (TFieldId T, [fieldKind, t]) \<longrightarrow>
                (case v of LitV lit \<Rightarrow> TPrim (type_of_lit lit) | 
-                        AbsV absv \<Rightarrow> (tcon_to_bplty \<circ> option_fold id (TDummyId T, [])) (vbpl_absval_ty_opt T absv))
+                          AbsV absv \<Rightarrow> (tcon_to_bplty \<circ> option_fold id (TDummyId T, [])) (vbpl_absval_ty_opt T absv))
                 = t
           )
           (THeapId T, [])"
  | "vbpl_absval_ty_opt T (AMask m) = Some (TMaskId T, [])"
  | "vbpl_absval_ty_opt T (AKnownFoldedMask pm) = Some (TKnownFoldedMaskId T, [])"
  | "vbpl_absval_ty_opt T (AFrame f) = Some (TFrameFragmentId T, [])"
- | "vbpl_absval_ty_opt T (ADummy tid ts) = 
+ | "vbpl_absval_ty_opt T (ADummy tid ts) =
      Some_if (\<not> is_inhabited T tid (length ts) \<and> list_all closed ts) (tid, ts)"
   by (pat_completeness) auto
 termination

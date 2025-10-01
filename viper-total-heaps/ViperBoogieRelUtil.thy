@@ -382,7 +382,7 @@ proof -
 qed
 
 
-lemma construct_bpl_heap_from_vpr_heap_correct_aux:
+lemma construct_bpl_heap_from_vpr_state_correct_aux:
   assumes WfTyRep: "wf_ty_repr_bpl TyRep" and
           HeapWellTyVpr: "total_heap_well_typed Pr \<Delta> (get_hh_total \<phi>)" and
           DomainType: "domain_type TyRep = \<Delta>" and
@@ -495,7 +495,7 @@ lemma construct_bpl_heap_from_vpr_heap_correct:
                 (\<forall>loc_bpl lp. snd loc_bpl = PredKnownFoldedField lp \<longrightarrow> hb loc_bpl = Some (AbsV (AKnownFoldedMask (\<lambda>_. False)))) \<and>
                 heap_knownfolded_rel Pr tr_field nm hb \<and>
                 vbpl_absval_ty_opt TyRep (AHeap hb) = Some ((THeapId TyRep) ,[])"
-  using construct_bpl_heap_from_vpr_heap_correct_aux[where ?\<phi>="\<lparr> get_hh_total = hh, get_nm_total = nm \<rparr>", simplified total_state.simps]
+  using construct_bpl_heap_from_vpr_state_correct_aux[where ?\<phi>="\<lparr> get_hh_total = hh, get_nm_total = nm \<rparr>", simplified total_state.simps]
   by (metis assms)
 
 

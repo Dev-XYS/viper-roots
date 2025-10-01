@@ -2794,7 +2794,6 @@ lemma state_rel_mask_update_3:
   assumes StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" and
           WellDefSame: "mask_var Tr = mask_var_def Tr \<and> \<omega>def = \<omega>" and
           MaskRel: "mask_rel Pr (field_translation Tr) (get_mh_total_full \<omega>) (get_mp_total_full \<omega>) m'" and
-          KnownFoldedRel: "heap_knownfolded_var_rel (knownfolded_state_rel_opt (state_rel_opt Tr)) Pr \<Lambda> (field_translation Tr) (heap_var Tr) \<omega> ns'" and
           Eq: "mvar = mask_var Tr"
           "\<Lambda> = (var_context ctxt)" and
           TypeInterp: "type_interp ctxt = vbpl_absval_ty TyRep"
@@ -2809,7 +2808,7 @@ lemma state_rel_mask_update_3:
       apply (simp add: Eq)
       apply (metis StateRel heap_knownfolded_var_rel_stable heap_var_disjoint state_rel_heap_knownfolded_var_rel state_rel_state_rel0 update_var_other)
   using StateRel
-     apply (metis assms(6) global_state_update_local global_state_update_other option.collapse)
+     apply (metis \<open>\<Lambda> = _\<close> global_state_update_local global_state_update_other option.collapse)
     apply (simp add: update_var_old_global_same)
   using state_rel0_state_well_typed[OF state_rel_state_rel0[OF StateRel]]
   unfolding state_well_typed_def
