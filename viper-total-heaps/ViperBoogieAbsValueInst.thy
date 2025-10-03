@@ -319,12 +319,12 @@ termination
   by fastforce
 
 fun vbpl_absval_ty :: "'a ty_repr_bpl \<Rightarrow> 'a vbpl_absval \<Rightarrow> (tcon_id \<times> bpl_ty list)"
-  where                                                             
+  where
     "vbpl_absval_ty T a = option_fold id (TDummyId T, []) (vbpl_absval_ty_opt T a)"
 
 abbreviation type_of_vbpl_val :: "'a ty_repr_bpl \<Rightarrow> 'a vbpl_val \<Rightarrow> bpl_ty"
   where "type_of_vbpl_val T \<equiv> type_of_val (vbpl_absval_ty T)"
-                                                
+
 lemma type_of_vbpl_val_case_of:
   shows "(case v of LitV lit \<Rightarrow> TPrim (type_of_lit lit) | 
                         AbsV absv \<Rightarrow> (tcon_to_bplty \<circ> option_fold id (TDummyId T, [])) (vbpl_absval_ty_opt T absv)) =

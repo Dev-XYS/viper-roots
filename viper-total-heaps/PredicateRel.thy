@@ -1290,7 +1290,7 @@ lemma fold_stmt_rel:
       and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
-      and ArgsRestriction: "list_all no_unfolding_pure_exp e_args_vpr \<and> list_all no_perm_pure_exp e_args_vpr"
+      and ArgsRestriction: "list_all no_unfolding_pure_exp e_args_vpr \<and> list_all no_perm_pure_exp e_args_vpr \<and> list_all no_old_pure_exp e_args_vpr"
       and BodyNoUnfolding: "no_unfolding_assertion (syntactic_mult p pbody)"  \<comment> \<open>Should be lifted soon.\<close>
       and PermSimp: "e_p_vpr = ELit (LPerm p)" \<comment> \<open>We only support literals as the permission.\<close>
       and PermPos: "p > 0"
@@ -1309,7 +1309,11 @@ lemma fold_stmt_rel:
                   (\<lambda>\<omega>_def_\<omega> \<omega>_def_\<omega>'. fst \<omega>_def_\<omega> = fst \<omega>_def_\<omega>' \<and> inhale_pred_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr v_p_vpr (fst \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>'))
                   (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>4 \<gamma>\<^sub>5"
       and StepMaskUpdate:
-            "rel_general R' R' (=) (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>5 \<gamma>'"
+            "\<And>v_args_vpr.
+                rel_general (\<lambda>\<omega> ns. R' \<omega> ns \<and>
+                                    red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr) \<and>
+                                    get_fnm_total_full \<omega> (pid,v_args_vpr) \<noteq> None)
+                            R' (=) (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>5 \<gamma>'"
     shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Fold pid e_args_vpr (PureExp e_p_vpr)) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro)
   fix \<omega> ns \<omega>'
@@ -1441,10 +1445,15 @@ proof (rule stmt_rel_intro)
     by (metis ns\<^sub>4 fst_conv inhale_pred_normal_premise_def snd_conv)
 
   \<comment> \<open>Fifth step: known-folded permission mask update\<close>
-  with StepMaskUpdate[THEN rel_success_elim]
-  obtain ns' where
+  moreover have "get_fnm_total_full \<omega>' (pid,v_args) \<noteq> None"
+    using \<open>\<omega>' = _\<close>
+    by simp
+  ultimately obtain ns' where
     ns': "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>5, Normal ns\<^sub>5) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
-    by blast
+    using StepMaskUpdate[THEN rel_success_elim, where ?\<omega>=\<omega>' and ?\<omega>'=\<omega>']
+          eval_exhale_sat_helper_helper(2)[where ?\<omega>\<^sub>2=\<omega>', OF v_args_eval]
+          ArgsRestriction \<open>\<omega>' = _\<close> \<open>\<omega>1 = _\<close>
+    by (metis fold_rel fold_rel_normal_only_changes_mask)
 
   show "\<exists>ns'. red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
     apply (rule exI[of _ ns'])
