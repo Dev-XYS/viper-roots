@@ -171,44 +171,44 @@ proof -
   let ?ploc = "(pid,v_args_vpr)"
 
   obtain \<phi>_inh where \<omega>':
-    "(p > 0 \<longrightarrow> consistent_external_wrt_ploc ctxt_vpr \<phi>_inh ?ploc (Abs_preal p)) \<and>
-     get_hh_total \<phi>_inh = get_hh_total_full \<omega> \<and>
-     \<omega>' = (if p = 0 then \<omega> else add_to_lpm_nonzero_total_full \<omega> ?ploc (Abs_posreal (Abs_preal p)) (get_nm_total \<phi>_inh)) \<and>
-     StateCons \<omega>'"
-    by (smt (verit) * inhale_perm_single_pred_def inhale_pred_normal_premise_def mem_Collect_eq option_fold.simps(1) positive_real_preal zero_preal.abs_eq)
+    "consistent_external_wrt_ploc ctxt_vpr \<phi>_inh ?ploc (Abs_preal p)" and
+    "get_hh_total \<phi>_inh = get_hh_total_full \<omega>" and
+    "\<omega>' = (if Abs_preal p = 0 then \<omega> else add_to_lpm_nonzero_total_full \<omega> ?ploc (Abs_posreal (Abs_preal p)) (get_nm_total \<phi>_inh))" and
+    "StateCons \<omega>'"
+    by (smt (verit) * inhale_perm_single_pred_def inhale_pred_normal_premise_def mem_Collect_eq option_fold.simps(1))
 
   hence mh_same: "get_mh_total_full \<omega> = get_mh_total_full \<omega>'" and
         mp_rel: "get_mp_total_full \<omega>' = (get_mp_total_full \<omega>)( ?ploc := get_mp_total_full \<omega> ?ploc + Abs_preal p )"
      apply simp
     apply (cases "p = 0")
-    using \<omega>' zero_preal_def
+    using \<open>\<omega>' = _\<close> zero_preal_def
      apply force
-    using \<omega>'[THEN conjunct2, THEN conjunct2, THEN conjunct1]
+    using \<open>\<omega>' = _\<close>
     apply (simp del: add_to_lpm_nonzero_total_full.simps get_mp_total_full.simps)
     using add_to_lpm_nonzero_total_full__mp
-    by (metis * all_pos inhale_pred_normal_premise_def mem_Collect_eq order_less_le positive_real_preal posreal_to_preal(8))
+    by (metis all_pos mem_Collect_eq order_less_le posreal_to_preal(8))
 
   have \<omega>'_extcons: "consistent_state_rel_opt (state_rel_opt Tr) \<Longrightarrow>
     consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')"
     apply (cases "p = 0")
-     apply (metis InitRel' \<omega>' state_rel_consistent)
+     apply (metis InitRel' \<open>\<omega>' = _\<close> state_rel_consistent zero_preal.abs_eq)
   proof -
     assume "consistent_state_rel_opt (state_rel_opt Tr)"
       and "p \<noteq> 0"
     have "consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>)"
       using InitRel' \<open>consistent_state_rel_opt (state_rel_opt Tr)\<close> state_rel_consistent
       by blast
-    have "\<omega>' = add_to_lpm_nonzero_total_full \<omega> ?ploc (Abs_posreal (Abs_preal p)) (get_nm_total \<phi>_inh)"
-      by (simp add: \<omega>' \<open>p \<noteq> 0\<close>)
+    have 3: "\<omega>' = add_to_lpm_nonzero_total_full \<omega> ?ploc (Abs_posreal (Abs_preal p)) (get_nm_total \<phi>_inh)"
+      by (meson * \<open>\<omega>' = _\<close> \<open>p \<noteq> 0\<close> inhale_pred_normal_premise_def linorder_neqE_linordered_idom linorder_not_le positive_real_preal)
     have "consistent_external_wrt_ploc ctxt_vpr \<phi>_inh ?ploc (Abs_preal p)"
       using * \<omega>' \<open>p \<noteq> 0\<close> inhale_pred_normal_premise_def
       by force
     hence 2: "consistent_external_wrt_ploc ctxt_vpr
                 \<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = get_nm_total \<phi>_inh \<rparr>
                 ?ploc (Abs_preal p)"
-      by (metis (full_types) \<omega>' old.unit.exhaust total_state.surjective)
+      by (metis (full_types) \<open>get_hh_total \<phi>_inh = get_hh_total_full \<omega>\<close> old.unit.exhaust total_state.surjective)
     show ?thesis
-      unfolding \<open>\<omega>' = _\<close>
+      unfolding 3
       apply (rule extcons_preserved_by_add_to_lpm_nonzero)
         apply fact
        apply (rule extcons_fun_interp_irrelevant[of ctxt_vpr])
@@ -294,7 +294,11 @@ proof -
     apply (simp only: state_rel0_def, intro conjI)
     using state_rel_wf_mask_simple[OF InitRel] \<omega>'
                      apply (simp, simp)
-    using \<omega>'_extcons \<omega>'
+    using mh_same
+                     apply auto[1]
+    using \<open>valid_heap_mask (get_mh_total_full \<omega>)\<close> mh_same
+                    apply force
+    using \<omega>'_extcons \<open>StateCons \<omega>'\<close>
                    apply blast
                   apply (simp add: TyInterp)
                  apply (rule store_rel_stable[where ?\<omega>=\<omega> and ?ns=ns])
@@ -304,12 +308,11 @@ proof -
                  apply (metis InitRel MaskVar state_rel_disj_mask_store update_var_other)
                 apply (simp add: Disj)
                apply (simp, simp, simp)
-            defer defer defer defer
-    subgoal sorry
-    apply (metis InitRel MaskVar field_rel_stable mask_var_disjoint state_rel_field_rel state_rel_state_rel0 update_var_other)
-    apply (metis InitRel MaskVar boogie_const_rel_stable mask_var_disjoint state_rel_boogie_const_rel state_rel_state_rel0 update_var_other)
-    defer
-    apply (metis (no_types, lifting) InitRel' MaskVar aux_vars_pred_sat_def domI mask_var_disjoint state_rel_aux_pred_sat_lookup state_rel_state_rel0 update_var_other)
+            defer defer defer defer defer
+            apply (metis InitRel MaskVar field_rel_stable mask_var_disjoint state_rel_field_rel state_rel_state_rel0 update_var_other)
+           apply (metis InitRel MaskVar boogie_const_rel_stable mask_var_disjoint state_rel_boogie_const_rel state_rel_state_rel0 update_var_other)
+          defer
+          apply (metis (no_types, lifting) InitRel' MaskVar aux_vars_pred_sat_def domI mask_var_disjoint state_rel_aux_pred_sat_lookup state_rel_state_rel0 update_var_other)
   proof -
     let ?ns' = "update_var (var_context ctxt_bpl) ns m_bpl
                   (AbsV (AMask (mb((Null, PredSnapshotField (pid,v_args_vpr)) :=
@@ -348,6 +351,13 @@ proof -
       apply (subst MaskVarDefSame)
       using MaskRel
       by blast
+
+    have "\<omega>' \<ge> \<omega>"
+      by (meson * inhale_perm_single_pred_mono inhale_pred_normal_premise_def)
+    then show "heap_knownfolded_var_rel (knownfolded_state_rel_opt (state_rel_opt Tr)) Pr
+            (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>' ?ns'"
+      using state_rel_heap_knownfolded_var_rel[OF InitRel] LookupMask \<open>\<omega>' = _\<close>
+      by (metis (no_types, lifting) InitRel' MaskVar heap_knownfolded_var_rel_stable_larger_\<omega> mask_var_disjoint state_rel_state_rel0 update_var_other)
 
     show "state_well_typed (type_interp ctxt_bpl) (var_context ctxt_bpl) [] ?ns'"
       apply (rule state_well_typed_upd_2)

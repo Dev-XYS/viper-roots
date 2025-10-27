@@ -92,7 +92,14 @@ proof -
     using * pred_folds_perm_mh_stable assms(2,3)
     unfolding heap_knownfolded_rel_def
     by fastforce
-qed    
+qed
+
+lemma heap_knownfolded_var_rel_stable_larger_\<omega>:
+  assumes "heap_knownfolded_var_rel opt Pr \<Lambda> FieldTr hvar \<omega> ns"
+      and "\<omega> \<le> \<omega>'"
+      and "lookup_var \<Lambda> ns hvar = lookup_var \<Lambda> ns' hvar"
+    shows "heap_knownfolded_var_rel opt Pr \<Lambda> FieldTr hvar \<omega>' ns'"
+  sorry
 
 
 end
