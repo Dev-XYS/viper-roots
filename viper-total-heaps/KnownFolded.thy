@@ -37,6 +37,36 @@ lemma pred_folds_perm_mh_stable:
   done
 
 
+lemma pred_folds_perm_stable_larger_nm:
+  assumes "pred_folds_perm lp l nm"
+      and "nm \<le> nm'"
+    shows "pred_folds_perm lp l nm'"
+  using assms
+proof (induction arbitrary: nm' rule: pred_folds_perm.inducts)
+  case (ContainsPermDirect nm p nm_sub)
+  obtain p' nm_sub' where "get_fnm_nm nm' lp = Some (p', nm_sub')" and "nm_sub \<le> nm_sub'"
+    apply (cases nm; cases nm')
+    using ContainsPermDirect.prems[unfolded less_eq_nested_mask_def]
+    apply simp
+    by (smt (verit, del_insts) ContainsPermDirect.hyps(1) get_fnm_nm.simps has_Some_iff less_eq_nested_mask_def option_fold.simps(1) order_le_less prod.exhaust_sel snd_conv)
+  show ?case
+    apply (rule pred_folds_perm.ContainsPermDirect)
+     apply fact
+    by (meson ContainsPermDirect.hyps(2) \<open>nm_sub \<le> nm_sub'\<close> dual_order.strict_trans1 le_funE less_eq_nested_maskD)
+next
+  case (ContainsPermNested nm lp' p nm_sub)
+  obtain mh fnm where "nm = NM mh fnm" using nm_get_eq by blast
+  obtain mh' fnm' where "nm' = NM mh' fnm'" using nm_get_eq by blast
+  obtain p' nm_sub' where "get_fnm_nm nm' lp' = Some (p', nm_sub')" and "nm_sub \<le> nm_sub'"
+    using ContainsPermNested.prems[unfolded less_eq_nested_mask_def \<open>nm = _\<close> \<open>nm' = _\<close>, simplified]
+    by (smt (verit) ContainsPermNested.hyps(1) \<open>nm = NM mh fnm\<close> \<open>nm' = NM mh' fnm'\<close> get_fnm_nm.simps has_Some_iff less_eq_nested_mask_def option_fold.simps(1) order_le_less prod.exhaust_sel snd_conv)
+  show ?case
+    apply (rule pred_folds_perm.ContainsPermNested)
+     apply fact
+    by (simp add: ContainsPermNested.IH \<open>nm_sub \<le> nm_sub'\<close>)
+qed
+
+
 definition heap_knownfolded_rel :: "ViperLang.program \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> 'a nested_mask \<Rightarrow> 'a bpl_heap_ty \<Rightarrow> bool"
   where "heap_knownfolded_rel Pr tr_field nm hb \<equiv>
     \<forall> lp kfm l field_ty_vpr field_bpl.
@@ -94,12 +124,21 @@ proof -
     by fastforce
 qed
 
+
+lemma heap_knownfolded_rel_stable_larger_nm:
+  assumes "heap_knownfolded_rel Pr tr_field nm hb"
+      and "nm \<le> nm'"
+    shows "heap_knownfolded_rel Pr tr_field nm' hb"
+  using pred_folds_perm_stable_larger_nm
+  by (smt (verit, ccfv_threshold) assms heap_knownfolded_rel_def)
+
+
 lemma heap_knownfolded_var_rel_stable_larger_\<omega>:
   assumes "heap_knownfolded_var_rel opt Pr \<Lambda> FieldTr hvar \<omega> ns"
       and "\<omega> \<le> \<omega>'"
       and "lookup_var \<Lambda> ns hvar = lookup_var \<Lambda> ns' hvar"
     shows "heap_knownfolded_var_rel opt Pr \<Lambda> FieldTr hvar \<omega>' ns'"
-  sorry
+  by (metis (full_types) assms heap_knownfolded_rel_stable_larger_nm heap_knownfolded_var_rel_def less_eq_full_total_stateD_2)
 
 
 end
