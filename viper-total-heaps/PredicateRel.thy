@@ -1,5 +1,5 @@
 theory PredicateRel
-  imports InhaleRel ExhaleRel StmtRel TotalExtConsPreservation
+  imports InhaleRel ExhaleRel StmtRel TotalExtConsPreservation BoogieSyntaxBasedProperties
 begin
 
 
@@ -539,16 +539,27 @@ lemma unfold_stmt_rel:
       and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
+      and StateRelImpliesKFRel: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> heap_knownfolded_var_rel opt (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns"
+      and StateRelWeakening: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> R\<^sub>w \<omega> ns"
       and ArgsRestriction: "list_all no_unfolding_pure_exp e_args \<and> list_all no_perm_pure_exp e_args"
       and BodyNoUnfolding: "no_unfolding_assertion (syntactic_mult p pbody)"  \<comment> \<open>Should be lifted soon.\<close>
       and PermSimp: "e_p = ELit (LPerm p)" \<comment> \<open>We only support literals as the permission.\<close>
       and PermPos: "p > 0"
       and StepExhale:
-          "rel_general R R'
+          "rel_general R\<^sub>w R\<^sub>w
              (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> (RNormal \<omega>'))
              (\<lambda>\<omega>. red_exhale ctxt_vpr \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> RFailure)
              P ctxt_bpl \<gamma> \<gamma>\<^sub>2"
-      and StepInhale: "inhale_rel R' (assertion_framing_state ctxt_vpr StateCons) ctxt_vpr StateCons P ctxt_bpl (syntactic_mult p (substitute_args_assertion pbody e_args)) \<gamma>\<^sub>2 \<gamma>'"
+      and StepInhale: "inhale_rel R\<^sub>w (assertion_framing_state ctxt_vpr StateCons) ctxt_vpr StateCons P ctxt_bpl (syntactic_mult p (substitute_args_assertion pbody e_args)) \<gamma>\<^sub>2 \<gamma>\<^sub>3"
+      and StepKFUpdate:
+          "rel_general (uncurry (\<lambda>\<omega>\<^sub>0 \<omega> ns. R\<^sub>w \<omega> ns \<and>
+                                           heap_knownfolded_var_rel opt (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega>\<^sub>0 ns))
+                       (uncurry (\<lambda>\<omega>\<^sub>0 \<omega> ns. R' \<omega> ns))
+                       (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
+                       (\<lambda>\<omega>\<^sub>0_\<omega>. False)
+                       P ctxt_bpl \<gamma>\<^sub>3 \<gamma>'"
+      and NoHeapAssignBetween:
+          "contains_no_heap_assignment_until hvar \<gamma>\<^sub>3 \<gamma>"
     shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Unfold pid e_args (PureExp e_p)) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro)
   \<comment> \<open>Specialize predicate body restrictions and self-framing to the predicate in consideration\<close>
@@ -575,6 +586,11 @@ proof (rule stmt_rel_intro)
   have perm_suff: "get_mp_total_full \<omega> (pid,v_args) \<ge> Abs_preal v_p"
     using unfold_rel_perm_sufficient[OF UnfoldRel]
     by simp
+
+  have "R\<^sub>w \<omega> ns"
+    by (simp add: StateRelWeakening \<open>R \<omega> ns\<close>)
+  have \<omega>\<^sub>0_kfrel: "heap_knownfolded_var_rel opt (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns"
+    by (simp add: StateRelImpliesKFRel \<open>R \<omega> ns\<close>)
 
   from \<open>R \<omega> ns\<close> have ExtCons: "consistent_external ctxt_vpr (get_total_full \<omega>)"
     using StateRelImpliesExtCons
@@ -611,8 +627,8 @@ proof (rule stmt_rel_intro)
     using ExhAccPred
     by (metis PredArgs PredBody PredDecl args_well_ty e_args_eval e_p_eval)
 
-  obtain ns\<^sub>2 where bpl_step_exh: "red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>\<^sub>2, Normal ns\<^sub>2) \<and> R' ?\<omega>\<^sub>d ns\<^sub>2"
-    using rel_success_elim[OF StepExhale \<open>R \<omega> ns\<close> step_exh]
+  obtain ns\<^sub>2 where bpl_step_exh: "red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>\<^sub>2, Normal ns\<^sub>2) \<and> R\<^sub>w ?\<omega>\<^sub>d ns\<^sub>2"
+    using rel_success_elim[OF StepExhale \<open>R\<^sub>w \<omega> ns\<close> step_exh]
     by blast
 
   \<comment> \<open>Simplification: permission is constant\<close>
@@ -666,13 +682,25 @@ proof (rule stmt_rel_intro)
   have \<omega>\<^sub>d_rel: "\<omega>\<lparr> get_total_full := \<phi>\<^sub>d \<rparr> = \<lparr> get_store_total = get_store_total \<omega>, get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>\<^sub>d \<rparr>"
     by simp
 
-  obtain ns' where "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>2, Normal ns\<^sub>2) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
+  obtain ns\<^sub>3 where bpl_step_inh: "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>2, Normal ns\<^sub>2) (\<gamma>\<^sub>3, Normal ns\<^sub>3)" and "R\<^sub>w \<omega>' ns\<^sub>3"
     using inhale_rel_normal_elim[OF StepInhale bpl_step_exh[THEN conjunct2], unfolded \<omega>\<^sub>d_rel, OF FramingSubst step_inhale[unfolded inh_perm_const, simplified]]
     unfolding \<omega>'_rel
-    by presburger
+    by blast
 
+  \<comment> \<open>Step 3: known-folded permission update\<close>
+
+  have \<omega>\<^sub>0_ns\<^sub>3_kfrel: "heap_knownfolded_var_rel opt (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns\<^sub>3"
+    using \<omega>\<^sub>0_kfrel bpl_no_heap_assignment[OF NoHeapAssignBetween]
+    unfolding heap_knownfolded_var_rel_def
+    by (metis bpl_step_exh bpl_step_inh red_ast_bpl_transitive)
+
+  obtain ns' where bpl_step_kf: "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>3, Normal ns\<^sub>3) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
+    using rel_success_elim[OF StepKFUpdate, where ?\<omega>="(\<omega>,\<omega>')", simplified, OF conjI[OF \<open>R\<^sub>w \<omega>' ns\<^sub>3\<close> \<omega>\<^sub>0_ns\<^sub>3_kfrel]]
+    by auto
+  
+  \<comment> \<open>Combine\<close>
   thus "\<exists>ns'. red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
-    using bpl_step_exh red_ast_bpl_transitive
+    using bpl_step_exh bpl_step_inh red_ast_bpl_transitive
     by blast
 
 next
@@ -699,7 +727,7 @@ next
       using ExhAccPred[OF _ e_args_eval e_p_eval PredDecl _ PredBody, where ?mp="get_mp_total_full \<omega>"] v_p_fail' PredDecl args_well_ty pdecl'
       by auto
     show ?thesis
-      using rel_failure_elim[OF StepExhale \<open>R \<omega> ns\<close> step_exhale]
+      using rel_failure_elim[OF StepExhale _ step_exhale] StateRelWeakening \<open>R \<omega> ns\<close>
       by blast
   next
     case RedSubExpressionFailure
@@ -708,7 +736,7 @@ next
       using RedSubExpressionFailure
       by simp_all
     show ?thesis
-      using rel_failure_elim[OF StepExhale \<open>R \<omega> ns\<close> step_exhale]
+      using rel_failure_elim[OF StepExhale _ step_exhale] StateRelWeakening \<open>R \<omega> ns\<close>
       by blast
   qed
 qed
