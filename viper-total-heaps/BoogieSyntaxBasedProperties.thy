@@ -103,24 +103,152 @@ lemma
   done
 
 
-lemma bpl_red_final_normal_implies_initial_normal:
-  assumes "red_bigblock_small_multi P ctxt_bpl (\<gamma>, s) (\<gamma>', Normal ns')"
-  shows "\<exists>ns. s = Normal ns"
-  sorry
+
+subsection \<open>Auxiliary Definitions Lemmas\<close>
 
 
-
-subsection \<open>Decreasing Measure\<close>
-
-
-fun sum :: "nat list \<Rightarrow> nat" where
-  "sum xs = foldl (+) 0 xs"
+abbreviation natlist_sum :: "nat list \<Rightarrow> nat" where
+  "natlist_sum xs \<equiv> foldr (+) xs 0"
 
 
 fun flatten_cont :: "cont \<Rightarrow> bigblock list" where
   "flatten_cont KStop = []"
-| "flatten_cont (KEndBlock cont) = flatten_cont cont"
+| "flatten_cont (KEndBlock cont) = empty_bigblock None # flatten_cont cont"
 | "flatten_cont (KSeq bb cont) = bb # flatten_cont cont"
+
+
+fun pair_smaller :: "nat \<times> nat \<Rightarrow> nat \<times> nat \<Rightarrow> bool" where
+  "pair_smaller (a,b) (c,d) = (a < c \<or> (a = c \<and> b < d))"
+
+
+lemma pair_smaller_transitive:
+  assumes "pair_smaller p1 p2" and "pair_smaller p2 p3"
+  shows "pair_smaller p1 p3"
+  apply (cases p1, cases p2, cases p3)
+  using assms
+  by auto
+
+
+lemma convert_list_to_cont_flatten:
+  shows "flatten_cont (convert_list_to_cont bbs cont) = bbs @ flatten_cont cont"
+  by (induction bbs, auto)
+
+
+lemma natlist_sum_append:
+  shows "natlist_sum (xs @ ys) = natlist_sum xs + natlist_sum ys"
+  by (induction xs, auto)
+
+
+lemma red_bigblock_final_normal_implies_initial_not_fail_or_magic:
+  assumes "A,M,\<Lambda>,\<Gamma>,\<Omega>,T \<turnstile> \<langle>(bb, cont, s)\<rangle> \<longrightarrow> (bb', cont', Normal ns')"
+  shows "s \<noteq> Failure \<and> s \<noteq> Magic"
+  using assms
+  by (cases, auto)
+
+
+lemma red_bigblock_small_final_normal_implies_initial_not_fail_or_magic:
+  assumes "red_bigblock_small P ctxt_bpl ps ps'"
+      and "ps = (\<gamma>, s)"
+      and "ps' = (\<gamma>', Normal ns')"
+    shows "s \<noteq> Failure \<and> s \<noteq> Magic"
+  using assms
+proof cases
+  case (RedBigBlockSmallSimpleCmd c s s' name cs str tr cont)
+  then show ?thesis
+    using assms(2,3) failure_stays_cmd magic_stays_cmd by blast
+next
+  case (RedBigBlockSmallNoSimpleCmdOneStep name str tr cont s b' cont' s')
+  then show ?thesis
+    by (metis Pair_inject assms(2,3) red_bigblock_final_normal_implies_initial_not_fail_or_magic)
+qed
+
+
+lemma bpl_red_final_normal_implies_initial_not_fail_or_magic:
+  assumes "red_bigblock_small_multi P ctxt_bpl ps ps'"
+      and "ps = (\<gamma>, s)"
+      and "ps' = (\<gamma>', Normal ns')"
+    shows "s \<noteq> Failure \<and> s \<noteq> Magic"
+  using assms
+proof (induction arbitrary: \<gamma> s rule: converse_rtranclp_induct)
+  case base
+  then show ?case
+    by auto
+next
+  case (step ps ps'')
+  obtain \<gamma>'' s'' where "ps'' = (\<gamma>'', s'')"
+    by fastforce
+  have "s'' \<noteq> Failure \<and> s'' \<noteq> Magic"
+    apply (rule step.IH)
+    by fact+
+  thus ?case
+    using red_bigblock_small_final_normal_implies_initial_not_fail_or_magic
+    by (metis \<open>ps'' = _\<close> state.exhaust step.hyps(1) step.prems(1))
+qed
+
+
+lemma bpl_red_final_normal_implies_initial_normal:
+  assumes "red_bigblock_small_multi P ctxt_bpl (\<gamma>, s) (\<gamma>', Normal ns')"
+  shows "\<exists>ns. s = Normal ns"
+  by (metis assms bpl_red_final_normal_implies_initial_not_fail_or_magic state.exhaust)
+
+
+
+subsection \<open>Restriction on Program Points\<close>
+
+
+fun bigblock_restriction where
+  "bigblock_restriction (BigBlock name cs None None) = True"
+| "bigblock_restriction (BigBlock name cs (Some (ParsedIf bb_guard then_bbs else_bbs)) None) = (list_all id (map bigblock_restriction then_bbs) \<and> list_all id (map bigblock_restriction else_bbs))"
+| "bigblock_restriction _ = False"
+
+
+fun program_point_restriction where
+  "program_point_restriction (bb, cont) = (bigblock_restriction bb \<and> list_all id (map bigblock_restriction (flatten_cont cont)))"
+
+
+lemma red_bigblock_preserves_restriction:
+  assumes "A,M,\<Lambda>,\<Gamma>,\<Omega>,T \<turnstile> \<langle>(bb, cont, Normal ns)\<rangle> \<longrightarrow> (bb', cont', Normal ns')"
+      and "program_point_restriction (bb, cont)"
+    shows "program_point_restriction (bb', cont')"
+  using assms(1)
+proof (cases)
+  case (RedSimpleCmds cs bb_name str_cmd tr_cmd)
+  then show ?thesis
+    using assms(2) bigblock_restriction.elims(2)
+    by fastforce
+next
+  case (RedParsedIfTrue bb_guard bb_name then_bbs elsebigblocks)
+  then show ?thesis
+    using assms(2)
+    unfolding program_point_restriction.simps
+    by (simp add: convert_list_to_cont_flatten)
+next
+  case (RedParsedIfFalse bb_guard bb_name thenbigblocks else_bbs)
+  then show ?thesis
+    using assms(2)
+    unfolding program_point_restriction.simps
+    by (simp add: convert_list_to_cont_flatten)
+qed (insert assms, auto)
+
+
+lemma red_bigblock_small_preserves_restriction:
+  assumes "program_point_restriction \<gamma>"
+      and "red_bigblock_small P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns')"
+    shows "program_point_restriction \<gamma>'"
+proof (cases rule: red_bigblock_small.cases[OF assms(2)])
+  case (1 c s s' name cs str tr cont)
+  then show ?thesis
+    using assms(1)
+    by (fastforce elim: program_point_restriction.elims bigblock_restriction.elims)
+next
+  case (2 name str tr cont s b' cont' s')
+  then show ?thesis
+    by (metis Pair_inject assms(1) red_bigblock_preserves_restriction)
+qed
+
+
+
+subsection \<open>Decreasing Measure\<close>
 
 
 (*
@@ -139,54 +267,101 @@ fun max_cmd_count :: "bigblock \<times> cont \<Rightarrow> nat" where
 fun bigblock_count :: "bigblock \<Rightarrow> nat" where
   "bigblock_count (BigBlock name cs None None) = 1"
 | "bigblock_count (BigBlock name cs (Some (ParsedIf bb_guard then_bbs else_bbs)) None) =
-     1 + max (sum (map bigblock_count then_bbs)) (sum (map bigblock_count else_bbs))"
+     1 + max (natlist_sum (map bigblock_count then_bbs)) (natlist_sum (map bigblock_count else_bbs))"
 | "bigblock_count _ = 1"
 
 
 fun program_point_measure :: "bigblock \<times> cont \<Rightarrow> nat \<times> nat" where
-  "program_point_measure (BigBlock name cs str tr, cont) = (sum (map bigblock_count (flatten_cont cont)), length cs)"
-
-
-fun pair_smaller :: "nat \<times> nat \<Rightarrow> nat \<times> nat \<Rightarrow> bool" where
-  "pair_smaller (a,b) (c,d) = (a < c \<or> (a = c \<and> b < d))"
-
-
-lemma pair_smaller_transitive:
-  assumes "pair_smaller p1 p2" and "pair_smaller p2 p3"
-  shows "pair_smaller p1 p3"
-  apply (cases p1, cases p2, cases p3)
-  using assms
-  by auto
+  "program_point_measure (BigBlock name cs str tr, cont) = (bigblock_count (BigBlock name cs str tr) + natlist_sum (map bigblock_count (flatten_cont cont)), length cs)"
 
 
 lemma red_bigblock_decreases_measure:
-  assumes "A,M,\<Lambda>,\<Gamma>,\<Omega>,T \<turnstile> \<langle>(bb, cont, s)\<rangle> \<longrightarrow> (bb', cont', s')"
-  shows "pair_smaller (program_point_measure (bb', cont')) (program_point_measure (bb, cont))"
-  sorry
+  assumes "A,M,\<Lambda>,\<Gamma>,\<Omega>,T \<turnstile> \<langle>(bb, cont, Normal ns)\<rangle> \<longrightarrow> (bb', cont', Normal ns')"
+      and "bb = BigBlock bb_name cs str None"
+      and "str \<noteq> None \<Longrightarrow> \<exists>guard then_bbs else_bbs. str = Some (ParsedIf guard then_bbs else_bbs)"
+    shows "pair_smaller (program_point_measure (bb', cont')) (program_point_measure (bb, cont))"
+  using assms(1)
+proof (cases)
+  case (RedSimpleCmds cs bb_name str_cmd tr_cmd)
+  then show ?thesis
+    using assms(2,3)
+    by force
+next
+  case (RedSkip bb_name)
+  show ?thesis
+    unfolding RedSkip
+    apply (cases bb')
+    by simp
+next
+  case (RedSkipEndBlock bb_name)
+  show ?thesis
+    unfolding RedSkipEndBlock
+    by simp
+next
+  case (RedParsedIfTrue bb_guard bb_name then_bbs elsebigblocks)
+  show ?thesis
+    unfolding RedParsedIfTrue
+    apply simp
+    apply (cases bb')
+    apply (rename_tac guard cs str tr)
+    apply (case_tac str; simp)
+     apply (unfold convert_list_to_cont_flatten map_append natlist_sum_append)
+    by linarith+
+next
+  case (RedParsedIfFalse bb_guard bb_name thenbigblocks else_bbs)
+  show ?thesis
+    unfolding RedParsedIfFalse
+    apply simp
+    apply (cases bb')
+    apply (rename_tac guard cs str tr)
+    apply (case_tac str; simp)
+     apply (unfold convert_list_to_cont_flatten map_append natlist_sum_append)
+    by linarith+
+qed (insert assms, auto)
 
 
 lemma red_bigblock_small_decreases_measure:
-  assumes "red_bigblock_small P ctxt (\<gamma>, s) (\<gamma>', s')"
-  shows "pair_smaller (program_point_measure \<gamma>') (program_point_measure \<gamma>)"
-  apply (cases rule: red_bigblock_small.cases[OF assms])
-   apply simp
-  by (metis Pair_inject red_bigblock_decreases_measure)
+  assumes "red_bigblock_small P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns')"
+      and "\<gamma> = (BigBlock bb_name cs str None, cont)"
+      and "str \<noteq> None \<Longrightarrow> \<exists>guard then_bbs else_bbs. str = Some (ParsedIf guard then_bbs else_bbs)"
+    shows "pair_smaller (program_point_measure \<gamma>') (program_point_measure \<gamma>)"
+proof (cases rule: red_bigblock_small.cases[OF assms(1)])
+  case (1 c s s' name cs str tr cont)
+  then show ?thesis
+    apply simp
+    apply (rule disjI2)
+    apply (case_tac str; case_tac tr; simp)
+    apply (rename_tac str')
+    by (case_tac str'; simp)
+next
+  case (2 name str tr cont s b' cont' s')
+  then show ?thesis
+    by (metis Pair_inject assms(2,3) red_bigblock_decreases_measure)
+qed
 
 
 lemma tranclp_red_bigblock_small_decreases_measure:
-  assumes "tranclp (red_bigblock_small P ctxt) s1 s2"
-  shows "pair_smaller (program_point_measure (fst s2)) (program_point_measure (fst s1))"
+  assumes "tranclp (red_bigblock_small P ctxt) s s'"
+      and "s = (\<gamma>, Normal ns)"
+      and "s' = (\<gamma>', Normal ns')"
+      and "program_point_restriction \<gamma>"
+    shows "pair_smaller (program_point_measure \<gamma>') (program_point_measure \<gamma>)"
   using assms
-proof (induction arbitrary: rule: converse_tranclp_induct)
-  case (base s1)
-  then show ?case
-    by (metis prod.exhaust_sel red_bigblock_small_decreases_measure)
+proof (induction arbitrary: \<gamma> ns rule: converse_tranclp_induct)
+  case (base s)
+  show ?case
+    using base.hyps[unfolded base.prems, THEN red_bigblock_small_decreases_measure]
+    by (metis base.prems(3) bigblock_restriction.elims(2) program_point_restriction.elims(2))
 next
-  case (step s1 s1')
+  case (step s s'')
+  obtain \<gamma>'' ns'' where "s'' = (\<gamma>'', Normal ns'')"
+    by (metis bpl_red_final_normal_implies_initial_normal old.prod.exhaust r_into_rtranclp step.hyps(2) step.prems(2) tranclp_rtranclp_absorb)
   show ?case
     apply (rule pair_smaller_transitive)
-     apply fact
-    by (metis prod.collapse red_bigblock_small_decreases_measure step.hyps(1))
+     apply (rule step.IH[OF \<open>s'' = _\<close> \<open>s' = _\<close>])
+    using \<open>s'' = _\<close> red_bigblock_small_preserves_restriction step.hyps(1) step.prems(1,3)
+     apply blast
+    by (metis \<open>s'' = _\<close> bigblock_restriction.elims(2) program_point_restriction.elims(2) red_bigblock_small_decreases_measure step.hyps(1) step.prems(1,3))
 qed
 
 
@@ -196,6 +371,7 @@ subsection \<open>Relation between Program Points\<close>
 lemma bpl_no_heap_assignment:
   assumes
     NoHeapAssign: "contains_no_heap_assignment_until hvar \<gamma>' \<gamma>" and
+    ProgramPointRestriction: "program_point_restriction \<gamma>" and
     BplRed: "red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>', Normal ns')"
   shows "lookup_var (var_context ctxt_bpl) ns hvar = lookup_var (var_context ctxt_bpl) ns' hvar"
   using assms
@@ -207,7 +383,7 @@ proof (induction arbitrary: ns)
     by auto
 next
   case (NoAssignSimpleCmd c name cs str tr cont)
-  note NoAssignSimpleCmd.prems[unfolded red_ast_bpl_def]
+  note NoAssignSimpleCmd.prems(2)[unfolded red_ast_bpl_def]
   then show ?case
   proof (cases rule: converse_rtranclpE)
     case base
@@ -221,18 +397,18 @@ next
     proof (cases)
       case (RedAssertOk e)
       then show ?thesis
-        by (metis NoAssignSimpleCmd.IH \<open>config = _\<close> step(2) red_ast_bpl_def)
+        by (metis NoAssignSimpleCmd.IH NoAssignSimpleCmd.prems(1) \<open>config = _\<close> step(1,2) red_ast_bpl_def red_bigblock_small_preserves_restriction)
     next
       case (RedAssumeOk e)
       then show ?thesis
-        by (metis NoAssignSimpleCmd.IH \<open>config = _\<close> step(2) red_ast_bpl_def)
+        by (metis NoAssignSimpleCmd.IH NoAssignSimpleCmd.prems(1) \<open>config = _\<close> step(1,2) red_ast_bpl_def red_bigblock_small_preserves_restriction)
     next
       case (RedAssign x ty v e)
       moreover have "x \<noteq> hvar"
         using NoAssignSimpleCmd.hyps(1) RedAssign(1)
         by blast
       ultimately show ?thesis
-        by (metis NoAssignSimpleCmd.IH \<open>config = _\<close> step(2) red_ast_bpl_def update_var_other)
+        by (metis NoAssignSimpleCmd.IH NoAssignSimpleCmd.prems(1) \<open>config = _\<close> step(1,2) red_ast_bpl_def red_bigblock_small_preserves_restriction update_var_other)
     next
       case (RedHavocNormal x ty w v)
       then show ?thesis
@@ -241,7 +417,7 @@ next
   qed
 next
   case (NoAssignIf then_bb cont else_bb name guard)
-  note NoAssignIf.prems[unfolded red_ast_bpl_def]
+  note NoAssignIf.prems(2)[unfolded red_ast_bpl_def]
   then show ?case
   proof (cases rule: converse_rtranclpE)
     case base
@@ -255,16 +431,16 @@ next
     proof (cases)
       case RedParsedIfTrue
       thus ?thesis
-        by (metis NoAssignIf.IH(1) \<open>config = _\<close> convert_list_to_cont.simps(1) step(2) red_ast_bpl_def)
+        by (metis NoAssignIf.IH(1) NoAssignIf.prems(1) \<open>config = _\<close> convert_list_to_cont.simps(1) step(1,2) red_ast_bpl_def red_bigblock_small_preserves_restriction)
     next
       case RedParsedIfFalse
       thus ?thesis
-        by (metis NoAssignIf.IH(2) \<open>config = _\<close> convert_list_to_cont.simps(1) step(2) red_ast_bpl_def)
+        by (metis NoAssignIf.IH(2) NoAssignIf.prems(1) \<open>config = _\<close> convert_list_to_cont.simps(1) step(1,2) red_ast_bpl_def red_bigblock_small_preserves_restriction)
     qed auto
   qed
 next
   case (NoAssignCont b cont name)
-  note NoAssignCont.prems[unfolded red_ast_bpl_def]
+  note NoAssignCont.prems(2)[unfolded red_ast_bpl_def]
   then show ?case
   proof (cases rule: converse_rtranclpE)
     case base

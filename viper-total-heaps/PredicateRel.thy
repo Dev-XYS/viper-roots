@@ -560,6 +560,7 @@ lemma unfold_stmt_rel:
                        P ctxt_bpl \<gamma>\<^sub>3 \<gamma>'"
       and NoHeapAssignBetween:
           "contains_no_heap_assignment_until hvar \<gamma>\<^sub>3 \<gamma>"
+      and PPSyntacticRestriction: "program_point_restriction \<gamma>"
     shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Unfold pid e_args (PureExp e_p)) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro)
   \<comment> \<open>Specialize predicate body restrictions and self-framing to the predicate in consideration\<close>
@@ -690,7 +691,7 @@ proof (rule stmt_rel_intro)
   \<comment> \<open>Step 3: known-folded permission update\<close>
 
   have \<omega>\<^sub>0_ns\<^sub>3_kfrel: "heap_knownfolded_var_rel opt (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns\<^sub>3"
-    using \<omega>\<^sub>0_kfrel bpl_no_heap_assignment[OF NoHeapAssignBetween]
+    using \<omega>\<^sub>0_kfrel bpl_no_heap_assignment[OF NoHeapAssignBetween PPSyntacticRestriction]
     unfolding heap_knownfolded_var_rel_def
     by (metis bpl_step_exh bpl_step_inh red_ast_bpl_transitive)
 
