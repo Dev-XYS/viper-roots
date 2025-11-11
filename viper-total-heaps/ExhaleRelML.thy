@@ -320,7 +320,8 @@ ML \<open>
     (Rmsg' "exh pred upd PlocBpl" (simp_tac_with_thms [] ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd PlocRel" (prove_ploc_rel ctxt info exp_rel_info) ctxt) THEN'
     (Rmsg' "exh pred upd AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
-    (Rmsg' "exh pred upd ProgEq" (assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm info] ctxt) ctxt)
+    (Rmsg' "exh pred upd ProgEq" (assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "exh pred upd KFRelOff" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt)
 
   (* This tactic is not used (and not verified) at the moment. The exhale in unfold uses a different one. *)
   fun atomic_exhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) exh_pred_acc_hint =

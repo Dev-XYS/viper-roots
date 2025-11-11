@@ -1062,7 +1062,9 @@ lemma exhale_rel_pred_acc_upd_rel:
     PlocRel: "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl" and
 
     AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep" and
-    ProgEq: "program_total ctxt_vpr = Pr"
+    ProgEq: "program_total ctxt_vpr = Pr" and
+
+    KFRelOff: "\<not> (kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr)))"
 
   shows "rel_general R R'
            (\<lambda>\<omega> \<omega>'. exhale_pred_acc_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr p \<omega> \<omega> \<omega>')
@@ -1209,7 +1211,7 @@ proof -
                 apply (simp add: Disj)
                apply (simp, simp, simp)
             defer defer defer defer
-    subgoal sorry
+    using KFRelOff heap_knownfolded_var_rel_def apply blast
            apply (metis InitRel MaskVar field_rel_stable mask_var_disjoint state_rel_field_rel state_rel_state_rel0 update_var_other)
           apply (metis InitRel MaskVar boogie_const_rel_stable mask_var_disjoint state_rel_boogie_const_rel state_rel_state_rel0 update_var_other)
          defer
