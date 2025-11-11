@@ -1861,14 +1861,15 @@ proof -
 
     show "heap_var_rel Pr (var_context ctxt_bpl) TyRep (field_translation Tr) (heap_var_def Tr) \<omega>def' ?ns'"
       apply (rule heap_var_rel_stable[OF state_rel_heap_var_def_rel[OF InitRel]])
-      using "*" \<open>\<omega>def_\<omega> = (\<omega>def, \<omega>)\<close> \<open>\<omega>def_\<omega>' = (\<omega>def', \<omega>')\<close> apply fastforce
+      using * \<open>\<omega>def_\<omega> = (\<omega>def, \<omega>)\<close> \<open>\<omega>def_\<omega>' = (\<omega>def', \<omega>')\<close>
+       apply fastforce
       by (metis InitRel MaskVar mask_var_disjoint state_rel_state_rel0 update_var_other)
 
     show MaskRel: "mask_var_rel Pr (var_context ctxt_bpl) TyRep (field_translation Tr) (mask_var_def Tr) \<omega>def' ?ns'"
       apply (rule mask_var_rel_stable[OF state_rel_mask_var_def_rel[OF InitRel]])
-      using "*" \<open>\<omega>def_\<omega> = (\<omega>def, \<omega>)\<close> \<open>\<omega>def_\<omega>' = (\<omega>def', \<omega>')\<close>
+      using * \<open>\<omega>def_\<omega> = (\<omega>def, \<omega>)\<close> \<open>\<omega>def_\<omega>' = (\<omega>def', \<omega>')\<close>
         apply auto[1]
-      using "*" \<open>\<omega>def_\<omega> = (\<omega>def, \<omega>)\<close> \<open>\<omega>def_\<omega>' = (\<omega>def', \<omega>')\<close>
+      using * \<open>\<omega>def_\<omega> = (\<omega>def, \<omega>)\<close> \<open>\<omega>def_\<omega>' = (\<omega>def', \<omega>')\<close>
        apply auto[1]
       using MaskVar MaskVarDefDiff
       by force

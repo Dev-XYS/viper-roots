@@ -87,7 +87,7 @@ lemma tcon_enum_univ_finite: "finite (UNIV :: tcon_enum set)"
 record 'a ty_repr_bpl =
   tcon_id_repr :: "tcon_enum \<Rightarrow> tcon_id"
   pred_snap_field_type :: "predicate_ident \<rightharpoonup> bpl_ty"
-  pred_knownfolded_field_type :: "predicate_ident \<rightharpoonup> bpl_ty"
+  pred_knownfolded_field_type :: "predicate_ident \<rightharpoonup> bpl_ty" \<comment> \<open>In practice, this field is identical to the previous field. We do not use it to simplifiy proofs.\<close>
   domain_translation :: "abs_type \<rightharpoonup> tcon_id" \<comment>\<open>we assume domains without type parameters\<close>
   domain_type :: "'a \<Rightarrow> abs_type"
 

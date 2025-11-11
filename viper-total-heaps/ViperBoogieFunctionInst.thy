@@ -569,18 +569,74 @@ qed
 
 subsection \<open>Predicate Known-Folded Mask Field\<close>
 
-fun predicate_mask_field :: "'a sem_fun_bpl"
-  where "predicate_mask_field ts vs =
+fun predicate_mask_field :: "'a ty_repr_bpl \<Rightarrow> 'a sem_fun_bpl"
+  where "predicate_mask_field T ts vs =
           (case (ts, vs) of
              ([t], [AbsV (AField (PredSnapshotField lp))]) \<Rightarrow> Some (AbsV (AField (PredKnownFoldedField lp)))
+           \<comment> \<open>The following two cases are not used, just for \<^const>\<open>fun_interp_single_wf\<close> to go through.\<close>
+           | ([t], [AbsV (AField (NormalField field_id vty))]) \<Rightarrow> Some (AbsV (AField (DummyField (TConSingle (TNormalFieldId T)) (TConSingle (TKnownFoldedMaskId T)))))
+           | ([t], [AbsV (AField (PredKnownFoldedField pred_loc))]) \<Rightarrow> map_option (\<lambda>p. AbsV (AField (DummyField p (TConSingle (TKnownFoldedMaskId T))))) (pred_snap_field_type T (fst pred_loc))
+           | ([t], [AbsV (AField (DummyField t1 t2))]) \<Rightarrow> Some (AbsV (AField (DummyField t1 (TConSingle (TKnownFoldedMaskId T)))))
            | _ \<Rightarrow> None)"
 
 lemma predicate_mask_field_fun_interp_single_wf:
   assumes WfTyRepr: "wf_ty_repr_bpl T"
-  shows "fun_interp_single_wf (vbpl_absval_ty T) (1, [TCon (TFieldId T) [TVar 0, TConSingle (TFrameFragmentId T)]], TCon (TFieldId T) [TVar 0, TConSingle (TKnownFoldedMaskId T)]) predicate_mask_field"
-  apply (rule fun_interp_single_wf_intro)
-  sorry
-  (* by (clarsimp dest!: all_inversion_type_of_vbpl_val[OF WfTyRepr] deconstruct_list_length_2 lit_inversion_type_of_val split: val.split vbpl_absval.split) *)
+    shows "fun_interp_single_wf
+             (vbpl_absval_ty T)
+             (1, [TCon (TFieldId T) [TVar 0, TConSingle (TFrameFragmentId T)]], TCon (TFieldId T) [TVar 0, TConSingle (TKnownFoldedMaskId T)])
+             (predicate_mask_field T)"
+proof (rule fun_interp_single_wf_intro)
+  fix ts vs
+  assume "length ts = 1"
+     and "list_all closed ts"
+     and "length vs = length [TCon (TFieldId T) [TVar 0, TConSingle (TFrameFragmentId T)]]"
+     and arg_tys: "map (type_of_vbpl_val T) vs = map (instantiate ts) [TCon (TFieldId T) [TVar 0, TConSingle (TFrameFragmentId T)]]"
+  then obtain field_ty field_val where "ts = [field_ty]" and "vs = [field_val]"
+    by (metis One_nat_def Suc_length_conv length_0_conv)
+  hence *: "type_of_vbpl_val T field_val = TCon (TFieldId T) [field_ty, TConSingle (TFrameFragmentId T)]"
+    using arg_tys
+    by fastforce
+  then obtain field where "field_val = AbsV (AField field)"
+    by (clarsimp dest!: all_inversion_type_of_vbpl_val[OF WfTyRepr])
+  have field: "field_ty_fun_opt T field = Some (TFieldId T, [field_ty, TConSingle (TFrameFragmentId T)])"
+    using *[unfolded \<open>field_val = _\<close>, simplified]
+    by (metis * \<open>field_val = _\<close> list.distinct(1) split_pairs ty.inject(3) type_of_val.simps(2) vbpl_absval_ty_not_dummy vbpl_absval_ty_opt.simps(2))
+
+  have "closed field_ty"
+    using \<open>list_all closed ts\<close> \<open>ts = [field_ty]\<close>
+    by auto
+
+  show "\<exists>v. predicate_mask_field T ts vs = Some v \<and>
+            type_of_vbpl_val T v =
+            instantiate ts (TCon (TFieldId T) [TVar 0, TConSingle (TKnownFoldedMaskId T)])"
+  proof (cases field)
+    case (NormalField field_id vty)
+    show ?thesis
+      apply (rule exI[of _ "AbsV (AField (DummyField (TConSingle (TNormalFieldId T)) (TConSingle (TKnownFoldedMaskId T))))"])
+      apply (unfold \<open>ts = _\<close> \<open>vs = _\<close> \<open>field_val = _\<close> \<open>field = _\<close>)
+      by (simp add: field[unfolded \<open>field = _\<close>, simplified] \<open>closed field_ty\<close>)
+  next
+    case (PredSnapshotField pred_loc)
+    show ?thesis
+      apply (rule exI[of _ "AbsV (AField (PredKnownFoldedField pred_loc))"])
+      apply (unfold \<open>ts = _\<close> \<open>vs = _\<close> \<open>field_val = _\<close> \<open>field = _\<close>)
+      by (simp add: field[unfolded \<open>field = _\<close>, simplified])
+  next
+    case (PredKnownFoldedField pred_loc)
+    show ?thesis
+      apply (rule exI[of _ "AbsV (AField (DummyField field_ty (TConSingle (TKnownFoldedMaskId T))))"])
+      apply (unfold \<open>ts = _\<close> \<open>vs = _\<close> \<open>field_val = _\<close> \<open>field = _\<close>)
+      by (simp add: field[unfolded \<open>field = _\<close>, simplified] \<open>closed field_ty\<close>)
+  next
+    case (DummyField t1 t2)
+    show ?thesis
+      apply (rule exI[of _ "AbsV (AField (DummyField t1 (TConSingle (TKnownFoldedMaskId T))))"])
+      apply (unfold \<open>ts = _\<close> \<open>vs = _\<close> \<open>field_val = _\<close> \<open>field = _\<close>)
+      apply simp
+      using field[unfolded \<open>field = _\<close>, simplified] \<open>closed field_ty\<close>
+      by (metis Pair_inject list.inject option.distinct(1) option.inject)
+  qed
+qed
 
 
 subsection \<open>Global function map\<close>
@@ -620,7 +676,7 @@ fun fun_interp_vpr_bpl_aux :: "ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<
   | "fun_interp_vpr_bpl_aux Pr T F (FPredicateSMLoc pid tys_bpl) =
        (predicate_sm_loc_bpl_fun pid tys_bpl (vbpl_absval_ty T), (0, tys_bpl, TCon (TFieldId T) [the (pred_snap_field_type T pid), TConSingle (TKnownFoldedMaskId T)]))"
   | "fun_interp_vpr_bpl_aux Pr T F FPredicateMaskField =
-       (predicate_mask_field, (1, [TCon (TFieldId T) [TVar 0, TConSingle (TFrameFragmentId T)]], TCon (TFieldId T) [TVar 0, TConSingle (TKnownFoldedMaskId T)]))"
+       (predicate_mask_field T, (1, [TCon (TFieldId T) [TVar 0, TConSingle (TFrameFragmentId T)]], TCon (TFieldId T) [TVar 0, TConSingle (TKnownFoldedMaskId T)]))"
 
 
 fun fun_interp_vpr_bpl :: " ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> 
