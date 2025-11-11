@@ -41,8 +41,8 @@ fun pred_unfold_tac ctxt (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (
   (Rmsg' "unfold stmt StateRelImpliesExtCons 4" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info] ctxt) ctxt) THEN'
 
   (Rmsg' "unfold stmt StateRelImpliesKFRel" (fastforce_tac ctxt @{thms state_rel_def state_rel0_def}) ctxt) THEN'
-  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint debug", [t]))) THEN' *)
-  (* (Rmsg' "unfold stmt StateRelWeakening" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN' *)
+
+  (Rmsg' "unfold stmt StateRelWeakening" (eresolve_tac ctxt @{thms state_rel_kf_disable_consistency}) ctxt) THEN'
 
   (Rmsg' "unfold stmt ArgsRestriction" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "unfold stmt BodyNoUnfolding" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'

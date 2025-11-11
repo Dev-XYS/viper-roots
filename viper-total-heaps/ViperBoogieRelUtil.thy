@@ -1002,10 +1002,10 @@ lemma heap_var_eval_def_havoc_upd_red_ast_bpl_propagate:
                       (ran (field_translation Tr)) \<union>
                       (range (const_repr Tr)) \<union>
                       dom AuxPred"
-        shows "\<exists>ns'. red_ast_bpl P ctxt ((BigBlock name (Havoc hvar' # cs) str tr, cont), Normal ns)
-                                        ((BigBlock name cs str tr, cont), Normal ns') \<and>
-                     state_rel Pr StateCons TyRep (Tr\<lparr>heap_var := hvar', heap_var_def := hvar'\<rparr>) AuxPred ctxt (upd_hh_total_full \<omega>def hh') (upd_hh_total_full \<omega> hh') ns' \<and>
-                     (\<exists>hb. lookup_var (var_context ctxt) ns' hvar' = Some (AbsV (AHeap hb)) \<and> (\<forall>loc_bpl lp. snd loc_bpl = PredKnownFoldedField lp \<longrightarrow> hb loc_bpl = Some (AbsV (AKnownFoldedMask (\<lambda>_. False)))))"
+    shows "\<exists>ns'. red_ast_bpl P ctxt ((BigBlock name (Havoc hvar' # cs) str tr, cont), Normal ns)
+                                    ((BigBlock name cs str tr, cont), Normal ns') \<and>
+                 state_rel Pr StateCons TyRep (Tr\<lparr>heap_var := hvar', heap_var_def := hvar'\<rparr>) AuxPred ctxt (upd_hh_total_full \<omega>def hh') (upd_hh_total_full \<omega> hh') ns' \<and>
+                 (\<exists>hb. lookup_var (var_context ctxt) ns' hvar' = Some (AbsV (AHeap hb)) \<and> (\<forall>loc_bpl lp. snd loc_bpl = PredKnownFoldedField lp \<longrightarrow> hb loc_bpl = Some (AbsV (AKnownFoldedMask (\<lambda>_. False)))))"
 proof -
   from state_rel_field_rel[OF StateRel]
   have Inj: "inj_on (field_translation Tr) (dom (field_translation Tr))"
@@ -1115,7 +1115,8 @@ proof -
                                        ((BigBlock name (Assign mvar' e_bpl # cs) str tr, cont), Normal ns')" and
           StateRel1: "state_rel Pr StateCons TyRep (?Tr'\<lparr>heap_var := hvar', heap_var_def := hvar'\<rparr>) AuxPred ctxt (upd_hh_total_full \<omega>0 ?hh') (upd_hh_total_full \<omega>0 ?hh') ns'" and
           KnownFoldedEmpty: "\<exists>hb. lookup_var (var_context ctxt) ns' hvar' = Some (AbsV (AHeap hb)) \<and> (\<forall>loc_bpl lp. snd loc_bpl = PredKnownFoldedField lp \<longrightarrow> hb loc_bpl = Some (AbsV (AKnownFoldedMask (\<lambda>_. False))))"
-    sorry
+    apply simp
+    by blast
 
   then obtain hb where hb_lookup: "lookup_var (var_context ctxt) ns' hvar' = Some (AbsV (AHeap hb))" and
     hb_empty: "\<forall>loc_bpl lp. snd loc_bpl = PredKnownFoldedField lp \<longrightarrow> hb loc_bpl = Some (AbsV (AKnownFoldedMask (\<lambda>_. False)))"
@@ -1134,12 +1135,14 @@ proof -
   have "heap_knownfolded_var_rel (knownfolded_state_rel_opt (state_rel_opt ?Tr'')) Pr (var_context ctxt)
                                  (field_translation ?Tr'') (heap_var ?Tr'') ?\<omega>' ns'"
     unfolding heap_knownfolded_var_rel_def
-    apply (rule exI[of _ hb])
-    apply (intro conjI)
+    apply (cases "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))")
+     apply simp
+     apply (rule exI[of _ hb])
+     apply (intro conjI)
     using hb_lookup
-     apply force
+      apply force
     unfolding heap_knownfolded_rel_def
-    by (simp add: hb_empty)
+    by (simp_all add: hb_empty)
 
   with mask_var_upd_red_ast_bpl_propagate_general[OF StateRel1 LookupTyMask _ _ TypeInterp _ RedMaskBpl[OF StateRel1]]
   obtain ns'' where
@@ -1188,25 +1191,25 @@ definition pred_eq_mask
 
 
 definition pred_eq_heap_aux
-  where "pred_eq_heap_aux Pr TyRep FieldTr \<omega> hb \<equiv>
+  where "pred_eq_heap_aux Pr TyRep FieldTr kf_opt \<omega> hb \<equiv>
                vbpl_absval_ty_opt TyRep (AHeap hb) = Some ((THeapId TyRep) ,[]) \<and>
                heap_rel Pr FieldTr (get_hh_total_full \<omega>) hb \<and>
-               heap_knownfolded_rel Pr FieldTr (get_nm_total_full \<omega>) hb"
+               (kf_turned_on kf_opt \<longrightarrow> heap_knownfolded_rel Pr FieldTr (get_nm_total_full \<omega>) hb)"
 
 
 definition pred_eq_heap
-  where "pred_eq_heap Pr TyRep FieldTr ctxt h \<omega> v \<equiv>
+  where "pred_eq_heap Pr TyRep FieldTr kf_opt ctxt h \<omega> v \<equiv>
            lookup_var_ty (var_context ctxt) h = Some (TConSingle (THeapId TyRep)) \<and>
-           (\<exists>hb. v = AbsV (AHeap hb) \<and> pred_eq_heap_aux Pr TyRep FieldTr \<omega> hb) \<and>
+           (\<exists>hb. v = AbsV (AHeap hb) \<and> pred_eq_heap_aux Pr TyRep FieldTr kf_opt \<omega> hb) \<and>
                  total_heap_well_typed Pr (domain_type TyRep) (get_hh_total_full \<omega>)"
 
 definition aux_pred_capture_state
-  where "aux_pred_capture_state Pr TyRep FieldTr AuxPred ctxt m h \<omega> \<equiv>
+  where "aux_pred_capture_state Pr TyRep FieldTr kf_opt AuxPred ctxt m h \<omega> \<equiv>
            (AuxPred(m \<mapsto> pred_eq_mask Pr TyRep FieldTr ctxt m \<omega>))
-                  (h \<mapsto> pred_eq_heap Pr TyRep FieldTr ctxt h \<omega>)"
+                  (h \<mapsto> pred_eq_heap Pr TyRep FieldTr kf_opt ctxt h \<omega>)"
 
 lemma aux_pred_capture_state_dom:
-  "dom (aux_pred_capture_state Pr TyRep Tr AuxPred ctxt m h \<omega>) = dom AuxPred \<union> {m,h}"
+  "dom (aux_pred_capture_state Pr TyRep FieldTr kf_opt AuxPred ctxt m h \<omega>) = dom AuxPred \<union> {m,h}"
   unfolding aux_pred_capture_state_def
   by auto
 
@@ -1221,12 +1224,12 @@ abbreviation state_rel_capture_total_state :: \<comment>\<open>make type explici
                  \<Rightarrow> ('a vbpl_absval, 'b) econtext_bpl_general_scheme \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> 'a vbpl_absval nstate \<Rightarrow> bool"
   where "state_rel_capture_total_state Pr StateCons TyRep Tr FieldTr0 AuxPred ctxt m h \<omega> \<equiv>
           state_rel Pr StateCons TyRep Tr
-                    (aux_pred_capture_state Pr TyRep FieldTr0 AuxPred ctxt m h \<omega>) ctxt"
+                    (aux_pred_capture_state Pr TyRep FieldTr0 (knownfolded_state_rel_opt (state_rel_opt Tr)) AuxPred ctxt m h \<omega>) ctxt"
 
 lemma state_rel_capture_total_stateI:
   assumes "state_rel Pr StateCons TyRep Tr AuxPred' ctxt \<omega>def \<omega> ns"
       and "AuxPred' = ((AuxPred(m \<mapsto> pred_eq_mask Pr TyRep FieldTr0 ctxt m \<omega>0))
-                               (h \<mapsto> pred_eq_heap Pr TyRep FieldTr0 ctxt h \<omega>0))"
+                               (h \<mapsto> pred_eq_heap Pr TyRep FieldTr0 (knownfolded_state_rel_opt (state_rel_opt Tr)) ctxt h \<omega>0))"
     shows "state_rel_capture_total_state Pr StateCons TyRep Tr FieldTr0 AuxPred ctxt m h \<omega>0 \<omega>def \<omega> ns"
   using assms
   unfolding aux_pred_capture_state_def
@@ -1431,7 +1434,8 @@ lemma state_rel_capture_current_heap:
           range (const_repr Tr) \<union>
           dom AuxPred"
       and FieldTr: "field_tr = field_translation Tr"
-    shows "state_rel Pr StateCons TyRep Tr (AuxPred(h' \<mapsto> pred_eq_heap Pr TyRep field_tr ctxt h' \<omega>)) ctxt \<omega>def \<omega> ns"
+      and KFOpt: "kf_opt = knownfolded_state_rel_opt (state_rel_opt Tr)"
+    shows "state_rel Pr StateCons TyRep Tr (AuxPred(h' \<mapsto> pred_eq_heap Pr TyRep field_tr kf_opt ctxt h' \<omega>)) ctxt \<omega>def \<omega> ns"
 proof -
   from state_rel_heap_var_rel[OF StateRel] obtain hb where
     HeapVarRel: "lookup_var (var_context ctxt) ns (heap_var Tr) = Some (AbsV (AHeap hb)) \<and>
@@ -1441,7 +1445,7 @@ proof -
     unfolding heap_var_rel_def
     by blast
 
-  hence KnownFoldedRel: "heap_knownfolded_rel Pr (field_translation Tr) (get_nm_total_full \<omega>) hb"
+  hence KnownFoldedRel: "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr)) \<longrightarrow> heap_knownfolded_rel Pr (field_translation Tr) (get_nm_total_full \<omega>) hb"
     by (metis (no_types, lifting) Semantics.val.inject(2) StateRel heap_knownfolded_var_rel_def option.sel state_rel_heap_knownfolded_var_rel vbpl_absval.inject(4))
 
   let ?ns' = "update_var (var_context ctxt) ns h' (AbsV (AHeap hb))"
@@ -1450,9 +1454,9 @@ proof -
     using LookupHeapVarSame
     by (simp add: HeapVarRel update_var_same_state)
 
-  moreover have "state_rel Pr StateCons TyRep Tr (AuxPred(h' \<mapsto> pred_eq_heap Pr TyRep (field_translation Tr) ctxt h' \<omega>)) ctxt \<omega>def \<omega> ?ns'"
+  moreover have "state_rel Pr StateCons TyRep Tr (AuxPred(h' \<mapsto> pred_eq_heap Pr TyRep (field_translation Tr) (knownfolded_state_rel_opt (state_rel_opt Tr)) ctxt h' \<omega>)) ctxt \<omega>def \<omega> ?ns'"
   proof (rule state_rel_new_auxvar[OF StateRel \<open>h' \<notin> _\<close>])
-    show "pred_eq_heap Pr TyRep (field_translation Tr) ctxt h' \<omega> (AbsV (AHeap hb))"
+    show "pred_eq_heap Pr TyRep (field_translation Tr) (knownfolded_state_rel_opt (state_rel_opt Tr)) ctxt h' \<omega> (AbsV (AHeap hb))"
       unfolding pred_eq_heap_def pred_eq_heap_aux_def
       using HeapVarRel LookupVarTy KnownFoldedRel
       by blast
@@ -1466,7 +1470,7 @@ proof -
   qed (insert TypeInterp, simp_all)
 
   ultimately show ?thesis
-    by (simp add: FieldTr)
+    by (simp add: FieldTr KFOpt)
 qed
 
 lemma heap_eval_var_upd_red_ast_bpl_propagate_capture:
@@ -1479,8 +1483,8 @@ lemma heap_eval_var_upd_red_ast_bpl_propagate_capture:
           range (const_repr Tr) \<union>
           dom AuxPred"
     shows "\<exists>ns'. red_ast_bpl P ctxt ((BigBlock name (Assign hvar' (Var hvar)#cs) str tr, cont), Normal ns)
-                              ((BigBlock name cs str tr, cont), Normal ns') \<and>
-           state_rel_def_same Pr StateCons TyRep (Tr\<lparr>heap_var := hvar', heap_var_def := hvar'\<rparr>) (AuxPred(hvar \<mapsto> pred_eq_heap Pr TyRep (field_translation Tr) ctxt hvar \<omega>)) ctxt \<omega> ns'"
+                                    ((BigBlock name cs str tr, cont), Normal ns') \<and>
+           state_rel_def_same Pr StateCons TyRep (Tr\<lparr>heap_var := hvar', heap_var_def := hvar'\<rparr>) (AuxPred(hvar \<mapsto> pred_eq_heap Pr TyRep (field_translation Tr) (knownfolded_state_rel_opt (state_rel_opt Tr)) ctxt hvar \<omega>)) ctxt \<omega> ns'"
            (is "\<exists>ns'. ?GoalRed ns' \<and> ?GoalStateRel ns'")
 proof -
   from state_rel_heap_var_rel[OF StateRel, simplified heap_var_rel_def]
@@ -1554,7 +1558,7 @@ proof -
 
   obtain hb where LookupVarTyHeap: "lookup_var_ty (var_context ctxt) h = Some (TConSingle (THeapId TyRep))" and
                   LookupHeap: "lookup_var (var_context ctxt) ns h = Some (AbsV (AHeap hb))" and
-                  PredEqHeapAux: "pred_eq_heap_aux Pr TyRep (field_translation Tr) \<omega>0 hb" and
+                  PredEqHeapAux: "pred_eq_heap_aux Pr TyRep (field_translation Tr) (knownfolded_state_rel_opt (state_rel_opt Tr)) \<omega>0 hb" and
                   TotalHeapWellTy: "total_heap_well_typed Pr (domain_type TyRep) (get_hh_total_full \<omega>0)"
     using state_rel_aux_pred_sat_lookup_2[OF StateRel, where ?aux_var=h] \<open>m \<noteq> h\<close> \<open>FieldTr0 = _\<close>
     unfolding pred_eq_heap_def \<open>Tr = _\<close> aux_pred_capture_state_def
@@ -1648,12 +1652,14 @@ proof -
     show "heap_knownfolded_var_rel (knownfolded_state_rel_opt (state_rel_opt Tr)) Pr
             (var_context ctxt) (field_translation Tr) (heap_var Tr) \<omega>0 ns"
       unfolding heap_knownfolded_var_rel_def \<open>Tr = _\<close>
-      apply (rule exI[of _ hb])
-      apply (intro conjI)
-      using LookupHeap LookupVarTyHeap
+      apply (cases "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr'))")
        apply simp
+       apply (rule exI[of _ hb])
+       apply (intro conjI)
+      using LookupHeap LookupVarTyHeap
+        apply simp
       using PredEqHeapAux[simplified pred_eq_heap_aux_def]
-      by (simp add: LookupHeap LookupVarTyHeap \<open>Tr = _\<close> del: vbpl_absval_ty_opt_heap_simp_alt)
+      by (simp_all add: LookupHeap LookupVarTyHeap \<open>Tr = _\<close> del: vbpl_absval_ty_opt_heap_simp_alt)
 
   qed (insert StateRel[simplified state_rel_def state_rel0_def]
               state_rel_state_well_typed[OF StateRel]

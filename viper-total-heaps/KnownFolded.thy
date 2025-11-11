@@ -4,7 +4,7 @@ begin
 
 
 record knownfolded_rel_options =
-  dummy :: bool
+  kf_turned_on :: bool
 
 
 context begin
@@ -79,7 +79,7 @@ definition heap_knownfolded_rel :: "ViperLang.program \<Rightarrow> (field_ident
 
 definition heap_knownfolded_var_rel :: "knownfolded_rel_options \<Rightarrow> ViperLang.program \<Rightarrow> var_context \<Rightarrow> (field_ident \<rightharpoonup> Lang.vname) \<Rightarrow> vname \<Rightarrow> 'a full_total_state \<Rightarrow> ('a vbpl_absval) nstate \<Rightarrow> bool"
   where
-    "heap_knownfolded_var_rel opt Pr \<Lambda> FieldTr hvar \<omega> ns \<equiv>
+    "heap_knownfolded_var_rel opt Pr \<Lambda> FieldTr hvar \<omega> ns \<equiv> kf_turned_on opt \<longrightarrow>
        (\<exists>hb. lookup_var \<Lambda> ns hvar = Some (AbsV (AHeap hb)) \<and>
              heap_knownfolded_rel Pr FieldTr (get_nm_total_full \<omega>) hb)"
 
@@ -111,17 +111,25 @@ lemma heap_knownfolded_var_rel_stable_mh_changed:
       and "get_fnm_total_full \<omega> = get_fnm_total_full \<omega>'"
       and "lookup_var \<Lambda> ns hvar = lookup_var \<Lambda> ns' hvar"
     shows "heap_knownfolded_var_rel opt Pr \<Lambda> FieldTr hvar \<omega>' ns'"
-proof -
-  obtain hb where *: "lookup_var \<Lambda> ns hvar = Some (AbsV (AHeap hb)) \<and> heap_knownfolded_rel Pr FieldTr (get_nm_total_full \<omega>) hb"
+proof (cases "kf_turned_on opt")
+  case True
+  then obtain hb where *: "lookup_var \<Lambda> ns hvar = Some (AbsV (AHeap hb)) \<and> heap_knownfolded_rel Pr FieldTr (get_nm_total_full \<omega>) hb"
     using assms(1)
     unfolding heap_knownfolded_var_rel_def
     by auto
   show ?thesis
     unfolding heap_knownfolded_var_rel_def
+    apply (intro impI)
+    apply (thin_tac _)
     apply (rule exI[of _ hb])
     using * pred_folds_perm_mh_stable assms(2,3)
     unfolding heap_knownfolded_rel_def
     by fastforce
+next
+  case False
+  then show ?thesis
+    unfolding heap_knownfolded_var_rel_def
+    by simp
 qed
 
 

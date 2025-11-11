@@ -36,12 +36,14 @@ record state_rel_options =
   knownfolded_state_rel_opt :: knownfolded_rel_options
 
 definition default_state_rel_options :: state_rel_options
-  where "default_state_rel_options \<equiv> \<lparr> consistent_state_rel_opt = True, knownfolded_state_rel_opt = \<lparr> dummy = True \<rparr> \<rparr>"
+  where "default_state_rel_options \<equiv> \<lparr> consistent_state_rel_opt = True, knownfolded_state_rel_opt = \<lparr> kf_turned_on = True \<rparr> \<rparr>"
 
 text \<open>The following record abstracts over elements in the Boogie encoding that are used to represent
 Viper counterparts.\<close>
 
-record tr_vpr_bpl =
+record 
+  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint debug", [t]))) THEN' *)
+  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint debug", [t]))) THEN' *)tr_vpr_bpl =
   heap_var :: Lang.vname
   mask_var :: Lang.vname
   heap_var_def :: Lang.vname
@@ -1632,7 +1634,7 @@ proof (intro conjI)
       by (simp add: OnlyStoreAffectedVpr)
     ultimately show ?thesis
       using state_rel0_heap_knownfolded_var_rel[OF StateRel] OnlyStoreAffectedBpl RanVarTrDisj
-      unfolding heap_knownfolded_var_rel_def
+      unfolding heap_knownfolded_var_rel_def \<open>Tr' = _\<close>
       by auto
   qed
 
@@ -3059,6 +3061,7 @@ next
     by blast
 qed (insert MaskVarRel, insert state_rel_state_rel0[OF StateRel, simplified state_rel0_def], simp_all)
 
+
 subsection \<open>Adjust state relation options\<close>
 
 abbreviation disable_consistent_state_rel_opt :: "tr_vpr_bpl \<Rightarrow> tr_vpr_bpl"
@@ -3090,6 +3093,19 @@ lemma state_rel_enable_consistency_2:
              consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>def)"
     shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns"
   unfolding state_rel_def state_rel0_def
+  by (insert assms[simplified state_rel_def state_rel0_def]) auto
+
+
+abbreviation disable_knownfolded_rel_opt :: "tr_vpr_bpl \<Rightarrow> tr_vpr_bpl"
+  where "disable_knownfolded_rel_opt Tr \<equiv> Tr \<lparr> state_rel_opt := (state_rel_opt Tr) \<lparr> knownfolded_state_rel_opt := \<lparr> kf_turned_on = False \<rparr> \<rparr> \<rparr>"
+
+abbreviation enable_knownfolded_rel_opt :: "tr_vpr_bpl \<Rightarrow> tr_vpr_bpl"
+  where "enable_knownfolded_rel_opt Tr \<equiv> Tr \<lparr> state_rel_opt := (state_rel_opt Tr) \<lparr> knownfolded_state_rel_opt := \<lparr> kf_turned_on = True \<rparr> \<rparr> \<rparr>"
+
+lemma state_rel_kf_disable_consistency:
+  assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns"
+  shows "state_rel Pr StateCons TyRep (disable_knownfolded_rel_opt Tr) AuxPred ctxt \<omega>def \<omega> ns"
+  unfolding state_rel_def state_rel0_def heap_knownfolded_var_rel_def
   by (insert assms[simplified state_rel_def state_rel0_def]) auto
 
 

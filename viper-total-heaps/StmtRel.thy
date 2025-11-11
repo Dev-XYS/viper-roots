@@ -872,7 +872,7 @@ proof -
     by blast
 
   with state_rel_heap_knownfolded_var_rel[OF StateRel] have
-    HeapKnownFoldedRel: "heap_knownfolded_rel (program_total ctxt_vpr) (field_translation Tr) (get_nm_total_full \<omega>) hb"
+    HeapKnownFoldedRel: "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr)) \<longrightarrow> heap_knownfolded_rel (program_total ctxt_vpr) (field_translation Tr) (get_nm_total_full \<omega>) hb"
     by (simp add: ProgramTotal heap_knownfolded_var_rel_def)
 
   from state_rel_mask_var_rel[OF StateRel]
@@ -1073,6 +1073,7 @@ proof -
     show "heap_knownfolded_var_rel (knownfolded_state_rel_opt (state_rel_opt Tr)) Pr
             (var_context ctxt) (field_translation Tr) (heap_var Tr) \<omega>' ?ns2"
       unfolding heap_knownfolded_var_rel_def
+      apply (intro impI)
       apply (rule exI[of _ hb''])
       apply (intro conjI)
        apply (simp add: \<open>hvar = _\<close>)
