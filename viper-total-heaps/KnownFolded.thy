@@ -149,6 +149,10 @@ lemma heap_knownfolded_var_rel_stable_larger_\<omega>:
   by (metis (full_types) assms heap_knownfolded_rel_stable_larger_nm heap_knownfolded_var_rel_def less_eq_full_total_stateD_2)
 
 
+definition zero_knownfolded_mask where
+  "zero_knownfolded_mask \<equiv> AbsV (AKnownFoldedMask (\<lambda>_. False))"
+
+
 end
 
 

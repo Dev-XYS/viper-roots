@@ -1315,6 +1315,17 @@ lemma state_rel_obtain_mask:
   unfolding mask_var_rel_def
   by blast
 
+lemma state_rel_obtain_heap:
+  assumes StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns"
+  obtains hb
+  where "lookup_var (var_context ctxt) ns (heap_var Tr) = Some (AbsV (AHeap hb))" and
+        "lookup_var_ty (var_context ctxt) (heap_var Tr) = Some (TConSingle (THeapId TyRep))" and
+        "vbpl_absval_ty_opt TyRep (AHeap hb) = Some (THeapId TyRep, [])" and
+        "heap_rel Pr (field_translation Tr) (get_hh_total_full \<omega>) hb"
+  using state_rel0_heap_var_rel[OF state_rel_state_rel0[OF StateRel]]
+  unfolding heap_var_rel_def
+  by blast
+
 lemma state_rel_aux_pred_sat_lookup:
   assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns" and
           "AuxPred aux_var = Some P"
