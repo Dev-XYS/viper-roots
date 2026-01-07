@@ -82,7 +82,7 @@ lemma heap_wf_concrete:
     apply (insert field_ty_fun_opt_closed_args[OF TyRepWf])
     apply simp
   using closed_instantiate
-    apply (metis field_ty_fun_opt_tcon fst_conv list_all_simps(1) snd_eqD)
+    apply (metis field_ty_fun_opt_tcon fst_conv list.pred_inject(2) snd_eqD)
 
    apply (rule field_ty_fun_two_params)
     apply blast
@@ -107,7 +107,7 @@ lemma heap_update_wf_concrete:
     apply (insert field_ty_fun_opt_closed_args[OF TyRepWf])
     apply simp
   using closed_instantiate
-    apply (metis field_ty_fun_opt_tcon fst_conv list_all_simps(1) snd_eqD)
+    apply (metis field_ty_fun_opt_tcon fst_conv list.pred_inject(2) snd_eqD)
 
    apply (rule field_ty_fun_two_params)
     apply blast
@@ -136,7 +136,7 @@ lemma mask_read_wf_concrete:
     apply (insert field_ty_fun_opt_closed_args[OF TyRepWf])
     apply simp
   using closed_instantiate
-    apply (metis field_ty_fun_opt_tcon fst_conv list_all_simps(1) snd_eqD)
+    apply (metis field_ty_fun_opt_tcon fst_conv list.pred_inject(2) snd_eqD)
    apply (rule field_ty_fun_two_params)
     apply blast
    apply simp
@@ -164,7 +164,7 @@ lemma mask_update_wf_concrete:
     apply (insert field_ty_fun_opt_closed_args[OF TyRepWf])
     apply simp
   using closed_instantiate
-    apply (metis field_ty_fun_opt_tcon fst_conv list_all_simps(1) snd_eqD)
+    apply (metis field_ty_fun_opt_tcon fst_conv list.pred_inject(2) snd_eqD)
    apply (rule field_ty_fun_two_params)
     apply blast
    apply simp

@@ -1088,7 +1088,7 @@ next
 next
   case (RedExpListCons \<omega>_def e \<omega> v es res res')
   then show ?case 
-    by (metis (no_types, lifting) RedExpListFailure list_all_simps(1) option.simps(8) TotalExpressions.RedExpListCons)
+    by (metis (no_types, lifting) list.pred_inject(2) option.simps(8) red_pure_exps_total.simps)
 next
   case (RedExpListFailure \<omega>_def e \<omega> es)
   then show ?case 

@@ -663,10 +663,10 @@ next
 next
   case IH: (RedExpListCons \<omega>_def e \<omega> v es rs rs')
   then obtain r\<^sub>2 where r\<^sub>2: "ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t r\<^sub>2"
-    by (metis list_all_simps(1))
+    by (metis list.pred_inject(2))
   then show ?case
     apply (cases r\<^sub>2)
-    using IH.IH(4) IH.hyps IH.prems(1) IH.prems(2) IH.prems(3) IH.prems(4) RedExpListCons list_all_simps(1)
+    using IH.IH(4) IH.hyps IH.prems(1) IH.prems(2) IH.prems(3) IH.prems(4) RedExpListCons list.pred_inject(2)
      apply fastforce
     using RedExpListFailure
     by blast

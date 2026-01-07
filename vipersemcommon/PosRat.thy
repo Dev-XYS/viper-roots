@@ -348,7 +348,7 @@ lemma pinv_inverts:
   assumes "pgte a b"
       and "ppos b"
     shows "pgte (pinv b) (pinv a)"
-  by (metis assms(1) assms(2) divide_prat.rep_eq frac_le inverse_prat_def le_numeral_extra(4) linordered_nonzero_semiring_class.zero_le_one one_prat.rep_eq pgte.rep_eq ppos.rep_eq)
+  by (metis (mono_tags, lifting) Abs_prat_inverse assms(1,2) divide_prat.rep_eq divide_rat_def inverse_prat_def le_imp_inverse_le mem_Collect_eq mult_1 one_prat.abs_eq pgte.rep_eq ppos.rep_eq zero_le_one)
 
 
 
