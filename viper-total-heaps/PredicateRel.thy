@@ -1367,7 +1367,83 @@ lemma unfold_set_kfm_to_zero:
       and "unfold_rel ctxt_vpr pid v_args v_p \<phi>\<^sub>0 \<phi>"
     shows "heap_knownfolded_rel Pr FieldTr (get_nm_total \<phi>)
              (hb((Null, PredKnownFoldedField (pid, v_args)) \<mapsto> AbsV (AKnownFoldedMask (\<lambda>_. False))))"
-  sorry
+          (is "heap_knownfolded_rel _ _ _ ?hb'")
+  unfolding heap_knownfolded_rel_def
+proof (intro allI | intro impI)+
+  fix lp kfm l field_ty_vpr field_bpl
+  assume kfm: "?hb' (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))"
+     and fld1: "declared_fields Pr (snd l) = Some field_ty_vpr"
+     and fld2: "FieldTr (snd l) = Some field_bpl"
+     and kfm_true: "kfm (Address (fst l), NormalField field_bpl field_ty_vpr)"
+
+  with assms(1)
+  have folds\<^sub>0: "pred_folds_perm lp l (get_nm_total \<phi>\<^sub>0)"
+    unfolding heap_knownfolded_rel_def
+    by (metis Semantics.val.inject(2) fun_upd_other fun_upd_same option.inject vbpl_absval.inject(6))
+
+  from assms(2)
+  obtain nm nm\<^sub>s where
+    sh: "shift_up pid v_args v_p nm nm\<^sub>s" and
+    "get_nm_total \<phi>\<^sub>0 = nm" and
+    "get_nm_total \<phi> = nm\<^sub>s"
+    by (auto elim: unfold_rel.cases)
+
+  show "pred_folds_perm lp l (get_nm_total \<phi>)"
+  proof (cases rule: shift_up.cases[OF sh])
+    case (1 mh nm\<^sub>c fnm p\<^sub>p' pnm' pid\<^sub>c v_args\<^sub>c p' v_p\<^sub>c fnm_sub nm_sub nm\<^sub>s\<^sub>c)
+    then show ?thesis
+    proof (cases rule: pred_folds_perm.cases[OF folds\<^sub>0])
+      case (1 nm\<^sub>c\<^sub>c p'\<^sub>f nm'\<^sub>f) \<comment> \<open>ContainsPermDirect\<close>
+      show ?thesis
+      proof (cases "lp = (pid, v_args)")
+        case True
+        then show ?thesis
+          using kfm kfm_true
+          by force
+      next
+        case False
+        hence "fnm_sub lp = Some (p'\<^sub>f, nm'\<^sub>f)"
+          using \<open>fnm_sub = _\<close> \<open>get_fnm_nm nm\<^sub>c\<^sub>c lp = Some (p'\<^sub>f, nm'\<^sub>f)\<close> \<open>get_nm_total \<phi>\<^sub>0 = nm\<^sub>c\<^sub>c\<close> \<open>fnm = get_fnm_nm nm\<^sub>c\<close> \<open>nm = nm\<^sub>c\<close> \<open>get_nm_total \<phi>\<^sub>0 = nm\<close> \<open>v_args = v_args\<^sub>c\<close> \<open>pid = pid\<^sub>c\<close>
+          by fastforce
+        show ?thesis
+          apply (rule pred_folds_perm_stable_larger_nm[where ?nm="NM mh fnm_sub"])
+           apply (rule ContainsPermDirect)
+            apply simp
+            apply fact
+           apply (simp add: \<open>get_mh_nm nm'\<^sub>f l > 0\<close>)
+          unfolding \<open>get_nm_total \<phi> = nm\<^sub>s\<close> \<open>nm\<^sub>s = nm\<^sub>s\<^sub>c\<close> \<open>nm\<^sub>s\<^sub>c = _\<close> \<open>nm_sub = _\<close>
+          by (simp add: nm_sum_is_bigger)
+      qed
+    next
+      case (2 nm\<^sub>c\<^sub>c lp\<^sub>f p'\<^sub>f nm'\<^sub>f) \<comment> \<open>ContainsPermNested\<close>
+      show ?thesis
+      proof (cases "lp\<^sub>f = (pid, v_args)")
+        case True
+        hence "pnm' = nm'\<^sub>f"
+          using 1(1,2,4,7,8) 2(1,2) \<open>get_nm_total \<phi>\<^sub>0 = nm\<close>
+          by auto
+        hence "pred_folds_perm lp l pnm'"
+          using 2(3)
+          by blast
+        show ?thesis
+          unfolding \<open>get_nm_total \<phi> = nm\<^sub>s\<close> \<open>nm\<^sub>s = _\<close> \<open>nm\<^sub>s\<^sub>c = _\<close>
+          apply (rule pred_folds_perm_plus)
+          apply (rule pred_folds_perm_scale)
+           apply fact
+          using 1(10,11) preal_to_real(1,10,2,7)
+          by auto
+      next
+        case False
+        then show ?thesis sorry
+      qed
+    qed
+  next
+    case (2 pid v_args nm\<^sub>s\<^sub>c)
+    then show ?thesis
+      using \<open>get_nm_total \<phi> = nm\<^sub>s\<close> \<open>get_nm_total \<phi>\<^sub>0 = nm\<close> folds\<^sub>0
+      by argo
+  qed
+qed
 
 
 lemma unfold_knownfolded_upd_rel:

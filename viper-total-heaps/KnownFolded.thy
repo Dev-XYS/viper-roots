@@ -67,6 +67,20 @@ next
 qed
 
 
+lemma pred_folds_perm_plus:
+  assumes "pred_folds_perm lp l nm"
+    shows "pred_folds_perm lp l (nm' + nm)"
+  using assms nested_mask_greater_equiv pred_folds_perm_stable_larger_nm add.commute
+  by blast
+
+
+lemma pred_folds_perm_scale:
+  assumes "pred_folds_perm lp l nm"
+      and "s > 0"
+    shows "pred_folds_perm lp l (s *\<^sub>s nm)"
+  sorry
+
+
 definition heap_knownfolded_rel :: "ViperLang.program \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> 'a nested_mask \<Rightarrow> 'a bpl_heap_ty \<Rightarrow> bool"
   where "heap_knownfolded_rel Pr tr_field nm hb \<equiv>
     \<forall> lp kfm l field_ty_vpr field_bpl.
