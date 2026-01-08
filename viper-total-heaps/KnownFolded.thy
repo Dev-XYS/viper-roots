@@ -67,10 +67,17 @@ next
 qed
 
 
-lemma pred_folds_perm_plus:
+lemma pred_folds_perm_plus_l:
   assumes "pred_folds_perm lp l nm"
     shows "pred_folds_perm lp l (nm' + nm)"
   using assms nested_mask_greater_equiv pred_folds_perm_stable_larger_nm add.commute
+  by blast
+
+
+lemma pred_folds_perm_plus_r:
+  assumes "pred_folds_perm lp l nm"
+    shows "pred_folds_perm lp l (nm + nm')"
+  using assms nested_mask_greater_equiv pred_folds_perm_stable_larger_nm
   by blast
 
 
@@ -78,7 +85,29 @@ lemma pred_folds_perm_scale:
   assumes "pred_folds_perm lp l nm"
       and "s > 0"
     shows "pred_folds_perm lp l (s *\<^sub>s nm)"
-  sorry
+  using assms(1)
+proof (induction rule: pred_folds_perm.inducts)
+  case (ContainsPermDirect nm p nm')
+  show ?case
+    apply (rule pred_folds_perm.ContainsPermDirect[of _ _ "Abs_posreal s * p" "s *\<^sub>s nm'"])
+     apply (cases nm)
+     apply (simp add: scale_nested_mask_def)
+    using ContainsPermDirect.hyps(1) assms(2) mult.commute
+     apply auto[1]
+    apply (cases nm')
+    apply (simp add: scale_nested_mask_def mul_mask_def)
+    using ContainsPermDirect.hyps(2) assms(2) preal_to_real(2,7,9)
+    by auto
+next
+  case (ContainsPermNested nm lp' p nm')
+  show ?case
+    apply (rule pred_folds_perm.ContainsPermNested[of _ lp' "Abs_posreal s * p" "s *\<^sub>s nm'"])
+     apply (cases nm)
+     apply (simp add: scale_nested_mask_def)
+    using ContainsPermNested.hyps(1) assms(2) mult.commute
+     apply auto[1]
+    by (simp add: ContainsPermNested.IH)
+qed
 
 
 definition heap_knownfolded_rel :: "ViperLang.program \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> 'a nested_mask \<Rightarrow> 'a bpl_heap_ty \<Rightarrow> bool"

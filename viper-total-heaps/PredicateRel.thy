@@ -1427,14 +1427,20 @@ proof (intro allI | intro impI)+
           by blast
         show ?thesis
           unfolding \<open>get_nm_total \<phi> = nm\<^sub>s\<close> \<open>nm\<^sub>s = _\<close> \<open>nm\<^sub>s\<^sub>c = _\<close>
-          apply (rule pred_folds_perm_plus)
+          apply (rule pred_folds_perm_plus_l)
           apply (rule pred_folds_perm_scale)
            apply fact
           using 1(10,11) preal_to_real(1,10,2,7)
           by auto
       next
         case False
-        then show ?thesis sorry
+        show ?thesis
+          unfolding \<open>get_nm_total \<phi> = nm\<^sub>s\<close> \<open>nm\<^sub>s = _\<close> \<open>nm\<^sub>s\<^sub>c = _\<close> \<open>nm_sub = _\<close> \<open>fnm_sub = _\<close>
+          apply (rule pred_folds_perm_plus_r)
+          apply (rule ContainsPermNested[of _ lp\<^sub>f p'\<^sub>f nm'\<^sub>f])
+          using 1(1,2,4,7) 2(1,2) False \<open>get_nm_total \<phi>\<^sub>0 = nm\<close>
+           apply force
+          by fact
       qed
     qed
   next
