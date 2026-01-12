@@ -1459,6 +1459,7 @@ lemma unfold_knownfolded_upd_rel:
     StateRelOut: "\<And>\<omega> ns. state_rel_def_same Pr StateCons TyRep (enable_knownfolded_rel_opt Tr) AuxPred ctxt_bpl \<omega> ns \<Longrightarrow> R' \<omega> ns" and
 
     KFMOptTurnedOff: "\<not> kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))" and
+    KFMNewOpt: "kf_turned_on kf_opt" and
     HeapVarDefSame: "heap_var_def Tr = heap_var Tr" and
 
     PlocRel: "ploc_rel_vpr_bpl'' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
@@ -1467,6 +1468,7 @@ lemma unfold_knownfolded_upd_rel:
 
     NullConst: "const_repr Tr CNull = nullConst" and
     ZeroPMaskConst: "const_repr Tr CKnownFoldedZeroMask = zeroPMask" and
+    HeapVar: "hvar = heap_var Tr" and
 
     PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
 
@@ -1480,12 +1482,12 @@ lemma unfold_knownfolded_upd_rel:
                                          red_pure_exps_total ctxt_vpr (Some \<omega>\<^sub>0) e_args_vpr \<omega> (Some v_args_vpr) \<and>
                                          pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
                                          unfold_rel ctxt_vpr pid v_args_vpr (Abs_preal v_p_vpr) (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>) \<and>
-                                         heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns))
+                                         heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns))
                      (uncurry (\<lambda>\<omega>\<^sub>0 \<omega> ns. R' \<omega> ns))
                      (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
                      (\<lambda>\<omega>\<^sub>0_\<omega>. False)
                      P ctxt_bpl
-                     (BigBlock name ((Assign (heap_var Tr) h_upd_bpl) # cs) str tr, cont)
+                     (BigBlock name ((Assign hvar h_upd_bpl) # cs) str tr, cont)
                      (BigBlock name cs str tr, cont)" (is "rel_general ?R\<^sub>0 _ _ _ _ _ ?\<gamma> ?\<gamma>'")
 proof (rule rel_intro; blast?)
   fix \<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>' :: "('a full_total_state \<times> 'a full_total_state)"
@@ -1500,8 +1502,8 @@ proof (rule rel_intro; blast?)
     "red_pure_exps_total ctxt_vpr (Some \<omega>\<^sub>0) e_args_vpr \<omega> (Some v_args_vpr)" and
     "pred_ty_correct_premise ctxt_vpr pid v_args_vpr" and
     "unfold_rel ctxt_vpr pid v_args_vpr (Abs_preal v_p_vpr) (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>)" and
-    "heap_knownfolded_var_rel \<lparr>kf_turned_on = True\<rparr> Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns"
-    by (simp_all add: \<open>\<omega>\<^sub>0_\<omega> = (\<omega>\<^sub>0, \<omega>)\<close>)
+    "heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns"
+    by (simp_all add: \<open>\<omega>\<^sub>0_\<omega> = (\<omega>\<^sub>0, \<omega>)\<close> \<open>hvar = _\<close>)
 
   with PlocRel[unfolded ploc_rel_vpr_bpl''_def]
   have ploc_bpl_eval: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredKnownFoldedField (pid, v_args_vpr))))"
@@ -1515,7 +1517,7 @@ proof (rule rel_intro; blast?)
     by metis
 
   hence "heap_knownfolded_rel Pr (field_translation Tr) (get_nm_total (get_total_full \<omega>\<^sub>0)) hb"
-    by (metis (no_types, opaque_lifting) Semantics.val.inject(2) \<open>heap_knownfolded_var_rel _ _ _ _ _ _ _\<close> get_nm_total_full.simps heap_knownfolded_var_rel_def knownfolded_rel_options.select_convs(1) option.inject vbpl_absval.inject(4))
+    by (metis (no_types, opaque_lifting) Semantics.val.inject(2) \<open>heap_knownfolded_var_rel _ _ _ _ _ _ _\<close> get_nm_total_full.simps heap_knownfolded_var_rel_def option.inject vbpl_absval.inject(4) KFMNewOpt)
 
   let ?hb' = "hb( (Null, PredKnownFoldedField (pid, v_args_vpr)) \<mapsto> zero_knownfolded_mask )"
 
@@ -1540,7 +1542,7 @@ proof (rule rel_intro; blast?)
     apply (rule exI, intro conjI)
      apply (rule red_ast_bpl_one_simple_cmd)
      apply (rule RedAssign[where ?ty="TConSingle (THeapId TyRep)" and ?v="AbsV (AHeap ?hb')"])
-    using lookup_heap_ty
+    using lookup_heap_ty \<open>hvar = _\<close>
        apply blast
       apply (simp add: TyInterpEq zero_knownfolded_mask_def)
       apply (meson heap_bpl_well_typed_elim heap_ty)
@@ -1549,7 +1551,7 @@ proof (rule rel_intro; blast?)
     apply simp
     apply (rule StateRelOut)
     apply (rule turn_on_knownfolded_rel)
-    unfolding zero_knownfolded_mask_def
+    unfolding zero_knownfolded_mask_def \<open>hvar = _\<close>
      apply (rule kfm_changes_while_opt_turned_off)
          apply (rule StateRelIn[OF \<open>R \<omega> ns\<close>])
         apply fact+
@@ -1634,7 +1636,7 @@ lemma fold_stmt_rel:
       and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
-      and ArgsRestriction: "list_all no_unfolding_pure_exp e_args_vpr \<and> list_all no_perm_pure_exp e_args_vpr \<and> list_all no_old_pure_exp e_args_vpr"
+      and ArgsRestriction: "list_all no_unfolding_pure_exp e_args_vpr \<and> list_all no_perm_pure_exp e_args_vpr \<and> list_all no_old_pure_exp e_args_vpr \<and> list_all no_result_pure_exp e_args_vpr"
       and BodyNoUnfolding: "no_unfolding_assertion (syntactic_mult p pbody)"  \<comment> \<open>Should be lifted soon.\<close>
       and PermSimp: "e_p_vpr = ELit (LPerm p)" \<comment> \<open>We only support literals as the permission.\<close>
       and PermPos: "p > 0"
@@ -1652,11 +1654,12 @@ lemma fold_stmt_rel:
                 rel_general (\<lambda>\<omega>_def_\<omega> ns. R'' (fst \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>) ns \<and> ctxt_vpr, (Some (fst \<omega>_def_\<omega>)) \<turnstile> \<langle>e_p_vpr; snd \<omega>_def_\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_vpr)) (\<lambda>\<omega>_def_\<omega> ns. R' (snd \<omega>_def_\<omega>) ns)
                   (\<lambda>\<omega>_def_\<omega> \<omega>_def_\<omega>'. fst \<omega>_def_\<omega> = fst \<omega>_def_\<omega>' \<and> inhale_pred_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr v_p_vpr (fst \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>'))
                   (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>4 \<gamma>\<^sub>5"
-      and StepMaskUpdate:
-            "\<And>v_args_vpr.
+      and StepKFUpdate:
+            "\<And>v_args_vpr v_p_vpr.
                 rel_general (\<lambda>\<omega> ns. R' \<omega> ns \<and>
                                     red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr) \<and>
-                                    get_fnm_total_full \<omega> (pid,v_args_vpr) \<noteq> None)
+                                    (\<exists>\<omega>1 nm_exh. \<omega> = add_to_lpm_nonzero_total_full \<omega>1 (pid,v_args_vpr) (Abs_posreal (Abs_preal v_p_vpr)) nm_exh \<and>
+                                         sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr)))
                             R' (=) (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>5 \<gamma>'"
     shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Fold pid e_args_vpr (PureExp e_p_vpr)) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro)
@@ -1789,15 +1792,52 @@ proof (rule stmt_rel_intro)
     by (metis ns\<^sub>4 fst_conv inhale_pred_normal_premise_def snd_conv)
 
   \<comment> \<open>Fifth step: known-folded permission mask update\<close>
-  moreover have "get_fnm_total_full \<omega>' (pid,v_args) \<noteq> None"
-    using \<open>\<omega>' = _\<close>
-    by simp
-  ultimately obtain ns' where
-    ns': "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>5, Normal ns\<^sub>5) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
-    using StepMaskUpdate[THEN rel_success_elim, where ?\<omega>=\<omega>' and ?\<omega>'=\<omega>']
-          eval_exhale_sat_helper_helper(2)[where ?\<omega>\<^sub>2=\<omega>', OF v_args_eval]
-          ArgsRestriction \<open>\<omega>' = _\<close> \<open>\<omega>1 = _\<close>
-    by (metis fold_rel fold_rel_normal_only_changes_mask)
+  moreover have "\<exists>\<omega>1 nm_exh. \<omega>' = add_to_lpm_nonzero_total_full \<omega>1 (pid,v_args) (Abs_posreal (Abs_preal v_p)) nm_exh \<and>
+                             sat ctxt_vpr \<omega>' (get_mh_nm nm_exh) (get_mp_nm nm_exh) (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr)"
+    apply (rule exI[of _ \<omega>1])
+    apply (rule exI[of _ nm_exh])
+    apply (intro conjI)
+     apply fact
+    apply (rule sat_nm_does_not_matter_for_supported_pred[where ?\<omega>\<^sub>1="\<omega>\<lparr> get_total_full := get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>"])
+       apply (rule exhale_diff_sat')
+    using exh_subst
+           apply fast
+          apply simp
+    subgoal
+      apply (rule substitute_assertion_supported_pred)
+      using CtxtPredWf PredBody \<open>Rep_preal (Abs_preal v_p) = p\<close> \<open>pdecl' = pdecl\<close> syntactic_mult_supported
+        \<open>program.predicates (program_total ctxt_vpr) pid = Some pdecl'\<close> ctxt_pred_syn_wf_def prat_non_negative
+       apply blast
+      using ArgsRestriction list_all_length
+      by blast
+    using StateRelImpliesExtCons \<open>R \<omega> ns\<close>
+        apply blast
+       apply (subst \<open>get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0\<close>)
+    using \<open>\<omega>0 = \<omega>\<lparr>get_store_total := nth_option v_args\<rparr>\<close>
+       apply simp
+      apply simp
+      apply (metis fold_rel_normal_only_changes_mask fold_rel)
+     apply simp
+    apply (metis fold_rel_normal_only_changes_mask fold_rel get_hh_total_full.simps)
+    by fact
+  have ns'_exists: "\<exists>ns'. red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>5, Normal ns\<^sub>5) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
+    apply (rule StepKFUpdate[THEN rel_success_elim, where ?\<omega>=\<omega>' and ?\<omega>'=\<omega>' and ?ns=ns\<^sub>5 and ?v_args_vpr1=v_args])
+     prefer 2
+     apply simp
+    apply (intro conjI)
+    using conjunct2[OF ns\<^sub>5]
+      apply blast
+     apply (rule eval_exhale_sat_helper_helper(2)[where ?\<omega>\<^sub>2=\<omega>', OF v_args_eval])
+    using ArgsRestriction
+         apply (fastforce, fastforce)
+    using \<open>\<omega>' = _\<close> \<open>\<omega>1 = _\<close>
+       apply (simp)
+    using fold_rel fold_rel_normal_only_changes_mask
+      apply fastforce
+     apply simp
+    by fact
+  then obtain ns' where ns': "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>5, Normal ns\<^sub>5) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
+    by blast
 
   show "\<exists>ns'. red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
     apply (rule exI[of _ ns'])
@@ -2186,6 +2226,45 @@ proof -
       by (simp add: TyInterp LookupMaskTy MaskVar)
   qed
 qed
+
+(* lemma fold_knownfolded_acc_upd_rel:
+  assumes
+    StateRelIn: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow>
+                          state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns" and
+    StateRelOut: "\<And>\<omega> ns. state_rel_def_same Pr StateCons TyRep (enable_knownfolded_rel_opt Tr) AuxPred ctxt_bpl \<omega> ns \<Longrightarrow> R' \<omega> ns" and
+
+    KFMOptTurnedOff: "\<not> kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))" and
+    KFMNewOpt: "kf_turned_on kf_opt" and
+    HeapVarDefSame: "heap_var_def Tr = heap_var Tr" and
+
+    PlocRel: "ploc_rel_vpr_bpl'' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
+
+    TyInterpEq: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
+
+    NullConst: "const_repr Tr CNull = nullConst" and
+    ZeroPMaskConst: "const_repr Tr CKnownFoldedZeroMask = zeroPMask" and
+    HeapVar: "hvar = heap_var Tr" and
+
+    PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
+
+    HeapUpdateWf: "heap_update_wf TyRep ctxt_bpl heap_upd_bpl" and
+
+    KnownFoldedUpdBpl: "h_upd_bpl = heap_upd_bpl (Var (heap_var Tr)) (Var nullConst) e_ploc_bpl (Var zeroPMask)
+                                      [pred_ty, TConSingle (TKnownFoldedMaskId TyRep)]"
+
+  shows "rel_general (uncurry (\<lambda>\<omega>\<^sub>0 \<omega> ns. R \<omega> ns \<and>
+                                         ctxt_vpr, (Some \<omega>\<^sub>0) \<turnstile> \<langle>e_p_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_vpr) \<and>
+                                         red_pure_exps_total ctxt_vpr (Some \<omega>\<^sub>0) e_args_vpr \<omega> (Some v_args_vpr) \<and>
+                                         pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
+                                         unfold_rel ctxt_vpr pid v_args_vpr (Abs_preal v_p_vpr) (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>) \<and>
+                                         heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns))
+                     (uncurry (\<lambda>\<omega>\<^sub>0 \<omega> ns. R' \<omega> ns))
+                     (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
+                     (\<lambda>\<omega>\<^sub>0_\<omega>. False)
+                     P ctxt_bpl
+                     (BigBlock name ((Assign hvar h_upd_bpl) # cs) str tr, cont)
+                     (BigBlock name cs str tr, cont)" (is "rel_general ?R\<^sub>0 _ _ _ _ _ ?\<gamma> ?\<gamma>'")
+  sorry *)
 
 
 

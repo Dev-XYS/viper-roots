@@ -844,6 +844,107 @@ qed (fastforce intro: red_pure_exp_intros)+
 
 
 
+subsection \<open>\<^const>\<open>sat\<close> Properties\<close>
+
+
+lemma sat_nm_does_not_matter_for_supported_pred:
+  assumes "sat ctxt \<omega>\<^sub>1 mh mp A"
+      and "get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2"
+      and "get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2"
+      and "supported_pred_body A"
+    shows "sat ctxt \<omega>\<^sub>2 mh mp A"
+  using assms(1,4)
+proof (induct A)
+  case (SatAcc e_r r e_p p a mh f mp)
+  show ?case
+    apply (rule sat.SatAcc)
+         apply (rule eval_exhale_sat_helper_helper(1))
+              apply fact+
+    using SatAcc.prems
+             apply (fastforce, fastforce)
+           apply fact+
+         apply simp
+        apply (rule eval_exhale_sat_helper_helper(1))
+             apply fact+
+    using SatAcc.prems
+            apply (fastforce, fastforce)
+          apply fact+
+        apply simp
+       apply simp
+      apply fact+
+    using SatAcc.hyps(3,5)
+     apply blast
+    by fact
+next
+  case (SatAccWildcard e_r r a f mh mp)
+  show ?case
+    apply (rule sat.SatAccWildcard)
+        apply (rule eval_exhale_sat_helper_helper(1))
+             apply fact+
+    using SatAccWildcard.prems
+            apply (fastforce, fastforce)
+          apply fact+
+        apply simp
+       apply simp
+      apply fact+
+    using SatAccWildcard.hyps(2,4) apply blast
+    by fact
+next
+  case (SatAccPred e_args v_args e_p p mh mp pid pdecl pbody)
+  show ?case
+    apply (rule sat.SatAccPred)
+           apply (rule eval_exhale_sat_helper_helper(2))
+                apply fact+
+    using SatAccPred.prems
+               apply (fastforce, fastforce)
+             apply fact+
+           apply simp
+          apply (rule eval_exhale_sat_helper_helper(1))
+               apply fact+
+    using SatAccPred.prems
+              apply (fastforce, fastforce)
+            apply fact+
+          apply simp
+    by fact+
+next
+  case (SatAccPredWildcard e_args v_args mh pid mp pdecl pbody)
+  show ?case
+    apply (rule sat.SatAccPredWildcard)
+         apply (rule eval_exhale_sat_helper_helper(2))
+              apply fact+
+    using SatAccPredWildcard.prems
+             apply (fastforce, fastforce)
+           apply fact+
+         apply simp
+    by fact+
+next
+  case (SatPure e mh mp)
+  then show ?case
+    by (metis assert_pred_atomic_subexp assms(2,3) eval_exhale_sat_helper_helper(1) list.pred_inject(2) sat.SatPure sub_expressions_atomic.simps(1))
+next
+  case (SatStar mh mh\<^sub>1 mh\<^sub>2 mp mp\<^sub>1 mp\<^sub>2 A B)
+  then show ?case
+    by (simp add: sat.SatStar)
+next
+  case (SatImpTrue e mh mp A)
+  then show ?case
+    by (metis assert_pred.elims(2) assert_pred_rec.simps(2) assms(2,3) eval_exhale_sat_helper_helper(1) sat.SatImpTrue)
+next
+  case (SatImpFalse e mh mp A)
+  then show ?case
+    by (metis assert_pred.elims(2) assert_pred_rec.simps(2) assms(2,3) eval_exhale_sat_helper_helper(1) sat.SatImpFalse)
+next
+  case (SatCondTrue e mh mp A B)
+  then show ?case
+    by (metis assert_pred.elims(1) assert_pred_rec.simps(3) assms(2,3) eval_exhale_sat_helper_helper(1) sat.SatCondTrue)
+next
+  case (SatCondFalse e mh mp B A)
+  then show ?case
+    by (metis assert_pred.elims(1) assert_pred_rec.simps(3) assms(2,3) eval_exhale_sat_helper_helper(1) sat.SatCondFalse)
+qed
+
+
+
 subsection \<open>Relation between exhale and sat\<close>
 
 
@@ -1042,6 +1143,27 @@ next
   case (ExhSubExpFailure A \<omega>)
   then show ?case
     by blast
+qed
+
+lemma exhale_diff_sat':
+  assumes "red_exhale ctxt \<omega>\<^sub>0 A \<omega> res" and "res = RNormal \<omega>'"
+      and "supported_pred_body A"
+      and "consistent_external ctxt (get_total_full \<omega>)"
+      and "get_nm_total_full \<omega>' + nm_exh = get_nm_total_full \<omega>"
+    shows "sat ctxt (\<omega>\<lparr> get_total_full := get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>)
+               (get_mh_nm nm_exh) (get_mp_nm nm_exh) A"
+proof -
+  have "\<lparr> get_store_total = get_store_total \<omega>, get_trace_total = get_trace_total \<omega>,
+          get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr> =
+        \<omega>\<lparr> get_total_full := get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>"
+    by simp
+  moreover have "get_mh_total_full \<omega> - get_mh_total_full \<omega>' = get_mh_nm nm_exh"
+    by (metis add_masks_minus assms(5) get_mh_nm__plus get_mh_total.simps get_mh_total_full.simps get_nm_total_full.simps)
+  moreover have "get_mp_total_full \<omega> - get_mp_total_full \<omega>' = get_mp_nm nm_exh"
+    by (metis assms(5) add_masks_minus get_nm_total_full.simps get_mp_nm_distr_over_plus get_mp_total_full.simps get_mp_total.elims)
+  ultimately show ?thesis
+    using exhale_diff_sat[OF assms(1) assms(2) assms(3) assms(4), where ?trace="get_trace_total \<omega>"]
+    by presburger
 qed
 
 
@@ -1932,6 +2054,39 @@ lemma substitute_subexpr_assertion_commute:
    apply (case_tac perm; simp?)
   apply (rename_tac pid e_args perm)
   apply (case_tac perm; simp?)
+  done
+
+
+lemma substitute_expr_supported_pred:
+  assumes "no_perm_pure_exp e \<and> no_old_pure_exp e \<and> no_result_pure_exp e"
+      and "list_all supported_pred_expr eargs"
+    shows "no_perm_pure_exp (substitute_args_expr e eargs) \<and> no_old_pure_exp (substitute_args_expr e eargs) \<and> no_result_pure_exp (substitute_args_expr e eargs)"
+  using assms
+  apply (induction e)
+  by (simp_all add: list_all_length)
+
+
+lemma substitute_assertion_supported_pred:
+  assumes "supported_pred_body A"
+      and "list_all supported_pred_expr eargs"
+    shows "supported_pred_body (substitute_args_assertion A eargs)"
+  using assms
+  apply (induction A)
+          apply (rename_tac atm)
+          apply (case_tac atm)
+            defer
+            apply (rename_tac e_r f perm)
+            apply (case_tac perm)
+             defer
+             defer
+             apply (rename_tac pid e_args perm)
+             apply (case_tac perm)
+              defer
+              defer
+              apply simp_all
+  using substitute_expr_supported_pred
+        apply auto
+       apply (simp_all add: list_all_length)
   done
 
 
