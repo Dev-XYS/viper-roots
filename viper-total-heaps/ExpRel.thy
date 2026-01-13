@@ -353,7 +353,7 @@ proof (rule exp_rel_vpr_bpl_intro)
     fix v1 v2
     assume RedE1Vpr: "ctxt_vpr, Some \<omega>_def_opt \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and 
            RedE2Vpr: "ctxt_vpr, Some \<omega>_def_opt \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and
-           BopEvalNormalVpr: "eval_binop (Option.is_none (Some \<omega>_def_opt)) v1 bop v2 = BinopNormal v"
+           BopEvalNormalVpr: "eval_binop False v1 bop v2 = BinopNormal v"
 
     have RedE1Bpl:"red_expr_bpl ctxt e1_bpl ns (val_rel_vpr_bpl v1)"
       apply (rule exp_rel_vpr_bpl_elim[OF E1Rel])

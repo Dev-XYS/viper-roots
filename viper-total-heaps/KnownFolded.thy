@@ -112,7 +112,7 @@ qed
 
 definition heap_knownfolded_rel :: "ViperLang.program \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> 'a nested_mask \<Rightarrow> 'a bpl_heap_ty \<Rightarrow> bool"
   where "heap_knownfolded_rel Pr tr_field nm hb \<equiv>
-    \<forall> lp kfm l field_ty_vpr field_bpl.
+    \<forall>lp kfm l field_ty_vpr field_bpl.
         hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm)) \<longrightarrow>
         declared_fields Pr (snd l) = Some field_ty_vpr \<longrightarrow>
         tr_field (snd l) = Some field_bpl \<longrightarrow>
@@ -122,9 +122,10 @@ definition heap_knownfolded_rel :: "ViperLang.program \<Rightarrow> (field_ident
 
 definition heap_knownfolded_var_rel :: "knownfolded_rel_options \<Rightarrow> ViperLang.program \<Rightarrow> var_context \<Rightarrow> (field_ident \<rightharpoonup> Lang.vname) \<Rightarrow> vname \<Rightarrow> 'a full_total_state \<Rightarrow> ('a vbpl_absval) nstate \<Rightarrow> bool"
   where
-    "heap_knownfolded_var_rel opt Pr \<Lambda> FieldTr hvar \<omega> ns \<equiv> kf_turned_on opt \<longrightarrow>
-       (\<exists>hb. lookup_var \<Lambda> ns hvar = Some (AbsV (AHeap hb)) \<and>
-             heap_knownfolded_rel Pr FieldTr (get_nm_total_full \<omega>) hb)"
+    "heap_knownfolded_var_rel opt Pr \<Lambda> FieldTr hvar \<omega> ns \<equiv> \<exists>hb.
+       lookup_var \<Lambda> ns hvar = Some (AbsV (AHeap hb)) \<and>
+       (\<forall>lp. \<exists>kfm. hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))) \<and>
+       (kf_turned_on opt \<longrightarrow> heap_knownfolded_rel Pr FieldTr (get_nm_total_full \<omega>) hb)"
 
 
 lemma heap_knownfolded_var_rel_stable:
@@ -154,25 +155,32 @@ lemma heap_knownfolded_var_rel_stable_mh_changed:
       and "get_fnm_total_full \<omega> = get_fnm_total_full \<omega>'"
       and "lookup_var \<Lambda> ns hvar = lookup_var \<Lambda> ns' hvar"
     shows "heap_knownfolded_var_rel opt Pr \<Lambda> FieldTr hvar \<omega>' ns'"
-proof (cases "kf_turned_on opt")
-  case True
-  then obtain hb where *: "lookup_var \<Lambda> ns hvar = Some (AbsV (AHeap hb)) \<and> heap_knownfolded_rel Pr FieldTr (get_nm_total_full \<omega>) hb"
-    using assms(1)
-    unfolding heap_knownfolded_var_rel_def
-    by auto
+proof -
+  obtain hb where hb: "lookup_var \<Lambda> ns hvar = Some (AbsV (AHeap hb)) \<and>
+                       (\<forall>lp. \<exists>kfm. hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))) \<and>
+                       (kf_turned_on opt \<longrightarrow> heap_knownfolded_rel Pr FieldTr (get_nm_total_full \<omega>) hb)"
+    using assms(1) heap_knownfolded_var_rel_def
+    by blast
   show ?thesis
     unfolding heap_knownfolded_var_rel_def
-    apply (intro impI)
-    apply (thin_tac _)
     apply (rule exI[of _ hb])
-    using * pred_folds_perm_mh_stable assms(2,3)
-    unfolding heap_knownfolded_rel_def
-    by fastforce
-next
-  case False
-  then show ?thesis
-    unfolding heap_knownfolded_var_rel_def
-    by simp
+    apply (intro conjI)
+    using hb assms(3)
+      apply argo
+    using hb
+     apply blast
+  proof
+    assume "kf_turned_on opt"
+    hence *: "heap_knownfolded_rel Pr FieldTr (get_nm_total_full \<omega>) hb"
+      using hb
+      by force
+    show "heap_knownfolded_rel Pr FieldTr (get_nm_total_full \<omega>') hb"
+      unfolding heap_knownfolded_rel_def
+      apply (intro impI allI)
+      using * pred_folds_perm_mh_stable assms(2,3)
+      unfolding heap_knownfolded_rel_def
+      by fastforce
+  qed
 qed
 
 
@@ -189,7 +197,7 @@ lemma heap_knownfolded_var_rel_stable_larger_\<omega>:
       and "\<omega> \<le> \<omega>'"
       and "lookup_var \<Lambda> ns hvar = lookup_var \<Lambda> ns' hvar"
     shows "heap_knownfolded_var_rel opt Pr \<Lambda> FieldTr hvar \<omega>' ns'"
-  by (metis (full_types) assms heap_knownfolded_rel_stable_larger_nm heap_knownfolded_var_rel_def less_eq_full_total_stateD_2)
+  by (smt (verit, best) assms(1,2,3) heap_knownfolded_rel_stable_larger_nm heap_knownfolded_var_rel_def less_eq_full_total_stateD_2)
 
 
 definition zero_knownfolded_mask where

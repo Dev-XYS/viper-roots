@@ -188,10 +188,10 @@ next
     using IH(10) IH(11) IH(12) IH(4)
     by auto
 
-  have "eval_binop (Option.is_none \<omega>_def\<^sub>2) v1\<^sub>2 bop v2\<^sub>2 \<noteq> BinopOpFailure"
+  have "eval_binop False v1\<^sub>2 bop v2\<^sub>2 \<noteq> BinopOpFailure"
     using IH.hyps(1) IH.prems(1) IH.prems(3) RedBinopOpFailure \<open>v1\<^sub>1 = v1\<^sub>2\<close> eval_is_deterministic(1) extended_val.discI v1\<^sub>2 v2\<^sub>2
     by blast
-  hence "eval_binop (Option.is_none \<omega>_def\<^sub>2) v1\<^sub>2 bop v2\<^sub>2 = BinopNormal v"
+  hence "eval_binop False v1\<^sub>2 bop v2\<^sub>2 = BinopNormal v"
     using IH(6) eval_total_non_total_not_fail_same \<open>v1\<^sub>1 = v1\<^sub>2\<close> \<open>v2\<^sub>1 = v2\<^sub>2\<close>
     by blast
   then show ?case
@@ -841,6 +841,70 @@ next
   then show ?case
     by (metis RedField_def_normalI extended_val.distinct(1) if_Some_iff less_eq_full_total_stateD_2 less_eq_valid_locs_subset_total_state list.pred_inject(2) pure_exp_pred_subexp sub_pure_exp_total.simps(3) subsetD)
 qed (fastforce intro: red_pure_exp_intros)+
+
+
+lemma eval_with_None_exists_\<omega>def:
+  assumes "ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+      and "supported_pred_expr e"
+      and "no_unfolding_pure_exp e"
+    shows "\<exists>\<omega>\<^sub>0. ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+proof -
+  let ?nm = "NM (\<lambda>_. 1) (\<lambda>_. None)"
+  let ?\<omega>\<^sub>0 = "upd_nm_total_full \<omega> ?nm"
+  show ?thesis
+  proof (rule exI[of _ ?\<omega>\<^sub>0]; insert assms; induct e arbitrary: v)
+    case (Unop uop e)
+    then show ?case
+      by (metis RedUnop RedUnop_case list.pred_inject(2) pure_exp_pred_subexp sub_pure_exp_total.simps(1))
+  next
+    case (Binop e1 bop e2)
+    then show ?case
+      by (smt (verit, best) pure_exp_pred.elims(1) pure_exp_pred_rec.simps(4) red_exp_intros(4,5) red_pure_exp_total_elims(4))
+  next
+    case (CondExp e1 e2 e3)
+    then show ?case
+      by (metis (no_types, lifting) RedCondExpFalse RedCondExpTrue RedCondExp_case pure_exp_pred.elims(1) pure_exp_pred_rec.simps(5))
+  next
+    case (FieldAcc e f)
+    moreover then obtain a where
+      "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a))" and
+      "get_hh_total_full \<omega> (a, f) = v"
+      by (auto elim: RedField_case)
+    moreover have "if_Some (\<lambda>res. (a,f) \<in> get_valid_locs res) (Some ?\<omega>\<^sub>0)"
+      by (simp add: get_valid_locs_def pperm_pnone_pgt)
+    ultimately show ?case
+      by (fastforce intro: RedField_def_normalI)
+  qed (fastforce elim: red_pure_exp_total.cases intro: red_pure_exp_intros)+
+qed
+
+(*
+lemma eval_with_None_exists_\<omega>def:
+  shows "\<exists>\<omega>\<^sub>0. (ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t res \<longrightarrow>
+               supported_pred_expr e \<longrightarrow>
+               no_unfolding_pure_exp e \<longrightarrow>
+               ctxt, Some \<omega>\<^sub>0 \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t res) \<and>
+              (red_pure_exps_total ctxt None es \<omega> rs \<longrightarrow>
+               list_all supported_pred_expr es \<longrightarrow>
+               list_all no_unfolding_pure_exp es \<longrightarrow>
+               red_pure_exps_total ctxt (Some \<omega>\<^sub>0) es \<omega> rs)"
+proof -
+  let ?nm = "NM (\<lambda>_. 1) (\<lambda>_. None)"
+  let ?\<omega>\<^sub>0 = "upd_nm_total_full \<omega> ?nm"
+  show ?thesis
+  proof (rule exI[of _ ?\<omega>\<^sub>0]; induct rule: red_pure_exp_induct)
+    case (RedField \<omega>_def e \<omega> a f v)
+    then show ?case
+      apply (intro impI)
+      using TotalExpressions.RedField
+      oops
+  next
+    case (RedSubFailure e' \<omega>_def \<omega>)
+    then show ?case
+      using pure_exp_pred_subexp supported_sub_expr_supported
+      by (blast intro: red_pure_exp_intros)
+  qed (auto intro: red_pure_exp_intros)
+qed
+*)
 
 
 

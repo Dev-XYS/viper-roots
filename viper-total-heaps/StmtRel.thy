@@ -903,6 +903,7 @@ proof -
 
   obtain hb'' where
     NewHeapRel: "heap_rel (program_total ctxt_vpr) (field_translation Tr) (get_hh_total_full \<omega>') hb''" and
+    NewheapKFRel: "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr)) \<longrightarrow> heap_knownfolded_rel (program_total ctxt_vpr) (field_translation Tr) (get_nm_total_full \<omega>) hb''" and
     NewHeapWellTy: "vbpl_absval_ty_opt TyRep (AHeap hb'') = Some (THeapId TyRep, [])" and
     NewHeapProperty:
       "\<forall> loc_bpl. loc_bpl \<notin> (vpr_heap_locations_bpl (program_total ctxt_vpr) (field_translation Tr)) \<longrightarrow>
@@ -910,7 +911,7 @@ proof -
     NewHeapProperty2:
       "\<forall> loc_bpl \<in> (vpr_heap_locations_bpl (program_total ctxt_vpr) (field_translation Tr)).
            hb'' loc_bpl = hb' loc_bpl"
-    using heap_rel_stable_2_well_typed[OF * ** HeapVarWellTy]
+    using heap_rel_stable_2_well_typed[OF * HeapKnownFoldedRel ** HeapVarWellTy]
     by blast
 
   have IdOnKnownCondNormalField: "\<forall>r f t. 0 < mb (r, NormalField f t) \<longrightarrow> hb (r, NormalField f t) = hb'' (r, NormalField f t)"
@@ -1073,10 +1074,13 @@ proof -
     show "heap_knownfolded_var_rel (knownfolded_state_rel_opt (state_rel_opt Tr)) Pr
             (var_context ctxt) (field_translation Tr) (heap_var Tr) \<omega>' ?ns2"
       unfolding heap_knownfolded_var_rel_def
-      apply (intro impI)
       apply (rule exI[of _ hb''])
       apply (intro conjI)
-       apply (simp add: \<open>hvar = _\<close>)
+        apply (simp add: \<open>hvar = _\<close>)
+      using state_rel_heap_knownfolded_var_rel[OF assms(1)]
+      unfolding heap_knownfolded_var_rel_def
+       apply (simp add: LookupHeapVar NewHeapProperty vpr_heap_locations_bpl_def)
+      apply (intro impI)
       using NewHeapProperty \<open>Pr = _\<close> HeapKnownFoldedRel *
       unfolding heap_knownfolded_rel_def vpr_heap_locations_bpl_def
       by simp
@@ -3252,7 +3256,7 @@ proof (rule exp_rel_equiv_vpr[OF _ assms])
     assume "ctxt_vpr, \<omega>_def_opt \<turnstile> \<langle>ELit (ViperLang.lit.LBool True);\<omega>\<rangle> [\<Down>]\<^sub>t Val v1a"
     hence "v1a = VBool True"
       by (metis TotalExpressions.RedLit_case extended_val.inject val_of_lit.simps(1))
-    assume "eval_binop (Option.is_none \<omega>_def_opt) v1a BImp v2 = BinopNormal v1"
+    assume "eval_binop False v1a BImp v2 = BinopNormal v1"
     hence "v2 = v1"
       unfolding \<open>v1a = _\<close>
       by (rule eval_binop.elims) auto

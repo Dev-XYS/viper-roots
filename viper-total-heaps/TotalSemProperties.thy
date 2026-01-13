@@ -875,8 +875,7 @@ next
         case E2Fail
         then show ?thesis 
           using E1Normal RedBinopOpFailure
-          apply (auto intro!: RedBinopRightFailure)
-          by blast
+          by (auto intro!: RedBinopRightFailure)
       next
         case E2Normal
         then show ?thesis 

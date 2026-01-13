@@ -158,9 +158,11 @@ lemma heap_rel_stable_2:
 
 lemma heap_rel_stable_2_well_typed:
   assumes "heap_rel Pr tr_field h hb0" and
+          "kf_opt \<longrightarrow> heap_knownfolded_rel (program_total ctxt_vpr) tr_field nm hb1" and
         Heap0WellTy: "vbpl_absval_ty_opt TyRep (AHeap hb0) = Some (THeapId TyRep, [])" and
         Heap1WellTy: "vbpl_absval_ty_opt TyRep (AHeap hb1) = Some (THeapId TyRep, [])"
-  shows "\<exists> hb'. heap_rel Pr tr_field h hb' \<and>
+      shows "\<exists> hb'. heap_rel Pr tr_field h hb' \<and>
+                    (kf_opt \<longrightarrow> heap_knownfolded_rel (program_total ctxt_vpr) tr_field nm hb') \<and>
                 vbpl_absval_ty_opt TyRep (AHeap hb') = Some (THeapId TyRep, []) \<and>
                   (\<forall> loc_bpl \<in> vpr_heap_locations_bpl Pr tr_field. hb' loc_bpl = hb0 loc_bpl) \<and>
                   (\<forall> loc_bpl. loc_bpl \<notin> vpr_heap_locations_bpl Pr tr_field \<longrightarrow> hb' loc_bpl = hb1 loc_bpl)"
@@ -174,6 +176,11 @@ proof -
   hence "heap_rel Pr tr_field h hb'"
     using heap_rel_stable[OF assms(1)]
     by metis
+
+  have "kf_opt \<longrightarrow> heap_knownfolded_rel (program_total ctxt_vpr) tr_field nm hb'"
+    using assms(2)
+    unfolding heap_knownfolded_rel_def
+    by (simp add: HeapProperties(2) vpr_heap_locations_bpl_def)
 
   moreover have "vbpl_absval_ty_opt TyRep (AHeap hb') = Some (THeapId TyRep, [])"
   proof (rule heap_bpl_well_typed)
@@ -202,7 +209,7 @@ proof -
   qed
 
   ultimately show ?thesis
-    using HeapProperties
+    using HeapProperties \<open>heap_rel Pr tr_field h hb'\<close>
     by blast
 qed
 
@@ -351,6 +358,53 @@ lemma mask_update_wf_apply:
   shows "red_expr_bpl ctxt (mupdate e_mask e_rcv e_f e_new_perm ty_args) ns (AbsV (AMask (m( (r,f) := p ))))"
   using assms
   unfolding mask_update_wf_def
+  by blast
+
+definition pmask_read_wf :: "'a ty_repr_bpl \<Rightarrow> 'a econtext_bpl \<Rightarrow> (boogie_expr \<Rightarrow> boogie_expr \<Rightarrow> boogie_expr \<Rightarrow> Lang.ty list \<Rightarrow> boogie_expr) \<Rightarrow> bool"
+  where
+    "pmask_read_wf T ctxt mread \<equiv> \<forall> e_mask e_rcv e_f m r f ns v field_tcon ty_args.
+         ( (red_expr_bpl ctxt e_mask ns (AbsV (AKnownFoldedMask m)) \<and>
+          red_expr_bpl ctxt e_rcv ns (AbsV (ARef r)) \<and>
+          red_expr_bpl ctxt e_f ns (AbsV (AField f)) \<and> m (r, f) = v \<and>
+          field_ty_fun_opt T f = Some (field_tcon, ty_args)) \<longrightarrow>
+            red_expr_bpl ctxt (mread e_mask e_rcv e_f ty_args) ns (BoolV v) ) \<and>
+         ( (\<exists>v. red_expr_bpl ctxt (mread e_mask e_rcv e_f ty_args) ns v) \<longrightarrow>
+             (\<exists>v. red_expr_bpl ctxt e_rcv ns v) \<and> (\<exists>v. red_expr_bpl ctxt e_f ns v) )"
+
+lemma pmask_read_wf_apply:
+  assumes "pmask_read_wf T ctxt mread" and
+          "m (r, f) = p" and
+          "red_expr_bpl ctxt e_mask ns (AbsV (AKnownFoldedMask m))"and
+          "red_expr_bpl ctxt e_rcv ns (AbsV (ARef r))" and
+          "red_expr_bpl ctxt e_f ns (AbsV (AField f))" and
+          "field_ty_fun_opt T f = Some (field_tcon, ty_args)"
+  shows "red_expr_bpl ctxt (mread e_mask e_rcv e_f ty_args) ns (BoolV p)"
+  using assms
+  unfolding pmask_read_wf_def
+  by blast
+
+definition pmask_update_wf :: "'a ty_repr_bpl \<Rightarrow> 'a econtext_bpl \<Rightarrow> (boogie_expr \<Rightarrow> boogie_expr \<Rightarrow> boogie_expr \<Rightarrow> boogie_expr \<Rightarrow> Lang.ty list \<Rightarrow> boogie_expr) \<Rightarrow> bool"
+  where
+    "pmask_update_wf T ctxt mupdate \<equiv> \<forall> e_mask e_rcv e_f e_p m r f p ns field_tcon ty_args.
+         ( (red_expr_bpl ctxt e_mask ns (AbsV (AKnownFoldedMask m)) \<and>
+          red_expr_bpl ctxt e_rcv ns (AbsV (ARef r)) \<and>
+          red_expr_bpl ctxt e_f ns (AbsV (AField f)) \<and>
+          red_expr_bpl ctxt e_p ns (BoolV p)  \<and>
+          field_ty_fun_opt T f = Some (field_tcon, ty_args)) \<longrightarrow>
+            red_expr_bpl ctxt (mupdate e_mask e_rcv e_f e_p ty_args) ns (AbsV (AKnownFoldedMask (m((r,f) := p))))) \<and>
+         ( (\<exists>v. red_expr_bpl ctxt (mupdate e_mask e_rcv e_f e_p ty_args) ns v) \<longrightarrow>
+             (\<exists>v. red_expr_bpl ctxt e_rcv ns v) \<and> (\<exists>v. red_expr_bpl ctxt e_f ns v) )"
+
+lemma pmask_update_wf_apply:
+  assumes "pmask_update_wf T ctxt mupdate" and
+          "red_expr_bpl ctxt e_mask ns (AbsV (AKnownFoldedMask m))"and
+          "red_expr_bpl ctxt e_rcv ns (AbsV (ARef r))" and
+          "red_expr_bpl ctxt e_f ns (AbsV (AField f))" and
+          "red_expr_bpl ctxt e_new_perm ns (BoolV p)" and
+          "field_ty_fun_opt T f = Some (field_tcon, ty_args)"
+  shows "red_expr_bpl ctxt (mupdate e_mask e_rcv e_f e_new_perm ty_args) ns (AbsV (AKnownFoldedMask (m( (r,f) := p ))))"
+  using assms
+  unfolding pmask_update_wf_def
   by blast
 
 definition heap_var_rel :: "ViperLang.program \<Rightarrow>  var_context \<Rightarrow>  'a ty_repr_bpl \<Rightarrow> (field_ident \<rightharpoonup> Lang.vname) \<Rightarrow> vname \<Rightarrow> 'a full_total_state \<Rightarrow> ('a vbpl_absval) nstate \<Rightarrow> bool"
@@ -3116,8 +3170,9 @@ abbreviation enable_knownfolded_rel_opt :: "tr_vpr_bpl \<Rightarrow> tr_vpr_bpl"
 lemma state_rel_kf_disable_consistency:
   assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns"
   shows "state_rel Pr StateCons TyRep (disable_knownfolded_rel_opt Tr) AuxPred ctxt \<omega>def \<omega> ns"
+  using assms
   unfolding state_rel_def state_rel0_def heap_knownfolded_var_rel_def
-  by (insert assms[simplified state_rel_def state_rel0_def]) auto
+  by force
 
 
 subsection\<open>function relation\<close>

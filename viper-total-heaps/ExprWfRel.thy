@@ -380,7 +380,6 @@ proof (rule expr_wf_rel_intro)
         using red_ast_bpl_transitive by blast
       thus ?thesis
         using RedBinop
-        apply (simp only: is_none_code)
         using wf_rel_normal_elim[OF RelOp] red_ast_bpl_transitive
         by blast
   next
@@ -423,7 +422,6 @@ next
         by (metis (no_types, lifting) rtranclp_trans)
       then show ?thesis
         using RedBinopOpFailure
-        apply (simp only: is_none_code)
         using wf_rel_failure_elim[OF RelOp \<open>R \<omega>def \<omega> ns'\<close>] red_ast_bpl_def
         by (metis (no_types, lifting) rtranclp_trans)
   next
@@ -499,9 +497,8 @@ next
       using Lazy eval_binop_lazy_iff by force
     from this show ?thesis
       using Red_s_s' wf_rel_failure_elim[OF Rel2a HOL.conjI[OF Red_s_s'(1)] RedBinopRightFailure(2)] RedBinopRightFailure(1)
-            \<open>\<exists>v2. eval_binop (Option.is_none (Some \<omega>def)) v1 bop v2 \<noteq> BinopTypeFailure\<close>
+            \<open>\<exists>v2. eval_binop False v1 bop v2 \<noteq> BinopTypeFailure\<close>
       using red_ast_bpl_transitive
-      apply (simp only: is_none_code(2))
       by blast
   next
     case (RedBinopOpFailure v1 v2)  

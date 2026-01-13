@@ -1223,7 +1223,8 @@ proof -
                 apply (simp add: Disj)
                apply (simp, simp, simp)
             defer defer defer defer
-    using KFRelOff heap_knownfolded_var_rel_def apply blast
+    using KFRelOff heap_knownfolded_var_rel_def
+            apply (metis InitRel' MaskVar heap_var_disjoint state_rel_heap_knownfolded_var_rel state_rel_state_rel0 update_var_apply)
            apply (metis InitRel MaskVar field_rel_stable mask_var_disjoint state_rel_field_rel state_rel_state_rel0 update_var_other)
           apply (metis InitRel MaskVar boogie_const_rel_stable mask_var_disjoint state_rel_boogie_const_rel state_rel_state_rel0 update_var_other)
          defer
@@ -1321,7 +1322,16 @@ lemma kfm_changes_while_opt_turned_off:
             apply blast
            apply (simp, simp)
          apply (metis assms(1) heap_var_disjoint state_rel_state_rel0 update_var_other)
-        apply (simp add: assms(3) heap_knownfolded_var_rel_def)
+  subgoal
+    unfolding heap_knownfolded_var_rel_def
+    apply (rule exI[of _ "hb((Null, PredKnownFoldedField lp) \<mapsto> AbsV (AKnownFoldedMask kfm))"])
+    apply (intro conjI)
+      apply force
+    using state_rel_heap_knownfolded_var_rel[OF assms(1)]
+    unfolding heap_knownfolded_var_rel_def
+     apply (simp add: assms(2))
+    using assms(3)
+    by auto
        apply (rule field_rel_stable)
   using assms(1)[unfolded state_rel_def state_rel0_def]
         apply blast
@@ -1560,6 +1570,12 @@ proof (rule rel_intro; blast?)
       apply (meson heap_bpl_well_typed_elim heap_ty)
      apply fact
     unfolding heap_knownfolded_var_rel_def
+    apply (rule exI[of _ ?hb'])
+    apply (intro conjI)
+      apply (simp add: zero_knownfolded_mask_def)
+    using \<open>heap_knownfolded_var_rel _ _ _ _ _ _ _\<close>
+    unfolding heap_knownfolded_var_rel_def zero_knownfolded_mask_def 
+     apply (simp add: lookup_heap)
     apply simp
     apply (rule unfold_set_kfm_to_zero)
      apply fact+
@@ -1657,7 +1673,8 @@ lemma fold_stmt_rel:
       and StepKFUpdate:
             "\<And>v_args_vpr v_p_vpr.
                 rel_general (\<lambda>\<omega> ns. R' \<omega> ns \<and>
-                                    red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr) \<and>
+                                    (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
+                                    pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
                                     (\<exists>\<omega>1 nm_exh. \<omega> = add_to_lpm_nonzero_total_full \<omega>1 (pid,v_args_vpr) (Abs_posreal (Abs_preal v_p_vpr)) nm_exh \<and>
                                          sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr)))
                             R' (=) (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>5 \<gamma>'"
@@ -1818,7 +1835,7 @@ proof (rule stmt_rel_intro)
       apply simp
       apply (metis fold_rel_normal_only_changes_mask fold_rel)
      apply simp
-    apply (metis fold_rel_normal_only_changes_mask fold_rel get_hh_total_full.simps)
+     apply (metis fold_rel_normal_only_changes_mask fold_rel get_hh_total_full.simps)
     by fact
   have ns'_exists: "\<exists>ns'. red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>5, Normal ns\<^sub>5) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
     apply (rule StepKFUpdate[THEN rel_success_elim, where ?\<omega>=\<omega>' and ?\<omega>'=\<omega>' and ?ns=ns\<^sub>5 and ?v_args_vpr1=v_args])
@@ -1826,15 +1843,14 @@ proof (rule stmt_rel_intro)
      apply simp
     apply (intro conjI)
     using conjunct2[OF ns\<^sub>5]
-      apply blast
-     apply (rule eval_exhale_sat_helper_helper(2)[where ?\<omega>\<^sub>2=\<omega>', OF v_args_eval])
+       apply blast
+      apply (rule exI[of _ \<omega>])
+      apply (rule red_pure_exp_only_differ_on_mask(2)[where ?\<omega>'=\<omega>', OF v_args_eval])
     using ArgsRestriction
-         apply (fastforce, fastforce)
-    using \<open>\<omega>' = _\<close> \<open>\<omega>1 = _\<close>
-       apply (simp)
-    using fold_rel fold_rel_normal_only_changes_mask
-      apply fastforce
-     apply simp
+       apply (simp add: list_all_length)
+      apply (metis fold_rel fold_rel_normal_only_changes_mask)
+    using PredDecl \<open>pdecl' = pdecl\<close> pred_ty_correct_premise_def v_args_ty
+     apply blast
     by fact
   then obtain ns' where ns': "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>5, Normal ns\<^sub>5) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
     by blast
@@ -2227,44 +2243,147 @@ proof -
   qed
 qed
 
-(* lemma fold_knownfolded_acc_upd_rel:
+
+lemma fold_knownfolded_acc_upd_rel:
   assumes
     StateRelIn: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow>
                           state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns" and
-    StateRelOut: "\<And>\<omega> ns. state_rel_def_same Pr StateCons TyRep (enable_knownfolded_rel_opt Tr) AuxPred ctxt_bpl \<omega> ns \<Longrightarrow> R' \<omega> ns" and
+    StateRelOut: "\<And>\<omega> ns. state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns \<Longrightarrow> R' \<omega> ns" and
 
-    KFMOptTurnedOff: "\<not> kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))" and
-    KFMNewOpt: "kf_turned_on kf_opt" and
     HeapVarDefSame: "heap_var_def Tr = heap_var Tr" and
 
     PlocRel: "ploc_rel_vpr_bpl'' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
+    RefExpRel: "exp_rel_vpr_bpl (\<lambda>\<omega>def \<omega> ns. \<omega>def = \<omega> \<and> R \<omega> ns) ctxt_vpr ctxt_bpl e_r_vpr e_r_bpl" and
+    FieldRelSingle: "field_rel_single Pr TyRep Tr f e_f_bpl \<tau>_bpl" and
+
+    ExpSyntax: "supported_pred_expr e_r_vpr \<and> no_unfolding_pure_exp e_r_vpr" and
 
     TyInterpEq: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
 
     NullConst: "const_repr Tr CNull = nullConst" and
-    ZeroPMaskConst: "const_repr Tr CKnownFoldedZeroMask = zeroPMask" and
     HeapVar: "hvar = heap_var Tr" and
 
     PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
 
     HeapUpdateWf: "heap_update_wf TyRep ctxt_bpl heap_upd_bpl" and
+    HeapReadWf: "heap_read_wf TyRep ctxt_bpl heap_read_bpl" and
+    PMaskUpdateWf: "pmask_update_wf TyRep ctxt_bpl pmask_upd_bpl" and
 
-    KnownFoldedUpdBpl: "h_upd_bpl = heap_upd_bpl (Var (heap_var Tr)) (Var nullConst) e_ploc_bpl (Var zeroPMask)
-                                      [pred_ty, TConSingle (TKnownFoldedMaskId TyRep)]"
+    KnownFoldedUpdBpl: "h_upd_bpl = heap_upd_bpl (Var (heap_var Tr)) (Var nullConst) e_ploc_bpl kf_set_bpl
+                                      [pred_ty, TConSingle (TKnownFoldedMaskId TyRep)]" and
+    KnownFoldedSetBpl: "kf_set_bpl = pmask_upd_bpl kf_read_bpl e_r_bpl e_f_bpl (Lit (LBool True))
+                                       [TConSingle (TNormalFieldId TyRep), \<tau>_bpl]" and
+    KnownFoldedReadBpl: "kf_read_bpl = heap_read_bpl (Var (heap_var Tr)) (Var nullConst) e_ploc_bpl
+                                         [pred_ty, TConSingle (TKnownFoldedMaskId TyRep)]"
 
-  shows "rel_general (uncurry (\<lambda>\<omega>\<^sub>0 \<omega> ns. R \<omega> ns \<and>
-                                         ctxt_vpr, (Some \<omega>\<^sub>0) \<turnstile> \<langle>e_p_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_vpr) \<and>
-                                         red_pure_exps_total ctxt_vpr (Some \<omega>\<^sub>0) e_args_vpr \<omega> (Some v_args_vpr) \<and>
-                                         pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
-                                         unfold_rel ctxt_vpr pid v_args_vpr (Abs_preal v_p_vpr) (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>) \<and>
-                                         heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns))
-                     (uncurry (\<lambda>\<omega>\<^sub>0 \<omega> ns. R' \<omega> ns))
+  shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
+                               (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
+                               pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
+                               (\<exists>\<omega>1 nm_exh. \<omega> = add_to_lpm_nonzero_total_full \<omega>1 (pid,v_args_vpr) (Abs_posreal (Abs_preal v_p_vpr)) nm_exh \<and>
+                                  sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (Atomic (Acc e_r_vpr f (PureExp e_p_vpr)))))
+                     (\<lambda>\<omega> ns. R' \<omega> ns)
                      (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
                      (\<lambda>\<omega>\<^sub>0_\<omega>. False)
                      P ctxt_bpl
                      (BigBlock name ((Assign hvar h_upd_bpl) # cs) str tr, cont)
                      (BigBlock name cs str tr, cont)" (is "rel_general ?R\<^sub>0 _ _ _ _ _ ?\<gamma> ?\<gamma>'")
-  sorry *)
+proof (rule rel_intro; blast?)
+  fix \<omega> ns \<omega>'
+  assume "?R\<^sub>0 \<omega> ns" and "\<omega> = \<omega>'"
+  hence "R \<omega> ns"
+    by blast
+
+  from \<open>?R\<^sub>0 \<omega> ns\<close>
+  obtain \<omega>1 nm_exh where
+    \<omega>_is_add: "\<omega> = add_to_lpm_nonzero_total_full \<omega>1 (pid, v_args_vpr) (Abs_posreal (Abs_preal v_p_vpr)) nm_exh" and
+    diff_sat: "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (Atomic (Acc e_r_vpr f (PureExp e_p_vpr)))"
+    by blast
+
+  then obtain v_r_vpr where v_r_eval: "ctxt_vpr, None \<turnstile> \<langle>e_r_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef v_r_vpr)"
+    by (fastforce elim: SatAcc_case)
+
+  from PlocRel[unfolded ploc_rel_vpr_bpl''_def] \<open>?R\<^sub>0 \<omega> ns\<close>
+  have ploc_bpl_eval: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredKnownFoldedField (pid, v_args_vpr))))"
+    by blast
+
+  from FieldRelSingle obtain f_tr \<tau> where
+    FieldRel: "field_translation Tr f = Some f_tr" and
+    "e_f_bpl = Lang.Var f_tr" and
+    FieldTy: "declared_fields Pr f = Some \<tau>" and
+    FieldTyBpl: "vpr_to_bpl_ty TyRep \<tau> = Some \<tau>_bpl"
+    by (auto elim: field_rel_single_elim)
+
+  obtain hb where
+    lookup_heap: "lookup_var (var_context ctxt_bpl) ns (heap_var Tr) = Some (AbsV (AHeap hb))" and
+    lookup_heap_ty: "lookup_var_ty (var_context ctxt_bpl) (heap_var Tr) = Some (TConSingle (THeapId TyRep))" and
+    heap_ty: "vbpl_absval_ty_opt TyRep (AHeap hb) = Some ((THeapId TyRep) ,[])"
+    using state_rel_obtain_heap[OF StateRelIn[OF \<open>R \<omega> ns\<close>]]
+    by metis
+
+  obtain kfm where
+    "hb (Null, PredKnownFoldedField (pid, v_args_vpr)) = Some (AbsV (AKnownFoldedMask kfm))"
+    using state_rel_heap_knownfolded_var_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>]]
+    unfolding heap_knownfolded_var_rel_def
+    using lookup_heap
+    by auto
+
+  let ?kfm' = "kfm((v_r_vpr, NormalField f_tr \<tau>) := True)"
+  let ?hb' = "hb( (Null, PredKnownFoldedField (pid, v_args_vpr)) \<mapsto> AbsV (AKnownFoldedMask ?kfm') )"
+
+  have kf_read_eval: "red_expr_bpl ctxt_bpl kf_read_bpl ns (AbsV (AKnownFoldedMask kfm))"
+    unfolding \<open>kf_read_bpl = _\<close>
+    apply (rule heap_read_wf_apply[OF HeapReadWf, where ?h=hb and ?r=Null and ?f="PredKnownFoldedField (pid,v_args_vpr)"])
+         apply fact
+        apply (rule red_expr_red_exprs.RedVar)
+        apply (simp add: lookup_heap)
+       apply fact
+      apply (rule red_expr_red_exprs.RedVar)
+    using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] NullConst
+      apply force
+     apply (simp add: ploc_bpl_eval)
+    apply (simp add: PredType)
+    done
+
+  have kf_set_eval: "red_expr_bpl ctxt_bpl kf_set_bpl ns (AbsV (AKnownFoldedMask ?kfm'))"
+    unfolding \<open>kf_set_bpl = _\<close>
+    apply (rule pmask_update_wf_apply[OF PMaskUpdateWf])
+        apply fact
+    using exp_rel_vpr_bpl_elim[OF RefExpRel] eval_with_None_exists_\<omega>def[OF v_r_eval] ExpSyntax
+       apply (metis \<open>R \<omega> ns\<close> val_rel_vpr_bpl.simps(3))
+    unfolding \<open>e_f_bpl = _\<close>
+      apply (rule red_expr_red_exprs.RedVar)
+    using FieldRel FieldTy StateRelIn \<open>R \<omega> ns\<close> lookup_field_rel state_rel_field_rel
+      apply blast
+     apply (rule red_expr_red_exprs.RedLit)
+    apply (simp add: FieldTyBpl)
+    done
+
+  have h_upd_eval: "red_expr_bpl ctxt_bpl h_upd_bpl ns (AbsV (AHeap ?hb'))"
+    unfolding \<open>h_upd_bpl = _\<close>
+    apply (rule heap_update_wf_apply[OF HeapUpdateWf, where ?h=hb and ?r=Null and ?f="PredKnownFoldedField (pid,v_args_vpr)"])
+          apply (rule red_expr_red_exprs.RedVar)
+          apply fact+
+        apply (rule red_expr_red_exprs.RedVar)
+    using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] NullConst
+        apply force
+       apply (simp add: ploc_bpl_eval)
+      apply (simp add: PredType)
+     apply fact
+    apply simp
+    done
+
+  show "\<exists>ns'. red_ast_bpl P ctxt_bpl
+              ((BigBlock name (Assign hvar h_upd_bpl # cs) str tr, cont), Normal ns)
+              ((BigBlock name cs str tr, cont), Normal ns') \<and>
+              R' \<omega>' ns'"
+  proof (cases "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))")
+    case True
+    then show ?thesis sorry
+  next
+    case False
+    then show ?thesis sorry
+  qed
+qed
 
 
 
