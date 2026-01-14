@@ -1613,13 +1613,18 @@ proof -
       by simp
 
   next
-    have "global_state ns (heap_var Tr) = Some (AbsV (AHeap (construct_bpl_heap_from_vpr_state (program_total ctxt_vpr) (field_translation Tr) (get_total_full \<omega>))))"
+    have *: "global_state ns (heap_var Tr) = Some (AbsV (AHeap (construct_bpl_heap_from_vpr_state (program_total ctxt_vpr) (field_translation Tr) (get_total_full \<omega>))))"
                     (is "_ = Some (AbsV (AHeap ?hb))")
       by (simp add: \<open>global_state ns = _\<close> initial_global_state_def)
-    thus "heap_knownfolded_var_rel (knownfolded_state_rel_opt (state_rel_opt Tr))
+    show "heap_knownfolded_var_rel (knownfolded_state_rel_opt (state_rel_opt Tr))
             (program_total ctxt_vpr) (var_context ctxt) (field_translation Tr) (heap_var Tr) \<omega> ns"
-      unfolding heap_knownfolded_var_rel_def heap_knownfolded_rel_def \<open>ns = _\<close> initial_global_state_def
-      by (metis (no_types, lifting) GlobalsLocalsDisj HeapTy Semantics.val.inject(2) construct_bpl_heap_from_vpr_heap_aux_2 lookup_var_global_disj lookup_vdecls_ty_map_of prod.collapse vb_field.simps(8) vbpl_absval.inject(6))
+      unfolding heap_knownfolded_var_rel_def
+      apply (rule exI[of _ ?hb])
+      apply (intro conjI)
+        apply (metis "*" GlobalsLocalsDisj HeapTy lookup_var_global_disj lookup_vdecls_ty_map_of surjective_pairing)
+       apply simp
+      unfolding heap_knownfolded_rel_def
+      by force
 
   next
     show "field_rel (program_total ctxt_vpr) (var_context ctxt) (field_translation Tr) ns"

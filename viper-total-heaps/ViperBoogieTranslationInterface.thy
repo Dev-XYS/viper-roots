@@ -18,6 +18,12 @@ definition read_mask_concrete :: "fun_repr_bpl \<Rightarrow> boogie_expr \<Right
 definition update_mask_concrete :: "fun_repr_bpl \<Rightarrow> boogie_expr \<Rightarrow> boogie_expr \<Rightarrow> boogie_expr \<Rightarrow> boogie_expr \<Rightarrow> Lang.ty list \<Rightarrow> expr"
   where "update_mask_concrete F m rcv f p ts \<equiv> FunExp (F FUpdateMask) ts [m, rcv, f, p]"
 
+definition read_pmask_concrete :: "fun_repr_bpl \<Rightarrow> boogie_expr \<Rightarrow> boogie_expr \<Rightarrow> boogie_expr \<Rightarrow> Lang.ty list \<Rightarrow> expr"
+  where "read_pmask_concrete F h rcv f ts \<equiv> FunExp (F FReadKnownFoldedMask) ts [h, rcv, f]"
+
+definition update_pmask_concrete :: "fun_repr_bpl \<Rightarrow> boogie_expr \<Rightarrow> boogie_expr \<Rightarrow> boogie_expr \<Rightarrow> boogie_expr \<Rightarrow> Lang.ty list \<Rightarrow> expr"
+  where "update_pmask_concrete F m rcv f p ts \<equiv> FunExp (F FUpdateKnownFoldedMask) ts [m, rcv, f, p]"
+
 lemma vpr_to_bpl_ty_closed:
   assumes   "wf_ty_repr_bpl TyRep" and
             "vpr_to_bpl_ty TyRep vty = Some t"
@@ -122,7 +128,6 @@ lemma mask_read_wf_concrete:
     TyRepWf: "wf_ty_repr_bpl TyRep" and
     InFunDom: "FReadMask \<in> FunDom"
   shows "mask_read_wf TyRep ctxt (read_mask_concrete FunMap)"
-
   unfolding mask_read_wf_def
   apply (rule allI)+
   apply (rule conjI)
@@ -151,7 +156,6 @@ lemma mask_update_wf_concrete:
     InFunDom: "FUpdateMask \<in> FunDom"
   shows "mask_update_wf TyRep ctxt (update_mask_concrete FunMap)"
   unfolding mask_update_wf_def
-
   apply (rule allI)+
   apply (rule conjI)
    apply (rule impI)
@@ -171,6 +175,61 @@ lemma mask_update_wf_concrete:
   apply simp
   using closed_map_instantiate[OF field_ty_fun_opt_closed_args[OF TyRepWf]] field_ty_fun_two_params field_ty_fun_opt_tcon
   by (blast elim: cons_exp_elim)
+
+lemma pmask_read_wf_concrete:
+  assumes
+    CtxtWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt" and
+    TyRepWf: "wf_ty_repr_bpl TyRep" and
+    InFunDom: "FReadKnownFoldedMask \<in> FunDom"
+  shows "pmask_read_wf TyRep ctxt (read_pmask_concrete FunMap)"
+  unfolding pmask_read_wf_def
+  apply (rule allI)+
+  apply (rule conjI)
+   apply (rule impI)
+   apply (unfold read_pmask_concrete_def)
+   apply (red_fun_op_bpl_tac1 CtxtWf: CtxtWf InFunDom)
+  using closed_map_instantiate[OF field_ty_fun_opt_closed_args[OF TyRepWf]]
+     apply (metis TyRepWf case_prod_conv field_ty_fun_opt_closed_args snd_def)
+    apply (rule field_ty_fun_two_params)
+     apply blast
+    apply (insert field_ty_fun_opt_closed_args[OF TyRepWf])
+    apply simp
+  using closed_instantiate
+    apply (metis field_ty_fun_opt_tcon fst_conv list.pred_inject(2) snd_eqD)
+   apply (rule field_ty_fun_two_params)
+    apply blast
+   apply simp
+  apply simp
+  using closed_map_instantiate[OF field_ty_fun_opt_closed_args[OF TyRepWf]] field_ty_fun_two_params field_ty_fun_opt_tcon
+  by (blast elim: cons_exp_elim)
+
+lemma pmask_update_wf_concrete:
+  assumes
+    CtxtWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt" and
+    TyRepWf: "wf_ty_repr_bpl TyRep" and
+    InFunDom: "FUpdateKnownFoldedMask \<in> FunDom"
+  shows "pmask_update_wf TyRep ctxt (update_pmask_concrete FunMap)"
+  unfolding pmask_update_wf_def
+  apply (rule allI)+
+  apply (rule conjI)
+   apply (rule impI)
+   apply (unfold update_pmask_concrete_def)
+   apply (red_fun_op_bpl_tac1 CtxtWf: CtxtWf InFunDom)
+  using closed_map_instantiate[OF field_ty_fun_opt_closed_args[OF TyRepWf]]
+     apply (metis TyRepWf case_prod_conv field_ty_fun_opt_closed_args snd_def)
+    apply (rule field_ty_fun_two_params)
+     apply blast
+    apply (insert field_ty_fun_opt_closed_args[OF TyRepWf])
+    apply simp
+  using closed_instantiate
+    apply (metis field_ty_fun_opt_tcon fst_conv list.pred_inject(2) snd_eqD)
+   apply (rule field_ty_fun_two_params)
+    apply blast
+   apply simp
+  apply simp
+  using closed_map_instantiate[OF field_ty_fun_opt_closed_args[OF TyRepWf]] field_ty_fun_two_params field_ty_fun_opt_tcon
+  by (blast elim: cons_exp_elim)
+
 
 subsection \<open>Translation interface\<close>
 

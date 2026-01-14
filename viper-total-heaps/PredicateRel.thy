@@ -99,7 +99,7 @@ qed
 
 
 definition ploc_rel_vpr_bpl where
-  "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl \<equiv>
+  "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl \<equiv>
      \<forall>\<omega> ns v_args_vpr. R \<omega> ns \<longrightarrow>
          red_pure_exps_total ctxt_vpr (Some \<omega>) e_args_vpr \<omega> (Some v_args_vpr) \<longrightarrow>
          pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<longrightarrow>
@@ -107,7 +107,7 @@ definition ploc_rel_vpr_bpl where
 
 
 definition ploc_rel_vpr_bpl' where
-  "ploc_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl \<equiv>
+  "ploc_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl \<equiv>
      \<forall>\<omega>def \<omega> ns v_args_vpr. R \<omega>def \<omega> ns \<longrightarrow>
          red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr) \<longrightarrow>
          pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<longrightarrow>
@@ -139,7 +139,7 @@ lemma inhale_rel_pred_acc_upd_rel:
                                   [pred_type, TConSingle (TFrameFragmentId TyRep)]" and
 
     PlocBpl: "e_ploc_bpl = FunExp pid [] e_args_bpl" and
-    PlocRel: "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl" and
+    PlocRel: "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
 
     AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep" and
     ProgEq: "program_total ctxt_vpr = Pr"
@@ -909,7 +909,7 @@ lemma exp_result_predicate_loc:
   assumes
     CtxtFunWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt_bpl" and
     StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega>_def \<omega> ns" and
-    RedArgsVpr: "red_pure_exps_total ctxt_vpr (Some \<omega>_def) e_args_vpr \<omega> (Some v_args_vpr)" and
+    RedArgsVpr: "red_pure_exps_total ctxt_vpr (Some \<omega>_def1) e_args_vpr \<omega> (Some v_args_vpr)" and
     ArgsWellTy: "pred_ty_correct_premise ctxt_vpr pid v_args_vpr" and
     FunName: "FunMap (FPredicateLoc pid tys_bpl) = pred_loc_fun_name \<and> FPredicateLoc pid tys_bpl \<in> FunDom" and
     PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl" and
@@ -919,7 +919,7 @@ lemma exp_result_predicate_loc:
     AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep"
   shows "red_expr_bpl ctxt_bpl (FunExp pred_loc_fun_name [] e_args_bpl) ns (AbsV (AField (PredSnapshotField (pid,v_args_vpr))))"
 proof -
-  have "list_all2 (\<lambda>e v. ctxt_vpr, Some \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v) e_args_vpr v_args_vpr"
+  have "list_all2 (\<lambda>e v. ctxt_vpr, Some \<omega>_def1 \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v) e_args_vpr v_args_vpr"
     by (simp add: RedArgsVpr red_pure_exps_total_list_all2)
 
   then obtain v_args_bpl where v_args_bpl:
@@ -965,7 +965,7 @@ lemma exp_rel_predicate_loc:
     ArgsRel: "list_all2 (exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl) ctxt_vpr ctxt_bpl) e_args_vpr e_args_bpl" and
     AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep" and
     "e_ploc_bpl = FunExp pred_loc_fun_name [] e_args_bpl"
-  shows "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl"
+  shows "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl"
   unfolding ploc_rel_vpr_bpl_def \<open>e_ploc_bpl = _\<close>
   apply (rule allI | rule impI)+
   by (insert assms, erule exp_result_predicate_loc, assumption+)
@@ -982,29 +982,10 @@ lemma exp_rel_predicate_loc':
     ArgsRel: "list_all2 (exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl) ctxt_vpr ctxt_bpl) e_args_vpr e_args_bpl" and
     AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep" and
     "e_ploc_bpl = FunExp pred_loc_fun_name [] e_args_bpl"
-  shows "ploc_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl"
+  shows "ploc_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl"
   unfolding ploc_rel_vpr_bpl'_def \<open>e_ploc_bpl = _\<close>
   apply (rule allI | rule impI)+
   by (insert assms, erule exp_result_predicate_loc, assumption+)
-
-
-(*
-lemma exp_rel_predicate_loc':
-  assumes
-    CtxtFunWf: "ctxt_wf Pr TyRep F FunMap ctxt_bpl" and
-    StateRel: "\<And>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<Longrightarrow> state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega>def \<omega> ns" and
-    FunName: "FunMap (FPredicateLoc pid tys_bpl) = pred_loc_fun_name" and
-    PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl" and
-    VprArgsTy: "predicate_decl.args pdecl = tys_vpr" and
-    ArgsTyRel: "map (vpr_to_bpl_ty TyRep) tys_vpr = map Some tys_bpl" and
-    ArgsRel: "list_all2 (exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl) ctxt_vpr ctxt_bpl) e_args_vpr e_args_bpl" and
-    AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep"
-  shows "\<And>\<omega>def \<omega> ns v_args_vpr. R \<omega>def \<omega> ns \<Longrightarrow>
-            red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr) \<Longrightarrow>
-            pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<Longrightarrow>
-            red_expr_bpl ctxt_bpl (FunExp pred_loc_fun_name [] e_args_bpl) ns (AbsV (AField (PredSnapshotField (pid,v_args_vpr))))"
-  by (insert assms, erule exp_result_predicate_loc, assumption+)
-*)
 
 
 lemma exp_rel_perm_pred_access_2:
@@ -1071,7 +1052,7 @@ lemma exhale_rel_pred_acc_upd_rel:
                                   [pred_ty, TConSingle (TFrameFragmentId TyRep)]" and
 
     PlocBpl: "e_ploc_bpl = FunExp pid [] e_args_bpl" and  (* seems unused *)
-    PlocRel: "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl" and
+    PlocRel: "ploc_rel_vpr_bpl R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
 
     AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep" and
     ProgEq: "program_total ctxt_vpr = Pr" and
@@ -1275,12 +1256,78 @@ proof -
 qed
 
 
-definition ploc_rel_vpr_bpl'' where
-  "ploc_rel_vpr_bpl'' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl \<equiv>
+definition ploc_sm_rel_vpr_bpl' where
+  "ploc_sm_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl \<equiv>
      \<forall>\<omega>def \<omega> ns v_args_vpr. R \<omega> ns \<longrightarrow>
          red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr) \<longrightarrow>
          pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<longrightarrow>
          red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredKnownFoldedField (pid,v_args_vpr))))"
+
+
+lemma exp_result_predicate_loc_sm':
+  assumes
+    CtxtFunWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt_bpl" and
+    StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega>_def \<omega> ns" and
+    RedArgsVpr: "red_pure_exps_total ctxt_vpr (Some \<omega>_def1) e_args_vpr \<omega> (Some v_args_vpr)" and
+    ArgsWellTy: "pred_ty_correct_premise ctxt_vpr pid v_args_vpr" and
+    FunName: "FunMap (FPredicateSMLoc pid tys_bpl) = pred_loc_fun_name \<and> FPredicateSMLoc pid tys_bpl \<in> FunDom" and
+    PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl" and
+    VprArgsTy: "predicate_decl.args pdecl = tys_vpr" and
+    ArgsTyRel: "map (vpr_to_bpl_ty TyRep) tys_vpr = map Some tys_bpl" and
+    ArgsRel: "list_all2 (exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl) ctxt_vpr ctxt_bpl) e_args_vpr e_args_bpl" and
+    AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep"
+  shows "red_expr_bpl ctxt_bpl (FunExp pred_loc_fun_name [] e_args_bpl) ns (AbsV (AField (PredKnownFoldedField (pid,v_args_vpr))))"
+proof -
+  have "list_all2 (\<lambda>e v. ctxt_vpr, Some \<omega>_def1 \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v) e_args_vpr v_args_vpr"
+    by (simp add: RedArgsVpr red_pure_exps_total_list_all2)
+
+  then obtain v_args_bpl where v_args_bpl:
+    "list_all2 (\<lambda>e v. red_expr_bpl ctxt_bpl e ns v) e_args_bpl v_args_bpl \<and> map val_rel_vpr_bpl v_args_vpr = v_args_bpl"
+    using ArgsRel exp_rel_vpr_bpl_def exp_rel_vb_single_def StateRel
+    by (smt (verit, best) length_map list_all2_conv_all_nth nth_map)
+
+  have rel_unique: "(THE v_args. map val_rel_vpr_bpl v_args = v_args_bpl) = v_args_vpr"
+    using v_args_bpl val_unique_bpl_vpr
+    by blast
+
+  have well_ty_vpr: "vals_well_typed (absval_interp_total ctxt_vpr) v_args_vpr tys_vpr"
+    using ArgsWellTy PredDecl pred_ty_correct_premise_def VprArgsTy
+    by force
+
+  have v_args_ty_bpl: "map (type_of_vbpl_val TyRep) v_args_bpl = tys_bpl"
+    apply (rule list_eq_iff_nth_eq[THEN iffD2])
+    apply (intro conjI)
+     apply (metis ArgsTyRel length_map v_args_bpl vals_well_typed_same_lengthD well_ty_vpr)
+    using vpr_well_ty_bpl_well_ty[of TyRep] well_ty_vpr[unfolded vals_well_typed_def AbsInterpEq] v_args_bpl[THEN conjunct2] ArgsTyRel
+    by (metis length_map nth_map)
+
+  show ?thesis
+    apply (rule RedFunOp[where v_args=v_args_bpl])
+      apply (subst FunName[THEN conjunct1, symmetric])
+    using CtxtFunWf FunName
+    unfolding ctxt_wf_def fun_interp_vpr_bpl_wf_def
+      apply blast
+     apply (simp add: v_args_bpl bg_expr_list_red_all2)
+    apply (simp add: lift_fun_bpl_def)
+    by (simp add: map_instantiate_nil rel_unique v_args_ty_bpl)
+qed
+
+
+lemma exp_rel_predicate_loc_sm':
+  assumes
+    CtxtFunWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt_bpl" and
+    StateRel: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> \<omega> ns" and
+    FunName: "FunMap (FPredicateSMLoc pid tys_bpl) = pred_loc_fun_name \<and> FPredicateSMLoc pid tys_bpl \<in> FunDom" and
+    PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl" and
+    VprArgsTy: "predicate_decl.args pdecl = tys_vpr" and
+    ArgsTyRel: "map (vpr_to_bpl_ty TyRep) tys_vpr = map Some tys_bpl" and
+    PlocBpl: "e_ploc_bpl = FunExp pred_loc_fun_name [] e_args_bpl" and
+    ArgsRel: "list_all2 (exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl) ctxt_vpr ctxt_bpl) e_args_vpr e_args_bpl" and
+    AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep"
+  shows "ploc_sm_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl"
+  unfolding ploc_sm_rel_vpr_bpl'_def \<open>e_ploc_bpl = _\<close>
+  apply (rule allI | rule impI)+
+  by (insert assms, erule exp_result_predicate_loc_sm', assumption+)
 
 
 lemma turn_on_knownfolded_rel:
@@ -1472,7 +1519,7 @@ lemma unfold_knownfolded_upd_rel:
     KFMNewOpt: "kf_turned_on kf_opt" and
     HeapVarDefSame: "heap_var_def Tr = heap_var Tr" and
 
-    PlocRel: "ploc_rel_vpr_bpl'' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
+    PlocRel: "ploc_sm_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
 
     TyInterpEq: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
 
@@ -1515,7 +1562,7 @@ proof (rule rel_intro; blast?)
     "heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns"
     by (simp_all add: \<open>\<omega>\<^sub>0_\<omega> = (\<omega>\<^sub>0, \<omega>)\<close> \<open>hvar = _\<close>)
 
-  with PlocRel[unfolded ploc_rel_vpr_bpl''_def]
+  with PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def]
   have ploc_bpl_eval: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredKnownFoldedField (pid, v_args_vpr))))"
     by blast
 
@@ -2006,7 +2053,7 @@ lemma inhale_rel_pred_acc_upd_rel':
                                   [pred_type, TConSingle (TFrameFragmentId TyRep)]" and
 
     PlocBpl: "e_ploc_bpl = FunExp pid [] e_args_bpl" and
-    PlocRel: "ploc_rel_vpr_bpl' (curry R) ctxt_vpr ctxt_bpl e_args_vpr e_args_bpl pid e_ploc_bpl" and
+    PlocRel: "ploc_rel_vpr_bpl' (curry R) ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
 
     AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep" and
     ProgEq: "program_total ctxt_vpr = Pr"
@@ -2254,18 +2301,12 @@ lemma fold_knownfolded_acc_upd_rel:
 
     HeapVarDefSame: "heap_var_def Tr = heap_var Tr" and
 
-    PlocRel: "ploc_rel_vpr_bpl'' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
-    RefExpRel: "exp_rel_vpr_bpl (\<lambda>\<omega>def \<omega> ns. \<omega>def = \<omega> \<and> R \<omega> ns) ctxt_vpr ctxt_bpl e_r_vpr e_r_bpl" and
-    FieldRelSingle: "field_rel_single Pr TyRep Tr f e_f_bpl \<tau>_bpl" and
-
     ExpSyntax: "supported_pred_expr e_r_vpr \<and> no_unfolding_pure_exp e_r_vpr" and
 
     TyInterpEq: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
 
     NullConst: "const_repr Tr CNull = nullConst" and
     HeapVar: "hvar = heap_var Tr" and
-
-    PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
 
     PermPosConstExpr: "\<And>\<omega>. ctxt_vpr, None \<turnstile> \<langle>e_p_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> p > 0" and
 
@@ -2278,7 +2319,13 @@ lemma fold_knownfolded_acc_upd_rel:
     KnownFoldedSetBpl: "kf_set_bpl = pmask_upd_bpl kf_read_bpl e_r_bpl e_f_bpl (Lit (LBool True))
                                        [TConSingle (TNormalFieldId TyRep), \<tau>_bpl]" and
     KnownFoldedReadBpl: "kf_read_bpl = heap_read_bpl (Var (heap_var Tr)) (Var nullConst) e_ploc_bpl
-                                         [pred_ty, TConSingle (TKnownFoldedMaskId TyRep)]"
+                                         [pred_ty, TConSingle (TKnownFoldedMaskId TyRep)]" and
+
+    PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
+
+    PlocRel: "ploc_sm_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
+    RefExpRel: "exp_rel_vpr_bpl (\<lambda>\<omega>def \<omega> ns. \<omega>def = \<omega> \<and> R \<omega> ns) ctxt_vpr ctxt_bpl e_r_vpr e_r_bpl" and
+    FieldRelSingle: "field_rel_single Pr TyRep Tr f e_f_bpl \<tau>_bpl"
 
   shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
                                (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
@@ -2320,7 +2367,7 @@ proof (rule rel_intro; blast?)
   have "v_r_vpr = Address addr"
     by (metis \<open>0 < v_p_vpr\<close> \<open>addr = the_address v_r_vpr\<close> less_numeral_extra(3) mh ref.exhaust_sel)
 
-  from PlocRel[unfolded ploc_rel_vpr_bpl''_def] \<open>?R\<^sub>0 \<omega> ns\<close>
+  from PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close>
   have ploc_bpl_eval: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredKnownFoldedField (pid, v_args_vpr))))"
     by blast
 
