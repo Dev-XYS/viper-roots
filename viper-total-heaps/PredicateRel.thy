@@ -2530,5 +2530,61 @@ proof (rule rel_intro; blast?)
 qed
 
 
+lemma fold_knownfolded_star_upd_rel:
+  assumes
+    StepLeft:
+      "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
+                             (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
+                             pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
+                             (\<exists>\<omega>1 nm_exh. \<omega> = add_to_lpm_nonzero_total_full \<omega>1 (pid,v_args_vpr) (Abs_posreal (Abs_preal v_p_vpr)) nm_exh \<and>
+                                sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) A))
+                   (\<lambda>\<omega> ns. R' \<omega> ns)
+                   (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
+                   (\<lambda>\<omega>\<^sub>0_\<omega>. False)
+                   P ctxt_bpl \<gamma> \<gamma>\<^sub>2" and
+    StepRight:
+      "rel_general (\<lambda>\<omega> ns. R' \<omega> ns \<and>
+                             (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
+                             pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
+                             (\<exists>\<omega>1 nm_exh. \<omega> = add_to_lpm_nonzero_total_full \<omega>1 (pid,v_args_vpr) (Abs_posreal (Abs_preal v_p_vpr)) nm_exh \<and>
+                                sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) B))
+                   (\<lambda>\<omega> ns. R'' \<omega> ns)
+                   (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
+                   (\<lambda>\<omega>\<^sub>0_\<omega>. False)
+                   P ctxt_bpl \<gamma>\<^sub>2 \<gamma>'"
+
+  shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
+                               (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
+                               pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
+                               (\<exists>\<omega>1 nm_exh. \<omega> = add_to_lpm_nonzero_total_full \<omega>1 (pid,v_args_vpr) (Abs_posreal (Abs_preal v_p_vpr)) nm_exh \<and>
+                                  sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (A && B)))
+                     (\<lambda>\<omega> ns. R'' \<omega> ns)
+                     (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
+                     (\<lambda>\<omega>\<^sub>0_\<omega>. False)
+                     P ctxt_bpl \<gamma> \<gamma>'" (is "rel_general ?R\<^sub>0 _ _ _ _ _ _ _")
+
+proof (rule rel_intro; blast?)
+  fix \<omega> ns \<omega>'
+  assume "?R\<^sub>0 \<omega> ns" and "\<omega> = \<omega>'"
+  hence "R \<omega> ns"
+    by blast
+
+  from \<open>?R\<^sub>0 \<omega> ns\<close>
+  obtain \<omega>1 nm_exh where
+    \<omega>_is_add: "\<omega> = add_to_lpm_nonzero_total_full \<omega>1 (pid, v_args_vpr) (Abs_posreal (Abs_preal v_p_vpr)) nm_exh" and
+    diff_sat: "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (A && B)"
+    by blast
+
+  then obtain mh\<^sub>A mp\<^sub>A mh\<^sub>B mp\<^sub>B where
+    "mh_split (get_mh_nm nm_exh) mh\<^sub>A mh\<^sub>B" and
+    "mp_split (get_mp_nm nm_exh) mp\<^sub>A mp\<^sub>B" and
+    "sat ctxt_vpr \<omega> mh\<^sub>A mp\<^sub>A A" and
+    "sat ctxt_vpr \<omega> mh\<^sub>B mp\<^sub>B B"
+    by (auto elim: SatStar_case)
+
+  from rel_success_elim[OF StepLeft] show
+    "\<exists>ns'. red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R'' \<omega>' ns'"
+    sorry
+qed
 
 end
