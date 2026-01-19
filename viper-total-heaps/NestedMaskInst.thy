@@ -421,6 +421,34 @@ qed
 end
 
 
+lemma nm_larger_sub_larger:
+  assumes "nm \<le> nm'"
+  shows "get_fnm_nm nm lp = None \<or>
+         (\<exists>p\<^sub>s p'\<^sub>s nm\<^sub>s nm'\<^sub>s. get_fnm_nm nm lp = Some (p\<^sub>s,nm\<^sub>s) \<and> get_fnm_nm nm' lp = Some (p'\<^sub>s,nm'\<^sub>s) \<and>
+                           p\<^sub>s \<le> p'\<^sub>s \<and> nm\<^sub>s \<le> nm'\<^sub>s)"
+  using assms
+  unfolding less_eq_nested_mask_def
+  apply (cases nm)
+  apply (rename_tac mh fnm)
+  apply (cases nm')
+  apply (rename_tac mh' fnm')
+  apply (case_tac "get_fnm_nm nm lp")
+   apply simp
+  apply (case_tac "fnm lp")
+   apply simp
+  apply simp
+  by (smt (verit, best) dual_order.refl dual_order.strict_trans1 has_Some_iff less_eq_nested_mask_def nle_le option_fold.simps(1) order_less_irrefl prod.exhaust_sel)
+
+
+lemma nm_larger_sub_larger_not_None:
+  assumes "nm \<le> nm'"
+      and "get_fnm_nm nm lp = Some (p\<^sub>s,nm\<^sub>s)"
+    shows "\<exists>p'\<^sub>s nm'\<^sub>s. get_fnm_nm nm' lp = Some (p'\<^sub>s,nm'\<^sub>s) \<and> p\<^sub>s \<le> p'\<^sub>s \<and> nm\<^sub>s \<le> nm'\<^sub>s"
+  using nm_larger_sub_larger
+  by (metis assms option.discI option.inject prod.inject)
+
+
+
 subsection \<open>Lemmas that do not belong to instantiations\<close>
 
 lemma posreal_add_greater:

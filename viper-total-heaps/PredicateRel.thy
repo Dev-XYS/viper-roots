@@ -1467,7 +1467,7 @@ proof (intro allI | intro impI)+
            apply (rule ContainsPermDirect)
             apply simp
             apply fact
-           apply (simp add: \<open>get_mh_nm nm'\<^sub>f l > 0\<close>)
+           apply (simp add: 1(3))
           unfolding \<open>get_nm_total \<phi> = nm\<^sub>s\<close> \<open>nm\<^sub>s = nm\<^sub>s\<^sub>c\<close> \<open>nm\<^sub>s\<^sub>c = _\<close> \<open>nm_sub = _\<close>
           by (simp add: nm_sum_is_bigger)
       qed
@@ -2506,8 +2506,7 @@ proof (rule rel_intro; blast?)
         apply (rule ContainsPermDirect)
         using nm[unfolded get_fnm_total_full.simps]
          apply force
-        using True \<open>get_mh_nm nm (addr, f) > 0\<close>
-        by blast
+        by (simp add: ContainsLocDirect True \<open>pos_perm_class.pnone < get_mh_nm nm (addr, f)\<close>)
     next
       case False
       have "inj_on (field_translation Tr) (dom (field_translation Tr))"
