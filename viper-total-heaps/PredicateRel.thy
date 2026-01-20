@@ -1725,7 +1725,8 @@ lemma fold_stmt_rel:
                                     (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
                                     pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
                                     (\<exists>\<omega>1 nm_exh. \<omega> = add_to_lpm_nonzero_total_full \<omega>1 (pid,v_args_vpr) (Abs_posreal (Abs_preal v_p_vpr)) nm_exh \<and>
-                                         sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr)))
+                                         sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<and>
+                                         consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)))
                             R' (=) (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>5 \<gamma>'"
     shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Fold pid e_args_vpr (PureExp e_p_vpr)) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro)
@@ -1859,16 +1860,16 @@ proof (rule stmt_rel_intro)
 
   \<comment> \<open>Fifth step: known-folded permission mask update\<close>
   moreover have "\<exists>\<omega>1 nm_exh. \<omega>' = add_to_lpm_nonzero_total_full \<omega>1 (pid,v_args) (Abs_posreal (Abs_preal v_p)) nm_exh \<and>
-                             sat ctxt_vpr \<omega>' (get_mh_nm nm_exh) (get_mp_nm nm_exh) (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr)"
+                             sat ctxt_vpr \<omega>' (get_mh_nm nm_exh) (get_mp_nm nm_exh) (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<and>
+                             consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>', get_nm_total = nm_exh \<rparr>)"
     apply (rule exI[of _ \<omega>1])
     apply (rule exI[of _ nm_exh])
-    apply (intro conjI)
+    apply (rule conjI)
      apply fact
-    apply (rule sat_nm_does_not_matter_for_supported_pred[where ?\<omega>\<^sub>1="\<omega>\<lparr> get_total_full := get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>"])
-       apply (rule exhale_diff_sat')
+    apply (rule exhale_diff_sat_extcons)
     using exh_subst
-           apply fast
-          apply simp
+             apply fast
+            apply simp
     subgoal
       apply (rule substitute_assertion_supported_pred)
       using CtxtPredWf PredBody \<open>Rep_preal (Abs_preal v_p) = p\<close> \<open>pdecl' = pdecl\<close> syntactic_mult_supported
@@ -1877,15 +1878,16 @@ proof (rule stmt_rel_intro)
       using ArgsRestriction list_all_length
       by blast
     using StateRelImpliesExtCons \<open>R \<omega> ns\<close>
-        apply blast
-       apply (subst \<open>get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0\<close>)
-    using \<open>\<omega>0 = \<omega>\<lparr>get_store_total := nth_option v_args\<rparr>\<close>
-       apply simp
-      apply simp
-      apply (metis fold_rel_normal_only_changes_mask fold_rel)
+          apply blast
+    using fold_rel fold_rel_normal_only_changes_mask
+         apply blast
+        apply (metis fold_rel fold_rel_normal_only_changes_mask)
+    using \<open>\<omega>0 = _\<close> \<open>get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0\<close>
+       apply force
+      apply (metis total_state.select_convs(1) fold_rel_normal_only_changes_mask fold_rel)
      apply simp
-     apply (metis fold_rel_normal_only_changes_mask fold_rel get_hh_total_full.simps)
-    by fact
+    apply (rule CtxtPredWf)
+    done
   have ns'_exists: "\<exists>ns'. red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>5, Normal ns\<^sub>5) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
     apply (rule StepKFUpdate[THEN rel_success_elim, where ?\<omega>=\<omega>' and ?\<omega>'=\<omega>' and ?ns=ns\<^sub>5 and ?v_args_vpr1=v_args])
      prefer 2

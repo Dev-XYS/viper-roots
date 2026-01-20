@@ -367,6 +367,52 @@ next
 qed
 
 
+lemma eval_with_None_same_store_same_hh:
+  shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t r \<Longrightarrow>
+         no_perm_pure_exp e \<Longrightarrow>
+         no_old_pure_exp e \<Longrightarrow>
+         get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2 \<Longrightarrow>
+         get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2 \<Longrightarrow>
+         r = Val v \<Longrightarrow>
+         ctxt, None \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t r"
+    and "red_pure_exps_total ctxt \<omega>_def es \<omega>\<^sub>1 rs \<Longrightarrow>
+         list_all no_perm_pure_exp es \<Longrightarrow>
+         list_all no_old_pure_exp es \<Longrightarrow>
+         get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2 \<Longrightarrow>
+         get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2 \<Longrightarrow>
+         rs = Some vs \<Longrightarrow>
+         red_pure_exps_total ctxt None es \<omega>\<^sub>2 rs"
+proof (induction arbitrary: \<omega>_def \<omega>\<^sub>2 v and \<omega>_def \<omega>\<^sub>2 vs rule: red_pure_exp_inducts)
+  case IH: (RedBinop \<omega>_def e1 \<omega> v1 e2 v2 bop v)
+  show ?case
+    apply (rule RedBinop)
+       apply (rule IH(2))
+    using IH.prems(1-4)
+           apply force+
+      apply (rule IH(4))
+    using IH.prems(1-4)
+          apply force+
+     apply fact
+    by (simp add: IH.hyps(2))
+next
+  case (RedField \<omega>_def e \<omega>\<^sub>1 a f v\<^sub>1)
+  then show ?case
+    by (metis (full_types) RedField_no_def_normalI extended_val.distinct(1) pure_exp_pred.simps pure_exp_pred_rec.simps(6))
+next
+  case (RedUnfolding es \<omega> vs ubody v pred_id)
+  then show ?case
+    by (fastforce intro: red_pure_exp_intros)
+next
+  case (RedUnfoldingDef \<omega>_def es \<omega> vs perm pred_id nm' \<omega>'_def ubody v)
+  then show ?case
+    by (fastforce intro: RedUnfolding)
+next
+  case (RedExpListCons \<omega>_def e \<omega> v es res res')
+  then show ?case
+    by (metis list.pred_inject(2) map_option_eq_Some red_pure_exps_total.simps)
+qed (auto intro: red_pure_exp_intros)
+
+
 lemma eval_ok_no_type_error:
   assumes "get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2"
       and "get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2"
@@ -682,53 +728,7 @@ next
 qed
 
 
-\<comment> \<open>Helper lemmas\<close>
-
-lemma eval_exhale_sat_helper_helper:
-  shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t r \<Longrightarrow>
-         no_perm_pure_exp e \<Longrightarrow>
-         no_old_pure_exp e \<Longrightarrow>
-         get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2 \<Longrightarrow>
-         get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2 \<Longrightarrow>
-         r = Val v \<Longrightarrow>
-         ctxt, None \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t r"
-    and "red_pure_exps_total ctxt \<omega>_def es \<omega>\<^sub>1 rs \<Longrightarrow>
-         list_all no_perm_pure_exp es \<Longrightarrow>
-         list_all no_old_pure_exp es \<Longrightarrow>
-         get_store_total \<omega>\<^sub>1 = get_store_total \<omega>\<^sub>2 \<Longrightarrow>
-         get_hh_total_full \<omega>\<^sub>1 = get_hh_total_full \<omega>\<^sub>2 \<Longrightarrow>
-         rs = Some vs \<Longrightarrow>
-         red_pure_exps_total ctxt None es \<omega>\<^sub>2 rs"
-proof (induction arbitrary: \<omega>_def \<omega>\<^sub>2 v and \<omega>_def \<omega>\<^sub>2 vs rule: red_pure_exp_inducts)
-  case IH: (RedBinop \<omega>_def e1 \<omega> v1 e2 v2 bop v)
-  show ?case
-    apply (rule RedBinop)
-       apply (rule IH(2))
-    using IH.prems(1-4) apply force+
-      apply (rule IH(4))
-    using IH.prems(1-4) apply force+
-     apply fact
-    by (metis (full_types) IH.hyps(2) eval_binop_with_True is_none_code(1))
-next
-  case (RedField \<omega>_def e \<omega>\<^sub>1 a f v\<^sub>1)
-  then show ?case
-    by (metis (full_types) RedField_no_def_normalI extended_val.distinct(1) pure_exp_pred.simps pure_exp_pred_rec.simps(6))
-next
-  case (RedUnfolding es \<omega> vs ubody v pred_id)
-  then show ?case
-    by (fastforce intro: red_pure_exp_intros)
-next
-  case (RedUnfoldingDef \<omega>_def es \<omega> vs perm pred_id nm' \<omega>'_def ubody v)
-  then show ?case
-    by (fastforce intro: RedUnfolding)
-next
-  case (RedExpListCons \<omega>_def e \<omega> v es res res')
-  then show ?case
-    by (metis list.pred_inject(2) map_option_eq_Some red_pure_exps_total.simps)
-qed (auto intro: red_pure_exp_intros)
-
-
-lemma eval_exhale_sat_helper:
+(* lemma eval_exhale_sat_helper:
   shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v \<Longrightarrow>
          no_perm_pure_exp e \<Longrightarrow>
          no_old_pure_exp e \<Longrightarrow>
@@ -743,7 +743,7 @@ lemma eval_exhale_sat_helper:
              get_trace_total = trace,
              get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr> (Some vs)"
   using eval_exhale_sat_helper_helper
-  by fastforce+
+  by fastforce+ *)
 
 
 lemma red_pure_exps_append_success:
@@ -922,13 +922,13 @@ proof (induct A)
   case (SatAcc e_r r e_p p a mh f mp)
   show ?case
     apply (rule sat.SatAcc)
-         apply (rule eval_exhale_sat_helper_helper(1))
+         apply (rule eval_with_None_same_store_same_hh(1))
               apply fact+
     using SatAcc.prems
              apply (fastforce, fastforce)
            apply fact+
          apply simp
-        apply (rule eval_exhale_sat_helper_helper(1))
+        apply (rule eval_with_None_same_store_same_hh(1))
              apply fact+
     using SatAcc.prems
             apply (fastforce, fastforce)
@@ -943,7 +943,7 @@ next
   case (SatAccWildcard e_r r a f mh mp)
   show ?case
     apply (rule sat.SatAccWildcard)
-        apply (rule eval_exhale_sat_helper_helper(1))
+        apply (rule eval_with_None_same_store_same_hh(1))
              apply fact+
     using SatAccWildcard.prems
             apply (fastforce, fastforce)
@@ -951,19 +951,20 @@ next
         apply simp
        apply simp
       apply fact+
-    using SatAccWildcard.hyps(2,4) apply blast
+    using SatAccWildcard.hyps(2,4)
+     apply blast
     by fact
 next
   case (SatAccPred e_args v_args e_p p mh mp pid pdecl pbody)
   show ?case
     apply (rule sat.SatAccPred)
-           apply (rule eval_exhale_sat_helper_helper(2))
+           apply (rule eval_with_None_same_store_same_hh(2))
                 apply fact+
     using SatAccPred.prems
                apply (fastforce, fastforce)
              apply fact+
            apply simp
-          apply (rule eval_exhale_sat_helper_helper(1))
+          apply (rule eval_with_None_same_store_same_hh(1))
                apply fact+
     using SatAccPred.prems
               apply (fastforce, fastforce)
@@ -974,7 +975,7 @@ next
   case (SatAccPredWildcard e_args v_args mh pid mp pdecl pbody)
   show ?case
     apply (rule sat.SatAccPredWildcard)
-         apply (rule eval_exhale_sat_helper_helper(2))
+         apply (rule eval_with_None_same_store_same_hh(2))
               apply fact+
     using SatAccPredWildcard.prems
              apply (fastforce, fastforce)
@@ -984,7 +985,7 @@ next
 next
   case (SatPure e mh mp)
   then show ?case
-    by (metis assert_pred_atomic_subexp assms(2,3) eval_exhale_sat_helper_helper(1) list.pred_inject(2) sat.SatPure sub_expressions_atomic.simps(1))
+    by (metis assert_pred_atomic_subexp assms(2,3) eval_with_None_same_store_same_hh(1) list.pred_inject(2) sat.SatPure sub_expressions_atomic.simps(1))
 next
   case (SatStar mh mh\<^sub>1 mh\<^sub>2 mp mp\<^sub>1 mp\<^sub>2 A B)
   then show ?case
@@ -992,19 +993,19 @@ next
 next
   case (SatImpTrue e mh mp A)
   then show ?case
-    by (metis assert_pred.elims(2) assert_pred_rec.simps(2) assms(2,3) eval_exhale_sat_helper_helper(1) sat.SatImpTrue)
+    by (metis assert_pred.elims(2) assert_pred_rec.simps(2) assms(2,3) eval_with_None_same_store_same_hh(1) sat.SatImpTrue)
 next
   case (SatImpFalse e mh mp A)
   then show ?case
-    by (metis assert_pred.elims(2) assert_pred_rec.simps(2) assms(2,3) eval_exhale_sat_helper_helper(1) sat.SatImpFalse)
+    by (metis assert_pred.elims(2) assert_pred_rec.simps(2) assms(2,3) eval_with_None_same_store_same_hh(1) sat.SatImpFalse)
 next
   case (SatCondTrue e mh mp A B)
   then show ?case
-    by (metis assert_pred.elims(1) assert_pred_rec.simps(3) assms(2,3) eval_exhale_sat_helper_helper(1) sat.SatCondTrue)
+    by (metis assert_pred.elims(1) assert_pred_rec.simps(3) assms(2,3) eval_with_None_same_store_same_hh(1) sat.SatCondTrue)
 next
   case (SatCondFalse e mh mp B A)
   then show ?case
-    by (metis assert_pred.elims(1) assert_pred_rec.simps(3) assms(2,3) eval_exhale_sat_helper_helper(1) sat.SatCondFalse)
+    by (metis assert_pred.elims(1) assert_pred_rec.simps(3) assms(2,3) eval_with_None_same_store_same_hh(1) sat.SatCondFalse)
 qed
 
 
@@ -1018,6 +1019,7 @@ lemma exhale_mh_diff:
   apply standard
   unfolding zero_mask_def
   by (simp add: minus_preal.abs_eq zero_preal_def)
+
 
 lemma exhale_mp_diff:
   assumes "p \<le> get_mp_total_full \<omega> ploc"
@@ -1035,8 +1037,9 @@ proof -
     using all_pos antisym assms minus_preal.abs_eq zero_preal_def
      apply fastforce
     apply simp
-    by (smt (verit, ccfv_SIG) "2" Abs_posreal_inverse comp_apply dual_order.eq_iff get_mp_nm.simps get_mp_total.simps get_mp_total_full.simps mem_Collect_eq minus_preal.abs_eq minus_preal_gte option_fold.simps(1) preal_not_0_gt_0 zero_preal_def)
+    by (smt (verit, ccfv_SIG) 2 Abs_posreal_inverse comp_apply dual_order.eq_iff get_mp_nm.simps get_mp_total.simps get_mp_total_full.simps mem_Collect_eq minus_preal.abs_eq minus_preal_gte option_fold.simps(1) preal_not_0_gt_0 zero_preal_def)
 qed
+
 
 lemma mh_sub_twice:
   assumes "\<And>x. mh0 x \<ge> mh1 x"
@@ -1048,6 +1051,7 @@ lemma mh_sub_twice:
   using assms less_eq_preal.rep_eq
   by auto
 
+
 lemma mp_sub_twice:
   assumes "\<And>x. mp0 x \<ge> mp1 x"
       and "\<And>x. mp1 x \<ge> mp2 x"
@@ -1058,127 +1062,194 @@ lemma mp_sub_twice:
   using assms less_eq_preal.rep_eq
   by auto
 
+
 lemma exhale_diff_sat:
   assumes "red_exhale ctxt \<omega>\<^sub>0 A \<omega> res" and "res = RNormal \<omega>'"
       and "supported_pred_body A"
-      and "consistent_external ctxt (get_total_full \<omega>)"
-    shows "sat ctxt (\<lparr> get_store_total = get_store_total \<omega>,
-                       get_trace_total = trace,
-                       get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>)
-               (get_mh_total_full \<omega> - get_mh_total_full \<omega>')
-               (get_mp_total_full \<omega> - get_mp_total_full \<omega>')
-               A"
-  using assms(1-3)
-proof (induction arbitrary: \<omega>')
-  case IH: (ExhAcc mh \<omega> e_r r e_p p a f)
-  have 1: "0 \<le> p \<and> (if r = Null then p = 0 else Abs_preal p \<le> mh (a, f))"
-   and \<omega>': "\<omega>' = (if r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a, f) (Abs_preal p))"
-    using exh_if_total_normal[OF IH(5)] exh_if_total_normal_2[OF IH(5)]
+      and "get_store_total \<omega>\<^sub>s = get_store_total \<omega>"
+      and "get_hh_total_full \<omega>\<^sub>s = get_hh_total_full \<omega>"
+      and "get_nm_total_full \<omega>' + nm_exh = get_nm_total_full \<omega>"
+      and "get_hh_total \<phi> = get_hh_total_full \<omega>"
+      and "get_nm_total \<phi> = nm_exh"
+    shows "sat ctxt \<omega>\<^sub>s (get_mh_nm nm_exh) (get_mp_nm nm_exh) A"
+  using assms
+proof (induction arbitrary: \<omega>' nm_exh \<phi>)
+  case (ExhAcc mh \<omega> e_r r e_p p a f)
+  have 1: "0 \<le> p \<and> (if r = Null then p = 0 else Abs_preal p \<le> mh (a, f))" and
+       \<omega>': "\<omega>' = (if r = Null then \<omega> else dec_mh_loc_total_full \<omega> (a, f) (Abs_preal p))"
+    using exh_if_total_normal[OF ExhAcc(5)] exh_if_total_normal_2[OF ExhAcc(5)]
     by blast+
+
+  have "if r = Null then p = 0 \<and> get_mh_nm nm_exh = zero_mask else get_mh_nm nm_exh = singleton_mh (the_address r, f) (Abs_preal p)"
+  proof (cases r)
+    case (Address x1)
+    with \<omega>'[unfolded Address, simplified]
+    show ?thesis
+      by (metis 1 ExhAcc.hyps(1,4) ExhAcc.prems(5) TotalStateProperties.get_mh_nm__merge add_masks_minus
+          full_total_state.select_convs(3) full_total_state.surjective full_total_state.update_convs(3)
+          get_mh_total.simps get_mh_total_full.simps get_nm_total_full.simps greater_minus_plus mh_upd_loc_diff
+          minus_preal_gte padd_pgte plus_nested_mask_def ref.distinct(1) total_state.select_convs(2)
+          total_state.surjective total_state.update_convs(2) upd_mh_nm__mh_rel)
+  next
+    case Null
+    with \<omega>'[unfolded Null, simplified]
+    show ?thesis
+      by (metis 1 ExhAcc.prems(5) add_masks_self_zero_mask get_mh_nm__plus)
+  qed
+
+  have "get_mp_nm nm_exh = zero_mask"
+  proof (cases r)
+    case (Address x1)
+    with \<omega>'[unfolded Address, simplified]
+    show ?thesis
+      by (metis ExhAcc.prems(5) \<omega>' add_masks_minus dec_mh_mp_diff get_mp_nm_distr_over_plus get_mp_total.elims get_mp_total_full.simps get_nm_total_full.simps ref.distinct(1))
+  next
+    case Null
+    with \<omega>'[unfolded Null, simplified]
+    show ?thesis
+      by (metis \<open>\<omega>' = \<omega>\<close> ExhAcc.prems(5) add_masks_self_zero_mask get_mp_nm_distr_over_plus)
+  qed
+
   show ?case
-    apply standard
-    using IH eval_exhale_sat_helper(1)
-         apply fastforce+
+    apply rule
+         apply (rule eval_with_None_same_store_same_hh(1)[OF ExhAcc.hyps(2)])
+    using ExhAcc.prems(2)
+             apply (simp, simp)
+           apply (simp add: ExhAcc.prems(3))
+    using ExhAcc.prems(4)
+          apply auto[1]
+         apply simp
+        apply (rule eval_with_None_same_store_same_hh(1)[OF ExhAcc.hyps(3)])
+    using ExhAcc.prems(2)
+            apply (simp, simp)
+          apply (simp add: ExhAcc.prems(3))
+    using ExhAcc.prems(4)
+         apply auto[1]
+        apply simp
+       apply simp
     using 1
       apply blast
-     apply (cases r)
-      apply (simp add: If_def \<omega>')
-    using 1 IH.hyps(1) IH.hyps(4) mh_upd_loc_diff minus_preal_gte psub_smaller
-      apply auto[1]
-    using 1 \<omega>' same_mh_diff
-     apply force
-    apply standard
-    by (simp add: zero_mask_def \<omega>' minus_preal.abs_eq zero_preal.abs_eq)
-next
-  case IH: (ExhAccWildcard mh \<omega> e_r r a f q)
-  have 1: "mh (a,f) \<noteq> 0 \<and> r \<noteq> Null"
-   and \<omega>': "\<omega>' = dec_mh_loc_total_full \<omega> (a,f) q"
-    using IH.prems(1) exh_if_total_normal exh_if_total_normal_2
-    by blast+
-  show ?case
-    apply standard
-    using IH(2,5,6) eval_exhale_sat_helper(1)
-        apply fastforce+
-    using IH(1,4) dec_mh_mh_diff 1 IH.hyps(3) \<omega>' is_singleton_mh.simps
-     apply blast
-    using \<omega>' IH.hyps(1) dec_mh_mp_diff
-    by blast
-next
-  case IH: (ExhAccPred mp \<omega> e_args v_args e_p p pred_id pred_decl)
-  have 1: "0 \<le> p \<and> Abs_preal p \<le> mp (pred_id, v_args)"
-   and \<omega>': "\<omega>' = exhale_pred \<omega> (pred_id, v_args) (Abs_preal p)"
-    using IH.prems(1) exh_if_total_normal exh_if_total_normal_2
-    by blast+
-  from IH(8) have es_sup: "list_all no_perm_pure_exp e_args \<and> list_all no_old_pure_exp e_args"
-    by simp
-  show ?case
-    apply standard
-    using eval_exhale_sat_helper(2)[OF IH(2)] es_sup
-           apply blast
-          apply (rule eval_exhale_sat_helper(1)[OF IH(3)])
-    using IH(8)
-           apply (simp, simp)
-         apply (simp add: 1)
-    using IH.hyps(1) \<omega>' exhale_mh_diff
-        apply blast
-    using IH.hyps(1) \<omega>' exhale_mp_diff 1
-       apply blast
     by fact+
 next
-  case IH: (ExhAccPredWildcard mp \<omega> e_args v_args pred_id q)
-  have 1: "mp (pred_id, v_args) \<noteq> 0"
-   and 2: "q > 0 \<and> mp (pred_id, v_args) > q"
-   and \<omega>': "\<omega>' = exhale_pred \<omega> (pred_id, v_args) q"
-    using IH.prems(1) IH.hyps(3) exh_if_total_normal exh_if_total_normal_2
+  case (ExhAccWildcard mh \<omega> e_r r a f q)
+  have 1: "mh (a,f) \<noteq> 0 \<and> r \<noteq> Null" and
+       \<omega>': "\<omega>' = dec_mh_loc_total_full \<omega> (a,f) q"
+    using ExhAccWildcard.prems(1) exh_if_total_normal exh_if_total_normal_2
     by blast+
-  from IH(8) have es_sup: "list_all no_perm_pure_exp e_args \<and> list_all no_old_pure_exp e_args"
-    by simp
   show ?case
-    apply standard
-    using eval_exhale_sat_helper(2)[OF IH(2)] es_sup
-        apply blast
-    using IH.hyps(1) \<omega>' exhale_mh_diff
-       apply blast
-    using 1 2 IH.hyps(1) IH.hyps(3) \<omega>' exhale_mp_diff is_singleton_mp.simps order_less_imp_le
+    apply rule
+        apply (rule eval_with_None_same_store_same_hh(1)[OF ExhAccWildcard.hyps(2)])
+    using ExhAccWildcard.prems(2)
+            apply (simp, simp)
+          apply (simp add: ExhAccWildcard.prems(3))
+    using ExhAccWildcard.prems(4)
+         apply auto[1]
+        apply simp
+       apply simp
+    using 1
       apply blast
+     apply (metis 1 ExhAccWildcard.hyps(1,3,4) ExhAccWildcard.prems(5) \<omega>' add_masks_minus dec_mh_mh_diff get_mh_nm__plus get_mh_total.elims get_mh_total_full.elims get_nm_total_full.elims is_singleton_mh.simps)
+    by (metis ExhAccWildcard.prems(5) \<omega>' add_masks_minus dec_mh_mp_diff get_mp_nm_distr_over_plus get_mp_total.simps get_mp_total_full.simps get_nm_total_full.simps)
+next
+  case (ExhAccPred mp \<omega> e_args v_args e_p p pred_id pred_decl)
+  have 1: "0 \<le> p \<and> Abs_preal p \<le> mp (pred_id, v_args)" and
+       \<omega>': "\<omega>' = exhale_pred \<omega> (pred_id, v_args) (Abs_preal p)"
+    using ExhAccPred.prems(1) exh_if_total_normal exh_if_total_normal_2
+    by blast+
+  from ExhAccPred(8)
+  have es_sup: "list_all no_perm_pure_exp e_args \<and> list_all no_old_pure_exp e_args"
+    by simp
+  show ?case
+    apply rule
+           apply (rule eval_with_None_same_store_same_hh(2)[OF ExhAccPred.hyps(2)])
+    using ExhAccPred.prems(2)
+               apply (simp, simp)
+             apply (simp add: ExhAccPred.prems(3))
+    using ExhAccPred.prems(4)
+            apply auto[1]
+           apply simp
+          apply (rule eval_with_None_same_store_same_hh(1)[OF ExhAccPred.hyps(3)])
+    using ExhAccPred.prems(2)
+              apply (simp, simp)
+            apply (simp add: ExhAccPred.prems(3))
+    using ExhAccPred.prems(4)
+           apply auto[1]
+          apply simp
+    using 1
+         apply blast
+        apply (metis ExhAccPred.prems(5) TotalStateProperties.get_mh_nm__merge \<omega>' add_masks_minus exhale_mh_diff get_mh_total.elims get_mh_total_full.elims get_nm_total_full.elims plus_nested_mask_def)
+       apply (metis 1 ExhAccPred.hyps(1) ExhAccPred.prems(5) \<omega>' add_masks_minus exhale_mp_diff get_mp_nm_distr_over_plus get_mp_total.simps get_mp_total_full.simps get_nm_total_full.simps)
     by fact+
 next
-  case IH: (ExhPure e \<omega> b)
+  case (ExhAccPredWildcard mp \<omega> e_args v_args pred_id q)
+  have 1: "mp (pred_id, v_args) \<noteq> 0" and
+       2: "q > 0 \<and> mp (pred_id, v_args) > q" and
+       \<omega>': "\<omega>' = exhale_pred \<omega> (pred_id, v_args) q"
+    using ExhAccPredWildcard.prems(1) ExhAccPredWildcard.hyps(3) exh_if_total_normal exh_if_total_normal_2
+    by blast+
+  from ExhAccPredWildcard(8) have es_sup: "list_all no_perm_pure_exp e_args \<and> list_all no_old_pure_exp e_args"
+    by simp
   show ?case
-    apply standard
-    using eval_exhale_sat_helper(1)[OF IH(1)] IH.prems(1) IH.prems(2) exh_if_total_normal
-      apply fastforce
-    using IH.prems(1) exh_if_total_normal_2 same_mh_diff
-     apply blast
-    using IH.prems(1) exh_if_total_normal_2 same_mp_diff
-    by blast
+    apply rule
+         apply (rule eval_with_None_same_store_same_hh(2)[OF ExhAccPredWildcard.hyps(2)])
+    using ExhAccPredWildcard.prems(2)
+             apply (simp, simp)
+           apply (simp add: ExhAccPredWildcard.prems(3))
+    using ExhAccPredWildcard.prems(4)
+          apply auto[1]
+         apply simp
+        apply (metis ExhAccPredWildcard.prems(5) \<omega>' add_masks_minus exhale_mh_diff get_mh_nm__plus get_mh_total.simps get_mh_total_full.simps get_nm_total_full.simps)
+       apply (metis 1 ExhAccPredWildcard.hyps(1,3) ExhAccPredWildcard.prems(5) \<omega>' add_masks_minus exhale_mp_diff get_mp_nm_distr_over_plus get_mp_total.simps get_mp_total_full.simps get_nm_total_full.simps is_singleton_mp.simps nless_le)
+    by fact+
 next
-  case IH: (ExhStarNormal A \<omega> \<omega>_int B res)
+  case (ExhPure e \<omega> b)
+  hence \<open>b = True\<close>
+    using exh_if_total.elims
+    by blast
   show ?case
-  proof
-    define mh\<^sub>A where "mh\<^sub>A = get_mh_total_full \<omega> - get_mh_total_full \<omega>_int"
-    define mp\<^sub>A where "mp\<^sub>A = get_mp_total_full \<omega> - get_mp_total_full \<omega>_int"
-    define mh\<^sub>B where "mh\<^sub>B = get_mh_total_full \<omega>_int - get_mh_total_full \<omega>'"
-    define mp\<^sub>B where "mp\<^sub>B = get_mp_total_full \<omega>_int - get_mp_total_full \<omega>'"
-    show "mh_split (get_mh_total_full \<omega> - get_mh_total_full \<omega>') mh\<^sub>A mh\<^sub>B"
-      by (metis IH.hyps(1) IH.hyps(2) IH.prems(1) exhale_smaller(1) mh\<^sub>A_def mh\<^sub>B_def mh_sub_twice)
-    show "mp_split (get_mp_total_full \<omega> - get_mp_total_full \<omega>') mp\<^sub>A mp\<^sub>B"
-      by (metis IH.hyps(1) IH.hyps(2) IH.prems(1) exhale_smaller(2) mp\<^sub>A_def mp\<^sub>B_def mp_sub_twice)
-    show "sat ctxt \<lparr> get_store_total = get_store_total \<omega>,
-                     get_trace_total = trace,
-                     get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
-              (get_mh_total_full \<omega> - get_mh_total_full \<omega>_int)
-              (get_mp_total_full \<omega> - get_mp_total_full \<omega>_int)
-              A"
-      using IH.IH(1) IH.prems(2) by fastforce
-    show "sat ctxt \<lparr> get_store_total = get_store_total \<omega>,
-                     get_trace_total = trace,
-                     get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
-              (get_mh_total_full \<omega>_int - get_mh_total_full \<omega>')
-              (get_mp_total_full \<omega>_int - get_mp_total_full \<omega>')
-              B"
-      by (smt (verit) IH.IH(2) IH.hyps(1) IH.prems(1) IH.prems(2) assert_pred.elims(2) assert_pred_rec.simps(4) exhale_only_changes_total_state_aux get_hh_total_full.elims old.unit.exhaust total_state.surjective total_state.update_convs(2))
-  qed
+    apply rule
+      apply (rule eval_with_None_same_store_same_hh(1)[OF ExhPure.hyps(1), unfolded \<open>b = _\<close>])
+    using ExhPure.prems(2)
+          apply (simp, simp)
+        apply (simp add: ExhPure.prems(3))
+    using ExhPure.prems(4)
+       apply auto[1]
+      apply simp
+     apply (metis ExhPure.prems(1,5) add_masks_minus exh_if_total_normal_2 get_mh_nm__plus minus_masks_empty)
+    by (metis ExhPure.prems(1,5) add_masks_self_zero_mask exh_if_total_normal_2 get_mp_nm_distr_over_plus)
+next
+  case (ExhStarNormal A \<omega> \<omega>_int B res)
+  obtain nm_exh_A where "get_nm_total_full \<omega>_int + nm_exh_A = get_nm_total_full \<omega>"
+    by (meson ExhStarNormal.hyps(1) exhale_normal_result_smaller' less_eq_full_total_stateD_2 nested_mask_greater_equiv)
+  obtain nm_exh_B where "get_nm_total_full \<omega>' + nm_exh_B = get_nm_total_full \<omega>_int"
+    by (metis nested_mask_greater_equiv less_eq_full_total_stateD_2 ExhStarNormal.prems(1) exhale_normal_result_smaller' ExhStarNormal.hyps(2))
+  have "nm_exh_A + nm_exh_B = nm_exh"
+    by (metis ExhStarNormal.prems(5) \<open>get_nm_total_full \<omega>' + nm_exh_B = get_nm_total_full \<omega>_int\<close> add_right_cancel
+        \<open>get_nm_total_full \<omega>_int + nm_exh_A = get_nm_total_full \<omega>\<close> ab_semigroup_add_class.add_ac(1) add.commute)
+  hence "mh_split (get_mh_nm nm_exh) (get_mh_nm nm_exh_A) (get_mh_nm nm_exh_B)" and
+        "mp_split (get_mp_nm nm_exh) (get_mp_nm nm_exh_A) (get_mp_nm nm_exh_B)"
+    using get_mp_nm_distr_over_plus
+    by auto
+  show ?case
+    apply rule
+       apply fact+
+     apply (rule ExhStarNormal.IH(1)[where ?\<phi>="\<phi>\<lparr> get_nm_total := nm_exh_A \<rparr>"])
+           apply simp
+    using ExhStarNormal.prems(2)
+          apply force
+         apply fact+
+      apply (simp add: ExhStarNormal.prems(6))
+     apply simp
+    apply (rule ExhStarNormal.IH(2)[where ?\<phi>="\<phi>\<lparr> get_nm_total := nm_exh_B \<rparr>"])
+          apply (simp add: \<open>res = _\<close>)
+    using ExhStarNormal.prems(2)
+         apply force
+        apply (metis ExhStarNormal.prems(3) exhale_only_changes_total_state_aux ExhStarNormal.hyps(1))
+       apply (metis ExhStarNormal.hyps(1) ExhStarNormal.prems(4) exhale_only_changes_total_state_aux)
+    using \<open>get_nm_total_full \<omega>' + nm_exh_B = get_nm_total_full \<omega>_int\<close>
+      apply blast
+     apply (metis ExhStarNormal.prems(6) exhale_only_changes_total_state_aux ExhStarNormal.hyps(1) total_state.select_convs(1) total_state.surjective total_state.update_convs(2))
+    by simp
 next
   case (ExhStarFailure A \<omega> B)
   then show ?case
@@ -1186,48 +1257,115 @@ next
 next
   case (ExhImpTrue e \<omega> A res)
   then show ?case
-    by (simp add: SatImpTrue eval_exhale_sat_helper)
+    by (simp add: SatImpTrue eval_with_None_same_store_same_hh(1))
 next
   case IH: (ExhImpFalse e \<omega> A)
   show ?case
-    apply standard
-    using IH.hyps IH.prems(2) eval_exhale_sat_helper
-      apply fastforce
-     apply (metis IH.prems(1) result_total.inject same_mh_diff)
-    by (metis IH.prems(1) result_total.inject same_mp_diff)
+    apply rule
+    using IH.hyps IH.prems(2) eval_with_None_same_store_same_hh(1)
+      apply (metis IH.prems(3,4) assert_pred.elims(1) assert_pred_rec.simps(2))
+     apply (metis IH.prems(1,5) add_masks_self_zero_mask get_mh_nm__plus result_total.inject)
+    by (metis IH.prems(1,5) add_masks_self_zero_mask get_mp_nm_distr_over_plus result_total.inject)
 next
   case (ExhCondTrue e \<omega> A res B)
   then show ?case
-    by (simp add: SatCondTrue eval_exhale_sat_helper)
+    by (simp add: SatCondTrue eval_with_None_same_store_same_hh)
 next
   case (ExhCondFalse e \<omega> B res A)
   then show ?case
-    by (simp add: SatCondFalse eval_exhale_sat_helper)
+    by (simp add: SatCondFalse eval_with_None_same_store_same_hh)
 next
   case (ExhSubExpFailure A \<omega>)
   then show ?case
     by blast
 qed
 
-lemma exhale_diff_sat':
+
+lemma exhale_diff_sat_extcons:
   assumes "red_exhale ctxt \<omega>\<^sub>0 A \<omega> res" and "res = RNormal \<omega>'"
       and "supported_pred_body A"
       and "consistent_external ctxt (get_total_full \<omega>)"
+      and "get_store_total \<omega>\<^sub>s = get_store_total \<omega>"
+      and "get_hh_total_full \<omega>\<^sub>s = get_hh_total_full \<omega>"
       and "get_nm_total_full \<omega>' + nm_exh = get_nm_total_full \<omega>"
-    shows "sat ctxt (\<omega>\<lparr> get_total_full := get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>)
-               (get_mh_nm nm_exh) (get_mp_nm nm_exh) A"
-proof -
-  have "\<lparr> get_store_total = get_store_total \<omega>, get_trace_total = get_trace_total \<omega>,
-          get_total_full = get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr> =
-        \<omega>\<lparr> get_total_full := get_total_full \<omega>\<lparr> get_nm_total := 0 \<rparr> \<rparr>"
-    by simp
-  moreover have "get_mh_total_full \<omega> - get_mh_total_full \<omega>' = get_mh_nm nm_exh"
-    by (metis add_masks_minus assms(5) get_mh_nm__plus get_mh_total.simps get_mh_total_full.simps get_nm_total_full.simps)
-  moreover have "get_mp_total_full \<omega> - get_mp_total_full \<omega>' = get_mp_nm nm_exh"
-    by (metis assms(5) add_masks_minus get_nm_total_full.simps get_mp_nm_distr_over_plus get_mp_total_full.simps get_mp_total.elims)
-  ultimately show ?thesis
-    using exhale_diff_sat[OF assms(1) assms(2) assms(3) assms(4), where ?trace="get_trace_total \<omega>"]
-    by presburger
+      and "get_hh_total \<phi> = get_hh_total_full \<omega>"
+      and "get_nm_total \<phi> = nm_exh"
+      and "ctxt_pred_syn_wf ctxt"
+    shows "sat ctxt \<omega>\<^sub>s (get_mh_nm nm_exh) (get_mp_nm nm_exh) A \<and> consistent_external ctxt \<phi>"
+  apply (intro conjI)
+  using assms exhale_diff_sat
+   apply blast
+proof rule
+  fix pid vs q nm
+  assume "Some (q,nm) = get_fnm_total \<phi> (pid,vs)"
+  show "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm \<rparr>) (pid,vs) (Rep_posreal q)"
+  proof (cases "get_fnm_total_full \<omega>' (pid,vs)")
+    case None
+    hence "get_fnm_total_full \<omega> (pid,vs) = Some (q,nm)"
+      using arg_cong[OF assms(7), where ?f="\<lambda>nm. get_fnm_nm nm (pid,vs)"] \<open>Some (q,nm) = _\<close>[simplified, unfolded assms(9)]
+      apply (cases nm_exh)
+      apply (cases "get_nm_total_full \<omega>'")
+      apply (cases "get_nm_total_full \<omega>")
+      by (simp add: pfun_comb_def plus_nested_mask_def)
+    moreover have "\<phi>\<lparr> get_nm_total := nm \<rparr> = get_total_full \<omega>\<lparr> get_nm_total := nm \<rparr>"
+      by (simp add: assms(8))
+    ultimately show ?thesis
+      by (metis assms(4) consistent_external.cases get_fnm_total_full.simps)
+  next
+    case (Some pnm)
+    obtain q\<^sub>\<omega>\<^sub>' nm\<^sub>\<omega>\<^sub>' where "pnm = (q\<^sub>\<omega>\<^sub>',nm\<^sub>\<omega>\<^sub>')"
+      by fastforce
+    then obtain q\<^sub>\<omega> nm\<^sub>\<omega> where
+      "get_fnm_total_full \<omega> (pid,vs) = Some (q\<^sub>\<omega>,nm\<^sub>\<omega>)" and
+      "q\<^sub>\<omega> \<ge> q\<^sub>\<omega>\<^sub>'" and
+      "nm\<^sub>\<omega>\<^sub>' = (Rep_posreal (q\<^sub>\<omega>\<^sub>' / q\<^sub>\<omega>)) *\<^sub>s nm\<^sub>\<omega>"
+      using Some assms(1,2) exhale_fraction
+      by blast
+
+    hence "consistent_external_wrt_ploc ctxt (get_total_full \<omega>\<lparr> get_nm_total := nm\<^sub>\<omega> \<rparr>) (pid,vs) (Rep_posreal q\<^sub>\<omega>)"
+      using assms(4) consistent_external.cases
+      by fastforce
+
+    from \<open>get_fnm_total_full \<omega> (pid,vs) = Some (q\<^sub>\<omega>,nm\<^sub>\<omega>)\<close>
+    have "q + q\<^sub>\<omega>\<^sub>' = q\<^sub>\<omega>"
+      using arg_cong[OF assms(7), where ?f="\<lambda>nm. get_fnm_nm nm (pid,vs)"] \<open>Some (q,nm) = _\<close>[simplified, unfolded assms(9)] Some[unfolded \<open>pnm = _\<close>]
+      unfolding plus_nested_mask_def
+      apply (cases nm_exh)
+      apply (cases "get_nm_total_full \<omega>'")
+      apply (cases "get_nm_total_full \<omega>")
+      apply (simp add: pfun_comb_def)
+      by (metis (no_types, lifting) add.commute combine_options_simps(3) fst_conv option.inject)
+
+    moreover have "nm = Rep_posreal ((q\<^sub>\<omega> - q\<^sub>\<omega>\<^sub>') / q\<^sub>\<omega>) *\<^sub>s nm\<^sub>\<omega>"
+    proof -
+      from \<open>get_fnm_total_full \<omega> (pid,vs) = Some (q\<^sub>\<omega>,nm\<^sub>\<omega>)\<close>
+      have "nm + nm\<^sub>\<omega>\<^sub>' = nm\<^sub>\<omega>"
+        using arg_cong[OF assms(7), where ?f="\<lambda>nm. get_fnm_nm nm (pid,vs)"] \<open>Some (q,nm) = _\<close>[simplified, unfolded assms(9)] Some[unfolded \<open>pnm = _\<close>]
+        unfolding plus_nested_mask_def
+        apply (cases nm_exh)
+        apply (cases "get_nm_total_full \<omega>'")
+        apply (cases "get_nm_total_full \<omega>")
+        apply (simp add: pfun_comb_def)
+        by (metis (no_types, lifting) add.commute combine_options_simps(3) option.inject plus_nested_mask_def snd_conv)
+      hence "Rep_posreal ((q\<^sub>\<omega> - q\<^sub>\<omega>\<^sub>') / q\<^sub>\<omega>) *\<^sub>s nm\<^sub>\<omega> + nm\<^sub>\<omega>\<^sub>' = nm\<^sub>\<omega>"
+        by (metis PosReal.padd_cancellative Rep_posreal_inverse \<open>nm\<^sub>\<omega>\<^sub>' = Rep_posreal (q\<^sub>\<omega>\<^sub>' / q\<^sub>\<omega>) *\<^sub>s nm\<^sub>\<omega>\<close>
+            \<open>q\<^sub>\<omega>\<^sub>' \<le> q\<^sub>\<omega>\<close> calculation comm_semiring_class.distrib field_divide_inverse_posreal field_inverse_posreal
+            greater_minus_plus less_eq_posreal.rep_eq minus_posreal_def mult.commute one_posreal.rep_eq plus_posreal.rep_eq
+            preal_semimodule_class.scale_one scale_add_left)
+      thus ?thesis
+        using \<open>nm + nm\<^sub>\<omega>\<^sub>' = nm\<^sub>\<omega>\<close>
+        by fastforce
+    qed
+
+    moreover have "\<phi>\<lparr> get_nm_total := nm \<rparr> = get_total_full \<omega>\<lparr> get_nm_total := nm \<rparr>"
+      by (simp add: assms(8))
+
+    ultimately show ?thesis
+      using fraction_consistent_external(1)[OF assms(10) \<open>consistent_external_wrt_ploc _ _ _ _\<close>, where ?frac="Rep_posreal ((q\<^sub>\<omega> - q\<^sub>\<omega>\<^sub>') / q\<^sub>\<omega>)"]
+       by (metis PosReal.padd_cancellative Rep_posreal_inverse \<open>q\<^sub>\<omega>\<^sub>' \<le> q\<^sub>\<omega>\<close> field_divide_inverse_posreal
+           field_inverse_posreal greater_minus_plus less_eq_posreal.rep_eq minus_posreal_def mult.assoc mult.right_neutral
+           mult_nm_total.simps plus_posreal.rep_eq times_posreal.rep_eq total_state.surjective total_state.update_convs(2))
+  qed
 qed
 
 
@@ -4197,31 +4335,6 @@ next
 qed (auto intro: red_pure_exp_intros)
 
 
-lemma eval_None_same_hh:  \<comment> \<open>redundant with @{thm eval_exhale_sat_helper_helper}}\<close>
-  assumes "get_hh_total_full \<omega> = get_hh_total_full \<omega>'"
-      and "get_store_total \<omega> = get_store_total \<omega>'"
-    shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r \<Longrightarrow>
-           \<omega>_def = None \<Longrightarrow>
-           r = Val v \<Longrightarrow>
-           supported_pred_expr e \<Longrightarrow>
-           ctxt, None \<turnstile> \<langle>e;\<omega>'\<rangle> [\<Down>]\<^sub>t Val v"
-      and "red_pure_exps_total ctxt \<omega>_def es \<omega> rs \<Longrightarrow>
-           \<omega>_def = None \<Longrightarrow>
-           rs = Some vs \<Longrightarrow>
-           list_all supported_pred_expr es \<Longrightarrow>
-           red_pure_exps_total ctxt None es \<omega>' (Some vs)"
-  using assms
-proof (induction arbitrary: \<omega>' v and \<omega>' vs rule: red_pure_exp_inducts)
-  case (RedField \<omega>_def e \<omega> a f v)
-  then show ?case
-    by (metis RedField_no_def_normalI eval_exhale_sat_helper_helper(1) option.pred_inject(1))
-next
-  case (RedUnfolding es \<omega> vs ubody v pred_id)
-  then show ?case
-    by (meson eval_exhale_sat_helper_helper(1) red_pure_exp_total_red_pure_exps_total.RedUnfolding)
-qed (fastforce intro: red_pure_exp_intros)+
-
-
 lemma framed_sat_irrelevant_perm_0_locs_helper:
     fixes \<phi> :: "'a total_state"
   assumes "red_pure_exps_total ctxt None es \<omega> (Some vs)"
@@ -4252,7 +4365,7 @@ proof -
 
   \<comment> \<open>The evaluation result is the same.\<close>
   thus ?P2
-    by (metis assert_pred_subexp assms(1,4,5,9,10) eval_exhale_sat_helper_helper(2) eval_is_deterministic(2))
+    by (metis assert_pred_subexp assms(1,4,5,9,10) eval_with_None_same_store_same_hh(2) eval_is_deterministic(2))
 
   \<comment> \<open>Change the underlying state to \<^term>\<open>\<omega>'\<close>.\<close>
   have "red_pure_exps_total ctxt (Some (upd_hh_total_full \<omega>\<^sub>0 (get_hh_total_full \<omega>'))) es \<omega>' (Some vs)"
@@ -4269,7 +4382,7 @@ proof -
     by fact
 
   thus ?P1
-    by (metis assert_pred_subexp assms(9,10) eval_exhale_sat_helper_helper(2))
+    by (metis assert_pred_subexp assms(9,10) eval_with_None_same_store_same_hh(2))
 qed
 
 

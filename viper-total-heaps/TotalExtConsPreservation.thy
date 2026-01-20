@@ -69,22 +69,14 @@ lemma exhale_pred_body_part_extcons_wrt_ploc:
       apply (rule assms)+
 proof -
   \<comment> \<open>First two goals are proven together.\<close>
-  have "get_store_total \<omega> = nth_option vs"
-    by (simp add: assms(4))
-  moreover have "get_mh_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) = get_mh_total_full \<omega> - get_mh_total_full \<omega>'"
-    using nm_add_mh_sub[OF assms(7)]
-    by force
-  moreover have "get_mp_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) = get_mp_total_full \<omega> - get_mp_total_full \<omega>'"
-    using nm_add_mp_sub[OF assms(7)]
-    by force
-  ultimately show "sat ctxt \<lparr> get_store_total = nth_option vs, get_trace_total = \<lambda>x. None,
+  show "sat ctxt \<lparr> get_store_total = nth_option vs, get_trace_total = \<lambda>x. None,
                               get_total_full = \<phi>\<lparr> get_nm_total := nm_exh, get_nm_total := 0 \<rparr> \<rparr>
-                       (get_mh_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>))
-                       (get_mp_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>))
-                       (syntactic_mult (Rep_preal p) pbody)"
+                 (get_mh_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>))
+                 (get_mp_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>))
+                 (syntactic_mult (Rep_preal p) pbody)"
     using exhale_diff_sat[OF assms(6), of \<omega>'] assms ctxt_pred_syn_wf_def syntactic_mult_supported
-          prat_non_negative total_state.surjective total_state.update_convs(2)
-    by fastforce
+      prat_non_negative total_state.surjective total_state.update_convs(2)
+    by (metis (no_types, lifting) full_total_state.select_convs(1,3) get_hh_total_full.simps get_mh_total.elims get_mp_total.elims total_state.select_convs(1,2))
 
   thus "p = 0 \<Longrightarrow> get_nm_total (\<phi>\<lparr> get_nm_total := nm_exh \<rparr>) = 0"
     by (simp add: mh_mp_zero_implies_nm_zero synmult_0_mh_0 synmult_0_mp_0 zero_preal.rep_eq)
