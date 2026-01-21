@@ -134,7 +134,7 @@ proof -
     apply (rule red_ast_bpl_transitive)
      apply (fastforce intro!: red_ast_bpl_one_step_empty_simple_cmd RedParsedIfFalse simp: CondFalse \<open>empty_else_block = _\<close>)
     by (fastforce intro!: red_ast_bpl_one_step_empty_simple_cmd RedSkip)
-qed 
+qed
 
 lemma red_ast_bpl_if_nondet_then:
   shows "red_ast_bpl P ctxt ((if_bigblock name None (thn_hd # thn_tl) els, KSeq next cont), Normal ns) 
