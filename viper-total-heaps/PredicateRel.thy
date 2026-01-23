@@ -2639,16 +2639,17 @@ lemma fold_knownfolded_imp_upd_rel:
     CondExpRel: "exp_rel_vpr_bpl (\<lambda>\<omega>def \<omega> ns. \<omega>def = \<omega> \<and> R \<omega> ns) ctxt_vpr ctxt_bpl e_cond_vpr e_cond_bpl" and
 
     StepRHS:
-      "rel_general (\<lambda>\<omega> ns. R' \<omega> ns \<and>
+      "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
                              (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
                              pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
                              (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
                                 sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) A \<and>
                                 consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)))
-                   (\<lambda>\<omega> ns. R'' \<omega> ns)
+                   (\<lambda>\<omega> ns. R' \<omega> ns)
                    (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
                    (\<lambda>\<omega>\<^sub>0_\<omega>. False)
-                   P ctxt_bpl (thnHd, (convert_list_to_cont thnTl cont)) \<gamma>'"
+                   P ctxt_bpl (thnHd, (convert_list_to_cont thnTl (KSeq next cont))) (next, cont)"
+       (is "rel_general _ _ _ _ _ _ ?\<gamma>\<^sub>2 _")
 
   shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
                                (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
@@ -2683,10 +2684,40 @@ proof (rule rel_intro; blast?)
   then show "\<exists>ns'. red_ast_bpl P ctxt_bpl (?\<gamma>, Normal ns) (?\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
   proof cases
     case True
+
+    then obtain nm_exh p\<^sub>s nm\<^sub>s where
+      "get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s, nm\<^sub>s)" and
+      "nm_exh \<le> nm\<^sub>s" and
+      "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (assert.Imp e_cond_vpr A)" and
+      "consistent_external ctxt_vpr \<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>"
+      using \<open>?R\<^sub>0 _ _\<close>
+      by blast
+    moreover hence "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) A"
+      by (metis SatImp_case True ValueAndBasicState.val.inject(2) eval_is_deterministic_single extended_val.inject)
+
+    ultimately obtain ns' where
+      "R' \<omega> ns'" and red_thn: "red_ast_bpl P ctxt_bpl (?\<gamma>\<^sub>2, Normal ns) ((next, cont), Normal ns')"
+      using rel_success_elim[OF StepRHS] \<open>?R\<^sub>0 \<omega> ns\<close>
+      by blast
+
     have h_upd_eval: "red_expr_bpl ctxt_bpl e_cond_bpl ns (LitV (LBool True))"
       using exp_rel_vpr_bplD[OF CondExpRel] eval_with_None_exists_\<omega>def[OF True] ExpSyntax \<open>R \<omega> ns\<close>
       by fastforce
-    then show ?thesis sorry
+
+    have "red_ast_bpl P ctxt_bpl (?\<gamma>, Normal ns) (?\<gamma>', Normal ns')"
+      unfolding red_ast_bpl_def
+      apply (rule converse_rtranclp_into_rtranclp)
+       apply rule
+       apply (rule RedParsedIfTrue)
+      using h_upd_eval
+       apply force
+      using red_thn
+      unfolding red_ast_bpl_def
+      by simp
+
+   then show ?thesis
+     using \<open>R' \<omega> ns'\<close> \<open>\<omega> = \<omega>'\<close>
+     by blast
   next
     case False
     have h_upd_eval: "red_expr_bpl ctxt_bpl e_cond_bpl ns (LitV (LBool False))"
@@ -2701,5 +2732,6 @@ proof (rule rel_intro; blast?)
       using StateRelIn StateRelOut \<open>R \<omega> ns\<close> \<open>\<omega> = \<omega>'\<close>
       by blast
   qed
+qed
 
 end
