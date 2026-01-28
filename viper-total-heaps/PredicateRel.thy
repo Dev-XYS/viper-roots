@@ -3015,11 +3015,11 @@ next
   then obtain ff where "\<Gamma> f = Some ff" and "fun_interp_single_wf_2 A fd ff"
     using assms(2)[unfolded fun_interp_wf_def, THEN spec, THEN spec, of f fd, THEN mp, OF fd]
     by blast
-  hence "list_all closed (map (instantiate (\<Omega>\<^sub>p @ \<tau>\<^sub>k # \<Omega>)) ty_args)"
+  hence "list_all closed (map (instantiate (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>)) ty_args)"
     apply (cases fd)
     apply simp
     by (smt (verit, best) H.IH(1) H.hyps H.prems(1,3) \<open>ty_args' = _\<close> assms(3) length_map list_all_length nth_map option.inject subst_one_closed_implies_closed)
-  have "map (instantiate (\<Omega>\<^sub>p @ \<tau>\<^sub>k # \<Omega>)) ty_args = map (instantiate (\<Omega>\<^sub>p @ \<Omega>)) ty_args'"
+  have "map (instantiate (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>)) ty_args = map (instantiate (\<Omega>\<^sub>p@\<Omega>)) ty_args'"
     apply (rule nth_equalityI)
      apply (simp add: \<open>ty_args' = _\<close>)
     apply (simp add: \<open>ty_args' = _\<close>)
@@ -3027,7 +3027,7 @@ next
       apply force
      apply (metis \<open>list_all _ _\<close> length_map list_all_length nth_map)
     by (metis H.prems(3) \<open>list_all _ _\<close> closed_implies_subst_one_closed length_map list_all_length nth_map)
-  show "A,\<Lambda>,\<Gamma>,\<Omega>\<^sub>p @ \<tau>\<^sub>k # \<Omega> \<turnstile> \<langle>e,n_s\<rangle> \<Down> v"
+  show "A,\<Lambda>,\<Gamma>,\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega> \<turnstile> \<langle>e,n_s\<rangle> \<Down> v"
     unfolding \<open>e = _\<close>
     apply (rule RedFunOp)
       apply fact
@@ -3107,7 +3107,7 @@ next
   case H: (RedExistsTrue v \<Omega>' ty' f' n_s)
   then obtain f ty where "f' = f[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "ty' = ty[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>" and "e = Exists ty f"
     by (cases e; simp)
-  have "closed (instantiate (\<Omega>\<^sub>p @ \<Omega>) ty')"
+  have "closed (instantiate (\<Omega>\<^sub>p@\<Omega>) ty')"
     using H.IH(1) H.prems(1) assms
     by blast
   show ?case
