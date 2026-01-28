@@ -9,13 +9,13 @@ ML \<open>
     (Rmsg' "Post Framing Init - Type Interp" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "Post Framing Init - Domain Type" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
     (Rmsg' "Post Framing Init - Program" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-    (Rmsg' "Post Framing Init - Lookup Heap" 
+    (Rmsg' "Post Framing Init - Lookup Heap"
             (simp_tac_with_thms [#ty_repr_def_thm info] ctxt THEN'
             resolve_tac ctxt [lookup_heap_var_thm]) ctxt) THEN'
-    (Rmsg' "Post Framing Init - Lookup Mask" 
+    (Rmsg' "Post Framing Init - Lookup Mask"
             (simp_tac_with_thms [#ty_repr_def_thm info] ctxt THEN'
              resolve_tac ctxt [lookup_mask_var_thm]) ctxt) THEN'
-    (Rmsg' "Post Framing Init - Zero Mask" 
+    (Rmsg' "Post Framing Init - Zero Mask"
             (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
     (Rmsg' "Post Framing Init - Disjointntess" ((#aux_var_disj_tac info) ctxt) ctxt) THEN'
     (Rmsg' "Post Framing Init - Heap and Mask Disjoint" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
@@ -43,7 +43,7 @@ method fun_interp_wf_aux_tac for fid :: fun_enum_bpl uses fun_wf_thm ty_repr_def
 
 lemmas axioms_sat_proof_del = vbpl_absval_ty.simps type_of_val.simps full_ext_env.simps
 
-method simplify_bound_var_tac uses inversion_type_of_vbpl_val_equalities_concrete = 
+method simplify_bound_var_tac uses inversion_type_of_vbpl_val_equalities_concrete =
    (simp add: inversion_type_of_vbpl_val_equalities_concrete realv_inversion_type_of_vbpl_val del: axioms_sat_proof_del id_apply),
    (erule conjE, erule exE)+,
    (simp only: id_apply)
@@ -54,7 +54,7 @@ method axiom_proof_init uses inversion_type_of_vbpl_val_equalities_concrete =
    (simplify_bound_var_tac inversion_type_of_vbpl_val_equalities_concrete: inversion_type_of_vbpl_val_equalities_concrete) ? \<comment>\<open>only makes sense if there is at least one universal value quantifier\<close>
 
 ML \<open>
-   
+
   \<comment>\<open>TODO: move to same location as add_simps\<close>
   fun del_simps [] ctxt = ctxt
    |  del_simps (thm::thms) ctxt = del_simps thms (Simplifier.del_simp thm ctxt)
@@ -62,7 +62,7 @@ ML \<open>
   type axiom_tac_data = {
     lookup_const_tac : (int -> tactic),
     finterp_eval_tac : (Proof.context -> term -> int -> tactic),
-    fun_interp_inst_def_thm: thm,    
+    fun_interp_inst_def_thm: thm,
     lookup_field_tac: (int -> tactic),
     fun_repr_inj_thm: thm
   }
@@ -74,10 +74,10 @@ ML \<open>
     | t => raise TERM ("cannot extract Boogie function name", [t])
 
   fun extract_fun_enum_bpl t =
-    case t of 
+    case t of
       @{term "Trueprop"} $ t' => extract_fun_enum_bpl t'
     | Const (@{const_name HOL.eq}, _) $ lhs $ _ => extract_fun_enum_bpl lhs
-    | Const (@{const_name "fun_interp_vpr_bpl"}, _) 
+    | Const (@{const_name "fun_interp_vpr_bpl"}, _)
            $ _ (* program *)
            $ _ (* type representation *)
            $ _ (* field translation *)
@@ -98,12 +98,12 @@ ML \<open>
        Rmsg' "Unexpected case" (K no_tac) ctxt
     ] [
       (* Var *)
-      (Rmsg' "RedVar" ( (#lookup_const_tac axiom_tac_data |> SOLVED') ORELSE' 
-                        (#lookup_field_tac axiom_tac_data |> SOLVED')) ctxt), 
+      (Rmsg' "RedVar" ( (#lookup_const_tac axiom_tac_data |> SOLVED') ORELSE'
+                        (#lookup_field_tac axiom_tac_data |> SOLVED')) ctxt),
 
       (* BVar *)
        Rmsg' "RedBVar simp" (assm_full_simp_solved_tac ctxt) ctxt,
-   
+
       (* BinOp *)
        (fn i => fn st => axiom_aux_tac ctxt lookup_const_thms del_thms axiom_tac_data i st) THEN'
        (fn i => fn st => axiom_aux_tac ctxt lookup_const_thms del_thms axiom_tac_data i st) THEN'
@@ -125,7 +125,7 @@ ML \<open>
              end
           ))) THEN'
           assm_full_simp_solved_tac ctxt) ctxt) THEN'
-      
+
        (* function arguments *)
        (fn i => fn st => axiom_aux_list_tac ctxt lookup_const_thms del_thms axiom_tac_data i st) THEN'
        (* function interpretation evaluation *)
@@ -148,7 +148,7 @@ and axiom_aux_list_tac ctxt lookup_const_thms del_thms (axiom_tac_data : axiom_t
       [ resolve_tac ctxt @{thms RedExpListCons},
         resolve_tac ctxt @{thms RedExpListNil},
         Rmsg' "Unexpected case: axiom_aux_list_tac" (K no_tac) ctxt
-      ] 
+      ]
       [ (* cons *)
         ((fn i => fn st => axiom_aux_tac ctxt lookup_const_thms del_thms axiom_tac_data i st) |> SOLVED') THEN'
         (fn i => fn st => axiom_aux_list_tac ctxt lookup_const_thms del_thms axiom_tac_data i st),
@@ -160,9 +160,9 @@ and axiom_aux_list_tac ctxt lookup_const_thms del_thms (axiom_tac_data : axiom_t
         K no_tac
       ]
 
-fun finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr ctxt t = 
+fun finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr ctxt t =
   case t of
-    Const (@{const_name FReadHeap}, _) => 
+    Const (@{const_name FReadHeap}, _) =>
      asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps [ty_repr_def, @{thm lift_fun_bpl_def}, @{thm heap_upd_ty_preserved_2_concrete} OF [wf_ty_repr]] ctxt)) THEN'
      asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps @{thms ty_repr_basic_def} ctxt))
   | Const (@{const_name FReadMask}, _) =>
@@ -184,7 +184,7 @@ fun finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr ctxt t =
      asm_full_simp_tac (del_simps del_thms (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt))
 
 fun axiom_tac ctxt fun_interp_inst_def_thm lookup_const_thms lookup_fields_thms del_thms ty_repr_def wf_ty_repr fun_repr_inj_thm =
-  let val axiom_tac_data : axiom_tac_data = { 
+  let val axiom_tac_data : axiom_tac_data = {
      lookup_const_tac = asm_full_simp_tac (del_simps del_thms (add_simps (@{thm lookup_full_ext_env_same} :: lookup_const_thms) ctxt)),
      lookup_field_tac = asm_full_simp_tac (del_simps del_thms (add_simps (@{thm lookup_full_ext_env_same} :: lookup_fields_thms) ctxt)),
      finterp_eval_tac = finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr,

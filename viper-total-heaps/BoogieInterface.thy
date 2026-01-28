@@ -352,6 +352,7 @@ shows "red_ast_bpl P ctxt ((BigBlock name (Havoc x # Assume e # cs) str tr, cont
   using assms(4) RedAssumeOk
   by blast
 
+
 subsection \<open>map_upds\<close>
 
 subsection \<open>Lifting from single elements to lists of elements\<close>

@@ -2734,4 +2734,639 @@ proof (rule rel_intro; blast?)
   qed
 qed
 
+
+
+context begin
+\<comment> \<open>Some Boogie Properties (TODO: move somewhere else)\<close>
+
+
+lemma closed_shift_id:
+  assumes "closed \<tau>"
+  shows "shiftT n k \<tau> = \<tau>"
+  using assms
+proof (induction \<tau>)
+  case (TCon _ tys)
+  then show ?case
+    by (metis Ball_set closed.simps(3) list.map_ident_strong shiftT.simps(3))
+qed auto
+
+
+lemma type_of_vbpl_val_closed:
+  assumes "wf_ty_repr_bpl TyRep"
+      and "type_of_vbpl_val TyRep v = ty"
+    shows "closed ty"
+  apply (cases v)
+   apply (rename_tac l)
+   apply (case_tac l; insert vbpl_absval_ty_opt_closed[OF assms(1)] assms(2); auto)
+  apply (rename_tac a)
+  using vbpl_absval_ty_opt_closed[OF assms(1)] assms(2)
+  by (metis assms(1) tcon_to_bplty.simps type_of_val.simps(2) vbpl_absval_ty_closed)
+
+
+lemma closed_implies_subst_one_closed:
+  assumes "ty' = ty[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>"
+      and "length \<Omega>\<^sub>p = k"
+      and "closed (instantiate (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>) ty)"
+    shows "closed (instantiate (\<Omega>\<^sub>p@\<Omega>) ty')"
+  using assms(1,3)
+proof (induction ty arbitrary: ty')
+  case (TVar i)
+  then show ?case
+    apply (cases "k < i")
+     apply (cases "i < length \<Omega>\<^sub>p")
+    using assms(2)
+      apply linarith
+     apply (cases "i \<le> length \<Omega>\<^sub>p")
+    using assms(2)
+      apply linarith
+     apply (cases "i < length (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>)")
+      apply simp
+      apply (metis (no_types, lifting) ext Suc_diff_Suc assms(2) diff_Suc_1' diff_Suc_Suc le_Suc_eq less_Suc_eq_0_disj nat_le_linear not_less0 nth_Cons_Suc nth_append_right)
+     apply simp
+    apply simp
+    using closed_instantiate assms(2) closed_shift_id nat_neq_iff nth_append_left
+    by fastforce
+next
+  case (TPrim x)
+  then show ?case by simp
+next
+  case (TCon ctor tys)
+  then obtain tys' where "ty' = TCon ctor tys'" and "tys' = map (\<lambda>t. t[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>) tys"
+    by (cases ty'; simp)
+  have *: "\<And>xs P f. (\<And>x. x \<in> set xs \<Longrightarrow> P (f x)) \<Longrightarrow> list_all P (map f xs)" \<comment> \<open>a temporary lemma\<close>
+    by (simp add: assms list_all_length)
+  show ?case
+    unfolding \<open>ty' = TCon ctor tys'\<close> \<open>tys' = _\<close>
+    apply (simp del: List.map_map)
+    apply (rule *)
+  proof -
+    fix t'
+    assume "t' \<in> set (map (\<lambda>t. t[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>) tys)"
+    then obtain t where "t \<in> set tys" and "t' = t[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>"
+      by auto
+    show "closed (instantiate (\<Omega>\<^sub>p@\<Omega>) t')"
+      apply (rule TCon.IH[OF \<open>t \<in> _\<close> \<open>t' = _\<close>])
+      using TCon.prems(2)[simplified] \<open>t \<in> _\<close>
+      by (metis Ball_set image_eqI list.set_map)
+  qed
+qed
+
+
+lemma subst_one_closed_implies_closed:
+  assumes "ty' = ty[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>"
+      and "length \<Omega>\<^sub>p = k"
+      and "closed \<tau>\<^sub>k"
+      and "closed (instantiate (\<Omega>\<^sub>p@\<Omega>) ty')"
+    shows "closed (instantiate (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>) ty)"
+  using assms(1,4)
+proof (induction ty arbitrary: ty')
+  case (TVar i)
+  then show ?case
+    apply (cases "k < i")
+     apply (cases "i < length \<Omega>\<^sub>p")
+    using assms(2)
+      apply linarith
+     apply (cases "i \<le> length \<Omega>\<^sub>p")
+    using assms(2)
+      apply linarith
+     apply (cases "i < length (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>)")
+      apply simp
+      apply (smt (verit, best) One_nat_def Suc_diff_Suc dec_less_imp_less_eq diff_Suc_1' diff_Suc_eq_diff_pred less_imp_Suc_add nat_less_le not_less_eq nth_Cons_Suc nth_append)
+     apply simp
+    using less_Suc_eq_0_disj
+     apply auto[1]
+    using assms(2) nat_neq_iff nth_append_left assms(3)
+    by fastforce
+next
+  case (TPrim x)
+  then show ?case
+    by auto
+next
+  case (TCon ctor tys)
+  then obtain tys' where "ty' = TCon ctor tys'" and "tys' = map (\<lambda>t. t[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>) tys"
+    by (cases ty'; simp)
+  have *: "\<And>xs P f. (\<And>x. x \<in> set xs \<Longrightarrow> P (f x)) \<Longrightarrow> list_all P (map f xs)" \<comment> \<open>a temporary lemma\<close>
+    by (simp add: assms list_all_length)
+  show ?case
+    apply (simp del: List.map_map)
+    apply (rule *)
+  proof -
+    fix t
+    assume "t \<in> set tys"
+    then obtain t' where "t' \<in> set tys'" and "t' = t[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>"
+      by (simp add: \<open>tys' = _\<close>)
+    show "closed (instantiate (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>) t)"
+      apply (rule TCon.IH[OF \<open>t \<in> _\<close> \<open>t' = _\<close>])
+      using TCon.prems(2)[unfolded \<open>ty' = TCon ctor tys'\<close>, simplified] \<open>t' \<in> _\<close>
+      by (metis Ball_set comp_def list.pred_map)
+  qed
+qed
+
+
+lemma boogie_instantiate_subst_one_type_var:
+  assumes "ty' = ty[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>"
+      and "length \<Omega>\<^sub>p = k"
+      and "closed (instantiate (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>) ty)"
+      and "closed (instantiate (\<Omega>\<^sub>p@\<Omega>) ty')"
+    shows "instantiate (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>) ty = instantiate (\<Omega>\<^sub>p@\<Omega>) ty'"
+  using assms(1,3,4)
+proof (induction ty arbitrary: ty')
+  case (TVar i)
+  show ?case
+  proof (cases "k < i")
+    case True
+    hence "ty' = TVar (i-1)"
+      using TVar.prems(1)
+      by auto
+    show ?thesis
+      unfolding \<open>ty' = TVar (i-1)\<close>
+      apply (cases "i < length \<Omega>\<^sub>p")
+       defer
+       apply (cases "i \<le> length \<Omega>\<^sub>p")
+        defer
+        apply (cases "i < length (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>)")
+         defer
+      using TVar.prems(2)
+         apply fastforce
+      using True assms(2)
+        apply fastforce
+      using True assms(2)
+       apply fastforce
+    proof -
+      assume "\<not> i < length \<Omega>\<^sub>p"
+        and "\<not> i \<le> length \<Omega>\<^sub>p"
+        and "i < length (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>)"
+      hence "instantiate (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>) (TVar i) = \<Omega> ! (i - length \<Omega>\<^sub>p - 1)"
+        by (simp add: nth_append)
+      moreover hence "instantiate (\<Omega>\<^sub>p@\<Omega>) (TVar (i - 1)) = \<Omega> ! (i - length \<Omega>\<^sub>p - 1)"
+        apply simp
+        by (metis One_nat_def TVar.prems(3) \<open>\<not> i \<le> length \<Omega>\<^sub>p\<close> \<open>ty' = TVar (i - 1)\<close> closed.simps(1) dec_less_imp_less_eq diff_Suc_eq_diff_pred instantiate.simps(1) length_append nth_append)
+      finally show "instantiate (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>) (TVar i) = instantiate (\<Omega>\<^sub>p@\<Omega>) (TVar (i - 1))"
+        by auto
+    qed
+  next
+    case False
+    then show ?thesis
+      by (metis BoogieInterface.closed_instantiate TVar.prems(1,2,3) assms(2) closed.simps(1) closed_shift_id instantiate.simps(1) linorder_neqE_nat nth_append_left nth_append_length substT.simps(1))
+  qed
+next
+  case (TPrim x)
+  then show ?case
+    by auto
+next
+  case (TCon ctor tys)
+  then obtain tys' where "ty' = TCon ctor tys'" and "tys' = map (\<lambda>t. t[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>) tys"
+    by (cases ty'; simp)
+  have "\<And>x. x \<in> set tys \<Longrightarrow> closed (instantiate (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>) x)"
+  proof -
+    fix t
+    assume "t \<in> set tys"
+    thus "closed (instantiate (\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega>) t)"
+      using TCon.prems(2)[simplified]
+      by (metis Ball_set image_eqI list.set_map)
+  qed
+  hence "\<And>x. x \<in> set tys \<Longrightarrow> closed (instantiate (\<Omega>\<^sub>p@\<Omega>) (x[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>))"
+  proof -
+    fix t
+    assume "t \<in> set tys"
+    thus "closed (instantiate (\<Omega>\<^sub>p@\<Omega>) (t[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>))"
+      using TCon.prems(3)[unfolded \<open>ty' = TCon ctor tys'\<close> \<open>tys' = _\<close>, simplified]
+      by (smt (verit, ccfv_SIG) comp_def in_set_conv_nth length_map list_all_length nth_map)
+  qed
+  show ?case
+    unfolding \<open>ty' = TCon ctor tys'\<close> \<open>tys' = _\<close>
+    apply simp
+    apply standard+
+    apply (rule TCon.IH)
+       apply simp
+      apply simp
+    by fact+
+qed
+
+
+fun boogie_expr_used_funs_in_dom :: "fdecls \<Rightarrow> expr \<Rightarrow> bool" where
+  "boogie_expr_used_funs_in_dom F (UnOp _ e) = boogie_expr_used_funs_in_dom F e"
+| "boogie_expr_used_funs_in_dom F (e1 \<guillemotleft>_\<guillemotright> e2) = (boogie_expr_used_funs_in_dom F e1 \<and> boogie_expr_used_funs_in_dom F e2)"
+| "boogie_expr_used_funs_in_dom F (FunExp f _ fargs) = (map_of F f \<noteq> None \<and> list_all (boogie_expr_used_funs_in_dom F) fargs)"
+| "boogie_expr_used_funs_in_dom F (CondExp cond els thn) = (boogie_expr_used_funs_in_dom F cond \<and> boogie_expr_used_funs_in_dom F thn \<and> boogie_expr_used_funs_in_dom F els)"
+| "boogie_expr_used_funs_in_dom F (Old e) = boogie_expr_used_funs_in_dom F e"
+| "boogie_expr_used_funs_in_dom F (Forall ty e) = boogie_expr_used_funs_in_dom F e"
+| "boogie_expr_used_funs_in_dom F (Exists ty e) = boogie_expr_used_funs_in_dom F e"
+| "boogie_expr_used_funs_in_dom F (ForallT e) = boogie_expr_used_funs_in_dom F e"
+| "boogie_expr_used_funs_in_dom F (ExistsT e) = boogie_expr_used_funs_in_dom F e"
+| "boogie_expr_used_funs_in_dom F _ = True"
+
+
+lemma boogie_expr_eval_subst_one_type_var:
+  assumes "\<And>v ty. type_of_val A v = ty \<Longrightarrow> closed ty"
+      and "fun_interp_wf A F \<Gamma>"
+      and "closed \<tau>\<^sub>k"
+    shows "A,\<Lambda>,\<Gamma>,\<Omega>' \<turnstile> \<langle>e',s\<rangle> \<Down> v \<Longrightarrow>
+           \<Omega>' = \<Omega>\<^sub>p@\<Omega> \<Longrightarrow>
+           e' = e[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k] \<Longrightarrow>
+           length \<Omega>\<^sub>p = k \<Longrightarrow>
+           boogie_expr_used_funs_in_dom F e \<Longrightarrow>
+           A,\<Lambda>,\<Gamma>,\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega> \<turnstile> \<langle>e,s\<rangle> \<Down> v"
+      and "A,\<Lambda>,\<Gamma>,\<Omega>' \<turnstile> \<langle>es',s\<rangle> [\<Down>] vs \<Longrightarrow>
+           \<Omega>' = \<Omega>\<^sub>p@\<Omega> \<Longrightarrow>
+           es' = map (\<lambda>e. e[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]) es \<Longrightarrow>
+           length \<Omega>\<^sub>p = k \<Longrightarrow>
+           list_all (boogie_expr_used_funs_in_dom F) es \<Longrightarrow>
+           A,\<Lambda>,\<Gamma>,\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega> \<turnstile> \<langle>es,s\<rangle> [\<Down>] vs"
+proof (induction arbitrary: \<Omega>\<^sub>p e k and \<Omega>\<^sub>p es k rule: red_expr_red_exprs.inducts)
+  case H: (RedVar n_s x v \<Omega>)
+  hence "e = Var x"
+    by (cases e; simp)
+  then show ?case
+    by (simp add: H.IH RedVar)
+next
+  case H: (RedBVar n_s i v \<Omega>)
+  hence "e = BVar i"
+    by (cases e; simp)
+  then show ?case
+    by (simp add: H.hyps RedBVar)
+next
+  case H: (RedLit \<Omega> v n_s)
+  hence "e = Lit v"
+    by (cases e; simp)
+  then show ?case
+    by (simp add: RedLit)
+next
+  case H: (RedBinOp \<Omega> e1' n_s v1 e2' v2 bop v)
+  then obtain e1 e2 where "e1' = e1[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "e2' = e2[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "e = e1 \<guillemotleft>bop\<guillemotright> e2"
+    by (cases e; simp)
+  then show ?case
+    using H.IH(2,4) H.prems(1,3,4) H.hyps
+    by (fastforce intro: RedBinOp)
+next
+  case H: (RedUnOp \<Omega> f' n_s v uop v')
+  then obtain f where "f' = f[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "e = UnOp uop f"
+    by (cases e; simp)
+  then show ?case
+    using H.IH(2) H.prems(1,3,4) H.hyps
+    by (fastforce intro: RedUnOp)
+next
+  case H: (RedFunOp f f_interp \<Omega>' args' n_s v_args ty_args' v)
+  then obtain args ty_args where "args' = map (\<lambda>e. e[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]) args" and "ty_args' = map (\<lambda>e. e[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>) ty_args" and "e = FunExp f ty_args args"
+    by (cases e; simp)
+  obtain fd where fd: "map_of F f = Some fd"
+    using H.prems(4) \<open>e = _\<close>
+    by auto
+  then obtain ff where "\<Gamma> f = Some ff" and "fun_interp_single_wf_2 A fd ff"
+    using assms(2)[unfolded fun_interp_wf_def, THEN spec, THEN spec, of f fd, THEN mp, OF fd]
+    by blast
+  hence "list_all closed (map (instantiate (\<Omega>\<^sub>p @ \<tau>\<^sub>k # \<Omega>)) ty_args)"
+    apply (cases fd)
+    apply simp
+    by (smt (verit, best) H.IH(1) H.hyps H.prems(1,3) \<open>ty_args' = _\<close> assms(3) length_map list_all_length nth_map option.inject subst_one_closed_implies_closed)
+  have "map (instantiate (\<Omega>\<^sub>p @ \<tau>\<^sub>k # \<Omega>)) ty_args = map (instantiate (\<Omega>\<^sub>p @ \<Omega>)) ty_args'"
+    apply (rule nth_equalityI)
+     apply (simp add: \<open>ty_args' = _\<close>)
+    apply (simp add: \<open>ty_args' = _\<close>)
+    apply (rule boogie_instantiate_subst_one_type_var[OF _ H.prems(3)])
+      apply force
+     apply (metis \<open>list_all _ _\<close> length_map list_all_length nth_map)
+    by (metis H.prems(3) \<open>list_all _ _\<close> closed_implies_subst_one_closed length_map list_all_length nth_map)
+  show "A,\<Lambda>,\<Gamma>,\<Omega>\<^sub>p @ \<tau>\<^sub>k # \<Omega> \<turnstile> \<langle>e,n_s\<rangle> \<Down> v"
+    unfolding \<open>e = _\<close>
+    apply (rule RedFunOp)
+      apply fact
+     apply (rule H.IH(3))
+        apply fact+
+    using H.prems(4) \<open>e = _\<close> boogie_expr_used_funs_in_dom.simps(3)
+     apply blast
+    using H.hyps H.prems(1) \<open>map _ _ = map _ _\<close>
+    by auto
+next
+  case H: (RedCondExpTrue \<Omega> cond' n_s thn' v els')
+  then obtain cond thn els where "thn' = thn[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "els' = els[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "e = CondExp cond thn els"
+    by (cases e; simp)
+  then show ?case
+    using H.IH(2,4) H.prems
+    by (auto intro: RedCondExpTrue)
+next
+  case H: (RedCondExpFalse \<Omega> cond' n_s els' v thn')
+  then obtain cond thn els where "thn' = thn[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "els' = els[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "e = CondExp cond thn els"
+    by (cases e; simp)
+  then show ?case
+    using H.IH(2,4) H.prems
+    by (auto intro: RedCondExpFalse)
+next
+  case H: (RedOld \<Omega> f' n_s v)
+  then obtain f where "f' = f[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "e = Old f"
+    by (cases e; simp)
+  then show ?case
+    using H.IH(2) H.prems(1,3,4)
+    by (auto intro: RedOld)
+next
+  case H: (RedExpListNil \<Omega> n_s)
+  then show ?case
+    by (simp add: RedExpListNil)
+next
+  case H: (RedExpListCons \<Omega> e' n_s v es' vs)
+  then show ?case
+    by (auto intro: RedExpListCons)
+next
+  case H: (RedForAllTrue \<Omega>' ty' f' n_s)
+  then obtain f ty where "f' = f[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "ty' = ty[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>" and "e = Forall ty f"
+    by (cases e; simp)
+  show ?case
+    unfolding \<open>e = _\<close>
+    apply (rule RedForAllTrue)
+    apply (rule H.IH(2)[OF _ _ \<open>f' = _\<close>])
+       apply (unfold H.prems(1))
+    using H assms(1) boogie_instantiate_subst_one_type_var
+       apply (metis \<open>ty' = ty[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>\<close> closed_implies_subst_one_closed)
+    using H
+      apply (simp, simp)
+    using H.prems(4) \<open>e = Forall ty f\<close>
+    by auto
+next
+  case H: (RedForAllFalse v \<Omega>' ty' f' n_s)
+  then obtain f ty where "f' = f[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "ty' = ty[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>" and "e = Forall ty f"
+    by (cases e; simp)
+  have "closed (instantiate (\<Omega>\<^sub>p@\<Omega>) ty')"
+    using H.IH(1) H.prems(1) assms
+    by blast
+  show ?case
+    unfolding \<open>e = _\<close>
+    apply (rule RedForAllFalse)
+     apply (subst H.IH(1))
+     apply (subst \<open>\<Omega>' = _\<close>)
+     apply (rule sym)
+     apply (rule boogie_instantiate_subst_one_type_var)
+        apply fact+
+    using H.prems(3) \<open>closed (instantiate (\<Omega>\<^sub>p@\<Omega>) ty')\<close> \<open>ty' = _\<close> assms(3) subst_one_closed_implies_closed
+      apply blast
+     apply fact
+    apply (rule H.IH(3))
+       apply fact+
+    using H.prems(4) \<open>e = _\<close>
+    by auto
+next
+  case H: (RedExistsTrue v \<Omega>' ty' f' n_s)
+  then obtain f ty where "f' = f[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "ty' = ty[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>" and "e = Exists ty f"
+    by (cases e; simp)
+  have "closed (instantiate (\<Omega>\<^sub>p @ \<Omega>) ty')"
+    using H.IH(1) H.prems(1) assms
+    by blast
+  show ?case
+    unfolding \<open>e = _\<close>
+    apply (rule RedExistsTrue)
+     apply (subst H.IH(1))
+     apply (subst \<open>\<Omega>' = _\<close>)
+     apply (rule sym)
+     apply (rule boogie_instantiate_subst_one_type_var)
+        apply fact+
+    using H.prems(3) \<open>closed (instantiate (\<Omega>\<^sub>p@\<Omega>) ty')\<close> \<open>ty' = _\<close> assms(3) subst_one_closed_implies_closed
+      apply blast
+     apply fact
+    apply (rule H.IH(3))
+       apply fact+
+    using H.prems(4) \<open>e = _\<close>
+    by auto
+next
+  case H: (RedExistsFalse \<Omega>' ty' f' n_s)
+  then obtain f ty where "f' = f[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "ty' = ty[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>" and "e = Exists ty f"
+    by (cases e; simp)
+  show ?case
+    unfolding \<open>e = _\<close>
+    apply (rule RedExistsFalse)
+    apply (rule H.IH(2)[OF _ _ \<open>f' = _\<close>])
+       apply (unfold H.prems(1))
+    using H assms(1) boogie_instantiate_subst_one_type_var
+       apply (metis \<open>ty' = ty[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]\<^sub>\<tau>\<close> closed_implies_subst_one_closed)
+    using H
+      apply (simp, simp)
+    using H.prems(4) \<open>e = _\<close>
+    by auto
+next
+  case H: (RedForallT_True \<Omega>' f' n_s)
+  then obtain f where "f' = f[k+1 \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "e = ForallT f"
+    by (cases e; simp)
+  show ?case
+    unfolding \<open>e = _\<close>
+    apply (rule RedForallT_True)
+    apply (frule_tac ?\<Omega>\<^sub>p="\<tau>#\<Omega>\<^sub>p" in H.IH(2)[OF _ _ \<open>f' = _\<close>])
+    using H
+       apply (simp, simp)
+    using H.prems(4) \<open>e = _\<close>
+    by auto
+next
+  case H: (RedForallT_False \<tau> \<Omega>' f' n_s)
+  then obtain f where "f' = f[k+1 \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "e = ForallT f"
+    by (cases e; simp)
+  show ?case
+    unfolding \<open>e = _\<close>
+    apply (rule RedForallT_False)
+     apply (rule H.hyps)
+    apply (cut_tac H.IH(2)[OF _ \<open>f' = _\<close>, where ?\<Omega>\<^sub>p="\<tau>#\<Omega>\<^sub>p"])
+    using H
+       apply (simp, simp, simp)
+    using H.prems(4) \<open>e = _\<close>
+    by auto
+next
+  case H: (RedExistsT_True \<tau> \<Omega>' f' n_s)
+  then obtain f where "f' = f[k+1 \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "e = ExistsT f"
+    by (cases e; simp)
+  show ?case
+    unfolding \<open>e = _\<close>
+    apply (rule RedExistsT_True)
+     apply (rule H.hyps)
+    apply (cut_tac H.IH(2)[OF _ \<open>f' = _\<close>, where ?\<Omega>\<^sub>p="\<tau>#\<Omega>\<^sub>p"])
+    using H
+       apply (simp, simp, simp)
+    using H.prems(4) \<open>e = _\<close>
+    by auto
+next
+  case H: (RedExistsT_False \<Omega>' f' n_s)
+  then obtain f where "f' = f[k+1 \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]" and "e = ExistsT f"
+    by (cases e; simp)
+  show ?case
+    unfolding \<open>e = _\<close>
+    apply (rule RedExistsT_False)
+    apply (frule_tac ?\<Omega>\<^sub>p="\<tau>#\<Omega>\<^sub>p" in H.IH(2)[OF _ _ \<open>f' = _\<close>])
+    using H
+       apply (simp, simp)
+    using H.prems(4) \<open>e = _\<close>
+    by auto
+qed
+
+
+end
+
+
+
+lemma fold_knownfolded_pred_upd_rel:
+  assumes
+    StateRelIn: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow>
+                          state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns" and
+    StateRelOut: "\<And>\<omega> ns. state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns \<Longrightarrow> R' \<omega> ns" and
+
+    HeapVarDefSame: "heap_var_def Tr = heap_var Tr" and
+
+    ExpSyntax: "supported_pred_expr e_r_vpr \<and> no_unfolding_pure_exp e_r_vpr" and
+
+    TyInterpEq: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
+    WfTyRep: "wf_ty_repr_bpl TyRep" and
+
+    NullConst: "const_repr Tr CNull = nullConst" and
+    HeapVar: "hvar = heap_var Tr" and
+
+    PermPosConstExpr: "\<And>\<omega>. ctxt_vpr, None \<turnstile> \<langle>e_p_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> p > 0" and
+
+    HeapUpdateWf: "heap_update_wf TyRep ctxt_bpl heap_upd_bpl" and
+    HeapReadWf: "heap_read_wf TyRep ctxt_bpl heap_read_bpl" and
+    PMaskReadWf: "pmask_read_wf TyRep ctxt_bpl pmask_read_bpl" and
+
+    NewKFMPropBpl: "new_kfm_prop_bpl = ForallT (ForallT (Forall (TConSingle (TRefId TyRep)) (Forall (TCon (TFieldId TyRep) [TVar 1, TVar 0]) new_kfm_prop_body_bpl)))" and
+    NewKFMPropBodyBpl: "new_kfm_prop_body_bpl = new_kfm_prop_lhs_bpl \<guillemotleft>Imp\<guillemotright> new_kfm_prop_rhs_bpl" and
+    NewKFMPropLHSBpl: "new_kfm_prop_lhs_bpl = new_kfm_prop_orig_bpl \<guillemotleft>Or\<guillemotright> new_kfm_prop_fold_bpl" and
+    KFMOrigTrueBpl: "new_kfm_prop_orig_bpl = pmask_read_bpl pmask_orig_bpl (BVar 1) (BVar 0) [TVar 1, TVar 0]" and
+    KFMFoldTrueBpl: "new_kfm_prop_fold_bpl = pmask_read_bpl pmask_fold_bpl (BVar 1) (BVar 0) [TVar 1, TVar 0]" and
+    KFMOrigReadBpl: "pmask_orig_bpl = heap_read_bpl (Var hvar) (Var nullConst) e_ploc_bpl [pred_ty, TConSingle (TKnownFoldedMaskId TyRep)]" and
+    KFMOrigReadBpl: "pmask_fold_bpl = heap_read_bpl (Var hvar) (Var nullConst) e_ploc_fold_bpl [pred_fold_ty, TConSingle (TKnownFoldedMaskId TyRep)]" and
+    KnownFoldedReadBpl: "new_kfm_prop_rhs_bpl = pmask_read_bpl (Var new_kfm_var) (BVar 1) (BVar 0) [TVar 1, TVar 0]" and
+    KnownFoldedUpdBpl: "h_upd_bpl = heap_upd_bpl (Var (heap_var Tr)) (Var nullConst) e_ploc_bpl (Var new_kfm_var)
+                                      [pred_ty, TConSingle (TKnownFoldedMaskId TyRep)]" and
+
+    LookupTyTemp: "lookup_var_decl (var_context ctxt_bpl) new_kfm_var = Some (TConSingle (TKnownFoldedMaskId TyRep), None)" and
+
+    PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
+    PredTypeFold: "pred_snap_field_type TyRep pid_fold = Some pred_fold_ty" and
+
+    PlocRel: "ploc_sm_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
+    PlocFoldRel: "ploc_sm_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_fold_vpr pid_fold e_ploc_fold_bpl" and
+
+    PMaskReadSubstWf: "\<And>a b c d \<tau>. pmask_read_bpl a b c d[0 \<mapsto>\<^sub>\<tau> \<tau>] = pmask_read_bpl (a[0 \<mapsto>\<^sub>\<tau> \<tau>]) (b[0 \<mapsto>\<^sub>\<tau> \<tau>]) (c[0 \<mapsto>\<^sub>\<tau> \<tau>]) (map (\<lambda>x. x[0 \<mapsto>\<^sub>\<tau> \<tau>]\<^sub>\<tau>) d)" and
+    HeapReadSubstWf: "\<And>a b c d \<tau>. heap_read_bpl a b c d[0 \<mapsto>\<^sub>\<tau> \<tau>] = heap_read_bpl (a[0 \<mapsto>\<^sub>\<tau> \<tau>]) (b[0 \<mapsto>\<^sub>\<tau> \<tau>]) (c[0 \<mapsto>\<^sub>\<tau> \<tau>]) (map (\<lambda>x. x[0 \<mapsto>\<^sub>\<tau> \<tau>]\<^sub>\<tau>) d)" and
+
+    KFMOrigReadSubstWf: "\<And>\<tau>. pmask_orig_bpl[0 \<mapsto>\<^sub>\<tau> \<tau>] = pmask_orig_bpl" and
+
+    Unnamed1: "new_kfm_var \<noteq> nullConst"
+
+  shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
+                               (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
+                               pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
+                               (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
+                                  sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (Atomic (AccPredicate pid_fold e_args_fold_vpr (PureExp e_p_fold_vpr))) \<and>
+                                  consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)))
+                     (\<lambda>\<omega> ns. R' \<omega> ns)
+                     (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
+                     (\<lambda>\<omega>\<^sub>0_\<omega>. False)
+                     P ctxt_bpl
+                     (BigBlock name (Havoc new_kfm_var #
+                                     Assume new_kfm_prop_bpl #
+                                     Assign hvar h_upd_bpl #
+                                     cs) str tr, cont)
+                     (BigBlock name cs str tr, cont)" (is "rel_general ?R\<^sub>0 _ _ _ _ _ ?\<gamma> ?\<gamma>'")
+
+proof (rule rel_intro; blast?)
+  fix \<omega> ns \<omega>'
+  assume "?R\<^sub>0 \<omega> ns" and "\<omega> = \<omega>'"
+  hence "R \<omega> ns"
+    by blast
+
+  from \<open>?R\<^sub>0 \<omega> ns\<close>
+  obtain nm_exh p\<^sub>s nm\<^sub>s where
+    sub: "get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s)" and
+    "nm_exh \<le> nm\<^sub>s" and
+    diff_sat: "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (Atomic (AccPredicate pid_fold e_args_fold_vpr (PureExp e_p_fold_vpr)))" and
+    diff_extcons: "consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)"
+    by blast
+
+  then obtain v_args_fold_vpr v_p_fold_vpr pdecl_fold pbody_fold where
+    "red_pure_exps_total ctxt_vpr None e_args_fold_vpr \<omega> (Some v_args_fold_vpr)" and
+    "ctxt_vpr, None \<turnstile> \<langle>e_p_fold_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_fold_vpr)" and
+    "v_p_fold_vpr \<ge> 0" and
+    "get_mh_nm nm_exh = zero_mask" and
+    "get_mp_nm nm_exh = singleton_mp (pid_fold,v_args_fold_vpr) (Abs_preal v_p_fold_vpr)" and
+    "ViperLang.predicates (program_total ctxt_vpr) pid_fold = Some pdecl_fold" and
+    "vals_well_typed (absval_interp_total ctxt_vpr) v_args_fold_vpr (ViperLang.predicate_decl.args pdecl_fold)" and
+    "predicate_decl.body pdecl_fold = Some pbody_fold"
+    by (fastforce elim: SatAccPred_case)
+
+  obtain hb where
+    lookup_heap: "lookup_var (var_context ctxt_bpl) ns (heap_var Tr) = Some (AbsV (AHeap hb))" and
+    lookup_heap_ty: "lookup_var_ty (var_context ctxt_bpl) (heap_var Tr) = Some (TConSingle (THeapId TyRep))" and
+    heap_ty: "vbpl_absval_ty_opt TyRep (AHeap hb) = Some ((THeapId TyRep) ,[])"
+    using state_rel_obtain_heap[OF StateRelIn[OF \<open>R \<omega> ns\<close>]]
+    by metis
+  then obtain kfm kfm_fold where
+    kfm: "hb (Null, PredKnownFoldedField (pid, v_args_vpr)) = Some (AbsV (AKnownFoldedMask kfm))" and
+    kfm_fold: "hb (Null, PredKnownFoldedField (pid, v_args_fold_vpr)) = Some (AbsV (AKnownFoldedMask kfm_fold))"
+    using state_rel_heap_knownfolded_var_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>]]
+    unfolding heap_knownfolded_var_rel_def
+    using lookup_heap
+    by fastforce+
+
+  let ?new_kfm = "\<lambda>l. kfm l \<or> kfm_fold l"
+  let ?hb' = "update_var (var_context ctxt_bpl) ns new_kfm_var (AbsV (AKnownFoldedMask ?new_kfm))"
+
+  have "\<And>\<tau> \<tau>' r.
+          type_of_val (type_interp ctxt_bpl) r = instantiate (\<tau>' # \<tau> # rtype_interp ctxt_bpl) (TConSingle (TRefId TyRep)) \<Longrightarrow>
+          \<exists>!x. r = AbsV (ARef x)"
+    apply (simp add: TyInterpEq)
+    using all_inversion_type_of_vbpl_val[OF WfTyRep]
+    by blast+
+
+  have "\<And>\<tau> \<tau>' r.
+          type_of_val (type_interp ctxt_bpl) r = instantiate (\<tau>' # \<tau> # rtype_interp ctxt_bpl) (TCon (TFieldId TyRep) [TVar 1, TVar 0]) \<Longrightarrow>
+          \<exists>!x. r = AbsV (AField x)"
+    apply (simp add: TyInterpEq)
+    using all_inversion_type_of_vbpl_val[OF WfTyRep]
+    by blast+
+
+  have "red_expr_bpl ctxt_bpl pmask_orig_bpl ns (AbsV (AKnownFoldedMask kfm))"
+    sorry
+
+  have "red_ast_bpl P ctxt_bpl (?\<gamma>, Normal ns) ((BigBlock name (Assign hvar h_upd_bpl # cs) str tr, cont), Normal (update_var (var_context ctxt_bpl) ns new_kfm_var (AbsV (AKnownFoldedMask ?new_kfm))))"
+    apply (rule red_ast_bpl_havoc_assume)
+       apply fact
+      apply (simp add: TyInterpEq)
+     apply simp
+    apply (unfold \<open>new_kfm_prop_bpl = _\<close>)
+    apply (rule RedForallT_True)
+    apply (rule RedForallT_True)
+    apply (rule RedForAllTrue)
+    apply (rename_tac r)
+    apply (rule RedForAllTrue)
+    apply (rename_tac f)
+    apply (unfold \<open>new_kfm_prop_body_bpl = _\<close>)
+    apply (rule_tac ?v1.0="LitV (LBool (?new_kfm (THE x. r = AbsV (ARef x), THE x. f = AbsV (AField x))))" in RedBinOp)
+      apply (unfold \<open>new_kfm_prop_lhs_bpl = _\<close>)
+      apply (rule_tac ?v1.0="LitV (LBool (kfm (THE x. r = AbsV (ARef x), THE x. f = AbsV (AField x))))" in RedBinOp)
+        apply (unfold \<open>new_kfm_prop_orig_bpl = _\<close>)
+        apply (rule boogie_expr_eval_subst_one_type_var)
+        apply (rule boogie_expr_eval_subst_one_type_var)
+        apply (simp add: PMaskReadSubstWf del: full_ext_env.simps)
+        apply (rule_tac ?r="THE x. r = AbsV (ARef x)" and ?f="THE x. f = AbsV (AField x)" in pmask_read_wf_apply[OF PMaskReadWf, where ?m=kfm])
+            apply simp
+           apply (simp add: KFMOrigReadSubstWf del: full_ext_env.simps)
+           apply (unfold \<open>pmask_orig_bpl = _\<close>)
+           apply (rule heap_read_wf_apply[OF HeapReadWf, where ?h=hb and ?r=Null and ?f="PredKnownFoldedField (pid,v_args_vpr)"])
+                apply (meson PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close> kfm)
+    apply (metis (no_types, lifting) HeapVar LookupTyTemp WfTyRep heap_ty
+        knownfolded_mask_inversion_vbpl_absval_ty_opt lookup_full_ext_env_same lookup_heap lookup_heap_ty
+        lookup_var_decl_ty_Some option.inject red_expr_red_exprs.RedVar ty.inject(3) update_var_other
+        vbpl_absval.distinct(39))
+    using heap_ty apply fastforce
+             apply (rule RedVar)
+    apply (unfold lookup_full_ext_env_same)
+             apply (unfold update_var_apply)
+    using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] NullConst Unnamed1
+    apply fastforce
+    using PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close> kfm subgoal sorry
+    apply (simp add: PredType)
+          apply (rule RedBVar)
+          apply simp
+    using TyInterpEq WfTyRep ref_inversion_type_of_vbpl_val apply fastforce
+          apply (rule RedBVar)
+          apply simp
+    using TyInterpEq WfTyRep field_inversion_type_of_vbpl_val apply fastforce
+
+
+    oops
+
+
 end
