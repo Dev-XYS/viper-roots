@@ -877,6 +877,18 @@ proof -
   qed (fastforce elim: red_pure_exp_total.cases intro: red_pure_exp_intros)+
 qed
 
+
+lemma evals_with_None_exists_\<omega>def:
+  assumes "red_pure_exps_total ctxt None es \<omega> (Some vs)"
+      and "list_all supported_pred_expr es"
+      and "list_all no_unfolding_pure_exp es"
+    shows "\<exists>\<omega>\<^sub>0. red_pure_exps_total ctxt (Some \<omega>\<^sub>0) es \<omega> (Some vs)"
+  using assms
+  apply (induction es)
+  using RedExpListNil red_exp_list_failure_Nil
+   apply blast
+  oops
+
 (*
 lemma eval_with_None_exists_\<omega>def:
   shows "\<exists>\<omega>\<^sub>0. (ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t res \<longrightarrow>

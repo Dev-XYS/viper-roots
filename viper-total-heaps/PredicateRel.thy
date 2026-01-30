@@ -2944,16 +2944,23 @@ next
 qed
 
 
+fun boogie_expr_prop_sat_rec :: "(expr \<Rightarrow> bool) \<Rightarrow> expr \<Rightarrow> bool" where
+  "boogie_expr_prop_sat_rec P (Var i) = P (Var i)"
+| "boogie_expr_prop_sat_rec P (BVar i) = P (BVar i)"
+| "boogie_expr_prop_sat_rec P (Lit l) = P (Lit l)"
+| "boogie_expr_prop_sat_rec P (UnOp uop e) = (P (UnOp uop e) \<and> boogie_expr_prop_sat_rec P e)"
+| "boogie_expr_prop_sat_rec P (e1 \<guillemotleft>bop\<guillemotright> e2) = (P (e1 \<guillemotleft>bop\<guillemotright> e2) \<and> boogie_expr_prop_sat_rec P e1 \<and> boogie_expr_prop_sat_rec P e2)"
+| "boogie_expr_prop_sat_rec P (FunExp f ty_args fargs) = (P (FunExp f ty_args fargs) \<and> list_all (boogie_expr_prop_sat_rec P) fargs)"
+| "boogie_expr_prop_sat_rec P (CondExp cond thn els) = (P (CondExp cond els thn) \<and> boogie_expr_prop_sat_rec P cond \<and> boogie_expr_prop_sat_rec P thn \<and> boogie_expr_prop_sat_rec P els)"
+| "boogie_expr_prop_sat_rec P (Old e) = (P (Old e) \<and> boogie_expr_prop_sat_rec P e)"
+| "boogie_expr_prop_sat_rec P (Forall ty e) = (P (Forall ty e) \<and> boogie_expr_prop_sat_rec P e)"
+| "boogie_expr_prop_sat_rec P (Exists ty e) = (P (Exists ty e) \<and> boogie_expr_prop_sat_rec P e)"
+| "boogie_expr_prop_sat_rec P (ForallT e) = (P (ForallT e) \<and> boogie_expr_prop_sat_rec P e)"
+| "boogie_expr_prop_sat_rec P (ExistsT e) = (P (ExistsT e) \<and> boogie_expr_prop_sat_rec P e)"
+
+
 fun boogie_expr_used_funs_in_dom :: "fdecls \<Rightarrow> expr \<Rightarrow> bool" where
-  "boogie_expr_used_funs_in_dom F (UnOp _ e) = boogie_expr_used_funs_in_dom F e"
-| "boogie_expr_used_funs_in_dom F (e1 \<guillemotleft>_\<guillemotright> e2) = (boogie_expr_used_funs_in_dom F e1 \<and> boogie_expr_used_funs_in_dom F e2)"
-| "boogie_expr_used_funs_in_dom F (FunExp f _ fargs) = (map_of F f \<noteq> None \<and> list_all (boogie_expr_used_funs_in_dom F) fargs)"
-| "boogie_expr_used_funs_in_dom F (CondExp cond els thn) = (boogie_expr_used_funs_in_dom F cond \<and> boogie_expr_used_funs_in_dom F thn \<and> boogie_expr_used_funs_in_dom F els)"
-| "boogie_expr_used_funs_in_dom F (Old e) = boogie_expr_used_funs_in_dom F e"
-| "boogie_expr_used_funs_in_dom F (Forall ty e) = boogie_expr_used_funs_in_dom F e"
-| "boogie_expr_used_funs_in_dom F (Exists ty e) = boogie_expr_used_funs_in_dom F e"
-| "boogie_expr_used_funs_in_dom F (ForallT e) = boogie_expr_used_funs_in_dom F e"
-| "boogie_expr_used_funs_in_dom F (ExistsT e) = boogie_expr_used_funs_in_dom F e"
+  "boogie_expr_used_funs_in_dom F (FunExp f _ fargs) = (map_of F f \<noteq> None \<and> list_all (boogie_expr_used_funs_in_dom F) fargs)"
 | "boogie_expr_used_funs_in_dom F _ = True"
 
 
@@ -2965,13 +2972,13 @@ lemma boogie_expr_eval_subst_one_type_var:
            \<Omega>' = \<Omega>\<^sub>p@\<Omega> \<Longrightarrow>
            e' = e[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k] \<Longrightarrow>
            length \<Omega>\<^sub>p = k \<Longrightarrow>
-           boogie_expr_used_funs_in_dom F e \<Longrightarrow>
+           boogie_expr_prop_sat_rec (boogie_expr_used_funs_in_dom F) e \<Longrightarrow>
            A,\<Lambda>,\<Gamma>,\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega> \<turnstile> \<langle>e,s\<rangle> \<Down> v"
       and "A,\<Lambda>,\<Gamma>,\<Omega>' \<turnstile> \<langle>es',s\<rangle> [\<Down>] vs \<Longrightarrow>
            \<Omega>' = \<Omega>\<^sub>p@\<Omega> \<Longrightarrow>
            es' = map (\<lambda>e. e[k \<mapsto>\<^sub>\<tau> \<tau>\<^sub>k]) es \<Longrightarrow>
            length \<Omega>\<^sub>p = k \<Longrightarrow>
-           list_all (boogie_expr_used_funs_in_dom F) es \<Longrightarrow>
+           list_all (boogie_expr_prop_sat_rec (boogie_expr_used_funs_in_dom F)) es \<Longrightarrow>
            A,\<Lambda>,\<Gamma>,\<Omega>\<^sub>p@\<tau>\<^sub>k#\<Omega> \<turnstile> \<langle>es,s\<rangle> [\<Down>] vs"
 proof (induction arbitrary: \<Omega>\<^sub>p e k and \<Omega>\<^sub>p es k rule: red_expr_red_exprs.inducts)
   case H: (RedVar n_s x v \<Omega>)
@@ -3033,8 +3040,8 @@ next
       apply fact
      apply (rule H.IH(3))
         apply fact+
-    using H.prems(4) \<open>e = _\<close> boogie_expr_used_funs_in_dom.simps(3)
-     apply blast
+    using H.prems(4) \<open>e = FunExp f ty_args args\<close>
+     apply force
     using H.hyps H.prems(1) \<open>map _ _ = map _ _\<close>
     by auto
 next
@@ -3193,6 +3200,62 @@ next
 qed
 
 
+fun boogie_expr_no_binder :: "expr \<Rightarrow> bool" where
+  "boogie_expr_no_binder (BVar i) = False"
+| "boogie_expr_no_binder (Old _) = False"
+| "boogie_expr_no_binder (Forall _ _) = False"
+| "boogie_expr_no_binder (Exists _ _) = False"
+| "boogie_expr_no_binder (ForallT e) = False"
+| "boogie_expr_no_binder (ExistsT e) = False"
+| "boogie_expr_no_binder _ = True"
+
+
+lemma boogie_expr_eval_binder_state:
+    shows "A,\<Lambda>,\<Gamma>,\<Omega> \<turnstile> \<langle>e,s\<rangle> \<Down> v \<Longrightarrow>
+           boogie_expr_prop_sat_rec boogie_expr_no_binder e \<Longrightarrow>
+           A,\<Lambda>,\<Gamma>,\<Omega> \<turnstile> \<langle>e,full_ext_env s w\<rangle> \<Down> v"
+      and "A,\<Lambda>,\<Gamma>,\<Omega> \<turnstile> \<langle>es,s\<rangle> [\<Down>] vs \<Longrightarrow>
+           list_all (boogie_expr_prop_sat_rec boogie_expr_no_binder) es \<Longrightarrow>
+           A,\<Lambda>,\<Gamma>,\<Omega> \<turnstile> \<langle>es,full_ext_env s w\<rangle> [\<Down>] vs"
+proof (induction rule: red_expr_red_exprs.inducts)
+  case H: (RedVar n_s x v \<Omega>)
+  then show ?case
+    by (simp add: lookup_var_binder_upd RedVar)
+qed (auto intro: red_expr_red_exprs.intros)
+
+
+fun boogie_expr_no_var :: "nat \<Rightarrow> expr \<Rightarrow> bool" where
+  "boogie_expr_no_var n (Var i) = (n \<noteq> i)"
+| "boogie_expr_no_var n (Old _) = False"
+| "boogie_expr_no_var n (Forall _ _) = False"
+| "boogie_expr_no_var n (Exists _ _) = False"
+| "boogie_expr_no_var n _ = True"
+
+
+lemma boogie_expr_eval_update_var:
+    shows "A,\<Lambda>,\<Gamma>,\<Omega> \<turnstile> \<langle>e,s\<rangle> \<Down> v \<Longrightarrow>
+           boogie_expr_prop_sat_rec (boogie_expr_no_var n) e \<Longrightarrow>
+           A,\<Lambda>,\<Gamma>,\<Omega> \<turnstile> \<langle>e,update_var \<Lambda> s n w\<rangle> \<Down> v"
+      and "A,\<Lambda>,\<Gamma>,\<Omega> \<turnstile> \<langle>es,s\<rangle> [\<Down>] vs \<Longrightarrow>
+           list_all (boogie_expr_prop_sat_rec (boogie_expr_no_var n)) es \<Longrightarrow>
+           A,\<Lambda>,\<Gamma>,\<Omega> \<turnstile> \<langle>es,update_var \<Lambda> s n w\<rangle> [\<Down>] vs"
+proof (induction rule: red_expr_red_exprs.inducts)
+  case H: (RedVar n_s x v \<Omega>)
+  then show ?case
+    by (simp add: RedVar)
+next
+  case H: (RedBVar n_s i v \<Omega>)
+  then show ?case
+    by (simp add: RedBVar update_var_binder_same)
+qed (auto intro: red_expr_red_exprs.intros)
+
+
+lemma closed_substT:
+  assumes "closed \<tau>"
+  shows "\<tau>[k \<mapsto>\<^sub>\<tau> \<tau>']\<^sub>\<tau> = \<tau>"
+  sorry
+
+
 end
 
 
@@ -3230,24 +3293,38 @@ lemma fold_knownfolded_pred_upd_rel:
     KnownFoldedUpdBpl: "h_upd_bpl = heap_upd_bpl (Var (heap_var Tr)) (Var nullConst) e_ploc_bpl (Var new_kfm_var)
                                       [pred_ty, TConSingle (TKnownFoldedMaskId TyRep)]" and
 
+    KFMOrigTrueSynProp1: "\<And>\<tau>. boogie_expr_prop_sat_rec (boogie_expr_used_funs_in_dom fun_decls) (new_kfm_prop_orig_bpl[0 \<mapsto>\<^sub>\<tau> \<tau>])" and
+    KFMOrigTrueSynProp2: "\<And>\<tau>. boogie_expr_prop_sat_rec (boogie_expr_used_funs_in_dom fun_decls) new_kfm_prop_orig_bpl" and
+
     LookupTyTemp: "lookup_var_decl (var_context ctxt_bpl) new_kfm_var = Some (TConSingle (TKnownFoldedMaskId TyRep), None)" and
 
     PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
+    PredTypeSynProp: "\<And>\<tau>. pred_ty[0 \<mapsto>\<^sub>\<tau> \<tau>]\<^sub>\<tau> = pred_ty" and
     PredTypeFold: "pred_snap_field_type TyRep pid_fold = Some pred_fold_ty" and
 
     PlocRel: "ploc_sm_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
+    PlocSynProp1: "\<And>\<tau>. e_ploc_bpl[0 \<mapsto>\<^sub>\<tau> \<tau>] = e_ploc_bpl" and
+    PlocSynProp2: "boogie_expr_prop_sat_rec (boogie_expr_no_var new_kfm_var) e_ploc_bpl" and
+    PlocSynProp3: "boogie_expr_prop_sat_rec boogie_expr_no_binder e_ploc_bpl" and
+
     PlocFoldRel: "ploc_sm_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_fold_vpr pid_fold e_ploc_fold_bpl" and
+    PlocFoldSynProp1: "\<And>\<tau>. e_ploc_fold_bpl[0 \<mapsto>\<^sub>\<tau> \<tau>] = e_ploc_fold_bpl" and
+    PlocFoldSynProp2: "boogie_expr_prop_sat_rec (boogie_expr_no_var new_kfm_var) e_ploc_fold_bpl" and
+    PlocFoldSynProp3: "boogie_expr_prop_sat_rec boogie_expr_no_binder e_ploc_fold_bpl" and
 
     PMaskReadSubstWf: "\<And>a b c d \<tau>. pmask_read_bpl a b c d[0 \<mapsto>\<^sub>\<tau> \<tau>] = pmask_read_bpl (a[0 \<mapsto>\<^sub>\<tau> \<tau>]) (b[0 \<mapsto>\<^sub>\<tau> \<tau>]) (c[0 \<mapsto>\<^sub>\<tau> \<tau>]) (map (\<lambda>x. x[0 \<mapsto>\<^sub>\<tau> \<tau>]\<^sub>\<tau>) d)" and
     HeapReadSubstWf: "\<And>a b c d \<tau>. heap_read_bpl a b c d[0 \<mapsto>\<^sub>\<tau> \<tau>] = heap_read_bpl (a[0 \<mapsto>\<^sub>\<tau> \<tau>]) (b[0 \<mapsto>\<^sub>\<tau> \<tau>]) (c[0 \<mapsto>\<^sub>\<tau> \<tau>]) (map (\<lambda>x. x[0 \<mapsto>\<^sub>\<tau> \<tau>]\<^sub>\<tau>) d)" and
 
     KFMOrigReadSubstWf: "\<And>\<tau>. pmask_orig_bpl[0 \<mapsto>\<^sub>\<tau> \<tau>] = pmask_orig_bpl" and
 
-    Unnamed1: "new_kfm_var \<noteq> nullConst"
+    TempNotNull: "new_kfm_var \<noteq> nullConst" and
+    TempNotHeap: "new_kfm_var \<noteq> hvar" and
+
+    FunInterp: "fun_interp_wf (vbpl_absval_ty TyRep) fun_decls (fun_interp ctxt_bpl)"
 
   shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
                                (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
-                               pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
+                                  pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
                                (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
                                   sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (Atomic (AccPredicate pid_fold e_args_fold_vpr (PureExp e_p_fold_vpr))) \<and>
                                   consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)))
@@ -3276,14 +3353,14 @@ proof (rule rel_intro; blast?)
     by blast
 
   then obtain v_args_fold_vpr v_p_fold_vpr pdecl_fold pbody_fold where
-    "red_pure_exps_total ctxt_vpr None e_args_fold_vpr \<omega> (Some v_args_fold_vpr)" and
+    e_args_fold_eval: "red_pure_exps_total ctxt_vpr None e_args_fold_vpr \<omega> (Some v_args_fold_vpr)" and
     "ctxt_vpr, None \<turnstile> \<langle>e_p_fold_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_fold_vpr)" and
     "v_p_fold_vpr \<ge> 0" and
     "get_mh_nm nm_exh = zero_mask" and
     "get_mp_nm nm_exh = singleton_mp (pid_fold,v_args_fold_vpr) (Abs_preal v_p_fold_vpr)" and
     "ViperLang.predicates (program_total ctxt_vpr) pid_fold = Some pdecl_fold" and
-    "vals_well_typed (absval_interp_total ctxt_vpr) v_args_fold_vpr (ViperLang.predicate_decl.args pdecl_fold)" and
-    "predicate_decl.body pdecl_fold = Some pbody_fold"
+    v_args_fold_typed: "vals_well_typed (absval_interp_total ctxt_vpr) v_args_fold_vpr (ViperLang.predicate_decl.args pdecl_fold)" and
+    pdecl_fold_body: "predicate_decl.body pdecl_fold = Some pbody_fold"
     by (fastforce elim: SatAccPred_case)
 
   obtain hb where
@@ -3294,7 +3371,7 @@ proof (rule rel_intro; blast?)
     by metis
   then obtain kfm kfm_fold where
     kfm: "hb (Null, PredKnownFoldedField (pid, v_args_vpr)) = Some (AbsV (AKnownFoldedMask kfm))" and
-    kfm_fold: "hb (Null, PredKnownFoldedField (pid, v_args_fold_vpr)) = Some (AbsV (AKnownFoldedMask kfm_fold))"
+    kfm_fold: "hb (Null, PredKnownFoldedField (pid_fold, v_args_fold_vpr)) = Some (AbsV (AKnownFoldedMask kfm_fold))"
     using state_rel_heap_knownfolded_var_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>]]
     unfolding heap_knownfolded_var_rel_def
     using lookup_heap
@@ -3317,8 +3394,14 @@ proof (rule rel_intro; blast?)
     using all_inversion_type_of_vbpl_val[OF WfTyRep]
     by blast+
 
-  have "red_expr_bpl ctxt_bpl pmask_orig_bpl ns (AbsV (AKnownFoldedMask kfm))"
-    sorry
+  from PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close>
+  have ploc_bpl_eval: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredKnownFoldedField (pid, v_args_vpr))))"
+    by blast
+
+  from PlocFoldRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close> e_args_fold_eval
+  have ploc_fold_bpl_eval: "red_expr_bpl ctxt_bpl e_ploc_fold_bpl ns (AbsV (AField (PredKnownFoldedField (pid_fold, v_args_fold_vpr))))"
+    unfolding pred_ty_correct_premise_def
+    by blast
 
   have "red_ast_bpl P ctxt_bpl (?\<gamma>, Normal ns) ((BigBlock name (Assign hvar h_upd_bpl # cs) str tr, cont), Normal (update_var (var_context ctxt_bpl) ns new_kfm_var (AbsV (AKnownFoldedMask ?new_kfm))))"
     apply (rule red_ast_bpl_havoc_assume)
@@ -3329,43 +3412,149 @@ proof (rule rel_intro; blast?)
     apply (rule RedForallT_True)
     apply (rule RedForallT_True)
     apply (rule RedForAllTrue)
-    apply (rename_tac r)
+    apply (rename_tac rr)
     apply (rule RedForAllTrue)
+    apply (rename_tac ff)
+    apply (simp del: full_ext_env.simps)
+    apply (subst (asm) TyInterpEq)
+    apply (subst (asm) TyInterpEq)
+    apply (frule ref_inversion_type_of_vbpl_val[OF WfTyRep])
+    apply (erule exE)
+    apply (rename_tac r)
+    apply (frule field_inversion_type_of_vbpl_val[OF WfTyRep])
+     apply simp
+    apply (erule exE)
     apply (rename_tac f)
     apply (unfold \<open>new_kfm_prop_body_bpl = _\<close>)
-    apply (rule_tac ?v1.0="LitV (LBool (?new_kfm (THE x. r = AbsV (ARef x), THE x. f = AbsV (AField x))))" in RedBinOp)
+    apply (rule_tac ?v1.0="LitV (LBool (?new_kfm (r,f)))" in RedBinOp)
       apply (unfold \<open>new_kfm_prop_lhs_bpl = _\<close>)
-      apply (rule_tac ?v1.0="LitV (LBool (kfm (THE x. r = AbsV (ARef x), THE x. f = AbsV (AField x))))" in RedBinOp)
-        apply (unfold \<open>new_kfm_prop_orig_bpl = _\<close>)
-        apply (rule boogie_expr_eval_subst_one_type_var)
-        apply (rule boogie_expr_eval_subst_one_type_var)
-        apply (simp add: PMaskReadSubstWf del: full_ext_env.simps)
-        apply (rule_tac ?r="THE x. r = AbsV (ARef x)" and ?f="THE x. f = AbsV (AField x)" in pmask_read_wf_apply[OF PMaskReadWf, where ?m=kfm])
+      apply (rule_tac ?v1.0="LitV (LBool (kfm (r,f)))" in RedBinOp)
+        apply (rule boogie_expr_eval_subst_one_type_var(1)[where ?\<Omega>\<^sub>p="[]" and ?k=0, unfolded append_Nil])
+    using TyInterpEq WfTyRep type_of_vbpl_val_closed
+               apply auto[1]
+    using FunInterp TyInterpEq
+              apply force
+             apply simp
+            prefer 2
             apply simp
-           apply (simp add: KFMOrigReadSubstWf del: full_ext_env.simps)
-           apply (unfold \<open>pmask_orig_bpl = _\<close>)
-           apply (rule heap_read_wf_apply[OF HeapReadWf, where ?h=hb and ?r=Null and ?f="PredKnownFoldedField (pid,v_args_vpr)"])
-                apply (meson PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close> kfm)
-    apply (metis (no_types, lifting) HeapVar LookupTyTemp WfTyRep heap_ty
-        knownfolded_mask_inversion_vbpl_absval_ty_opt lookup_full_ext_env_same lookup_heap lookup_heap_ty
-        lookup_var_decl_ty_Some option.inject red_expr_red_exprs.RedVar ty.inject(3) update_var_other
-        vbpl_absval.distinct(39))
-    using heap_ty apply fastforce
-             apply (rule RedVar)
-    apply (unfold lookup_full_ext_env_same)
-             apply (unfold update_var_apply)
-    using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] NullConst Unnamed1
-    apply fastforce
-    using PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close> kfm subgoal sorry
-    apply (simp add: PredType)
-          apply (rule RedBVar)
+           prefer 2
+           apply simp
+          apply (rule boogie_expr_eval_subst_one_type_var(1)[where ?\<Omega>\<^sub>p="[]" and ?k=0, unfolded append_Nil])
+    using TyInterpEq WfTyRep type_of_vbpl_val_closed
+                 apply auto[1]
+    using FunInterp TyInterpEq
+                apply force
+               apply simp
+              prefer 2
+              apply simp
+             prefer 2
+             apply simp
+        apply (subst \<open>new_kfm_prop_orig_bpl = _\<close>)
+            apply (simp add: PMaskReadSubstWf del: full_ext_env.simps type_of_val.simps)
+            apply (rule_tac ?r=r and ?f=f in pmask_read_wf_apply[OF PMaskReadWf, where ?m=kfm and ?field_tcon="TFieldId TyRep"])
+                apply simp
+               apply (unfold \<open>pmask_orig_bpl = _\<close>)
+               apply (simp add: HeapReadSubstWf del: full_ext_env.simps type_of_val.simps)
+               apply (rule_tac ?r=Null and ?f="PredKnownFoldedField (pid, v_args_vpr)" in heap_read_wf_apply[OF HeapReadWf, where ?h=hb])
+                    apply (simp add: kfm)
+                   apply (rule RedVar)
+                   apply (simp add: lookup_var_binder_upd)
+    using HeapVar TempNotHeap lookup_heap
+                   apply fastforce
+    using heap_ty
+                  apply fastforce
+                 apply (rule RedVar)
+                 apply (simp add: lookup_var_binder_upd)
+    using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] NullConst TempNotNull
+                 apply fastforce
+                apply (simp add: PlocSynProp1 del: full_ext_env.simps type_of_val.simps)
+                apply (rule boogie_expr_eval_binder_state(1))
+                 apply (rule boogie_expr_eval_binder_state(1))
+                  apply (rule boogie_expr_eval_update_var(1))
+                   apply (rule ploc_bpl_eval)
+                  apply (rule PlocSynProp2)
+                 apply (rule PlocSynProp3)
+                apply (rule PlocSynProp3)
+               apply (simp add: PredTypeSynProp)
+               apply (simp add: PredType)
+              apply (rule RedBVar)
+              apply simp
+             apply (rule RedBVar)
+    using TyInterpEq WfTyRep field_inversion_type_of_vbpl_val
+             apply fastforce
+            apply (cut_tac ?k=0 and ?\<tau>=\<tau>' and ?\<tau>'=\<tau> in closed_substT)
+             apply simp
+            apply simp
+            apply (metis list.distinct(1) snd_conv surjective_pairing vbpl_absval_ty.simps vbpl_absval_ty_not_dummy vbpl_absval_ty_opt.simps(2))
+           apply simp
+          apply (rule KFMOrigTrueSynProp1)
+         apply simp
+        apply (rule KFMOrigTrueSynProp2)
+      \<comment> \<open>RHS of OR\<close>
+       apply (rule boogie_expr_eval_subst_one_type_var(1)[where ?\<Omega>\<^sub>p="[]" and ?k=0, unfolded append_Nil])
+    using TyInterpEq WfTyRep type_of_vbpl_val_closed
+              apply auto[1]
+    using FunInterp TyInterpEq
+             apply force
+            apply simp
+           prefer 2
+           apply simp
+          prefer 2
           apply simp
-    using TyInterpEq WfTyRep ref_inversion_type_of_vbpl_val apply fastforce
-          apply (rule RedBVar)
-          apply simp
-    using TyInterpEq WfTyRep field_inversion_type_of_vbpl_val apply fastforce
-
-
+         apply (rule boogie_expr_eval_subst_one_type_var(1)[where ?\<Omega>\<^sub>p="[]" and ?k=0, unfolded append_Nil])
+    using TyInterpEq WfTyRep type_of_vbpl_val_closed
+                apply auto[1]
+    using FunInterp TyInterpEq
+               apply force
+              apply simp
+             prefer 2
+             apply simp
+            prefer 2
+            apply simp
+           apply (subst \<open>new_kfm_prop_fold_bpl = _\<close>)
+           apply (simp add: PMaskReadSubstWf del: full_ext_env.simps type_of_val.simps)
+           apply (rule_tac ?r=r and ?f=f in pmask_read_wf_apply[OF PMaskReadWf, where ?m=kfm_fold and ?field_tcon="TFieldId TyRep"])
+               apply simp
+              apply (unfold \<open>pmask_fold_bpl = _\<close>)
+              apply (simp add: HeapReadSubstWf del: full_ext_env.simps type_of_val.simps)
+              apply (rule_tac ?r=Null and ?f="PredKnownFoldedField (pid_fold, v_args_fold_vpr)" in heap_read_wf_apply[OF HeapReadWf, where ?h=hb])
+                   apply (simp add: kfm_fold)
+                  apply (rule RedVar)
+                  apply (simp add: lookup_var_binder_upd)
+    using HeapVar TempNotHeap lookup_heap
+                  apply fastforce
+    using heap_ty
+                 apply fastforce
+                apply (rule RedVar)
+                apply (simp add: lookup_var_binder_upd)
+    using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] NullConst TempNotNull
+                apply fastforce
+               apply (simp add: PlocFoldSynProp1 del: full_ext_env.simps type_of_val.simps)
+               apply (rule boogie_expr_eval_binder_state(1))
+                apply (rule boogie_expr_eval_binder_state(1))
+                 apply (rule boogie_expr_eval_update_var(1))
+                  apply (rule ploc_bpl_eval)
+                  apply (rule PlocSynProp2)
+                  apply (rule PlocSynProp3)
+                  apply (rule PlocSynProp3)
+                  apply (simp add: PredTypeSynProp)
+                  apply (simp add: PredType)
+                  apply (rule RedBVar)
+                  apply simp
+                  apply (rule RedBVar)
+    using TyInterpEq WfTyRep field_inversion_type_of_vbpl_val
+                  apply fastforce
+                  apply (cut_tac ?k=0 and ?\<tau>=\<tau>' and ?\<tau>'=\<tau> in closed_substT)
+                   apply simp
+                  apply simp
+                  apply (metis list.distinct(1) snd_conv surjective_pairing vbpl_absval_ty.simps vbpl_absval_ty_not_dummy vbpl_absval_ty_opt.simps(2))
+    apply simp
+    apply (rule KFMOrigTrueSynProp1)
+    apply simp
+    apply (rule KFMOrigTrueSynProp2)
+    subgoal sorry
+    apply simp
+    subgoal sorry
     oops
 
 
