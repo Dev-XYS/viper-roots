@@ -924,8 +924,8 @@ proof -
 
   then obtain v_args_bpl where v_args_bpl:
     "list_all2 (\<lambda>e v. red_expr_bpl ctxt_bpl e ns v) e_args_bpl v_args_bpl \<and> map val_rel_vpr_bpl v_args_vpr = v_args_bpl"
-    using ArgsRel exp_rel_vpr_bpl_def exp_rel_vb_single_def StateRel
-    by (smt (verit, best) length_map list_all2_conv_all_nth nth_map)
+    using ArgsRel exp_rel_vpr_bpl_def exp_rel_vb_single_def StateRel evals_with_None
+    by (smt (verit, best) eval_with_None length_map list_all2_conv_all_nth nth_map)
 
   have rel_unique: "(THE v_args. map val_rel_vpr_bpl v_args = v_args_bpl) = v_args_vpr"
     using v_args_bpl val_unique_bpl_vpr
@@ -1258,8 +1258,8 @@ qed
 
 definition ploc_sm_rel_vpr_bpl' where
   "ploc_sm_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl \<equiv>
-     \<forall>\<omega>def \<omega> ns v_args_vpr. R \<omega> ns \<longrightarrow>
-         red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr) \<longrightarrow>
+     \<forall>\<omega> ns v_args_vpr. R \<omega> ns \<longrightarrow>
+         red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr) \<longrightarrow>
          pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<longrightarrow>
          red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredKnownFoldedField (pid,v_args_vpr))))"
 
@@ -1268,7 +1268,7 @@ lemma exp_result_predicate_loc_sm':
   assumes
     CtxtFunWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt_bpl" and
     StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega>_def \<omega> ns" and
-    RedArgsVpr: "red_pure_exps_total ctxt_vpr (Some \<omega>_def1) e_args_vpr \<omega> (Some v_args_vpr)" and
+    RedArgsVpr: "red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr)" and
     ArgsWellTy: "pred_ty_correct_premise ctxt_vpr pid v_args_vpr" and
     FunName: "FunMap (FPredicateSMLoc pid tys_bpl) = pred_loc_fun_name \<and> FPredicateSMLoc pid tys_bpl \<in> FunDom" and
     PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl" and
@@ -1278,12 +1278,12 @@ lemma exp_result_predicate_loc_sm':
     AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep"
   shows "red_expr_bpl ctxt_bpl (FunExp pred_loc_fun_name [] e_args_bpl) ns (AbsV (AField (PredKnownFoldedField (pid,v_args_vpr))))"
 proof -
-  have "list_all2 (\<lambda>e v. ctxt_vpr, Some \<omega>_def1 \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v) e_args_vpr v_args_vpr"
+  have "list_all2 (\<lambda>e v. ctxt_vpr, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v) e_args_vpr v_args_vpr"
     by (simp add: RedArgsVpr red_pure_exps_total_list_all2)
 
   then obtain v_args_bpl where v_args_bpl:
     "list_all2 (\<lambda>e v. red_expr_bpl ctxt_bpl e ns v) e_args_bpl v_args_bpl \<and> map val_rel_vpr_bpl v_args_vpr = v_args_bpl"
-    using ArgsRel exp_rel_vpr_bpl_def exp_rel_vb_single_def StateRel
+    using ArgsRel exp_rel_vpr_bpl_def exp_rel_vb_single_def StateRel 
     by (smt (verit, best) length_map list_all2_conv_all_nth nth_map)
 
   have rel_unique: "(THE v_args. map val_rel_vpr_bpl v_args = v_args_bpl) = v_args_vpr"
@@ -1562,7 +1562,7 @@ proof (rule rel_intro; blast?)
     "heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns"
     by (simp_all add: \<open>\<omega>\<^sub>0_\<omega> = (\<omega>\<^sub>0, \<omega>)\<close> \<open>hvar = _\<close>)
 
-  with PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def]
+  with PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] evals_with_None
   have ploc_bpl_eval: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredKnownFoldedField (pid, v_args_vpr))))"
     by blast
 
@@ -1722,7 +1722,7 @@ lemma fold_stmt_rel:
       and StepKFUpdate:
             "\<And>v_args_vpr v_p_vpr.
                 rel_general (\<lambda>\<omega> ns. R' \<omega> ns \<and>
-                                    (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
+                                    red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr) \<and>
                                     pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
                                     (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
                                          sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<and>
@@ -1909,11 +1909,7 @@ proof (rule stmt_rel_intro)
     apply (intro conjI)
     using conjunct2[OF ns\<^sub>5]
        apply blast
-      apply (rule exI[of _ \<omega>])
-      apply (rule red_pure_exp_only_differ_on_mask(2)[where ?\<omega>'=\<omega>', OF v_args_eval])
-    using ArgsRestriction
-       apply (simp add: list_all_length)
-      apply (metis fold_rel fold_rel_normal_only_changes_mask)
+      apply (metis ArgsRestriction eval_with_None_same_store_same_hh(2) fold_rel fold_rel_normal_only_changes_mask v_args_eval)
     using PredDecl \<open>pdecl' = pdecl\<close> pred_ty_correct_premise_def v_args_ty
      apply blast
     by fact
@@ -2344,7 +2340,7 @@ lemma fold_knownfolded_acc_upd_rel:
     FieldRelSingle: "field_rel_single Pr TyRep Tr f e_f_bpl \<tau>_bpl"
 
   shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
-                               (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
+                               red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr) \<and>
                                pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
                                (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
                                   sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (Atomic (Acc e_r_vpr f (PureExp e_p_vpr))) \<and>
@@ -2385,7 +2381,7 @@ proof (rule rel_intro; blast?)
   have "v_r_vpr = Address addr"
     by (metis \<open>0 < v_p_vpr\<close> \<open>addr = the_address v_r_vpr\<close> less_numeral_extra(3) mh ref.exhaust_sel)
 
-  from PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close>
+  from PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close> evals_with_None
   have ploc_bpl_eval: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredKnownFoldedField (pid, v_args_vpr))))"
     by blast
 
@@ -2436,8 +2432,8 @@ proof (rule rel_intro; blast?)
     unfolding \<open>kf_set_bpl = _\<close>
     apply (rule pmask_update_wf_apply[OF PMaskUpdateWf])
         apply fact
-    using exp_rel_vpr_bpl_elim[OF RefExpRel] eval_with_None_exists_\<omega>def[OF v_r_eval] ExpSyntax
-       apply (metis \<open>R \<omega> ns\<close> val_rel_vpr_bpl.simps(3))
+    using exp_rel_vpr_bpl_elim[OF RefExpRel] ExpSyntax
+       apply (metis \<open>R \<omega> ns\<close> v_r_eval val_rel_vpr_bpl.simps(3))
     unfolding \<open>e_f_bpl = _\<close>
       apply (rule red_expr_red_exprs.RedVar)
     using FieldRel FieldTy StateRelIn \<open>R \<omega> ns\<close> lookup_field_rel state_rel_field_rel
@@ -2543,7 +2539,7 @@ lemma fold_knownfolded_star_upd_rel:
     CtxtPredWf: "ctxt_pred_syn_wf ctxt_vpr" and
     StepLeft:
       "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
-                             (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
+                             red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr) \<and>
                              pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
                              (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
                                 sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) A \<and>
@@ -2554,7 +2550,7 @@ lemma fold_knownfolded_star_upd_rel:
                    P ctxt_bpl \<gamma> \<gamma>\<^sub>2" and
     StepRight:
       "rel_general (\<lambda>\<omega> ns. R' \<omega> ns \<and>
-                             (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
+                             red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr) \<and>
                              pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
                              (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
                                 sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) B \<and>
@@ -2565,7 +2561,7 @@ lemma fold_knownfolded_star_upd_rel:
                    P ctxt_bpl \<gamma>\<^sub>2 \<gamma>'"
 
   shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
-                               (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
+                               red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr) \<and>
                                pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
                                (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
                                   sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (A && B) \<and>
@@ -2611,7 +2607,7 @@ proof (rule rel_intro; blast?)
     by fastforce+
 
   ultimately obtain ns\<^sub>2 where bpl_step\<^sub>2: "red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>\<^sub>2, Normal ns\<^sub>2) \<and> R' \<omega>' ns\<^sub>2"
-    using rel_success_elim[OF StepLeft] \<open>?R\<^sub>0 \<omega> ns\<close> \<open>\<omega> = \<omega>'\<close>
+    using rel_success_elim[OF StepLeft] \<open>?R\<^sub>0 \<omega> ns\<close> \<open>\<omega> = \<omega>'\<close> evals_with_None
     by (metis \<open>sat ctxt_vpr \<omega> mh\<^sub>A mp\<^sub>A A\<close> sub total_state.update_convs(2))
 
   then obtain ns' where "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>2, Normal ns\<^sub>2) (\<gamma>', Normal ns') \<and> R'' \<omega>' ns'"
@@ -2652,7 +2648,7 @@ lemma fold_knownfolded_imp_upd_rel:
        (is "rel_general _ _ _ _ _ _ ?\<gamma>\<^sub>2 _")
 
   shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
-                               (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
+                               red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr) \<and>
                                pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
                                (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
                                   sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (assert.Imp e_cond_vpr A) \<and>
@@ -2701,7 +2697,7 @@ proof (rule rel_intro; blast?)
       by blast
 
     have h_upd_eval: "red_expr_bpl ctxt_bpl e_cond_bpl ns (LitV (LBool True))"
-      using exp_rel_vpr_bplD[OF CondExpRel] eval_with_None_exists_\<omega>def[OF True] ExpSyntax \<open>R \<omega> ns\<close>
+      using exp_rel_vpr_bplD[OF CondExpRel] ExpSyntax \<open>R \<omega> ns\<close> True
       by fastforce
 
     have "red_ast_bpl P ctxt_bpl (?\<gamma>, Normal ns) (?\<gamma>', Normal ns')"
@@ -2721,7 +2717,7 @@ proof (rule rel_intro; blast?)
   next
     case False
     have h_upd_eval: "red_expr_bpl ctxt_bpl e_cond_bpl ns (LitV (LBool False))"
-      using exp_rel_vpr_bplD[OF CondExpRel] eval_with_None_exists_\<omega>def[OF False] ExpSyntax \<open>R \<omega> ns\<close>
+      using exp_rel_vpr_bplD[OF CondExpRel] ExpSyntax \<open>R \<omega> ns\<close> False
       by fastforce
     show ?thesis
       apply (rule exI[of _ ns])
@@ -3288,19 +3284,24 @@ lemma fold_knownfolded_pred_upd_rel:
     KFMOrigTrueBpl: "new_kfm_prop_orig_bpl = pmask_read_bpl pmask_orig_bpl (BVar 1) (BVar 0) [TVar 1, TVar 0]" and
     KFMFoldTrueBpl: "new_kfm_prop_fold_bpl = pmask_read_bpl pmask_fold_bpl (BVar 1) (BVar 0) [TVar 1, TVar 0]" and
     KFMOrigReadBpl: "pmask_orig_bpl = heap_read_bpl (Var hvar) (Var nullConst) e_ploc_bpl [pred_ty, TConSingle (TKnownFoldedMaskId TyRep)]" and
-    KFMOrigReadBpl: "pmask_fold_bpl = heap_read_bpl (Var hvar) (Var nullConst) e_ploc_fold_bpl [pred_fold_ty, TConSingle (TKnownFoldedMaskId TyRep)]" and
+    KFMFoldReadBpl: "pmask_fold_bpl = heap_read_bpl (Var hvar) (Var nullConst) e_ploc_fold_bpl [pred_fold_ty, TConSingle (TKnownFoldedMaskId TyRep)]" and
     KnownFoldedReadBpl: "new_kfm_prop_rhs_bpl = pmask_read_bpl (Var new_kfm_var) (BVar 1) (BVar 0) [TVar 1, TVar 0]" and
     KnownFoldedUpdBpl: "h_upd_bpl = heap_upd_bpl (Var (heap_var Tr)) (Var nullConst) e_ploc_bpl (Var new_kfm_var)
                                       [pred_ty, TConSingle (TKnownFoldedMaskId TyRep)]" and
 
     KFMOrigTrueSynProp1: "\<And>\<tau>. boogie_expr_prop_sat_rec (boogie_expr_used_funs_in_dom fun_decls) (new_kfm_prop_orig_bpl[0 \<mapsto>\<^sub>\<tau> \<tau>])" and
     KFMOrigTrueSynProp2: "\<And>\<tau>. boogie_expr_prop_sat_rec (boogie_expr_used_funs_in_dom fun_decls) new_kfm_prop_orig_bpl" and
+    KFMFoldTrueSynProp1: "\<And>\<tau>. boogie_expr_prop_sat_rec (boogie_expr_used_funs_in_dom fun_decls) (new_kfm_prop_fold_bpl[0 \<mapsto>\<^sub>\<tau> \<tau>])" and
+    KFMFoldTrueSynProp2: "\<And>\<tau>. boogie_expr_prop_sat_rec (boogie_expr_used_funs_in_dom fun_decls) new_kfm_prop_fold_bpl" and
+    KFMNewTrueSynProp1: "\<And>\<tau>. boogie_expr_prop_sat_rec (boogie_expr_used_funs_in_dom fun_decls) (new_kfm_prop_rhs_bpl[0 \<mapsto>\<^sub>\<tau> \<tau>])" and
+    KFMNewTrueSynProp2: "\<And>\<tau>. boogie_expr_prop_sat_rec (boogie_expr_used_funs_in_dom fun_decls) new_kfm_prop_rhs_bpl" and
 
     LookupTyTemp: "lookup_var_decl (var_context ctxt_bpl) new_kfm_var = Some (TConSingle (TKnownFoldedMaskId TyRep), None)" and
 
     PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
     PredTypeSynProp: "\<And>\<tau>. pred_ty[0 \<mapsto>\<^sub>\<tau> \<tau>]\<^sub>\<tau> = pred_ty" and
     PredTypeFold: "pred_snap_field_type TyRep pid_fold = Some pred_fold_ty" and
+    PredTypeFoldSynProp: "\<And>\<tau>. pred_fold_ty[0 \<mapsto>\<^sub>\<tau> \<tau>]\<^sub>\<tau> = pred_fold_ty" and
 
     PlocRel: "ploc_sm_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
     PlocSynProp1: "\<And>\<tau>. e_ploc_bpl[0 \<mapsto>\<^sub>\<tau> \<tau>] = e_ploc_bpl" and
@@ -3396,11 +3397,13 @@ proof (rule rel_intro; blast?)
 
   from PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close>
   have ploc_bpl_eval: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredKnownFoldedField (pid, v_args_vpr))))"
+    using evals_with_None
     by blast
 
   from PlocFoldRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close> e_args_fold_eval
   have ploc_fold_bpl_eval: "red_expr_bpl ctxt_bpl e_ploc_fold_bpl ns (AbsV (AField (PredKnownFoldedField (pid_fold, v_args_fold_vpr))))"
     unfolding pred_ty_correct_premise_def
+    using \<open>program.predicates (program_total ctxt_vpr) pid_fold = Some pdecl_fold\<close> v_args_fold_typed
     by blast
 
   have "red_ast_bpl P ctxt_bpl (?\<gamma>, Normal ns) ((BigBlock name (Assign hvar h_upd_bpl # cs) str tr, cont), Normal (update_var (var_context ctxt_bpl) ns new_kfm_var (AbsV (AKnownFoldedMask ?new_kfm))))"
@@ -3439,6 +3442,8 @@ proof (rule rel_intro; blast?)
             apply simp
            prefer 2
            apply simp
+
+    \<comment> \<open>LHS of OR\<close>
           apply (rule boogie_expr_eval_subst_one_type_var(1)[where ?\<Omega>\<^sub>p="[]" and ?k=0, unfolded append_Nil])
     using TyInterpEq WfTyRep type_of_vbpl_val_closed
                  apply auto[1]
@@ -3449,7 +3454,7 @@ proof (rule rel_intro; blast?)
               apply simp
              prefer 2
              apply simp
-        apply (subst \<open>new_kfm_prop_orig_bpl = _\<close>)
+            apply (subst \<open>new_kfm_prop_orig_bpl = _\<close>)
             apply (simp add: PMaskReadSubstWf del: full_ext_env.simps type_of_val.simps)
             apply (rule_tac ?r=r and ?f=f in pmask_read_wf_apply[OF PMaskReadWf, where ?m=kfm and ?field_tcon="TFieldId TyRep"])
                 apply simp
@@ -3475,8 +3480,7 @@ proof (rule rel_intro; blast?)
                   apply (rule PlocSynProp2)
                  apply (rule PlocSynProp3)
                 apply (rule PlocSynProp3)
-               apply (simp add: PredTypeSynProp)
-               apply (simp add: PredType)
+               apply (simp add: PredTypeSynProp PredType)
               apply (rule RedBVar)
               apply simp
              apply (rule RedBVar)
@@ -3490,7 +3494,8 @@ proof (rule rel_intro; blast?)
           apply (rule KFMOrigTrueSynProp1)
          apply simp
         apply (rule KFMOrigTrueSynProp2)
-      \<comment> \<open>RHS of OR\<close>
+
+    \<comment> \<open>RHS of OR\<close>
        apply (rule boogie_expr_eval_subst_one_type_var(1)[where ?\<Omega>\<^sub>p="[]" and ?k=0, unfolded append_Nil])
     using TyInterpEq WfTyRep type_of_vbpl_val_closed
               apply auto[1]
@@ -3533,29 +3538,68 @@ proof (rule rel_intro; blast?)
                apply (rule boogie_expr_eval_binder_state(1))
                 apply (rule boogie_expr_eval_binder_state(1))
                  apply (rule boogie_expr_eval_update_var(1))
-                  apply (rule ploc_bpl_eval)
-                  apply (rule PlocSynProp2)
-                  apply (rule PlocSynProp3)
-                  apply (rule PlocSynProp3)
-                  apply (simp add: PredTypeSynProp)
-                  apply (simp add: PredType)
-                  apply (rule RedBVar)
-                  apply simp
-                  apply (rule RedBVar)
+                  apply (rule ploc_fold_bpl_eval)
+                 apply (rule PlocFoldSynProp2)
+                apply (rule PlocFoldSynProp3)
+               apply (rule PlocFoldSynProp3)
+              apply (simp add: PredTypeFoldSynProp PredTypeFold)
+             apply (rule RedBVar)
+             apply simp
+            apply (rule RedBVar)
     using TyInterpEq WfTyRep field_inversion_type_of_vbpl_val
-                  apply fastforce
-                  apply (cut_tac ?k=0 and ?\<tau>=\<tau>' and ?\<tau>'=\<tau> in closed_substT)
-                   apply simp
-                  apply simp
-                  apply (metis list.distinct(1) snd_conv surjective_pairing vbpl_absval_ty.simps vbpl_absval_ty_not_dummy vbpl_absval_ty_opt.simps(2))
+            apply fastforce
+           apply (cut_tac ?k=0 and ?\<tau>=\<tau>' and ?\<tau>'=\<tau> in closed_substT)
+            apply simp
+           apply simp
+           apply (metis list.distinct(1) snd_conv surjective_pairing vbpl_absval_ty.simps vbpl_absval_ty_not_dummy vbpl_absval_ty_opt.simps(2))
+          apply simp
+         apply (rule KFMFoldTrueSynProp1)
+        apply simp
+       apply (rule KFMFoldTrueSynProp2)
+      apply simp
+
+    \<comment> \<open>RHS of IMP\<close>
+     apply (rule boogie_expr_eval_subst_one_type_var(1)[where ?\<Omega>\<^sub>p="[]" and ?k=0, unfolded append_Nil])
+    using TyInterpEq WfTyRep type_of_vbpl_val_closed
+            apply auto[1]
+    using FunInterp TyInterpEq
+           apply force
+          apply simp
+         prefer 2
+         apply simp
+        prefer 2
+        apply simp
+       apply (rule boogie_expr_eval_subst_one_type_var(1)[where ?\<Omega>\<^sub>p="[]" and ?k=0, unfolded append_Nil])
+    using TyInterpEq WfTyRep type_of_vbpl_val_closed
+              apply auto[1]
+    using FunInterp TyInterpEq
+             apply force
+            apply simp
+           prefer 2
+           apply simp
+          prefer 2
+          apply simp
+         apply (subst \<open>new_kfm_prop_rhs_bpl = _\<close>)
+         apply (simp add: PMaskReadSubstWf del: full_ext_env.simps type_of_val.simps)
+         apply (rule_tac ?r=r and ?f=f in pmask_read_wf_apply[OF PMaskReadWf, where ?m="?new_kfm" and ?field_tcon="TFieldId TyRep"])
+             apply simp
+            apply (rule RedVar)
+            apply (simp add: lookup_var_binder_upd)
+           apply (rule RedBVar)
+           apply simp
+          apply (rule RedBVar)
+    using TyInterpEq WfTyRep field_inversion_type_of_vbpl_val
+          apply fastforce
+         apply (cut_tac ?k=0 and ?\<tau>=\<tau>' and ?\<tau>'=\<tau> in closed_substT)
+          apply simp
+         apply simp
+         apply (metis list.distinct(1) snd_conv surjective_pairing vbpl_absval_ty.simps vbpl_absval_ty_not_dummy vbpl_absval_ty_opt.simps(2))
+        apply simp
+       apply (rule KFMNewTrueSynProp1)
+      apply simp
+     apply (rule KFMNewTrueSynProp2)
     apply simp
-    apply (rule KFMOrigTrueSynProp1)
-    apply simp
-    apply (rule KFMOrigTrueSynProp2)
-    subgoal sorry
-    apply simp
-    subgoal sorry
-    oops
+    done
 
 
 end

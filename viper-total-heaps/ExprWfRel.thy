@@ -1,5 +1,5 @@
 theory ExprWfRel
-  imports ViperBoogieBasicRel ViperBoogieFunctionInst ExpRel Simulation TotalSemProperties
+  imports ViperBoogieBasicRel ViperBoogieFunctionInst ExpRel Simulation TotalSemanticsProperties
 begin
 
 
@@ -452,7 +452,7 @@ proof (rule expr_wf_rel_intro)
     case (RedBinop v1 v2)
     hence "v1 \<noteq> b1" using Lazy eval_binop_lazy_iff by force
     from RedBinop have v1BinopWellTy:"\<exists> v2. eval_binop False v1 bop v2 \<noteq> BinopTypeFailure"
-      by (metis (full_types) binop_result.distinct(3) is_none_code(2))
+      by (metis (full_types) binop_result.distinct(3))
     from RedBinop obtain ns' where
              "R \<omega>def \<omega> ns'" and
              "red_ast_bpl P ctxt (\<gamma>0, Normal ns) (\<gamma>1, Normal ns')"
@@ -624,7 +624,7 @@ proof (rule rel_general_cond)
   fix \<omega> \<omega>' ns
   assume R: "R (fst \<omega>) (snd \<omega>) ns"
      and *: "\<omega> = \<omega>' \<and> (\<exists>v. ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>pure_exp.CondExp cond e_thn e_els;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v)" (is "_ \<and> (\<exists>v. ?RedCondVpr v)")
-  from this obtain v where  "?RedCondVpr v"
+  from this obtain v where "?RedCondVpr v"
     by blast
 
   thus "(\<omega> = \<omega> \<and> (\<exists>v. ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>cond;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v)) \<and>
@@ -634,9 +634,7 @@ proof (rule rel_general_cond)
         R (fst \<omega>) (snd \<omega>) ns \<and> \<omega> = \<omega>' \<and> (\<exists>v. ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>e_els;snd \<omega>\<rangle> [\<Down>]\<^sub>t Val v))"
     apply (cases)
      apply (insert exp_rel_vpr_bplD[OF CondExpRel])
-     apply (metis R * val_rel_vpr_bpl.simps(2))
-    apply (insert exp_rel_vpr_bplD[OF CondExpRel])
-    by (metis R * val_rel_vpr_bpl.simps(2))
+    by (metis "*" R eval_with_None val_rel_vpr_bpl.simps(2))+
 next
   fix \<omega> ns
   assume R: "R (fst \<omega>) (snd \<omega>) ns"
@@ -649,10 +647,9 @@ next
         R (fst \<omega>) (snd \<omega>) ns \<and> ctxt_vpr, Some (fst \<omega>) \<turnstile> \<langle>e_els;snd \<omega>\<rangle> [\<Down>]\<^sub>t VFailure) "
     apply (cases)
       apply (insert exp_rel_vpr_bplD[OF CondExpRel])
-      apply (metis R val_rel_vpr_bpl.simps(2))
-     apply (metis R val_rel_vpr_bpl.simps(2))
-    apply simp
-    by (metis option.discI red_pure_exps_total_singleton)
+      apply (metis R val_rel_vpr_bpl.simps(2) eval_with_None)
+     apply (metis R val_rel_vpr_bpl.simps(2) eval_with_None)
+    by (metis option.distinct(1) red_pure_exps_total_singleton sub_pure_exp_total.simps(6))
 qed
 
 subsubsection \<open>Well-definedness for free if expressions are subexpressions of a framed assertion\<close>
@@ -826,8 +823,8 @@ proof (rule wf_rel_intro)
   from EvalBinop have IntOrPerm:"(\<exists>i. v2 = VInt i) \<or> (\<exists>p. v2 = VPerm p)" using eval_binop_div_mod_normal_types[OF Bop]
     by blast
   from Red2 obtain v2_bpl where RedBpl:"red_expr_bpl ctxt e2_bpl ns v2_bpl" and ValRel:"val_rel_vpr_bpl v2 = v2_bpl"
-    using ExpRel exp_rel_vpr_bpl_def exp_rel_vb_single_def R
-    by metis
+    using ExpRel R eval_with_None exp_rel_vpr_bplD
+    by blast
   show "\<exists>ns'. red_ast_bpl P ctxt (?\<gamma>, Normal ns) (?\<gamma>', Normal ns') \<and> R \<omega>def \<omega> ns'"
   proof (cases \<open>(\<exists>i. v2 = VInt i)\<close>)
     case True
@@ -909,7 +906,7 @@ next
 
   from Red2 obtain v2_bpl where RedBpl:"red_expr_bpl ctxt e2_bpl ns v2_bpl" and ValRel:"val_rel_vpr_bpl v2 = v2_bpl"
     using ExpRel exp_rel_vpr_bpl_def exp_rel_vb_single_def R
-    by metis
+    by (metis ExpRel R exp_rel_vb_single_def Red2 exp_rel_vpr_bpl_def eval_with_None)
 
   show "\<exists>c'. red_ast_bpl P ctxt (?\<gamma>, Normal ns) c' \<and> snd c' = Failure"
   proof (cases \<open>v2 = VInt 0\<close>)
@@ -1039,17 +1036,18 @@ proof (rule expr_wf_rel_intro)
   fix v \<omega>def \<omega> ns
   assume Rext:"?R_ext \<omega>def \<omega> ns" (is "?R \<and> ?Re1") and RedExp: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
 
-  from Rext obtain v1 v2 where RedE1: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and NotB1:"v1 \<noteq> b1" and
-                            v1BopWellTy: "eval_binop False v1 bop v2 \<noteq> BinopTypeFailure"
+  from Rext obtain v1 v2 where
+    RedE1: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and NotB1:"v1 \<noteq> b1" and
+    v1BopWellTy: "eval_binop False v1 bop v2 \<noteq> BinopTypeFailure"
     by blast
 
-  from Lazy v1BopWellTy  obtain b where "v1 = VBool b"
+  from Lazy v1BopWellTy obtain b where "v1 = VBool b"
     apply (cases bop, simp_all)
     by (cases v1; cases v2; simp)+   
 
   hence RedE1Bpl:"red_expr_bpl ctxt e1_bpl ns (BoolV b)"
-    using ExpRel Rext RedE1
-    unfolding exp_rel_vpr_bpl_def exp_rel_vb_single_def 
+    using ExpRel Rext RedE1 eval_with_None
+    unfolding exp_rel_vpr_bpl_def exp_rel_vb_single_def
     by fastforce
 
   have "red_expr_bpl ctxt guard ns (BoolV (VBool b \<noteq> b1))"
@@ -1095,9 +1093,9 @@ next
     by (cases v1; cases v2; simp)+    
 
   hence RedE1Bpl:"red_expr_bpl ctxt e1_bpl ns (BoolV b)"
-    using ExpRel Rext RedE1
-    unfolding exp_rel_vpr_bpl_def exp_rel_vb_single_def 
-    by (metis val_rel_vpr_bpl.simps(2))
+    using ExpRel Rext RedE1 eval_with_None
+    unfolding exp_rel_vpr_bpl_def exp_rel_vb_single_def
+    by fastforce
 
   have "red_expr_bpl ctxt guard ns (BoolV (VBool b \<noteq> b1))"
     using lazy_op_eval_bpl Lazy RedE1Bpl Guard
@@ -1150,7 +1148,7 @@ proof (rule wf_rel_intro)
     by (rule binop_lazy.elims) auto
 
   ultimately have RedE1Bpl: "red_expr_bpl ctxt e1_bpl ns (BoolV b)"
-    using ExpRel R
+    using ExpRel R eval_with_None
     unfolding exp_rel_vpr_bpl_def exp_rel_vb_single_def 
     by fastforce
 
@@ -1366,7 +1364,7 @@ proof (rule wf_rel_intro)
       by auto
 
     hence RedRcvBpl: "red_expr_bpl ctxt e_r_bpl ns (AbsV (ARef (Address a)))"
-      using exp_rel_vpr_bpl_elim[OF ExpRel] RedRcv R   
+      using exp_rel_vpr_bpl_elim[OF ExpRel] RedRcv R eval_with_None
       by (metis val_rel_vpr_bpl.simps(3))
   
     from ValidLoc have VprHasPerm: "get_mh_total_full \<omega>def (a,f) > 0"
@@ -1400,7 +1398,7 @@ proof (rule wf_rel_intro)
       by blast
 
     have RedRcvBpl: "red_expr_bpl ctxt e_r_bpl ns (AbsV (ARef r))"
-      using exp_rel_vpr_bpl_elim[OF ExpRel] RedRcv R   
+      using exp_rel_vpr_bpl_elim[OF ExpRel] RedRcv R eval_with_None
       by (metis val_rel_vpr_bpl.simps(3))
 
     have BplHasNoPerm: "m_bpl (r, NormalField f_bpl \<tau>) = 0"
@@ -1510,7 +1508,7 @@ proof (rule wf_rel_intro)
       by auto
 
     hence RedRcvBpl: "red_expr_bpl ctxt e_r_bpl ns (AbsV (ARef (Address a)))"
-      using exp_rel_vpr_bpl_elim[OF ExpRel] RedRcv R   
+      using exp_rel_vpr_bpl_elim[OF ExpRel] RedRcv R eval_with_None
       by (metis val_rel_vpr_bpl.simps(3))
   
     from WriteableLocs have VprHasPerm: "get_mh_total_full \<omega>def (a,f) = 1"
@@ -1544,7 +1542,7 @@ proof (rule wf_rel_intro)
       by blast
 
     have RedRcvBpl: "red_expr_bpl ctxt e_r_bpl ns (AbsV (ARef r))"
-      using exp_rel_vpr_bpl_elim[OF ExpRel] RedRcv R   
+      using exp_rel_vpr_bpl_elim[OF ExpRel] RedRcv R eval_with_None
       by (metis val_rel_vpr_bpl.simps(3))
 
     have BplHasNoPerm: "m_bpl (r, NormalField f_bpl \<tau>) \<noteq> 1"

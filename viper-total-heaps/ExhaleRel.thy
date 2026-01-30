@@ -549,9 +549,9 @@ next
       apply cases
        apply (rule conjI)
         apply blast
-      using ExpRel R Success 
+      using ExpRel R Success eval_with_None
        apply (fastforce elim: exp_rel_vpr_bpl_elim simp: Invariant)
-      using ExpRel R Success exp_rel_vpr_bpl_elim
+      using ExpRel R Success exp_rel_vpr_bpl_elim eval_with_None
       by (metis prod_eqI val_rel_vpr_bpl.simps(2))
   qed
 
@@ -566,7 +566,7 @@ next
    assume Fail: "?Fail \<omega>" and "R (fst \<omega>) (snd \<omega>) ns \<and> Q (assert.Imp cond A) (fst \<omega>) (snd \<omega>)" 
    thus "?Goal \<omega> ns"
      apply cases
-     using exp_rel_vpr_bpl_elim[OF ExpRel] Fail Invariant
+     using exp_rel_vpr_bpl_elim[OF ExpRel] Fail Invariant eval_with_None
       apply (metis val_rel_vpr_bpl.simps(2))
      apply simp
      by (metis option.discI red_pure_exps_total_singleton)
@@ -643,7 +643,7 @@ proof (simp only: uncurry.simps,
     proof cases
       case ExhCondTrue
       hence "red_expr_bpl ctxt cond_bpl ns (BoolV True)"
-        using exp_rel_vpr_bplD[OF ExpRel] R
+        using exp_rel_vpr_bplD[OF ExpRel] R eval_with_None
         by fastforce
       moreover have "Q A (fst \<omega>) (snd \<omega>)"
         using R Invariant Cond
@@ -655,7 +655,7 @@ proof (simp only: uncurry.simps,
     next
       case ExhCondFalse
       hence "red_expr_bpl ctxt cond_bpl ns (BoolV False)"
-        using exp_rel_vpr_bplD[OF ExpRel] R
+        using exp_rel_vpr_bplD[OF ExpRel] R eval_with_None
         by fastforce
       moreover have "Q B (fst \<omega>) (snd \<omega>)"
         using R Invariant Cond
@@ -680,7 +680,7 @@ proof (simp only: uncurry.simps,
    proof cases
      case ExhCondTrue
       hence "red_expr_bpl ctxt cond_bpl ns (BoolV True)"
-        using exp_rel_vpr_bplD[OF ExpRel] R
+        using exp_rel_vpr_bplD[OF ExpRel] R eval_with_None
         by fastforce
       moreover have "Q A (fst \<omega>) (snd \<omega>)"
         using R Invariant Cond
@@ -691,7 +691,7 @@ proof (simp only: uncurry.simps,
     next
      case ExhCondFalse
       hence "red_expr_bpl ctxt cond_bpl ns (BoolV False)"
-        using exp_rel_vpr_bplD[OF ExpRel] R
+        using exp_rel_vpr_bplD[OF ExpRel] R eval_with_None
         by fastforce
       moreover have "Q B (fst \<omega>) (snd \<omega>)"
         using R Invariant Cond
@@ -876,7 +876,7 @@ next
   assume R:"R \<omega>0_\<omega>def ns"
   assume "fst \<omega>0_\<omega>def = fst \<omega>' \<and> exhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def) (snd \<omega>')"
   thus "red_expr_bpl ctxt e_rcv_bpl ns (AbsV (ARef r))"
-    using RcvRel StateRel[OF R]
+    using RcvRel StateRel[OF R] eval_with_None
     unfolding exhale_acc_normal_premise_def exhale_field_acc_rel_assms_def
     by (fastforce elim: exp_rel_vpr_bpl_elim)
 next
@@ -895,8 +895,9 @@ next
   
   from ExhPremise have 
     "p \<ge> 0" and
-    RedRcvVpr: "ctxt_vpr, Some (fst \<omega>0_\<omega>def) \<turnstile> \<langle>e_rcv_vpr; snd \<omega>0_\<omega>def\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
+    RedRcvVpr: "ctxt_vpr, None \<turnstile> \<langle>e_rcv_vpr; snd \<omega>0_\<omega>def\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and
     EnoughPerm: "(if r = Null then p = 0 else (Rep_preal (get_mh_total_full (snd \<omega>0_\<omega>def) (the_address r,f))) \<ge> p)"
+    using eval_with_None
     unfolding exhale_acc_normal_premise_def exhale_field_acc_rel_perm_success_def exhale_field_acc_rel_assms_def
     by blast+
 
@@ -921,9 +922,9 @@ next
     apply (cases "r = Null")
     using EnoughPerm
      apply simp
-
-    apply (simp)
-    using Abs_preal_inverse EnoughPerm \<open>0 \<le> p\<close> less_eq_preal.rep_eq minus_preal.rep_eq by auto
+    apply simp
+    using Abs_preal_inverse EnoughPerm \<open>0 \<le> p\<close> less_eq_preal.rep_eq minus_preal.rep_eq
+    by auto
 
   moreover have "(r \<noteq> Null \<longrightarrow> 1 \<ge> (get_mh_total_full (snd \<omega>0_\<omega>def) (the_address r, f)) - (Abs_preal p))"
         (is ?conjunct2)
@@ -1001,7 +1002,7 @@ proof (rule exhale_rel_intro)
     by blast
 
   from ExpRel RedExpVpr have "red_expr_bpl ctxt e_bpl ns1 (val_rel_vpr_bpl (VBool True))"
-    using \<open>R _ _ ns1\<close> 
+    using \<open>R _ _ ns1\<close> eval_with_None
     by (meson exp_rel_vpr_bpl_elim)
 
   hence "red_ast_bpl P ctxt (?\<gamma>1, Normal ns1) ((BigBlock name cs str tr, cont), Normal ns1)"
@@ -1031,7 +1032,7 @@ next
       using wf_rel_normal_elim[OF Wf] \<open>R _ _ ns\<close> \<open>Q _ _ _\<close>
       by blast
 
-    with ExpRel RedExpVpr have "red_expr_bpl ctxt e_bpl ns1 (val_rel_vpr_bpl (VBool False))"
+    with ExpRel RedExpVpr eval_with_None have "red_expr_bpl ctxt e_bpl ns1 (val_rel_vpr_bpl (VBool False))"
       by (meson exp_rel_vpr_bpl_elim)
 
     hence "red_ast_bpl P ctxt (?\<gamma>1, Normal ns1) ((BigBlock name cs str tr, cont), Failure)"

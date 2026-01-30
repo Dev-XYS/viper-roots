@@ -220,7 +220,7 @@ next
        (red_expr_bpl ctxt cond_bpl ns (BoolV True) \<and> (R \<omega> ns \<and> Q A \<omega>) \<and> red_inhale ctxt_vpr StateCons A \<omega> (RNormal \<omega>') \<or>
         red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and> R \<omega> ns \<and> \<omega> = \<omega>')"
     apply (cases)
-    using ExpRel
+    using ExpRel eval_with_None
     by (fastforce dest: exp_rel_vpr_bplD simp: Invariant)+
 next
   fix \<omega> ns
@@ -230,7 +230,8 @@ next
        (red_expr_bpl ctxt cond_bpl ns (BoolV True) \<and> (R \<omega> ns \<and> Q A \<omega>) \<and> red_inhale ctxt_vpr StateCons A \<omega> RFailure \<or>
         red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and> R \<omega> ns \<and> False)"
     apply (cases)
-    using ExpRel Invariant exp_rel_vpr_bplD val_rel_vpr_bpl.simps(2) apply fastforce
+    using ExpRel Invariant exp_rel_vpr_bplD eval_with_None
+      apply fastforce
      apply fastforce
     by (metis direct_sub_expressions_assertion.simps(2) list.inject red_exp_list_failure_elim)
 qed
@@ -278,7 +279,7 @@ proof (rule rel_general_cond,
          red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and> (R \<omega> ns \<and> Q B \<omega>) \<and> red_inhale ctxt_vpr StateCons B \<omega> (RNormal \<omega>'))"
     apply (cases)
     using Invariant[simplified is_inh_rel_invariant_def] exp_rel_vpr_bplD[OF ExpRel]
-    by (metis val_rel_vpr_bpl.simps(2))+
+    by (metis val_rel_vpr_bpl.simps(2) eval_with_None)+
 next
   fix \<omega> ns
   assume "red_inhale ctxt_vpr StateCons (CondAssert cond A B) \<omega> RFailure"
@@ -290,9 +291,9 @@ next
         red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and> (R \<omega> ns \<and> Q B \<omega>) \<and> red_inhale ctxt_vpr StateCons B \<omega> RFailure)"
     apply (cases)
     using Invariant[simplified is_inh_rel_invariant_def] exp_rel_vpr_bplD[OF ExpRel]
-      apply (metis val_rel_vpr_bpl.simps(2))
+      apply (metis val_rel_vpr_bpl.simps(2) eval_with_None)
     using Invariant[simplified is_inh_rel_invariant_def] exp_rel_vpr_bplD[OF ExpRel]
-      apply (metis val_rel_vpr_bpl.simps(2))
+     apply (metis val_rel_vpr_bpl.simps(2) eval_with_None)
     apply simp
     by (metis option.discI red_pure_exps_total_singleton)
 qed
@@ -440,7 +441,7 @@ lemma inhale_rcv_lookup:
         shows "red_expr_bpl ctxt e_rcv_bpl ns (AbsV (ARef r))" 
   using assms(1-2) exp_rel_vpr_bpl_elim[OF ExpRel] 
   unfolding inhale_acc_normal_premise_def  
-  by (metis val_rel_vpr_bpl.simps(3))
+  by (metis val_rel_vpr_bpl.simps(3) eval_with_None)
 
 lemma inhale_field_acc_non_null_rcv_rel:
   assumes  StateRel: "state_rel_def_same Pr StateCons TyRep Tr (AuxPred(temp_perm \<mapsto> pred_eq (RealV p))) ctxt \<omega> ns" (is "?R \<omega> ns") and
@@ -457,7 +458,7 @@ lemma inhale_field_acc_non_null_rcv_rel:
 proof (rule exI[where ?x="ns"])
   from InhAccNormal exp_rel_vpr_bplD[OF RcvRel] \<open>?R \<omega> ns\<close> have RedRcvBpl: "red_expr_bpl ctxt e_rcv_bpl ns (AbsV (ARef r))"
     unfolding inhale_acc_normal_premise_def
-    by (metis val_rel_vpr_bpl.simps(3))
+    by (metis val_rel_vpr_bpl.simps(3) eval_with_None)
 
   from \<open>?R \<omega> ns\<close> have LookupTempPerm: "lookup_var (var_context ctxt) ns temp_perm = Some (RealV p)"
     using state_rel_aux_pred_sat_lookup_2
@@ -548,7 +549,7 @@ next
 
   thus "red_expr_bpl ctxt e_rcv_bpl ns (AbsV (ARef r))"
     using exp_rel_vpr_bplD[OF RcvRel] StateRel[OF \<open>R \<omega> ns\<close>]
-    by (metis val_rel_vpr_bpl.simps(3))
+    by (metis val_rel_vpr_bpl.simps(3) eval_with_None)
 next
   fix \<omega> \<omega>' ns
   assume "R \<omega> ns" 
@@ -557,8 +558,9 @@ next
   let ?p' = "get_mh_total_full \<omega> (the_address r, f_vpr) + Abs_preal p"
 
   assume InhPremise: "inhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f_vpr e_p p r \<omega> \<omega>'"
-  hence RedRcvVpr: "ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_rcv_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and "p \<ge> 0" and
+  hence RedRcvVpr: "ctxt_vpr, None \<turnstile> \<langle>e_rcv_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)" and "p \<ge> 0" and
                    "p > 0 \<longrightarrow> r \<noteq> Null"
+    using eval_with_None
     unfolding inhale_acc_normal_premise_def 
     by blast+
 
@@ -583,20 +585,20 @@ next
          (if (r = Null) then (RealV 0) else (RealV (Rep_preal (get_mh_total_full \<omega> (the_address r, f_vpr) + Abs_preal p)))) \<and>
          (r \<noteq> Null \<longrightarrow> 1 \<ge> ?p')"
     apply (rule conjI)
-    apply (subst \<open>new_perm = _\<close>)
-    apply (rule RedBinOp)
-      apply (rule exp_rel_perm_access_2[OF MaskReadWf StateRelInst RedRcvVpr FieldRelSingle])
+     apply (subst \<open>new_perm = _\<close>)
+     apply (rule RedBinOp)
+       apply (rule exp_rel_perm_access_2[OF MaskReadWf StateRelInst RedRcvVpr FieldRelSingle])
+          apply simp
          apply simp
-        apply simp
-       apply (rule RcvRel)
-    apply (simp add: \<open>m_bpl = _\<close>)
+        apply (rule RcvRel)
+       apply (simp add: \<open>m_bpl = _\<close>)
       apply (fastforce intro: RedVar LookupTempPerm)
      apply (simp)
-    apply (intro conjI)
+     apply (intro conjI)
     using \<open>p \<ge> 0\<close> \<open>p > 0 \<longrightarrow> r \<noteq> Null\<close>
       apply argo
     using \<open>p \<ge> 0\<close>
-    apply (simp add: plus_preal.rep_eq Abs_preal_inverse)
+     apply (simp add: plus_preal.rep_eq Abs_preal_inverse)
     using AtMostWritePerm
     by simp
 next
@@ -640,7 +642,7 @@ proof (rule inhale_rel_intro)
     by blast
 
   with RedExp ExpRel have "red_expr_bpl ctxt e_bpl ns' (val_rel_vpr_bpl (VBool True))"
-    using exp_rel_vpr_bplD
+    using exp_rel_vpr_bplD eval_with_None
     by fast   
 
   hence "red_expr_bpl ctxt e_bpl ns' (BoolV True)"
@@ -687,7 +689,7 @@ proof (rule inhale_rel_refl)
     apply (rule InhPure_case)
     by (auto elim: red_pure_exp_total_elims)
 
-  thus " res \<noteq> RFailure \<and> (\<forall>\<omega>'. res = RNormal \<omega>' \<longrightarrow> \<omega>' = \<omega>) "
+  thus "res \<noteq> RFailure \<and> (\<forall>\<omega>'. res = RNormal \<omega>' \<longrightarrow> \<omega>' = \<omega>) "
     by simp
 qed
 

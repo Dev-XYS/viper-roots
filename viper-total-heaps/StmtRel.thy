@@ -163,9 +163,9 @@ proof (rule rel_general_cond)
        red_expr_bpl ctxt cond_bpl ns (BoolV False) \<and> R \<omega> ns \<and> red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr s_els \<omega> (RNormal \<omega>'))"
     apply (cases)
     using exp_rel_vpr_bplD[OF ExpRel]
-    apply (metis \<open>R \<omega> ns\<close> val_rel_vpr_bpl.simps(2))
+     apply (metis \<open>R \<omega> ns\<close> val_rel_vpr_bpl.simps(2) eval_with_None)
     using exp_rel_vpr_bplD[OF ExpRel]
-    by (metis \<open>R \<omega> ns\<close> val_rel_vpr_bpl.simps(2))
+    by (metis \<open>R \<omega> ns\<close> val_rel_vpr_bpl.simps(2) eval_with_None)
 next
   fix \<omega> ns
   assume "R \<omega> ns"
@@ -178,8 +178,8 @@ next
         red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr s_els \<omega> RFailure)"
     apply(cases)
       apply (insert exp_rel_vpr_bplD[OF ExpRel])
-      apply (metis \<open>R \<omega> ns\<close> val_rel_vpr_bpl.simps(2))
-     apply (metis \<open>R \<omega> ns\<close> val_rel_vpr_bpl.simps(2))
+      apply (metis \<open>R \<omega> ns\<close> val_rel_vpr_bpl.simps(2) eval_with_None)
+     apply (metis \<open>R \<omega> ns\<close> val_rel_vpr_bpl.simps(2) eval_with_None)
     apply simp
     by (metis option.discI red_pure_exps_total_singleton)
 qed
@@ -246,7 +246,7 @@ proof (cases rule: stmt_rel_intro)
 
     let ?v_bpl = "val_rel_vpr_bpl v"
     have RedEBpl:"red_expr_bpl ctxt e_bpl ns' ?v_bpl"
-      using R' RedEVpr ExpRel
+      using R' RedEVpr ExpRel eval_with_None
       by (fastforce dest: exp_rel_vpr_bplD)
 
     have ValBplTy:"type_of_val (type_interp ctxt) ?v_bpl = instantiate [] ty_bpl"
@@ -447,12 +447,12 @@ proof (rule stmt_rel_intro)
      by metis
 
    from RcvRel have RedRcvBpl: "red_expr_bpl ctxt rcv_bpl ns3 (AbsV (ARef (Address addr)))"
-     using \<open>?Rext \<omega> \<omega> ns3\<close>  RedFieldAssign exp_rel_vpr_bpl_elim
-     by (metis (mono_tags, lifting) val_rel_vpr_bpl.simps(3))
+     using \<open>?Rext \<omega> \<omega> ns3\<close> RedFieldAssign exp_rel_vpr_bpl_elim
+     by (metis (mono_tags, lifting) val_rel_vpr_bpl.simps(3) eval_with_None)
 
    from RhsRel have RedRhsBpl: "red_expr_bpl ctxt rhs_bpl ns3 (val_rel_vpr_bpl v)"
-     using \<open>?Rext \<omega> \<omega> ns3\<close>  RedFieldAssign exp_rel_vpr_bpl_elim
-     by (metis (mono_tags, lifting))
+     using \<open>?Rext \<omega> \<omega> ns3\<close> RedFieldAssign exp_rel_vpr_bpl_elim
+     by (metis (mono_tags, lifting) eval_with_None)
 
    from HeapUpdWf have
       RedHeapUpdBpl:

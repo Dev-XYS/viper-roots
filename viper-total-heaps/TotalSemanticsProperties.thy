@@ -135,6 +135,13 @@ next
 qed (fastforce elim: red_pure_exp_total.cases)+
 
 
+lemma evals_with_None:
+  assumes "red_pure_exps_total ctxt (Some \<omega>_def) es \<omega> (Some vs)"
+    shows "red_pure_exps_total ctxt None es \<omega> (Some vs)"
+  using assms eval_with_None eval_with_None_helper
+  by blast
+
+
 lemma eval_with_same_store_same_hh:
   shows "ctxt, \<omega>_def\<^sub>1 \<turnstile> \<langle>e;\<omega>\<^sub>1\<rangle> [\<Down>]\<^sub>t r\<^sub>1 \<Longrightarrow>
          ctxt, \<omega>_def\<^sub>2 \<turnstile> \<langle>e;\<omega>\<^sub>2\<rangle> [\<Down>]\<^sub>t r\<^sub>2 \<Longrightarrow>
@@ -843,6 +850,8 @@ next
 qed (fastforce intro: red_pure_exp_intros)+
 
 
+\<comment> \<open>The following lemma is provable, but should not be used.\<close>
+\<^cancel>\<open>
 lemma eval_with_None_exists_\<omega>def:
   assumes "ctxt, None \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t Val v"
       and "supported_pred_expr e"
@@ -888,6 +897,8 @@ lemma evals_with_None_exists_\<omega>def:
   using RedExpListNil red_exp_list_failure_Nil
    apply blast
   oops
+\<close>
+
 
 (*
 lemma eval_with_None_exists_\<omega>def:
