@@ -1283,7 +1283,7 @@ proof -
 
   then obtain v_args_bpl where v_args_bpl:
     "list_all2 (\<lambda>e v. red_expr_bpl ctxt_bpl e ns v) e_args_bpl v_args_bpl \<and> map val_rel_vpr_bpl v_args_vpr = v_args_bpl"
-    using ArgsRel exp_rel_vpr_bpl_def exp_rel_vb_single_def StateRel 
+    using ArgsRel exp_rel_vpr_bpl_def exp_rel_vb_single_def StateRel
     by (smt (verit, best) length_map list_all2_conv_all_nth nth_map)
 
   have rel_unique: "(THE v_args. map val_rel_vpr_bpl v_args = v_args_bpl) = v_args_vpr"
@@ -3313,18 +3313,25 @@ lemma fold_knownfolded_pred_upd_rel:
     PlocFoldSynProp2: "boogie_expr_prop_sat_rec (boogie_expr_no_var new_kfm_var) e_ploc_fold_bpl" and
     PlocFoldSynProp3: "boogie_expr_prop_sat_rec boogie_expr_no_binder e_ploc_fold_bpl" and
 
+    \<comment> \<open>The above required properties could be lifted. The reason for these properties is we
+        require @{const ploc_sm_rel_vpr_bpl'} too soon, instead of proving it after we already
+        update \<open>new_kfm_var\<close>.\<close>
+
     PMaskReadSubstWf: "\<And>a b c d \<tau>. pmask_read_bpl a b c d[0 \<mapsto>\<^sub>\<tau> \<tau>] = pmask_read_bpl (a[0 \<mapsto>\<^sub>\<tau> \<tau>]) (b[0 \<mapsto>\<^sub>\<tau> \<tau>]) (c[0 \<mapsto>\<^sub>\<tau> \<tau>]) (map (\<lambda>x. x[0 \<mapsto>\<^sub>\<tau> \<tau>]\<^sub>\<tau>) d)" and
     HeapReadSubstWf: "\<And>a b c d \<tau>. heap_read_bpl a b c d[0 \<mapsto>\<^sub>\<tau> \<tau>] = heap_read_bpl (a[0 \<mapsto>\<^sub>\<tau> \<tau>]) (b[0 \<mapsto>\<^sub>\<tau> \<tau>]) (c[0 \<mapsto>\<^sub>\<tau> \<tau>]) (map (\<lambda>x. x[0 \<mapsto>\<^sub>\<tau> \<tau>]\<^sub>\<tau>) d)" and
 
     KFMOrigReadSubstWf: "\<And>\<tau>. pmask_orig_bpl[0 \<mapsto>\<^sub>\<tau> \<tau>] = pmask_orig_bpl" and
 
-    TempNotNull: "new_kfm_var \<noteq> nullConst" and
-    TempNotHeap: "new_kfm_var \<noteq> hvar" and
+    TempFresh: "new_kfm_var \<notin> {heap_var Tr, mask_var Tr, heap_var_def Tr, mask_var_def Tr} \<union>
+                              ran (var_translation Tr) \<union>
+                              ran (field_translation Tr) \<union>
+                              range (const_repr Tr) \<union>
+                              dom AuxPred" and
 
     FunInterp: "fun_interp_wf (vbpl_absval_ty TyRep) fun_decls (fun_interp ctxt_bpl)"
 
   shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
-                               (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
+                               red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr) \<and>
                                   pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
                                (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
                                   sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (Atomic (AccPredicate pid_fold e_args_fold_vpr (PureExp e_p_fold_vpr))) \<and>
@@ -3379,7 +3386,7 @@ proof (rule rel_intro; blast?)
     by fastforce+
 
   let ?new_kfm = "\<lambda>l. kfm l \<or> kfm_fold l"
-  let ?hb' = "update_var (var_context ctxt_bpl) ns new_kfm_var (AbsV (AKnownFoldedMask ?new_kfm))"
+  let ?ns' = "update_var (var_context ctxt_bpl) ns new_kfm_var (AbsV (AKnownFoldedMask ?new_kfm))"
 
   have "\<And>\<tau> \<tau>' r.
           type_of_val (type_interp ctxt_bpl) r = instantiate (\<tau>' # \<tau> # rtype_interp ctxt_bpl) (TConSingle (TRefId TyRep)) \<Longrightarrow>
@@ -3443,7 +3450,7 @@ proof (rule rel_intro; blast?)
            prefer 2
            apply simp
 
-    \<comment> \<open>LHS of OR\<close>
+\<comment> \<open>LHS of OR\<close>
           apply (rule boogie_expr_eval_subst_one_type_var(1)[where ?\<Omega>\<^sub>p="[]" and ?k=0, unfolded append_Nil])
     using TyInterpEq WfTyRep type_of_vbpl_val_closed
                  apply auto[1]
@@ -3464,13 +3471,13 @@ proof (rule rel_intro; blast?)
                     apply (simp add: kfm)
                    apply (rule RedVar)
                    apply (simp add: lookup_var_binder_upd)
-    using HeapVar TempNotHeap lookup_heap
+    using HeapVar TempFresh lookup_heap
                    apply fastforce
     using heap_ty
                   apply fastforce
                  apply (rule RedVar)
                  apply (simp add: lookup_var_binder_upd)
-    using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] NullConst TempNotNull
+    using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] NullConst TempFresh
                  apply fastforce
                 apply (simp add: PlocSynProp1 del: full_ext_env.simps type_of_val.simps)
                 apply (rule boogie_expr_eval_binder_state(1))
@@ -3495,7 +3502,7 @@ proof (rule rel_intro; blast?)
          apply simp
         apply (rule KFMOrigTrueSynProp2)
 
-    \<comment> \<open>RHS of OR\<close>
+\<comment> \<open>RHS of OR\<close>
        apply (rule boogie_expr_eval_subst_one_type_var(1)[where ?\<Omega>\<^sub>p="[]" and ?k=0, unfolded append_Nil])
     using TyInterpEq WfTyRep type_of_vbpl_val_closed
               apply auto[1]
@@ -3526,13 +3533,13 @@ proof (rule rel_intro; blast?)
                    apply (simp add: kfm_fold)
                   apply (rule RedVar)
                   apply (simp add: lookup_var_binder_upd)
-    using HeapVar TempNotHeap lookup_heap
+    using HeapVar TempFresh lookup_heap
                   apply fastforce
     using heap_ty
                  apply fastforce
                 apply (rule RedVar)
                 apply (simp add: lookup_var_binder_upd)
-    using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] NullConst TempNotNull
+    using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] NullConst TempFresh
                 apply fastforce
                apply (simp add: PlocFoldSynProp1 del: full_ext_env.simps type_of_val.simps)
                apply (rule boogie_expr_eval_binder_state(1))
@@ -3558,7 +3565,7 @@ proof (rule rel_intro; blast?)
        apply (rule KFMFoldTrueSynProp2)
       apply simp
 
-    \<comment> \<open>RHS of IMP\<close>
+\<comment> \<open>RHS of IMP\<close>
      apply (rule boogie_expr_eval_subst_one_type_var(1)[where ?\<Omega>\<^sub>p="[]" and ?k=0, unfolded append_Nil])
     using TyInterpEq WfTyRep type_of_vbpl_val_closed
             apply auto[1]
@@ -3600,6 +3607,53 @@ proof (rule rel_intro; blast?)
      apply (rule KFMNewTrueSynProp2)
     apply simp
     done
+
+  let ?hb'' = "hb( (Null, PredKnownFoldedField (pid, v_args_vpr)) \<mapsto> AbsV (AKnownFoldedMask ?new_kfm) )"
+  let ?ns'' = "update_var (var_context ctxt_bpl) ns hvar (AbsV (AHeap ?hb''))"
+
+  show "\<exists>ns'. red_ast_bpl P ctxt_bpl (?\<gamma>, Normal ns) (?\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
+    apply (rule exI, intro conjI)
+     apply (rule red_ast_bpl_transitive)
+      apply fact
+     apply (rule red_ast_bpl_one_simple_cmd)
+     apply (rule RedAssign[where ?ty="TConSingle (THeapId TyRep)" and ?v="AbsV (AHeap ?hb'')"])
+    using lookup_heap_ty \<open>hvar = _\<close>
+       apply blast
+      apply (simp add: TyInterpEq)
+      apply (meson heap_bpl_well_typed_elim heap_ty)
+    unfolding \<open>h_upd_bpl = _\<close>
+     apply (rule heap_update_wf_apply[OF HeapUpdateWf, where ?h=hb and ?r=Null and ?f="PredKnownFoldedField (pid,v_args_vpr)"])
+           apply (rule RedVar)
+    using HeapVar TempFresh lookup_heap
+           apply auto[1]
+          apply fact
+         apply (rule RedVar)
+    using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] NullConst TempFresh
+         apply auto[1]
+        apply (simp add: PlocSynProp2 boogie_expr_eval_update_var(1) ploc_bpl_eval)
+       apply (simp add: PredType)
+      apply (rule RedVar)
+      apply simp
+     apply simp
+    apply (rule StateRelOut)
+    apply (subst \<open>hvar = _\<close>)
+    apply (rule kfm_update_state_rel)
+        apply (rule state_rel_independent_var)
+    using StateRelIn \<open>R \<omega> ns\<close> \<open>\<omega> = \<omega>'\<close>
+            apply blast
+           apply (rule TempFresh)
+          apply (simp add: TyInterpEq)
+         apply (simp add: lookup_var_ty_def LookupTyTemp)
+        apply (simp add: TyInterpEq)
+    using TempFresh lookup_heap
+       apply force
+    subgoal sorry
+     apply (simp add: TyInterpEq)
+    using heap_bpl_well_typed_elim heap_ty
+     apply fastforce
+    apply (simp add: HeapVarDefSame)
+    done
+qed
 
 
 end
