@@ -3249,7 +3249,13 @@ qed (auto intro: red_expr_red_exprs.intros)
 lemma closed_substT:
   assumes "closed \<tau>"
   shows "\<tau>[k \<mapsto>\<^sub>\<tau> \<tau>']\<^sub>\<tau> = \<tau>"
-  sorry
+  using assms
+proof (induction \<tau>)
+  case (TCon x1a x2a)
+  then show ?case
+    apply simp
+    by (meson Ball_set list.map_ident_strong)
+qed auto
 
 
 end
