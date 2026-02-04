@@ -3263,12 +3263,47 @@ end
 
 
 lemma extcons_loc_set_equal:
-  assumes "consistent_external ctxt \<phi>"
-      and "pred_folds_perm lp l (get_nm_total \<phi>)"
-      and "consistent_external_wrt_ploc ctxt' \<phi>' lp q"
+  assumes "consistent_external_wrt_ploc ctxt \<phi> lp q"
+      and "contains_heap_loc l (get_nm_total \<phi>)"
+      and "consistent_external_wrt_ploc ctxt' \<phi>' lp q'"
+      and "q > 0"
+      and "q' > 0"
       and "program_total ctxt = program_total ctxt'"
     shows "contains_heap_loc l (get_nm_total \<phi>')"
   sorry
+
+
+lemma extcons_loc_set_equal_rec:
+  assumes "consistent_external ctxt \<phi>"
+      and "pred_folds_perm lp l nm"
+      and "nm = get_nm_total \<phi>"
+      and "consistent_external_wrt_ploc ctxt' \<phi>' lp q"
+      and "q > 0"
+      and "program_total ctxt = program_total ctxt'"
+    shows "contains_heap_loc l (get_nm_total \<phi>')"
+  using assms(2) assms(1,3)
+proof (induction arbitrary: \<phi> rule: pred_folds_perm.inducts)
+  case (ContainsPermDirect nm p' nm')
+  hence extcons1: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm' \<rparr>) lp (Rep_posreal p')"
+    by (metis SatAll_case surj_pair)
+  show ?case
+    apply (rule extcons_loc_set_equal)
+         apply (rule extcons1)
+        apply simp
+        apply (rule ContainsPermDirect.hyps(2))
+       apply (rule assms(4))
+    using Rep_posreal
+      apply blast
+    by fact+
+next
+  case (ContainsPermNested nm lp' p' nm')
+  hence extcons1: "consistent_external ctxt (\<phi>\<lparr> get_nm_total := nm' \<rparr>)"
+    by (metis SatAll_case SatStep_case surj_pair)
+  show ?case
+    apply (rule ContainsPermNested.IH)
+     apply (rule extcons1)
+    by simp
+qed
 
 
 lemma fold_knownfolded_pred_upd_rel:
@@ -3724,7 +3759,9 @@ proof (rule rel_intro; blast?)
             apply (rule contains_heap_loc_stable_larger_nm)
              prefer 2
              apply fact
-            apply (rule extcons_loc_set_equal[OF \<omega>_extcons loc_fold[simplified] fold_extcons, simplified])
+            apply (rule extcons_loc_set_equal_rec[OF \<omega>_extcons loc_fold[simplified] _ fold_extcons, simplified])
+            using PermPosConstExpr \<open>v_p_fold_vpr = p\<close> positive_real_preal preal_not_0_gt_0
+             apply force
             using ProgEq total_context.simps(1) total_context.defs(1)
             by metis
         qed
