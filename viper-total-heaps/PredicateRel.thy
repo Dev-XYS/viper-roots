@@ -3256,6 +3256,15 @@ end
 
 
 
+lemma extcons_loc_set_equal:
+  assumes "consistent_external ctxt \<phi>"
+      and "pred_folds_perm lp l (get_nm_total \<phi>)"
+      and "consistent_external_wrt_ploc ctxt' \<phi>' lp q"
+      and "program_total ctxt = program_total ctxt'"
+    shows "contains_heap_loc l (get_nm_total \<phi>')"
+  sorry
+
+
 lemma fold_knownfolded_pred_upd_rel:
   assumes
     StateRelIn: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow>
@@ -3268,6 +3277,8 @@ lemma fold_knownfolded_pred_upd_rel:
 
     TyInterpEq: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
     WfTyRep: "wf_ty_repr_bpl TyRep" and
+    ProgEq: "program_total ctxt_vpr = Pr" and
+    FunInterp: "fun_interp_wf (vbpl_absval_ty TyRep) fun_decls (fun_interp ctxt_bpl)" and
 
     NullConst: "const_repr Tr CNull = nullConst" and
     HeapVar: "hvar = heap_var Tr" and
@@ -3328,7 +3339,9 @@ lemma fold_knownfolded_pred_upd_rel:
                               range (const_repr Tr) \<union>
                               dom AuxPred" and
 
-    FunInterp: "fun_interp_wf (vbpl_absval_ty TyRep) fun_decls (fun_interp ctxt_bpl)"
+    StateConsOn: "consistent_state_rel_opt (state_rel_opt Tr)" and
+
+    PermPosConstExpr: "\<And>\<omega>. ctxt_vpr, None \<turnstile> \<langle>e_p_fold_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> p > 0"
 
   shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
                                red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr) \<and>
@@ -3362,7 +3375,7 @@ proof (rule rel_intro; blast?)
 
   then obtain v_args_fold_vpr v_p_fold_vpr pdecl_fold pbody_fold where
     e_args_fold_eval: "red_pure_exps_total ctxt_vpr None e_args_fold_vpr \<omega> (Some v_args_fold_vpr)" and
-    "ctxt_vpr, None \<turnstile> \<langle>e_p_fold_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_fold_vpr)" and
+    e_p_fold_eval: "ctxt_vpr, None \<turnstile> \<langle>e_p_fold_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_fold_vpr)" and
     "v_p_fold_vpr \<ge> 0" and
     "get_mh_nm nm_exh = zero_mask" and
     "get_mp_nm nm_exh = singleton_mp (pid_fold,v_args_fold_vpr) (Abs_preal v_p_fold_vpr)" and
@@ -3647,7 +3660,78 @@ proof (rule rel_intro; blast?)
         apply (simp add: TyInterpEq)
     using TempFresh lookup_heap
        apply force
-    subgoal sorry
+    subgoal
+      unfolding heap_knownfolded_rel_def
+    proof (rule allI | rule impI)+
+      fix lp kfm\<^sub>c l field_ty_vpr field_bpl
+      assume 1: "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))"
+         and 2: "?hb'' (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm\<^sub>c))"
+         and 3: "declared_fields Pr (snd l) = Some field_ty_vpr"
+         and 4: "field_translation Tr (snd l) = Some field_bpl"
+         and 5: "kfm\<^sub>c (Address (fst l), NormalField field_bpl field_ty_vpr)"
+      hence hb_kfm_rel: "heap_knownfolded_rel Pr (field_translation Tr) (get_nm_total_full \<omega>') hb"
+        using state_rel_heap_knownfolded_var_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>]]
+        unfolding heap_knownfolded_var_rel_def
+        by (simp add: \<open>\<omega> = \<omega>'\<close> lookup_heap)
+      show "pred_folds_perm lp l (get_nm_total_full \<omega>')"
+      proof (cases "lp = (pid, v_args_vpr)")
+        case True
+        hence "kfm\<^sub>c = ?new_kfm"
+          using 2
+          by auto
+        from 5[unfolded \<open>kfm\<^sub>c = _\<close>]
+        show ?thesis
+        proof (elim disjE)
+          assume "kfm (Address (fst l), NormalField field_bpl field_ty_vpr)"
+          thus ?thesis
+            using 3 4 True hb_kfm_rel kfm
+            unfolding heap_knownfolded_rel_def
+            by blast
+        next
+          assume "kfm_fold (Address (fst l), NormalField field_bpl field_ty_vpr)"
+          hence loc_fold: "pred_folds_perm (pid_fold, v_args_fold_vpr) l (get_nm_total_full \<omega>')"
+            using 3 4 hb_kfm_rel kfm_fold
+            unfolding heap_knownfolded_rel_def
+            by blast
+          have \<omega>_extcons: "consistent_external (total_context.make Pr (\<lambda>_. None) (domain_type TyRep)) (get_total_full \<omega>')"
+            using StateConsOn StateRelIn \<open>R \<omega> ns\<close> state_rel_consistent \<open>\<omega> = \<omega>'\<close>
+            by blast
+          have "v_p_fold_vpr = p"
+            using PermPosConstExpr e_p_fold_eval eval_is_deterministic(1)
+            by blast
+          then obtain nm_exh_sub where nm_exh_sub: "get_fnm_nm nm_exh (pid_fold, v_args_fold_vpr) = Some (Abs_posreal (Abs_preal p), nm_exh_sub)"
+            using fun_cong[OF \<open>get_mp_nm nm_exh = _\<close>, of "(pid_fold, v_args_fold_vpr)", simplified]
+            by (metis PermPosConstExpr comp_def get_mp_nm.simps obtain_lpm_from_mp positive_real_preal preal_not_0_gt_0)
+          have fold_extcons: "consistent_external_wrt_ploc ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh_sub \<rparr>) (pid_fold, v_args_fold_vpr) (Abs_preal v_p_fold_vpr)"
+            using diff_extcons SatAll_case nm_exh_sub \<open>v_p_fold_vpr = p\<close>
+            by (metis (mono_tags, lifting) \<open>get_mp_nm nm_exh = _\<close> comp_apply fst_conv get_mp_nm.simps option_fold.simps(1) singleton_mp.elims total_state.select_convs(2) total_state.update_convs(2))
+          obtain p\<^sub>s' nm\<^sub>s' where "get_fnm_nm nm\<^sub>s (pid_fold, v_args_fold_vpr) = Some (p\<^sub>s',nm\<^sub>s')" and "nm_exh_sub \<le> nm\<^sub>s'"
+            using \<open>nm_exh \<le> nm\<^sub>s\<close>[unfolded less_eq_nested_mask_def] nm_larger_sub_larger_not_None[OF \<open>nm_exh \<le> nm\<^sub>s\<close> nm_exh_sub]
+            by blast
+          show ?thesis
+            unfolding \<open>lp = _\<close>
+            apply (rule ContainsPermDirect)
+            using sub
+             apply (simp add: \<open>\<omega> = \<omega>'\<close>)
+            apply (rule ContainsLocNested)
+             apply fact
+            apply (rule contains_heap_loc_stable_larger_nm)
+             prefer 2
+             apply fact
+            apply (rule extcons_loc_set_equal[OF \<omega>_extcons loc_fold[simplified] fold_extcons, simplified])
+            using ProgEq total_context.simps(1) total_context.defs(1)
+            by metis
+        qed
+      next
+        case False
+        hence "hb (Null, PredKnownFoldedField lp) = ?hb'' (Null, PredKnownFoldedField lp)"
+          by simp
+        then show ?thesis
+          using hb_kfm_rel 2 3 4 5
+          unfolding heap_knownfolded_rel_def
+          by presburger
+      qed
+    qed
      apply (simp add: TyInterpEq)
     using heap_bpl_well_typed_elim heap_ty
      apply fastforce
