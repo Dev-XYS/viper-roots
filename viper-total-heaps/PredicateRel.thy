@@ -3262,15 +3262,185 @@ end
 
 
 
-lemma extcons_loc_set_equal:
-  assumes "consistent_external_wrt_ploc ctxt \<phi> lp q"
-      and "contains_heap_loc l (get_nm_total \<phi>)"
-      and "consistent_external_wrt_ploc ctxt' \<phi>' lp q'"
+lemma sat_mh_mp_equiv:
+  assumes "sat ctxt \<omega> mh mp B"
+      and "B = syntactic_mult q A"
+      and "sat ctxt' \<omega> mh' mp' B'"
+      and "B' = syntactic_mult q' A"
       and "q > 0"
       and "q' > 0"
+    shows "(mh l > 0 \<longleftrightarrow> mh' l > 0) \<and> (mp lp > 0 \<longleftrightarrow> mp' lp > 0)"
+  using assms(1-4)
+proof (induction arbitrary: A mh' mp' B')
+  case H: (SatAcc e_r r e_p' p' a mh f mp)
+  obtain e_p where "A = Atomic (Acc e_r f (PureExp e_p))" and "e_p' = Binop (ELit (LPerm q)) Mult e_p"
+    using H.prems(1)
+    apply (cases "(p',A)" rule: syntactic_mult.cases; simp?)
+    apply (case_tac e_p)
+    using assms(5)
+    by auto
+
+  obtain v1 v2 where
+    3: "ctxt, None \<turnstile> \<langle>ELit (LPerm q); \<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and
+    eval_e_p: "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and
+    1: "eval_binop False v1 Mult v2 = BinopNormal (VPerm p')"
+    using H.hyps(2)[unfolded \<open>e_p' = _\<close>]
+    by (auto elim: RedBinop_case)
+
+  obtain r'' p'' a'' where
+    "ctxt', None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r'')" and
+    eval_p'': "ctxt', None \<turnstile> \<langle>Binop (ELit (LPerm q')) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p'')" and
+    "a'' = the_address r''" and
+    "p'' \<ge> 0" and
+    4: "if r'' = Null then p'' = 0 \<and> mh' = zero_mask else mh' = singleton_mh (a'',f) (Abs_preal p'')" and
+    "mp' = zero_mask"
+    using H.prems(2)[unfolded \<open>B' = _\<close> \<open>A = _\<close>, simplified]
+    by (auto elim: SatAcc_case)
+
+  have "r = r''" sorry
+
+  obtain v1' v2' where
+    "ctxt', None \<turnstile> \<langle>ELit (LPerm q'); \<omega>\<rangle> [\<Down>]\<^sub>t Val v1'" and
+    "ctxt', None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2'" and
+    "eval_binop_lazy v1' Mult = None" and
+    2: "eval_binop False v1' Mult v2' = BinopNormal (VPerm p'')"
+    using eval_p''
+    by (auto elim: RedBinop_case)
+
+  hence "v1' = VPerm q'"
+    by (metis TotalExpressions.RedLit_case extended_val.inject val_of_lit.simps(3))
+  hence "v1 = VPerm q"
+    by (metis 3 TotalExpressions.RedLit_case extended_val.inject val_of_lit.simps(3))
+
+  have "v2 = v2'" sorry
+
+  have 5: "p'' > 0 \<longleftrightarrow> p' > 0"
+    using 1 2
+    unfolding \<open>v1 = _\<close> \<open>v1' = _\<close> \<open>v2 = v2'\<close>[symmetric]
+    apply (cases v2; simp)
+    using \<open>q > 0\<close> \<open>q' > 0\<close> H.hyps(4) \<open>0 \<le> p''\<close> no_zero_divisors
+    by fastforce+
+
+  show ?case
+    apply (intro conjI)
+    using H(5) 4[unfolded \<open>r = r''\<close>[symmetric]] 5
+     apply (smt (verit, best) H.hyps(3,4) \<open>0 \<le> p''\<close> \<open>a'' = the_address r''\<close> \<open>r = r''\<close> positive_real_preal preal_not_0_gt_0 singleton_mh.simps)
+    by (simp add: H.hyps(6) \<open>mp' = zero_mask\<close>)
+next
+  case (SatAccWildcard e_r r a f mh mp)
+  then show ?case sorry
+next
+  case (SatAccPred e_args v_args e_p p mh mp pid pdecl pbody)
+  then show ?case sorry
+next
+  case (SatAccPredWildcard e_args v_args mh pid mp pdecl pbody)
+  then show ?case sorry
+next
+  case (SatPure e mh mp)
+  then show ?case sorry
+next
+  case (SatStar mh mh\<^sub>1 mh\<^sub>2 mp mp\<^sub>1 mp\<^sub>2 A B)
+  then show ?case sorry
+next
+  case (SatImpTrue e mh mp A)
+  then show ?case sorry
+next
+  case (SatImpFalse e mh mp A)
+  then show ?case sorry
+next
+  case (SatCondTrue e mh mp A B)
+  then show ?case sorry
+next
+  case (SatCondFalse e mh mp B A)
+  then show ?case sorry
+qed
+
+
+lemma extcons_loc_set_equal:
+  assumes "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) q"
+      and "contains_heap_loc l (get_nm_total \<phi>)"
+      and "consistent_external_wrt_ploc ctxt' \<phi>' (pid,vs) q'"
+      and "q > 0"
+      and "q' > 0"
+      and "get_hh_total \<phi> = get_hh_total \<phi>'"
       and "program_total ctxt = program_total ctxt'"
     shows "contains_heap_loc l (get_nm_total \<phi>')"
-  sorry
+  using assms(1-6)
+proof (induction "get_nm_total \<phi>" arbitrary: \<phi> \<phi>' pid vs q q')
+  case (NM mh fnm)
+  then obtain pdecl pbody where
+    "ViperLang.predicates (program_total ctxt) pid = Some pdecl" and
+    "vals_well_typed (absval_interp_total ctxt) vs (ViperLang.predicate_decl.args pdecl)" and
+    "ViperLang.predicate_decl.body pdecl = Some pbody" and
+    sat1:
+    "sat ctxt
+         \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := 0 \<rparr> \<rparr>
+         (get_mh_total \<phi>) (get_mp_total \<phi>)
+         (syntactic_mult (Rep_preal q) pbody)" and
+    "consistent_external ctxt \<phi>" and
+    sat2:
+    "sat ctxt'
+         \<lparr> get_store_total = nth_option vs, get_trace_total = Map.empty, get_total_full = \<phi>'\<lparr> get_nm_total := 0 \<rparr> \<rparr>
+         (get_mh_total \<phi>') (get_mp_total \<phi>')
+         (syntactic_mult (Rep_preal q') pbody)" and
+    "consistent_external ctxt' \<phi>'"
+    by (fastforce simp: assms(7) elim: SatStep_case)
+
+  have \<phi>_eq: "\<phi>\<lparr> get_nm_total := 0 \<rparr> = \<phi>'\<lparr> get_nm_total := 0 \<rparr>"
+    using NM.prems(6)
+    by auto
+
+  have *: "\<And>l. get_mh_total \<phi> l > 0 \<longleftrightarrow> get_mh_total \<phi>' l > 0" and
+      **: "\<And>lp. get_mp_total \<phi> lp > 0 \<longleftrightarrow> get_mp_total \<phi>' lp > 0"
+     apply (rule sat_mh_mp_equiv[THEN conjunct1])
+        apply (rule sat1)
+       apply (rule sat2[unfolded \<phi>_eq[symmetric]])
+    using NM.prems(4,5) less_preal.rep_eq zero_preal.rep_eq
+      apply (simp, simp)
+    apply (rule sat_mh_mp_equiv[THEN conjunct2])
+       apply (rule sat1)
+      apply (rule sat2[unfolded \<phi>_eq[symmetric]])
+    using NM.prems(4,5) less_preal.rep_eq zero_preal.rep_eq
+    by auto
+
+  from NM.prems(2) show ?case
+  proof cases
+    case H: ContainsLocDirect
+    show ?thesis
+      apply (rule ContainsLocDirect)
+      using * H
+      by auto
+  next
+    case H: (ContainsLocNested lp p\<^sub>s nm\<^sub>s)
+    then obtain p\<^sub>s' nm\<^sub>s' where "get_fnm_nm (get_nm_total \<phi>') lp = Some (p\<^sub>s', nm\<^sub>s')"
+      using **
+      by (metis get_mp_0_implies_fnm_None get_mp_total.simps obtain_lpm_from_mp preal_not_0_gt_0)
+
+    hence extcons2: "consistent_external_wrt_ploc ctxt' (\<phi>'\<lparr> get_nm_total := nm\<^sub>s' \<rparr>) lp (Rep_posreal p\<^sub>s')"
+      by (metis SatAll_case \<open>consistent_external ctxt' \<phi>'\<close> surj_pair)
+    have extcons1: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm\<^sub>s \<rparr>) lp (Rep_posreal p\<^sub>s)"
+      by (metis H(1) SatAll_case \<open>consistent_external ctxt \<phi>\<close> surj_pair)
+
+    obtain pid\<^sub>s vs\<^sub>s where "lp = (pid\<^sub>s,vs\<^sub>s)"
+      by fastforce
+
+    show ?thesis
+      apply (rule ContainsLocNested)
+       apply fact
+      apply (rule NM.hyps(1)[where ?\<phi>'="\<phi>'\<lparr> get_nm_total := nm\<^sub>s' \<rparr>", simplified, of "Some (p\<^sub>s,nm\<^sub>s)" "(p\<^sub>s, nm\<^sub>s)" "\<phi>\<lparr> get_nm_total := nm\<^sub>s \<rparr>"])
+              apply (metis H(1) NM.hyps(2) get_fnm_nm.simps rangeI)
+             apply simp
+            apply simp
+           apply (rule extcons1[unfolded \<open>lp = _\<close>])
+          apply simp
+          apply fact
+         apply (rule extcons2[unfolded \<open>lp = _\<close>])
+      using Rep_posreal
+        apply (force, force)
+      apply simp
+      by fact
+  qed
+qed
 
 
 lemma extcons_loc_set_equal_rec:
@@ -3279,30 +3449,36 @@ lemma extcons_loc_set_equal_rec:
       and "nm = get_nm_total \<phi>"
       and "consistent_external_wrt_ploc ctxt' \<phi>' lp q"
       and "q > 0"
+      and "get_hh_total \<phi> = get_hh_total \<phi>'"
       and "program_total ctxt = program_total ctxt'"
     shows "contains_heap_loc l (get_nm_total \<phi>')"
-  using assms(2) assms(1,3)
+  using assms(2) assms(1,3,6)
 proof (induction arbitrary: \<phi> rule: pred_folds_perm.inducts)
   case (ContainsPermDirect nm p' nm')
   hence extcons1: "consistent_external_wrt_ploc ctxt (\<phi>\<lparr> get_nm_total := nm' \<rparr>) lp (Rep_posreal p')"
     by (metis SatAll_case surj_pair)
+  obtain pid vs where "lp = (pid,vs)"
+    by fastforce
   show ?case
     apply (rule extcons_loc_set_equal)
-         apply (rule extcons1)
-        apply simp
-        apply (rule ContainsPermDirect.hyps(2))
-       apply (rule assms(4))
+          apply (rule extcons1[unfolded \<open>lp = _\<close>])
+         apply simp
+         apply (rule ContainsPermDirect.hyps(2))
+        apply (rule assms(4)[unfolded \<open>lp = _\<close>])
     using Rep_posreal
-      apply blast
-    by fact+
+       apply blast
+      apply fact
+     apply (simp add: ContainsPermDirect.prems(3))
+    by fact
 next
   case (ContainsPermNested nm lp' p' nm')
   hence extcons1: "consistent_external ctxt (\<phi>\<lparr> get_nm_total := nm' \<rparr>)"
     by (metis SatAll_case SatStep_case surj_pair)
   show ?case
     apply (rule ContainsPermNested.IH)
-     apply (rule extcons1)
-    by simp
+      apply (rule extcons1)
+     apply simp
+    by (simp add: ContainsPermNested.prems(3))
 qed
 
 
@@ -3761,7 +3937,8 @@ proof (rule rel_intro; blast?)
              apply fact
             apply (rule extcons_loc_set_equal_rec[OF \<omega>_extcons loc_fold[simplified] _ fold_extcons, simplified])
             using PermPosConstExpr \<open>v_p_fold_vpr = p\<close> positive_real_preal preal_not_0_gt_0
-             apply force
+              apply force
+             apply (simp add: \<open>\<omega> = \<omega>'\<close>)
             using ProgEq total_context.simps(1) total_context.defs(1)
             by metis
         qed
