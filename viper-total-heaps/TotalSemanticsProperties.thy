@@ -930,6 +930,16 @@ qed
 *)
 
 
+lemma eval_context_irrelevant:
+  shows "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r \<Longrightarrow>
+         ctxt', \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r"
+    and "red_pure_exps_total ctxt \<omega>_def es \<omega> rs \<Longrightarrow>
+         red_pure_exps_total ctxt' \<omega>_def es \<omega> rs"
+   apply (induction rule: red_pure_exp_inducts)
+  by (blast intro: red_pure_exp_intros)+
+
+
+
 
 subsection \<open>\<^const>\<open>sat\<close> Properties\<close>
 

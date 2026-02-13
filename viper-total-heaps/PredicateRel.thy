@@ -3288,7 +3288,7 @@ proof (induction arbitrary: A mh' mp' B')
     by (auto elim: RedBinop_case)
 
   obtain r'' p'' a'' where
-    "ctxt', None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r'')" and
+    eval_r'': "ctxt', None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r'')" and
     eval_p'': "ctxt', None \<turnstile> \<langle>Binop (ELit (LPerm q')) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p'')" and
     "a'' = the_address r''" and
     "p'' \<ge> 0" and
@@ -3297,11 +3297,13 @@ proof (induction arbitrary: A mh' mp' B')
     using H.prems(2)[unfolded \<open>B' = _\<close> \<open>A = _\<close>, simplified]
     by (auto elim: SatAcc_case)
 
-  have "r = r''" sorry
+  have "r = r''"
+    using eval_context_irrelevant H.hyps(1) eval_r'' eval_is_deterministic_single
+    by fastforce
 
   obtain v1' v2' where
     "ctxt', None \<turnstile> \<langle>ELit (LPerm q'); \<omega>\<rangle> [\<Down>]\<^sub>t Val v1'" and
-    "ctxt', None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2'" and
+    eval_v2': "ctxt', None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2'" and
     "eval_binop_lazy v1' Mult = None" and
     2: "eval_binop False v1' Mult v2' = BinopNormal (VPerm p'')"
     using eval_p''
@@ -3312,7 +3314,9 @@ proof (induction arbitrary: A mh' mp' B')
   hence "v1 = VPerm q"
     by (metis 3 TotalExpressions.RedLit_case extended_val.inject val_of_lit.simps(3))
 
-  have "v2 = v2'" sorry
+  have "v2 = v2'"
+    using eval_context_irrelevant eval_is_deterministic_single eval_v2' eval_e_p
+    by blast
 
   have 5: "p'' > 0 \<longleftrightarrow> p' > 0"
     using 1 2
