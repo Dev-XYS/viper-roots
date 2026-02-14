@@ -118,6 +118,7 @@ inductive_cases SatAcc_case: "sat ctxt \<omega> mh mp (Atomic (Acc e_r f (PureEx
 inductive_cases SatAccWildcard_case: "sat ctxt \<omega> mh mp (Atomic (Acc e_r f Wildcard))"
 inductive_cases SatAccPred_case: "sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args (PureExp e_p)))"
 inductive_cases SatAccPredWildcard_case: "sat ctxt \<omega> mh mp (Atomic (AccPredicate pred_id e_args Wildcard))"
+inductive_cases SatPure_case: "sat ctxt \<omega> mh mp (Atomic (Pure e))"
 inductive_cases SatImp_case: "sat ctxt \<omega> mh mp (Imp e A)"
 inductive_cases SatCond_case: "sat ctxt \<omega> mh mp (CondAssert e A B)"
 inductive_cases SatImpureAnd_case: "sat ctxt \<omega> mh mp (ImpureAnd A B)"

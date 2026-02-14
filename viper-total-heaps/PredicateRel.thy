@@ -3304,7 +3304,6 @@ proof (induction arbitrary: A mh' mp' B')
   obtain v1' v2' where
     "ctxt', None \<turnstile> \<langle>ELit (LPerm q'); \<omega>\<rangle> [\<Down>]\<^sub>t Val v1'" and
     eval_v2': "ctxt', None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2'" and
-    "eval_binop_lazy v1' Mult = None" and
     2: "eval_binop False v1' Mult v2' = BinopNormal (VPerm p'')"
     using eval_p''
     by (auto elim: RedBinop_case)
@@ -3327,24 +3326,135 @@ proof (induction arbitrary: A mh' mp' B')
 
   show ?case
     apply (intro conjI)
-    using H(5) 4[unfolded \<open>r = r''\<close>[symmetric]] 5
-     apply (smt (verit, best) H.hyps(3,4) \<open>0 \<le> p''\<close> \<open>a'' = the_address r''\<close> \<open>r = r''\<close> positive_real_preal preal_not_0_gt_0 singleton_mh.simps)
+     apply (smt (verit, best) "4" "5" H.hyps(3,4,5) \<open>0 \<le> p''\<close> \<open>a'' = _\<close> \<open>r = r''\<close> positive_real_preal preal_not_0_gt_0 singleton_mh.simps)
     by (simp add: H.hyps(6) \<open>mp' = zero_mask\<close>)
 next
-  case (SatAccWildcard e_r r a f mh mp)
-  then show ?case sorry
+  case H: (SatAccWildcard e_r r a f mh mp)
+  have "A = Atomic (Acc e_r f Wildcard)"
+    using H.prems(1)
+    apply (cases "(q,A)" rule: syntactic_mult.cases; simp?)
+    apply (case_tac e_p)
+    using assms(5)
+    by auto
+
+  obtain r' a' where
+    eval_r': "ctxt', None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r')" and
+    "a' = the_address r'"
+    "is_singleton_mh (a',f) mh'"
+    "mp' = zero_mask"
+    using H.prems(2)[unfolded \<open>B' = _\<close> \<open>A = _\<close>, simplified] \<open>q' > 0\<close>
+    by (fastforce elim: SatAccWildcard_case)
+
+  have "r = r'"
+    by (meson H.hyps(1) ValueAndBasicState.val.inject(4) eval_r' eval_context_irrelevant(1) eval_is_deterministic_single extended_val.inject)
+
+  then show ?case
+    by (metis H.hyps(2,4,5) \<open>a' = the_address r'\<close> \<open>is_singleton_mh (a', f) mh'\<close> \<open>mp' = zero_mask\<close> is_singleton_mh.simps singleton_mh.simps)
 next
-  case (SatAccPred e_args v_args e_p p mh mp pid pdecl pbody)
-  then show ?case sorry
+  case H: (SatAccPred e_args v_args e_p' p' mh mp pid pdecl pbody)
+  obtain e_p where "A = Atomic (AccPredicate pid e_args (PureExp e_p))" and "e_p' = Binop (ELit (LPerm q)) Mult e_p"
+    using H.prems(1)
+    apply (cases "(q,A)" rule: syntactic_mult.cases; simp?)
+    apply (case_tac e_p)
+    using assms(5)
+    by auto
+
+  obtain v_args'' p'' where
+    eval_args'': "red_pure_exps_total ctxt' None e_args \<omega> (Some v_args'')" and
+    eval_p'': "ctxt', None \<turnstile> \<langle>Binop (ELit (LPerm q')) Mult e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p'')" and
+    "p'' \<ge> 0" and
+    "mh' = zero_mask" and
+    "mp' = singleton_mp (pid,v_args'') (Abs_preal p'')"
+    using H.prems(2)[unfolded \<open>B' = _\<close> \<open>A = _\<close>, simplified]
+    by (auto elim: SatAccPred_case)
+
+  obtain v1 v2 where
+    eval_v1: "ctxt, None \<turnstile> \<langle>ELit (LPerm q); \<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and
+    eval_e_p: "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and
+    1: "eval_binop False v1 Mult v2 = BinopNormal (VPerm p')"
+    using H.hyps(2)[unfolded \<open>e_p' = _\<close>]
+    by (auto elim: RedBinop_case)
+
+  obtain v1' v2' where
+    eval_v1': "ctxt', None \<turnstile> \<langle>ELit (LPerm q'); \<omega>\<rangle> [\<Down>]\<^sub>t Val v1'" and
+    eval_v2': "ctxt', None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2'" and
+    2: "eval_binop False v1' Mult v2' = BinopNormal (VPerm p'')"
+    using eval_p''
+    by (auto elim: RedBinop_case)
+
+  have "v_args = v_args''"
+    using H.hyps(1) eval_args'' eval_context_irrelevant(2) eval_is_deterministic(2)
+    by blast
+
+  have "v1 = VPerm q"
+    by (metis TotalExpressions.RedLit_case eval_v1 extended_val.inject val_of_lit.simps(3))
+  have "v1' = VPerm q'"
+    by (metis TotalExpressions.RedLit_case eval_v1' extended_val.inject val_of_lit.simps(3))
+
+  have "v2 = v2'"
+    using eval_context_irrelevant eval_is_deterministic_single eval_v2' eval_e_p
+    by blast
+
+  have 3: "p'' > 0 \<longleftrightarrow> p' > 0"
+    using 1 2
+    unfolding \<open>v1 = _\<close> \<open>v1' = _\<close> \<open>v2 = v2'\<close>[symmetric]
+    apply (cases v2; simp)
+    using \<open>q > 0\<close> \<open>q' > 0\<close> \<open>0 \<le> p''\<close> H.hyps(3) no_zero_divisors
+    by fastforce+
+
+  show ?case
+    apply (intro conjI)
+    using H.hyps(4) \<open>mh' = zero_mask\<close>
+     apply force
+    using 3 H.hyps(3,5) \<open>0 \<le> p''\<close> \<open>mp' = _\<close> \<open>v_args = v_args''\<close> positive_real_preal pperm_pnone_pgt
+    by auto
 next
-  case (SatAccPredWildcard e_args v_args mh pid mp pdecl pbody)
-  then show ?case sorry
+  case H: (SatAccPredWildcard e_args v_args mh pid mp pdecl pbody)
+  have "A = Atomic (AccPredicate pid e_args Wildcard)"
+    using H.prems(1)
+    apply (cases "(q,A)" rule: syntactic_mult.cases; simp?)
+    apply (case_tac e_p)
+    using assms(5)
+    by auto
+
+  obtain v_args' where
+    eval_args': "red_pure_exps_total ctxt' None e_args \<omega> (Some v_args')" and
+    "mh' = zero_mask" and
+    "is_singleton_mp (pid,v_args') mp'"
+    using H.prems(2)[unfolded \<open>B' = _\<close> \<open>A = _\<close>, simplified] \<open>q' > 0\<close>
+    by (fastforce elim: SatAccPredWildcard_case)
+
+  have "v_args = v_args'"
+    using H.hyps(1) eval_args' eval_context_irrelevant(2) eval_is_deterministic(2)
+    by blast
+
+  then show ?case
+    by (metis H.hyps(2,3) \<open>is_singleton_mp (pid, v_args') mp'\<close> \<open>mh' = zero_mask\<close> is_singleton_mp.simps singleton_mp.elims)
 next
-  case (SatPure e mh mp)
-  then show ?case sorry
+  case H: (SatPure e mh mp)
+  moreover hence "A = Atomic (Pure e)"
+    by (cases "(q,A)" rule: syntactic_mult.cases; simp?)
+  moreover have "mh' = zero_mask" and "mp' = zero_mask"
+    using H.prems(2)[unfolded \<open>B' = _\<close> \<open>A = _\<close>]
+    by (auto elim: SatPure_case)
+  ultimately show ?case
+    by fastforce
 next
-  case (SatStar mh mh\<^sub>1 mh\<^sub>2 mp mp\<^sub>1 mp\<^sub>2 A B)
-  then show ?case sorry
+  case H: (SatStar mh mh\<^sub>1 mh\<^sub>2 mp mp\<^sub>1 mp\<^sub>2 C D)
+  obtain A1 A2 where "A = A1 && A2" and "C = syntactic_mult q A1" and "D = syntactic_mult q A2"
+    using H.prems(1)
+    by (cases "(q,A)" rule: syntactic_mult.cases; simp?)
+  then obtain mh\<^sub>1' mh\<^sub>2' mp\<^sub>1' mp\<^sub>2' where
+    3: "mh_split mh' mh\<^sub>1' mh\<^sub>2'" and
+    4: "mp_split mp' mp\<^sub>1' mp\<^sub>2'" and
+    1: "sat ctxt' \<omega> mh\<^sub>1' mp\<^sub>1' (syntactic_mult q' A1)" and
+    2: "sat ctxt' \<omega> mh\<^sub>2' mp\<^sub>2' (syntactic_mult q' A2)"
+    using H.prems(2)[unfolded \<open>B' = _\<close> \<open>A = _\<close>, simplified]
+    by (auto elim: SatStar_case)
+  show ?case
+    using H.IH(1)[OF \<open>C = _\<close> 1] H.IH(2)[OF \<open>D = _\<close> 2] 3 4 H.hyps(1,2)
+    apply (simp add: add_masks_def)
+    by (smt (verit, best) add_0 padd_pos preal_not_0_gt_0)
 next
   case (SatImpTrue e mh mp A)
   then show ?case sorry
