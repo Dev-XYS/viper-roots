@@ -3456,17 +3456,49 @@ next
     apply (simp add: add_masks_def)
     by (smt (verit, best) add_0 padd_pos preal_not_0_gt_0)
 next
-  case (SatImpTrue e mh mp A)
-  then show ?case sorry
+  case H: (SatImpTrue e mh mp C')
+  obtain C where "A = ViperLang.Imp e C" and "C' = syntactic_mult q C"
+    using H.prems(1)
+    by (cases "(q,A)" rule: syntactic_mult.cases; simp?)
+  have "sat ctxt' \<omega> mh' mp' (syntactic_mult q' C)"
+    using H.prems(2)[unfolded \<open>B' = _\<close> \<open>A = _\<close>, simplified] H.hyps(1)[THEN eval_context_irrelevant(1), THEN eval_is_deterministic_single]
+    by (auto elim: SatImp_case)
+  then show ?case
+    using H.IH \<open>C' = _\<close>
+    by presburger
 next
-  case (SatImpFalse e mh mp A)
-  then show ?case sorry
+  case H: (SatImpFalse e mh mp C')
+  obtain C where "A = ViperLang.Imp e C" and "C' = syntactic_mult q C"
+    using H.prems(1)
+    by (cases "(q,A)" rule: syntactic_mult.cases; simp?)
+  have "mh' = zero_mask" and "mp' = zero_mask"
+    using H.prems(2)[unfolded \<open>B' = _\<close> \<open>A = _\<close>, simplified] H.hyps(1)[THEN eval_context_irrelevant(1), THEN eval_is_deterministic_single]
+    by (auto elim: SatImp_case)
+  then show ?case
+    using H.hyps(2,3)
+    by presburger
 next
-  case (SatCondTrue e mh mp A B)
-  then show ?case sorry
+  case H: (SatCondTrue e mh mp C' D')
+  obtain C D where "A = ViperLang.CondAssert e C D" and "C' = syntactic_mult q C" and "D' = syntactic_mult q D"
+    using H.prems(1)
+    by (cases "(q,A)" rule: syntactic_mult.cases; simp?)
+  have "sat ctxt' \<omega> mh' mp' (syntactic_mult q' C)"
+    using H.prems(2)[unfolded \<open>B' = _\<close> \<open>A = _\<close>, simplified] H.hyps(1)[THEN eval_context_irrelevant(1), THEN eval_is_deterministic_single]
+    by (auto elim: SatCond_case)
+  then show ?case
+    using H.IH \<open>C' = _\<close>
+    by presburger
 next
-  case (SatCondFalse e mh mp B A)
-  then show ?case sorry
+  case H: (SatCondFalse e mh mp D' C')
+  obtain C D where "A = ViperLang.CondAssert e C D" and "C' = syntactic_mult q C" and "D' = syntactic_mult q D"
+    using H.prems(1)
+    by (cases "(q,A)" rule: syntactic_mult.cases; simp?)
+  have "sat ctxt' \<omega> mh' mp' (syntactic_mult q' D)"
+    using H.prems(2)[unfolded \<open>B' = _\<close> \<open>A = _\<close>, simplified] H.hyps(1)[THEN eval_context_irrelevant(1), THEN eval_is_deterministic_single]
+    by (auto elim: SatCond_case)
+  then show ?case
+    using H.IH \<open>D' = _\<close>
+    by presburger
 qed
 
 
@@ -3507,13 +3539,18 @@ proof (induction "get_nm_total \<phi>" arbitrary: \<phi> \<phi>' pid vs q q')
   have *: "\<And>l. get_mh_total \<phi> l > 0 \<longleftrightarrow> get_mh_total \<phi>' l > 0" and
       **: "\<And>lp. get_mp_total \<phi> lp > 0 \<longleftrightarrow> get_mp_total \<phi>' lp > 0"
      apply (rule sat_mh_mp_equiv[THEN conjunct1])
-        apply (rule sat1)
-       apply (rule sat2[unfolded \<phi>_eq[symmetric]])
+          apply (rule sat1)
+         apply simp
+        apply (rule sat2[unfolded \<phi>_eq[symmetric]])
     using NM.prems(4,5) less_preal.rep_eq zero_preal.rep_eq
-      apply (simp, simp)
+       apply (simp, simp)
+    using NM.prems(5) less_preal.rep_eq zero_preal.rep_eq
+     apply force
     apply (rule sat_mh_mp_equiv[THEN conjunct2])
-       apply (rule sat1)
-      apply (rule sat2[unfolded \<phi>_eq[symmetric]])
+         apply (rule sat1)
+        apply simp
+       apply (rule sat2[unfolded \<phi>_eq[symmetric]])
+      apply simp
     using NM.prems(4,5) less_preal.rep_eq zero_preal.rep_eq
     by auto
 
