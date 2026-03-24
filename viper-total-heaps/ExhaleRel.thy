@@ -711,39 +711,53 @@ qed
 subsection \<open>Field access predicate rule\<close>
 
 definition exhale_field_acc_rel_perm_success
-  where "exhale_field_acc_rel_perm_success ctxt_vpr StateCons \<omega> r p f \<equiv>
+  where "exhale_field_acc_rel_perm_success ctxt_vpr \<omega> r p f \<equiv>
           p \<ge> 0 \<and>
          (if r = Null then p = 0 else (Rep_preal (get_mh_total_full \<omega> (the_address r,f))) \<ge> p)"
 
 definition exhale_field_acc_rel_assms
-  where "exhale_field_acc_rel_assms ctxt StateCons e_r f e_p r p \<omega>0 \<omega>  \<equiv>
+  where "exhale_field_acc_rel_assms ctxt e_r f e_p r p \<omega>0 \<omega>  \<equiv>
             ctxt, Some \<omega>0 \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r) \<and>
             ctxt, Some \<omega>0 \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
 
 lemma exhale_field_acc_rel_assms_perm_eval:
-  assumes "exhale_field_acc_rel_assms ctxt StateCons e_r f e_p r p \<omega>0 \<omega>"
+  assumes "exhale_field_acc_rel_assms ctxt e_r f e_p r p \<omega>0 \<omega>"
   shows "ctxt, Some \<omega>0 \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
   using assms
   unfolding exhale_field_acc_rel_assms_def
   by blast
 
+lemma exhale_field_acc_rel_assms_perm_eval':
+  assumes "exhale_field_acc_rel_assms ctxt e_r f e_p r p \<omega>0 \<omega>"
+  shows "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+  using assms eval_with_None
+  unfolding exhale_field_acc_rel_assms_def
+  by blast
+
 lemma exhale_field_acc_rel_assms_ref_eval:
-  assumes "exhale_field_acc_rel_assms ctxt StateCons e_r f e_p r p \<omega>0 \<omega>"
+  assumes "exhale_field_acc_rel_assms ctxt e_r f e_p r p \<omega>0 \<omega>"
   shows "ctxt, Some \<omega>0 \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
   using assms
   unfolding exhale_field_acc_rel_assms_def
   by blast
 
+lemma exhale_field_acc_rel_assms_ref_eval':
+  assumes "exhale_field_acc_rel_assms ctxt e_r f e_p r p \<omega>0 \<omega>"
+  shows "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+  using assms eval_with_None
+  unfolding exhale_field_acc_rel_assms_def
+  by blast
+
 definition exhale_acc_normal_premise
-  where "exhale_acc_normal_premise ctxt StateCons e_r f e_p p r \<omega>0 \<omega> \<omega>' \<equiv>
-       exhale_field_acc_rel_assms ctxt StateCons e_r f e_p r p \<omega>0 \<omega>  \<and>
-       exhale_field_acc_rel_perm_success ctxt StateCons \<omega> r p f \<and>
+  where "exhale_acc_normal_premise ctxt e_r f e_p p r \<omega>0 \<omega> \<omega>' \<equiv>
+       exhale_field_acc_rel_assms ctxt e_r f e_p r p \<omega>0 \<omega>  \<and>
+       exhale_field_acc_rel_perm_success ctxt \<omega> r p f \<and>
        (if r = Null then \<omega>' = \<omega> else
               \<omega>' = dec_mh_loc_total_full \<omega> (the_address r,f) (Abs_preal p)
        )"
 
 lemma exhale_acc_normal_red_exhale:
-  assumes "exhale_acc_normal_premise ctxt StateCons e_r f e_p p r \<omega>0 \<omega> \<omega>'"
+  assumes "exhale_acc_normal_premise ctxt e_r f e_p p r \<omega>0 \<omega> \<omega>'"
   shows "red_exhale ctxt \<omega>0 (Atomic (Acc e_r f (PureExp e_p))) \<omega> (RNormal \<omega>')"
   apply (rule red_exhale_acc_normalI)
       apply (insert assms[simplified exhale_acc_normal_premise_def exhale_field_acc_rel_assms_def exhale_field_acc_rel_perm_success_def])
@@ -758,13 +772,13 @@ lemma exhale_rel_field_acc:
       and CorrectPermRel:
             "\<And>r p. rel_general (uncurry R) (R' r p)
                   (\<lambda> \<omega>0_\<omega> \<omega>0_\<omega>'. \<omega>0_\<omega> = \<omega>0_\<omega>' \<and> 
-                                  exhale_field_acc_rel_assms ctxt_vpr StateCons e_rcv_vpr f e_p r p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>)  \<and>
-                                  exhale_field_acc_rel_perm_success ctxt_vpr StateCons (snd \<omega>0_\<omega>) r p f)
-                  (\<lambda> \<omega>0_\<omega>. exhale_field_acc_rel_assms ctxt_vpr StateCons e_rcv_vpr f e_p r p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) \<and>
-                           \<not> exhale_field_acc_rel_perm_success ctxt_vpr StateCons  (snd \<omega>0_\<omega>) r p f)
+                                  exhale_field_acc_rel_assms ctxt_vpr e_rcv_vpr f e_p r p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>)  \<and>
+                                  exhale_field_acc_rel_perm_success ctxt_vpr (snd \<omega>0_\<omega>) r p f)
+                  (\<lambda> \<omega>0_\<omega>. exhale_field_acc_rel_assms ctxt_vpr e_rcv_vpr f e_p r p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) \<and>
+                           \<not> exhale_field_acc_rel_perm_success ctxt_vpr  (snd \<omega>0_\<omega>) r p f)
                   P ctxt \<gamma>2 \<gamma>3"    
       and UpdExhRel: "\<And>r p. rel_general (R' r p) (uncurry R) \<comment>\<open>Here, the simulation needs to revert back to R\<close>
-                      (\<lambda> \<omega>0_\<omega> \<omega>0_\<omega>'. fst \<omega>0_\<omega> = fst \<omega>0_\<omega>' \<and> exhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) (snd \<omega>0_\<omega>'))
+                      (\<lambda> \<omega>0_\<omega> \<omega>0_\<omega>'. fst \<omega>0_\<omega> = fst \<omega>0_\<omega>' \<and> exhale_acc_normal_premise ctxt_vpr e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) (snd \<omega>0_\<omega>'))
                       (\<lambda>_. False)
                       P ctxt \<gamma>3 \<gamma>'"
     shows "exhale_rel R R Q ctxt_vpr StateCons P ctxt (Atomic (Acc e_rcv_vpr f (PureExp e_p))) \<gamma> \<gamma>'"
@@ -785,7 +799,7 @@ proof (rule exhale_rel_intro_2)
     hence R2_conv:"uncurry R (\<omega>0, \<omega>) ns2"
       by simp
 
-    have BasicAssms: "exhale_field_acc_rel_assms ctxt_vpr StateCons e_rcv_vpr f e_p r p \<omega>0 \<omega>"
+    have BasicAssms: "exhale_field_acc_rel_assms ctxt_vpr e_rcv_vpr f e_p r p \<omega>0 \<omega>"
         unfolding exhale_field_acc_rel_assms_def
         using ExhAcc
         by blast
@@ -797,7 +811,7 @@ proof (rule exhale_rel_intro_2)
       assume "res = RNormal \<omega>'"
       with ExhAcc have PermCorrect: "0 \<le> p \<and> (if (r = Null) then (p = 0) else (mh (a, f) \<ge> Abs_preal p))"
         using exh_if_total_failure by fastforce \<comment>\<open>using exh_if_total_normal seems to be surprisingly slower\<close>
-      hence PermSuccess: "exhale_field_acc_rel_perm_success ctxt_vpr StateCons \<omega> r p f"
+      hence PermSuccess: "exhale_field_acc_rel_perm_success ctxt_vpr \<omega> r p f"
         unfolding exhale_field_acc_rel_perm_success_def
         using \<open>mh = _\<close> \<open>a = _\<close> Abs_preal_inverse less_eq_preal.rep_eq
         by auto
@@ -806,7 +820,7 @@ proof (rule exhale_rel_intro_2)
         by (metis fst_eqD snd_eqD)
 
       from ExhAcc BasicAssms PermSuccess \<open>res = RNormal \<omega>'\<close> have
-        NormalPremise: "exhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r \<omega>0 \<omega> \<omega>'"
+        NormalPremise: "exhale_acc_normal_premise ctxt_vpr e_rcv_vpr f e_p p r \<omega>0 \<omega> \<omega>'"
          unfolding exhale_acc_normal_premise_def
          using exh_if_total_normal_2 \<open>res = exh_if_total _ _\<close> \<open>res = RNormal \<omega>'\<close>
          by fastforce
@@ -851,7 +865,7 @@ assumes StateRel: "\<And> \<omega>0_\<omega> ns. R \<omega>0_\<omega> ns \<Longr
     FieldRelSingle: "field_rel_single Pr TyRep Tr f e_f_bpl \<tau>_bpl" and
     RcvRel: "exp_rel_vpr_bpl (state_rel Pr StateCons TyRep Tr (AuxPred(temp_perm \<mapsto> pred_eq (RealV p))) ctxt) ctxt_vpr ctxt e_rcv_vpr e_rcv_bpl"
 shows "rel_general R R' 
-                      (\<lambda> \<omega>0_\<omega> \<omega>0_\<omega>'. fst \<omega>0_\<omega> = fst \<omega>0_\<omega>' \<and> exhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) (snd \<omega>0_\<omega>'))
+                      (\<lambda> \<omega>0_\<omega> \<omega>0_\<omega>'. fst \<omega>0_\<omega> = fst \<omega>0_\<omega>' \<and> exhale_acc_normal_premise ctxt_vpr e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) (snd \<omega>0_\<omega>'))
                       (\<lambda>_. False)
                       P ctxt 
                       (BigBlock name ((Assign m_bpl m_upd_bpl) # cs) str tr, cont)
@@ -859,7 +873,7 @@ shows "rel_general R R'
 proof (rule rel_general_conseq_output,
        rule mask_upd_rel[OF StateRel _ WfTyRep TyInterp MaskUpdateWf MaskUpdateBpl MaskVar FieldRelSingle])
   fix \<omega>0_\<omega>def \<omega>' ns
-  assume "fst \<omega>0_\<omega>def = fst \<omega>' \<and> exhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def) (snd \<omega>')"
+  assume "fst \<omega>0_\<omega>def = fst \<omega>' \<and> exhale_acc_normal_premise ctxt_vpr e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def) (snd \<omega>')"
   moreover have "upd_mh_loc_total_full (snd \<omega>0_\<omega>def) (the_address r,f)
                    ((get_mh_total_full (snd \<omega>0_\<omega>def) (the_address r,f)) - (Abs_preal p)) =
                  dec_mh_loc_total_full (snd \<omega>0_\<omega>def) (the_address r,f) (Abs_preal p)"
@@ -874,7 +888,7 @@ proof (rule rel_general_conseq_output,
 next
   fix \<omega>0_\<omega>def \<omega>' ns
   assume R:"R \<omega>0_\<omega>def ns"
-  assume "fst \<omega>0_\<omega>def = fst \<omega>' \<and> exhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def) (snd \<omega>')"
+  assume "fst \<omega>0_\<omega>def = fst \<omega>' \<and> exhale_acc_normal_premise ctxt_vpr e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def) (snd \<omega>')"
   thus "red_expr_bpl ctxt e_rcv_bpl ns (AbsV (ARef r))"
     using RcvRel StateRel[OF R] eval_with_None
     unfolding exhale_acc_normal_premise_def exhale_field_acc_rel_assms_def
@@ -884,7 +898,7 @@ next
   assume R:"R \<omega>0_\<omega>def ns" and
         ExhPremise:
             "fst \<omega>0_\<omega>def = fst \<omega>' \<and> 
-            exhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def) (snd \<omega>')"
+            exhale_acc_normal_premise ctxt_vpr e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def) (snd \<omega>')"
 
   note StateRelInst = StateRel[OF R]
  
@@ -949,7 +963,7 @@ next
 next
   fix \<omega>0_\<omega>def \<omega>0_\<omega>def' ns a
   assume "R \<omega>0_\<omega>def ns" and
-         Aux: "fst \<omega>0_\<omega>def = fst \<omega>0_\<omega>def' \<and> exhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def')" and
+         Aux: "fst \<omega>0_\<omega>def = fst \<omega>0_\<omega>def' \<and> exhale_acc_normal_premise ctxt_vpr e_rcv_vpr f e_p p r (fst \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def) (snd \<omega>0_\<omega>def')" and
          "r = Address a" and
          ConsOn: "consistent_state_rel_opt (state_rel_opt Tr)"
 
@@ -1056,42 +1070,49 @@ definition pred_ty_correct_premise where
 
 
 definition exhale_pred_acc_rel_assms ::
-  "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> predicate_ident \<Rightarrow> pure_exp list \<Rightarrow> pure_exp \<Rightarrow>
+  "'a total_context \<Rightarrow> predicate_ident \<Rightarrow> pure_exp list \<Rightarrow> pure_exp \<Rightarrow>
    'a ValueAndBasicState.val list \<Rightarrow> real \<Rightarrow> 'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> bool"
-  where "exhale_pred_acc_rel_assms ctxt_vpr StateCons pid e_args e_p v_args v_p \<omega>0 \<omega> \<equiv>
+  where "exhale_pred_acc_rel_assms ctxt_vpr pid e_args e_p v_args v_p \<omega>0 \<omega> \<equiv>
             red_pure_exps_total ctxt_vpr (Some \<omega>0) e_args \<omega> (Some v_args) \<and>
             ctxt_vpr, Some \<omega>0 \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p) \<and>
             pred_ty_correct_premise ctxt_vpr pid v_args"
 
 definition exhale_pred_acc_rel_perm_success ::
-  "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> predicate_ident \<Rightarrow>
+  "'a total_context \<Rightarrow> 'a full_total_state \<Rightarrow> predicate_ident \<Rightarrow>
    'a ValueAndBasicState.val list \<Rightarrow> real \<Rightarrow> bool"
-  where "exhale_pred_acc_rel_perm_success ctxt_vpr StateCons \<omega> pred_id v_args v_p \<equiv>
+  where "exhale_pred_acc_rel_perm_success ctxt_vpr \<omega> pred_id v_args v_p \<equiv>
            v_p \<ge> 0 \<and> (Rep_preal (get_mp_total_full \<omega> (pred_id,v_args))) \<ge> v_p"
 
 lemma exhale_pred_acc_rel_assms_perm_eval:
-  assumes "exhale_pred_acc_rel_assms ctxt StateCons pred_id e_args e_p v_args v_p \<omega>0 \<omega>"
+  assumes "exhale_pred_acc_rel_assms ctxt pred_id e_args e_p v_args v_p \<omega>0 \<omega>"
   shows "ctxt, Some \<omega>0 \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
   using assms
   unfolding exhale_pred_acc_rel_assms_def
   by blast
 
+lemma exhale_pred_acc_rel_assms_perm_eval':
+  assumes "exhale_pred_acc_rel_assms ctxt pred_id e_args e_p v_args v_p \<omega>0 \<omega>"
+  shows "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
+  using assms eval_with_None
+  unfolding exhale_pred_acc_rel_assms_def
+  by blast
+
 lemma exhale_pred_acc_rel_assms_args_eval:
-  assumes "exhale_pred_acc_rel_assms ctxt StateCons pred_id e_args e_p v_args v_p \<omega>0 \<omega>"
+  assumes "exhale_pred_acc_rel_assms ctxt pred_id e_args e_p v_args v_p \<omega>0 \<omega>"
   shows "red_pure_exps_total ctxt (Some \<omega>0) e_args \<omega> (Some v_args)"
   using assms
   unfolding exhale_pred_acc_rel_assms_def
   by blast
 
 lemma exhale_pred_acc_rel_assms_args_1:
-  assumes "exhale_pred_acc_rel_assms ctxt StateCons pred_id [e_arg] e_p v_args v_p \<omega>0 \<omega>"
+  assumes "exhale_pred_acc_rel_assms ctxt pred_id [e_arg] e_p v_args v_p \<omega>0 \<omega>"
   shows "[v_args ! 0] = v_args"
   using assms
   unfolding exhale_pred_acc_rel_assms_def
   by (metis Some_Some_ifD nth_Cons_0 option.sel red_pure_exps_total_singleton)
 
 lemma exhale_pred_acc_rel_assms_args_eval_1:
-  assumes "exhale_pred_acc_rel_assms ctxt StateCons pred_id [e_arg] e_p v_args v_p \<omega>0 \<omega>"
+  assumes "exhale_pred_acc_rel_assms ctxt pred_id [e_arg] e_p v_args v_p \<omega>0 \<omega>"
   shows "ctxt, Some \<omega>0 \<turnstile> \<langle>e_arg; \<omega>\<rangle> [\<Down>]\<^sub>t Val (v_args ! 0)"
   using assms
   unfolding exhale_pred_acc_rel_assms_def
@@ -1099,9 +1120,9 @@ lemma exhale_pred_acc_rel_assms_args_eval_1:
   by fastforce
 
 definition exhale_pred_acc_normal_premise
-  where "exhale_pred_acc_normal_premise ctxt_vpr StateCons pred_id e_args e_p v_args v_p \<omega>0 \<omega> \<omega>' \<equiv>
-           exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args e_p v_args v_p \<omega>0 \<omega> \<and>
-           exhale_pred_acc_rel_perm_success ctxt_vpr StateCons \<omega> pred_id v_args v_p \<and>
+  where "exhale_pred_acc_normal_premise ctxt_vpr pred_id e_args e_p v_args v_p \<omega>0 \<omega> \<omega>' \<equiv>
+           exhale_pred_acc_rel_assms ctxt_vpr pred_id e_args e_p v_args v_p \<omega>0 \<omega> \<and>
+           exhale_pred_acc_rel_perm_success ctxt_vpr \<omega> pred_id v_args v_p \<and>
            \<omega>' = rm_from_lpm_total_full \<omega> (pred_id,v_args) (Abs_preal v_p)"
 
 
@@ -1115,16 +1136,16 @@ lemma exhale_rel_pred_acc:
             "\<And>v_args v_p.
                rel_general (uncurry R) (R' v_args v_p)
                  (\<lambda> \<omega>0_\<omega> \<omega>0_\<omega>'. \<omega>0_\<omega> = \<omega>0_\<omega>' \<and> 
-                    exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args v_p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) \<and>
-                    exhale_pred_acc_rel_perm_success ctxt_vpr StateCons (snd \<omega>0_\<omega>) pred_id v_args v_p)
+                    exhale_pred_acc_rel_assms ctxt_vpr pred_id e_args_vpr e_p_vpr v_args v_p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) \<and>
+                    exhale_pred_acc_rel_perm_success ctxt_vpr (snd \<omega>0_\<omega>) pred_id v_args v_p)
                  (\<lambda> \<omega>0_\<omega>.
-                    exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args v_p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) \<and>
-                    \<not> exhale_pred_acc_rel_perm_success ctxt_vpr StateCons (snd \<omega>0_\<omega>) pred_id v_args v_p)
+                    exhale_pred_acc_rel_assms ctxt_vpr pred_id e_args_vpr e_p_vpr v_args v_p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) \<and>
+                    \<not> exhale_pred_acc_rel_perm_success ctxt_vpr (snd \<omega>0_\<omega>) pred_id v_args v_p)
                  P ctxt_bpl \<gamma>\<^sub>2 \<gamma>\<^sub>3"
       and UpdExhRel:
             "\<And>v_args v_p.
                rel_general (R' v_args v_p) (uncurry R) \<comment>\<open>Here, the simulation needs to revert back to R\<close>
-                 (\<lambda> \<omega>0_\<omega> \<omega>0_\<omega>'. fst \<omega>0_\<omega> = fst \<omega>0_\<omega>' \<and> exhale_pred_acc_normal_premise ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args v_p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) (snd \<omega>0_\<omega>'))
+                 (\<lambda> \<omega>0_\<omega> \<omega>0_\<omega>'. fst \<omega>0_\<omega> = fst \<omega>0_\<omega>' \<and> exhale_pred_acc_normal_premise ctxt_vpr pred_id e_args_vpr e_p_vpr v_args v_p (fst \<omega>0_\<omega>) (snd \<omega>0_\<omega>) (snd \<omega>0_\<omega>'))
                  (\<lambda>_. False)
                  P ctxt_bpl \<gamma>\<^sub>3 \<gamma>'"
     shows "exhale_rel R R Q ctxt_vpr StateCons P ctxt_bpl (Atomic (AccPredicate pred_id e_args_vpr (PureExp e_p_vpr))) \<gamma> \<gamma>'"

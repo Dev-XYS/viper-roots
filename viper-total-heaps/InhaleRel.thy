@@ -322,6 +322,13 @@ lemma inhale_field_acc_rel_assm_ref_eval:
   using assms
   by (simp add: inhale_acc_normal_premise_def)
 
+lemma inhale_field_acc_rel_assm_ref_eval':
+  assumes "inhale_acc_normal_premise ctxt StateCons e_r f e_p p r \<omega> \<omega>'"
+  shows "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r)"
+  using assms eval_with_None
+  unfolding inhale_acc_normal_premise_def
+  by blast
+
 lemma inhale_acc_normal_premise_red_inhale:
   assumes "inhale_acc_normal_premise ctxt StateCons e_r f e_p p r \<omega> \<omega>'"
   shows "red_inhale ctxt StateCons (Atomic (Acc e_r f (PureExp e_p))) \<omega> (RNormal \<omega>')"
@@ -358,7 +365,7 @@ proof (rule inhale_rel_intro_2)
     case (InhAcc r p W')
     hence "red_pure_exps_total ctxt_vpr (Some \<omega>) [e_rcv_vpr, e_p] \<omega> (Some [VRef r, VPerm p])"
       by (fastforce intro: red_pure_exp_intros)
-    from this obtain ns2 where "R \<omega> ns2" and Red2: "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>2, Normal ns2)"
+    then obtain ns2 where "R \<omega> ns2" and Red2: "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>2, Normal ns2)"
       using InhAcc exprs_wf_rel_normal_elim[OF WfSubexp] Rext0 \<open>Q _ \<omega>\<close>
       by blast
 
@@ -372,8 +379,8 @@ proof (rule inhale_rel_intro_2)
       using th_result_rel_normal InhAcc
       by blast+
 
-      with InhAcc and \<open>res = _\<close> have InhNormalPremise:"inhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r \<omega> \<omega>'"
-        unfolding inhale_acc_normal_premise_def 
+      with InhAcc and \<open>res = _\<close> have InhNormalPremise: "inhale_acc_normal_premise ctxt_vpr StateCons e_rcv_vpr f e_p p r \<omega> \<omega>'"
+        unfolding inhale_acc_normal_premise_def
         by presburger
     
       from InhAcc \<open>0 \<le> p\<close> obtain ns3 where "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>3, Normal ns3)" and "R' p \<omega> ns3" 

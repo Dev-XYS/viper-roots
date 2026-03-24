@@ -41,9 +41,7 @@ definition default_state_rel_options :: state_rel_options
 text \<open>The following record abstracts over elements in the Boogie encoding that are used to represent
 Viper counterparts.\<close>
 
-record 
-  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint debug", [t]))) THEN' *)
-  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint debug", [t]))) THEN' *)tr_vpr_bpl =
+record tr_vpr_bpl =
   heap_var :: Lang.vname
   mask_var :: Lang.vname
   heap_var_def :: Lang.vname

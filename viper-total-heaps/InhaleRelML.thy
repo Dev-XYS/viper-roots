@@ -147,7 +147,7 @@ ML \<open>
          info
          exp_rel_info
          lookup_aux_var_ty_thm
-         (fn ctxt => blast_tac ctxt)
+         (fn ctxt => Method.insert_tac ctxt @{thms eval_with_None} THEN' blast_tac ctxt)
 
   fun prove_perm_non_negative_inh_tac ctxt (info: basic_stmt_rel_info) lookup_aux_var_state_rel_thm =
       (Rmsg' "Inh Prove Perm Nonnegative - Init" (resolve_tac ctxt @{thms rel_propagate_pre_assert_2}) ctxt) THEN'
@@ -178,7 +178,7 @@ ML \<open>
                      intro_fact_lookup_null_const_tac ctxt (#tr_def_thm info),
                      intro_fact_lookup_aux_var_tac ctxt lookup_aux_var_state_rel_thm,
                      intro_fact_rcv_lookup_reduction ctxt exp_rel_info @{thm exp_rel_ref_access} 
-                                 (fn ctxt => resolve_tac ctxt @{thms inhale_field_acc_rel_assm_ref_eval} THEN' blast_tac ctxt)]) ctxt) THEN'
+                                 (fn ctxt => resolve_tac ctxt @{thms inhale_field_acc_rel_assm_ref_eval'} THEN' blast_tac ctxt)]) ctxt) THEN'
    (Rmsg' "Inh Assume Rcv Non-Null - Synthesize Assume Condition" (prove_red_expr_bpl_tac ctxt) ctxt) THEN'
    (* We add RedLit_case to deal with the case when the permission is a literal *)
    (Rmsg' "Inh Assume Rcv Non-Null - Prove Assume Condition Holds" (fast_force_tac (add_simps @{thms inhale_acc_normal_premise_def} (ctxt addEs @{thms TotalExpressions.RedLit_case}) )) ctxt)

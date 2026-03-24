@@ -763,16 +763,16 @@ lemma unfold_exhale_pred_rel:
             "\<And>v_args v_p.
                rel_general R (R' v_args v_p)
                  (\<lambda>\<omega> \<omega>'. \<omega> = \<omega>' \<and>
-                    exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args v_p \<omega> \<omega> \<and>
-                    exhale_pred_acc_rel_perm_success ctxt_vpr StateCons \<omega> pred_id v_args v_p)
+                    exhale_pred_acc_rel_assms ctxt_vpr pred_id e_args_vpr e_p_vpr v_args v_p \<omega> \<omega> \<and>
+                    exhale_pred_acc_rel_perm_success ctxt_vpr \<omega> pred_id v_args v_p)
                  (\<lambda>\<omega>.
-                    exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args v_p \<omega> \<omega> \<and>
-                    \<not> exhale_pred_acc_rel_perm_success ctxt_vpr StateCons \<omega> pred_id v_args v_p)
+                    exhale_pred_acc_rel_assms ctxt_vpr pred_id e_args_vpr e_p_vpr v_args v_p \<omega> \<omega> \<and>
+                    \<not> exhale_pred_acc_rel_perm_success ctxt_vpr \<omega> pred_id v_args v_p)
                  P ctxt_bpl \<gamma>\<^sub>2 \<gamma>\<^sub>3"
       and UpdExhRel:
             "\<And>v_args v_p.
                rel_general (R' v_args v_p) R  \<comment>\<open>Here, the simulation needs to revert back to R\<close>
-                 (\<lambda>\<omega> \<omega>'. exhale_pred_acc_normal_premise ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args v_p \<omega> \<omega> \<omega>')
+                 (\<lambda>\<omega> \<omega>'. exhale_pred_acc_normal_premise ctxt_vpr pred_id e_args_vpr e_p_vpr v_args v_p \<omega> \<omega> \<omega>')
                  (\<lambda>_. False)
                  P ctxt_bpl \<gamma>\<^sub>3 \<gamma>'"
     shows "rel_general R R
@@ -800,16 +800,16 @@ proof (rule rel_intro)
     using exprs_wf_rel_normal_elim[OF WfSubexp] \<open>R \<omega> ns\<close>
     by blast
 
-  have eval_ok: "exhale_pred_acc_rel_assms ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args p \<omega> \<omega>"
+  have eval_ok: "exhale_pred_acc_rel_assms ctxt_vpr pred_id e_args_vpr e_p_vpr v_args p \<omega> \<omega>"
     by (simp add: args_well_ty eval_e_args eval_e_p exhale_pred_acc_rel_assms_def pdecl pred_ty_correct_premise_def)
-  moreover have perm_ok: "exhale_pred_acc_rel_perm_success ctxt_vpr StateCons \<omega> pred_id v_args p"
+  moreover have perm_ok: "exhale_pred_acc_rel_perm_success ctxt_vpr \<omega> pred_id v_args p"
     unfolding exhale_pred_acc_rel_perm_success_def
     by (metis (full_types) Abs_preal_inverse \<open>RNormal \<omega>' = _\<close> \<open>mp = _\<close> exh_if_total_normal less_eq_preal.rep_eq mem_Collect_eq)
   ultimately obtain ns\<^sub>3 where "R' v_args p \<omega> ns\<^sub>3" and Red3: "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>2, Normal ns\<^sub>2) (\<gamma>\<^sub>3, Normal ns\<^sub>3)"
     using rel_success_elim[OF CorrectPermRel \<open>R \<omega> ns\<^sub>2\<close>]
     by blast
 
-  have "exhale_pred_acc_normal_premise ctxt_vpr StateCons pred_id e_args_vpr e_p_vpr v_args p \<omega> \<omega> \<omega>'"
+  have "exhale_pred_acc_normal_premise ctxt_vpr pred_id e_args_vpr e_p_vpr v_args p \<omega> \<omega> \<omega>'"
     unfolding exhale_pred_acc_normal_premise_def
     by (metis \<open>RNormal \<omega>' = _\<close> eval_ok perm_ok exh_if_total_normal_2 exhale_pred_def)
   then obtain ns' where "R \<omega>' ns'" and "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>3, Normal ns\<^sub>3) (\<gamma>', Normal ns')"
@@ -1060,7 +1060,7 @@ lemma exhale_rel_pred_acc_upd_rel:
     KFRelOff: "\<not> (kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr)))"
 
   shows "rel_general R R'
-           (\<lambda>\<omega> \<omega>'. exhale_pred_acc_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr p \<omega> \<omega> \<omega>')
+           (\<lambda>\<omega> \<omega>'. exhale_pred_acc_normal_premise ctxt_vpr pid e_args_vpr e_p_vpr v_args_vpr p \<omega> \<omega> \<omega>')
            (\<lambda>_. False) P ctxt_bpl
            (BigBlock name ((Assign m_bpl m_upd_bpl) # cs) str tr, cont)
            (BigBlock name cs str tr, cont)"
@@ -1071,7 +1071,7 @@ lemma exhale_rel_pred_acc_upd_rel:
 proof -
   fix \<omega> ns \<omega>'
   assume "R \<omega> ns"
-     and *: "exhale_pred_acc_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr p \<omega> \<omega> \<omega>'"
+     and *: "exhale_pred_acc_normal_premise ctxt_vpr pid e_args_vpr e_p_vpr v_args_vpr p \<omega> \<omega> \<omega>'"
 
   hence InitRel: "state_rel_def_same Pr StateCons TyRep Tr
                                      (AuxPred(temp_perm \<mapsto> pred_eq (RealV p))) ctxt_bpl \<omega> ns"

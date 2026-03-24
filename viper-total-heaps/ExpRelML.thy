@@ -166,14 +166,14 @@ ML \<open>
 \<comment> \<open>Prove a list of \<^const>\<open>exp_rel_vpr_bpl\<close>.\<close>
 fun exps_rel_tac_aux (info : exp_rel_info) ctxt t =
   case t of 
-    @{term "Trueprop"} $ (_ $ Const (@{const_name Nil}, _)) => blast_tac ctxt
+    @{term "Trueprop"} $ (_ $ Const (@{const_name Nil}, _) $ _) => blast_tac ctxt
   | _ => resolve_tac ctxt @{thms list_all2_Cons[THEN iffD2]} THEN'
          resolve_tac ctxt @{thms conjI} THEN'
          exp_rel_tac info ctxt THEN'
          exps_rel_tac info ctxt
 
 and exps_rel_tac (info : exp_rel_info) ctxt =
-  (* SUBGOAL (fn (t,_) => (writeln (@{make_string} (case Logic.strip_assums_concl t of @{term "Trueprop"} $ (_ $ t') => t')); raise TERM ("debug", []))) *)
+  (* SUBGOAL (fn (t,_) => (writeln (@{make_string} (Logic.strip_assums_concl t)); all_tac)) THEN' *)
   SUBGOAL (fn (t,i) => exps_rel_tac_aux info ctxt (Logic.strip_assums_concl t) i)
 
 \<close>

@@ -154,7 +154,7 @@ ML \<open>
          info
          exp_rel_info
          lookup_aux_var_ty_thm
-         (fn ctxt => (resolve_tac ctxt @{thms exhale_field_acc_rel_assms_perm_eval}) THEN' blast_tac ctxt)
+         (fn ctxt => (resolve_tac ctxt @{thms exhale_field_acc_rel_assms_perm_eval'}) THEN' fastforce_tac ctxt [])
 
   fun prove_perm_non_negative_exh_tac ctxt (info: basic_stmt_rel_info) lookup_aux_var_state_rel_thm =
       (Rmsg' "Exh Prove Perm Nonnegative 1" (resolve_tac ctxt @{thms rel_propagate_pre_assert_2}) ctxt) THEN'
@@ -181,7 +181,7 @@ ML \<open>
           (Rmsg' "Exh Prove Sufficient Perm - Introduce Facts Assert"
                 (EVERY' [ intro_fact_lookup_aux_var_tac ctxt lookup_aux_var_state_rel_thm,
                           intro_fact_mask_lookup_reduction ctxt info exp_rel_info exp_rel_perm_access_thm
-                                                           (fn ctxt => resolve_tac ctxt @{thms exhale_field_acc_rel_assms_ref_eval} THEN'
+                                                           (fn ctxt => resolve_tac ctxt @{thms exhale_field_acc_rel_assms_ref_eval'} THEN'
                                                                        fastforce_tac ctxt [])
                         ]) ctxt) THEN'
           (Rmsg' "Exh Prove Sufficient Perm - Red Assert" (prove_red_expr_bpl_tac ctxt |> SOLVED') ctxt) THEN'
@@ -247,7 +247,7 @@ ML \<open>
          info
          exp_rel_info
          lookup_aux_var_ty_thm
-         (fn ctxt => (resolve_tac ctxt @{thms exhale_pred_acc_rel_assms_perm_eval}) THEN' blast_tac ctxt)
+         (fn ctxt => (resolve_tac ctxt @{thms exhale_pred_acc_rel_assms_perm_eval'}) THEN' blast_tac ctxt)
 
   fun prove_perm_non_negative_pred_exh_tac ctxt (info: basic_stmt_rel_info) lookup_aux_var_state_rel_thm =
       (Rmsg' "Exh Prove Perm Nonnegative 1" (resolve_tac ctxt @{thms rel_propagate_pre_assert_2}) ctxt) THEN'

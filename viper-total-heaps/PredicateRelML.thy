@@ -91,7 +91,6 @@ fun inhale_rel_pred_acc_upd_rel_tac' ctxt (info: basic_stmt_rel_info) exp_rel_in
   (Rmsg' "inh pred acc upd MaskReadWf" (resolve_tac ctxt [ @{thm mask_read_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]]) ctxt THEN'
                                         assm_full_simp_solved_tac ctxt) THEN'
   (Rmsg' "inh pred acc upd PredType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
-  (* (SUBGOAL (fn (t,_) => raise TERM ("inh pred breakpoint", [t]))) THEN' *)
   (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac [@{thm update_mask_concrete_def}, #ty_repr_def_thm info] ctxt) ctxt) THEN'
   (Rmsg' "inh pred acc upd 3" (assm_full_simp_solved_with_thms_tac (#ty_repr_def_thm info::(@{thms update_mask_concrete_def read_mask_concrete_def})) ctxt) ctxt) THEN'
   (Rmsg' "inh pred acc upd PlocBpl" (simp_tac_with_thms [] ctxt) ctxt) THEN'
