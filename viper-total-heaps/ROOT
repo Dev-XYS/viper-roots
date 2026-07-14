@@ -1,7 +1,12 @@
-session TotalViper = ViperCommon +
+session TotalViperDeps in TotalViperDeps = ViperCommon +
   sessions
+    "HOL-Analysis"
     "HOL-Eisbach"
     Boogie_Lang
+  theories
+    Dependencies
+
+session TotalViper = TotalViperDeps +
   theories
     TotalViperState
     TotalStateUtil

@@ -7,6 +7,7 @@ session ViperCommon = "HOL" +
         PosPerm
         PosRat
         PredicatesUtil
+        StrictlyPosReal
         ValueAndBasicState
         ViperLang
         ViperTyping
