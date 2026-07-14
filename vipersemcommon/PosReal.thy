@@ -172,6 +172,7 @@ abbreviation pinv :: "preal \<Rightarrow> preal" where "pinv \<equiv> inverse"
 abbreviation (input) pdiv :: "preal \<Rightarrow> preal \<Rightarrow> preal" where "pdiv \<equiv> (/)"
 
 (* TODO: make the following abbreviations? *)
+(* TODO: make the following abbreviations? *)
 lift_definition pgte :: "preal \<Rightarrow> preal \<Rightarrow> bool" is "(\<ge>)" done
 lift_definition pgt :: "preal \<Rightarrow> preal \<Rightarrow> bool" is "(>)" done
 lift_definition ppos :: "preal \<Rightarrow> bool" is "\<lambda>p. p > 0" done

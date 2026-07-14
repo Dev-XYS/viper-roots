@@ -2373,7 +2373,8 @@ lemma substitute_expr_supported_pred:
     shows "no_perm_pure_exp (substitute_args_expr e eargs) \<and> no_old_pure_exp (substitute_args_expr e eargs) \<and> no_result_pure_exp (substitute_args_expr e eargs)"
   using assms
   apply (induction e)
-  by (simp_all add: list_all_length)
+                 apply (simp_all add: list_all_length)
+  by (simp add: pure_exp_pred.simps)
 
 
 lemma substitute_assertion_supported_pred:

@@ -22,14 +22,13 @@ lemma atomic_assert_pred_subexp:
   using assms
   apply (cases atm)
     apply simp_all  
-  apply (metis atomic_assert_pred_rec.simps(2) atomic_assert_pred_rec.simps(3) list.pred_inject(1) list.pred_inject(2) pure_exp_pred.simps sub_expressions_exp_or_wildcard.cases sub_expressions_exp_or_wildcard.simps(1) sub_expressions_exp_or_wildcard.simps(2))
-  by (metis atomic_assert_pred_rec.simps(4) atomic_assert_pred_rec.simps(5) list.pred_inject(1) list.pred_inject(2) sub_expressions_exp_or_wildcard.cases sub_expressions_exp_or_wildcard.simps(1) sub_expressions_exp_or_wildcard.simps(2))
+  using atomic_assert_pred_rec.elims(2) by fastforce+
 
 lemma assert_pred_atomic_subexp:
   assumes "assert_pred p_assert p_atm p_e (Atomic atm)"
   shows "list_all (pure_exp_pred p_e) (sub_expressions_atomic atm)"
   using assms atomic_assert_pred_subexp
-  by simp
+  by auto
 
 lemma assert_pred_subexp:
   assumes "assert_pred p_assert p_atm p_e A"
@@ -1201,9 +1200,9 @@ next
     by simp
   moreover from InhAccPred have
     SubExpConstraint: "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) (e_args) \<and> no_perm_pure_exp e_p \<and> no_unfolding_pure_exp e_p"
-    proof (simp add: assert_pred_atomic_subexp del: pure_exp_pred.simps)
+    proof (simp add: assert_pred_atomic_subexp)
       from InhAccPred have "list_all (\<lambda>e. no_perm_pure_exp e) e_args \<and> list_all (\<lambda>e. no_unfolding_pure_exp e) e_args"
-        by (simp add: assert_pred_atomic_subexp del: pure_exp_pred.simps)
+        by (simp add: assert_pred_atomic_subexp)
       thus "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) e_args"
         by (simp add: list_all_length)
     qed
@@ -1318,9 +1317,9 @@ next
     by simp
   moreover from InhAccPredWildcard have
     SubExpConstraint: "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) e_args"
-    proof (simp add: assert_pred_atomic_subexp del: pure_exp_pred.simps)
+    proof (simp add: assert_pred_atomic_subexp)
       from InhAccPredWildcard have "list_all (\<lambda>e. no_perm_pure_exp e) e_args \<and> list_all (\<lambda>e. no_unfolding_pure_exp e) e_args"
-        by (simp add: assert_pred_atomic_subexp del: pure_exp_pred.simps)
+        by (simp add: assert_pred_atomic_subexp)
       thus "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) e_args"
         by (simp add: list_all_length)
     qed
@@ -2738,8 +2737,7 @@ next
 next
   case (InhSubExpFailure A \<omega>)
   moreover from this have "list_all supported_pure_exp (direct_sub_expressions_assertion A)"
-    using assert_pred_subexp
-    by (metis list.pred_mono_strong pure_exp_pred.simps)
+    using assert_pred_subexp by (metis)
   moreover have
     FreeVar: "\<And>x. x \<in> \<Union> (set (map free_var_pure_exp (direct_sub_expressions_assertion A))) \<Longrightarrow> get_store_total \<omega> x = get_store_total \<omega>2 x" 
     using free_var_assertion_map_free_var_pure_exp InhSubExpFailure

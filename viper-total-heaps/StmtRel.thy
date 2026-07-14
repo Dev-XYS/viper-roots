@@ -350,6 +350,101 @@ qed (insert assms, simp_all)
 
 subsection \<open>Field assignment relation\<close>
 
+definition field_assign_normal_premise
+  where "field_assign_normal_premise ctxt StateCons e_r f e \<omega> addr v ty \<equiv> 
+    ctxt, (Some \<omega>) \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address addr)) \<and>
+    (addr,f) \<in> get_writeable_locs \<omega> \<and>
+    ctxt, (Some \<omega>)  \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v \<and>
+    declared_fields (program_total ctxt) f = Some ty \<and>
+    get_type (absval_interp_total ctxt) v = ty"
+
+lemma field_assign_rel_general:
+  assumes SubExpsWfRel: "exprs_wf_rel (rel_ext_eq R) ctxt_vpr StateCons P ctxt [rcv_vpr,rhs_vpr] \<gamma> \<gamma>1"
+      and WriteableLocRel: "wf_rel_fieldacc get_writeable_locs (rel_ext_eq R) (rel_ext_eq R) ctxt_vpr StateCons P ctxt rcv_vpr f_vpr 
+                 \<gamma>1 \<gamma>2"
+      and UpdHeapRel: "rel_general R R (\<lambda>\<omega> \<omega>'. \<exists>\<tau>_vpr addr v. \<omega>' = upd_hh_loc_total_full \<omega> (addr,f_vpr) v \<and>
+                                                       field_assign_normal_premise ctxt_vpr StateCons rcv_vpr f_vpr rhs_vpr \<omega> addr v \<tau>_vpr) (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'"
+    shows "stmt_rel R R ctxt_vpr StateCons \<Lambda>_vpr P ctxt (ViperLang.FieldAssign rcv_vpr f_vpr rhs_vpr) \<gamma> \<gamma>'"
+proof (rule stmt_rel_intro)
+  let ?Rext = "rel_ext_eq R"
+  fix \<omega> ns \<omega>'
+  assume "R \<omega> ns"
+  hence "?Rext \<omega> \<omega> ns" by simp
+
+  assume "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (FieldAssign rcv_vpr f_vpr rhs_vpr) \<omega> (RNormal \<omega>')"
+  thus "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R \<omega>' ns'"
+    proof cases
+      case (RedFieldAssign addr v ty_vpr)
+      hence "red_pure_exps_total ctxt_vpr (Some \<omega>) [rcv_vpr, rhs_vpr] \<omega> (Some [VRef (Address addr), v])"
+        by (auto intro!: TotalExpressions.RedExpListCons TotalExpressions.RedExpListNil)
+
+      from this obtain ns1 where
+        "?Rext \<omega> \<omega> ns1" and "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>1, Normal ns1)"
+        using exprs_wf_rel_normal_elim[OF SubExpsWfRel \<open>?Rext \<omega> \<omega> ns\<close>]
+        by blast
+      with RedFieldAssign obtain ns3 where "?Rext \<omega> \<omega> ns3" and RedNs3: "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>2, Normal ns3)" 
+        using wf_rel_normal_elim[OF WriteableLocRel] red_ast_bpl_transitive
+        by blast
+      hence "R \<omega> ns3" 
+        by simp
+  
+      have "field_assign_normal_premise ctxt_vpr StateCons rcv_vpr f_vpr rhs_vpr \<omega> addr v ty_vpr"
+        using RedFieldAssign
+        unfolding field_assign_normal_premise_def
+        by fastforce
+  
+      with rel_success_elim[OF UpdHeapRel \<open>R \<omega> ns3\<close>] obtain ns4
+        where "red_ast_bpl P ctxt (\<gamma>2, Normal ns3) (\<gamma>', Normal ns4) \<and> R \<omega>' ns4"
+        unfolding \<open>\<omega>' = _\<close>
+        by blast
+  
+      thus ?thesis
+        using RedNs3 red_ast_bpl_transitive
+        by blast     
+  qed
+next
+  let ?Rext = "rel_ext_eq R"
+  fix \<omega> ns 
+  assume "R \<omega> ns"
+  hence "?Rext \<omega> \<omega> ns" by simp
+  assume "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (FieldAssign rcv_vpr f_vpr rhs_vpr) \<omega> RFailure"
+  thus "\<exists>c'. snd c' = Failure \<and> red_ast_bpl P ctxt (\<gamma>, Normal ns) c'"
+  proof cases
+    case (RedFieldAssignFailure r v)
+    hence "red_pure_exps_total ctxt_vpr (Some \<omega>) [rcv_vpr, rhs_vpr] \<omega> (Some [VRef r, v])"
+      by (auto intro!: TotalExpressions.RedExpListCons TotalExpressions.RedExpListNil)
+      from this obtain ns1 where
+        "?Rext \<omega> \<omega> ns1" and "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>1, Normal ns1)"
+        using exprs_wf_rel_normal_elim[OF SubExpsWfRel \<open>?Rext \<omega> \<omega> ns\<close>]
+        by blast   
+    with RedFieldAssignFailure obtain \<gamma>' where "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Failure)"
+      using wf_rel_failure_elim[OF WriteableLocRel \<open>?Rext \<omega> \<omega> ns1\<close>] red_ast_bpl_transitive
+      by (metis (no_types, opaque_lifting) ref.exhaust ref.sel snd_conv surj_pair)
+    thus ?thesis
+      by (meson snd_conv)
+  next
+    case RedSubExpressionFailure
+    hence RedSubExpFailureAux: "red_pure_exps_total ctxt_vpr (Some \<omega>) [rcv_vpr, rhs_vpr] \<omega> None"
+      by simp
+    thus ?thesis
+      using exprs_wf_rel_failure_elim[OF SubExpsWfRel \<open>?Rext \<omega> \<omega> ns\<close>]
+      by blast
+  qed
+qed
+
+lemma field_assign_rel_general_2:
+  assumes RcvWfRel: "expr_wf_rel (rel_ext_eq R) ctxt_vpr StateCons P ctxt rcv_vpr \<gamma> \<gamma>1"
+      and RhsWfRel: "expr_wf_rel (rel_ext_eq R) ctxt_vpr StateCons P ctxt rhs_vpr \<gamma>1 \<gamma>2"
+      and WriteableLocRel: "wf_rel_fieldacc get_writeable_locs (rel_ext_eq R) (rel_ext_eq R) ctxt_vpr StateCons P ctxt rcv_vpr f_vpr 
+                 \<gamma>2 \<gamma>3"
+      and UpdHeapRel: "rel_general R R (\<lambda>\<omega> \<omega>'. \<exists>\<tau>_vpr addr v. \<omega>' = upd_hh_loc_total_full \<omega> (addr,f_vpr) v \<and>
+                                                       field_assign_normal_premise ctxt_vpr StateCons rcv_vpr f_vpr rhs_vpr \<omega> addr v \<tau>_vpr) (\<lambda>_. False) P ctxt \<gamma>3 \<gamma>'"
+    shows "stmt_rel R R ctxt_vpr StateCons \<Lambda>_vpr P ctxt (ViperLang.FieldAssign rcv_vpr f_vpr rhs_vpr) \<gamma> \<gamma>'"
+  apply (rule field_assign_rel_general[OF _ WriteableLocRel UpdHeapRel])
+  apply (rule exprs_wf_rel_alt_implies_exprs_wf_rel)
+  using RcvWfRel RhsWfRel
+  by (auto simp del: Product_Type.split_paired_Ex)
+
 lemma field_assign_rel:
   assumes WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and Consistent: "StateConsEnabled \<Longrightarrow> (\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and>
@@ -414,71 +509,71 @@ proof (rule stmt_rel_intro)
       using \<open>declared_fields _ f_vpr = Some ty_vpr\<close> DeclaredFieldsSome
       by simp
 
-   moreover have NewValTypeBpl: "type_of_vbpl_val TyRep (val_rel_vpr_bpl v) = \<tau>_bpl"
-     using vpr_to_bpl_val_type[OF \<open>get_type _ v = ty_vpr\<close> \<open>vpr_to_bpl_ty TyRep ty_vpr = Some \<tau>_bpl\<close>]
-           \<open>domain_type _ = _\<close>
-     by simp
+    moreover have NewValTypeBpl: "type_of_vbpl_val TyRep (val_rel_vpr_bpl v) = \<tau>_bpl"
+      using vpr_to_bpl_val_type[OF \<open>get_type _ v = ty_vpr\<close> \<open>vpr_to_bpl_ty TyRep ty_vpr = Some \<tau>_bpl\<close>]
+        \<open>domain_type _ = _\<close>
+      by fastforce
 
-   moreover from RedStmt have
-     "StateConsEnabled \<Longrightarrow> StateCons \<omega>' \<and>
+    moreover from RedStmt have
+      "StateConsEnabled \<Longrightarrow> StateCons \<omega>' \<and>
         consistent_external ctxt_vpr (get_total_full \<omega>')"
-     using total_consistency_red_stmt_preserve[OF WfConsistency] Consistent[OF _ \<open>R \<omega> ns\<close>]
-           total_consistency_ctxt_wf[OF WfConsistency]
-           total_consistency_red_stmt_extcons_preserve[OF WfConsistency]
-     by blast
+      using total_consistency_red_stmt_preserve[OF WfConsistency] Consistent[OF _ \<open>R \<omega> ns\<close>]
+        total_consistency_ctxt_wf[OF WfConsistency]
+        total_consistency_red_stmt_extcons_preserve[OF WfConsistency]
+      by blast
 
-   moreover from RedFieldAssign DomainTypeEq have "get_type (domain_type TyRep) v = \<tau>_vpr"
-     using DeclaredFieldsSome
-     by force
+    moreover from RedFieldAssign DomainTypeEq have "get_type (domain_type TyRep) v = \<tau>_vpr"
+      using DeclaredFieldsSome 
+      by force
 
-   ultimately obtain hb f_bpl_val
-     where
-           LookupTyHeapBpl: "lookup_var_ty (var_context ctxt) h_bpl = Some (TConSingle (THeapId TyRep))" and
-           LookupHeapVarBpl: "lookup_var (var_context ctxt) ns3  h_bpl = Some (AbsV (AHeap hb))" and
-           HeapWellTyBpl: "vbpl_absval_ty_opt TyRep (AHeap hb) = Some (THeapId TyRep, [])" and
-           HeapUpdWellTyBpl: "vbpl_absval_ty_opt TyRep (AHeap (hb( (Address addr,f_bpl_val) \<mapsto> (val_rel_vpr_bpl v) ))) = Some (THeapId TyRep, [])" and
-           LookupFieldVarBpl: "lookup_var (var_context ctxt) ns3 f_bpl = Some (AbsV (AField f_bpl_val))" and
-           FieldTyBpl: "field_ty_fun_opt TyRep f_bpl_val = Some ((TFieldId TyRep), [\<tau>_field_bpl, \<tau>_bpl])" and
-           "R \<omega>'
+    ultimately obtain hb f_bpl_val
+      where
+        LookupTyHeapBpl: "lookup_var_ty (var_context ctxt) h_bpl = Some (TConSingle (THeapId TyRep))" and
+        LookupHeapVarBpl: "lookup_var (var_context ctxt) ns3 h_bpl = Some (AbsV (AHeap hb))" and
+        HeapWellTyBpl: "vbpl_absval_ty_opt TyRep (AHeap hb) = Some (THeapId TyRep, [])" and
+        HeapUpdWellTyBpl: "vbpl_absval_ty_opt TyRep (AHeap (hb( (Address addr,f_bpl_val) \<mapsto> (val_rel_vpr_bpl v) ))) = Some (THeapId TyRep, [])" and
+        LookupFieldVarBpl: "lookup_var (var_context ctxt) ns3 f_bpl = Some (AbsV (AField f_bpl_val))" and
+        FieldTyBpl: "field_ty_fun_opt TyRep f_bpl_val = Some ((TFieldId TyRep), [\<tau>_field_bpl, \<tau>_bpl])" and
+        "R \<omega>'
                    (update_var (var_context ctxt) ns3 h_bpl
                    (AbsV (AHeap (hb( (Address addr,f_bpl_val) \<mapsto> (val_rel_vpr_bpl v) ))))
              )" (is "R _ ?ns_upd")
-     using RFieldAssign[OF \<open>R \<omega> ns3\<close>] \<open>\<omega>' = _\<close>
-     by metis
+      using RFieldAssign[OF \<open>R \<omega> ns3\<close>] \<open>\<omega>' = _\<close>
+      by metis
 
-   from RcvRel have RedRcvBpl: "red_expr_bpl ctxt rcv_bpl ns3 (AbsV (ARef (Address addr)))"
-     using \<open>?Rext \<omega> \<omega> ns3\<close> RedFieldAssign exp_rel_vpr_bpl_elim
-     by (metis (mono_tags, lifting) val_rel_vpr_bpl.simps(3) eval_with_None)
+    from RcvRel have RedRcvBpl: "red_expr_bpl ctxt rcv_bpl ns3 (AbsV (ARef (Address addr)))"
+      using \<open>?Rext \<omega> \<omega> ns3\<close> RedFieldAssign exp_rel_vpr_bpl_elim
+      by (metis (mono_tags, lifting) val_rel_vpr_bpl.simps(3) eval_with_None)
 
-   from RhsRel have RedRhsBpl: "red_expr_bpl ctxt rhs_bpl ns3 (val_rel_vpr_bpl v)"
-     using \<open>?Rext \<omega> \<omega> ns3\<close> RedFieldAssign exp_rel_vpr_bpl_elim
-     by (metis (mono_tags, lifting) eval_with_None)
+    from RhsRel have RedRhsBpl: "red_expr_bpl ctxt rhs_bpl ns3 (val_rel_vpr_bpl v)"
+      using \<open>?Rext \<omega> \<omega> ns3\<close> RedFieldAssign exp_rel_vpr_bpl_elim
+      by (metis (mono_tags, lifting) eval_with_None)
 
-   from HeapUpdWf have
+    from HeapUpdWf have
       RedHeapUpdBpl:
-     "red_expr_bpl ctxt (heap_upd_bpl (Lang.Var h_bpl) rcv_bpl (Lang.Var f_bpl) rhs_bpl [\<tau>_field_bpl, \<tau>_bpl])
+      "red_expr_bpl ctxt (heap_upd_bpl (Lang.Var h_bpl) rcv_bpl (Lang.Var f_bpl) rhs_bpl [\<tau>_field_bpl, \<tau>_bpl])
                              ns3 (AbsV (AHeap (hb( (Address addr,f_bpl_val) \<mapsto> (val_rel_vpr_bpl v) ))))"
-     apply (rule heap_update_wf_apply)
-     using  Semantics.RedVar[OF LookupHeapVarBpl]
-           apply simp
-          apply (rule HeapWellTyBpl)
-         apply (rule RedRcvBpl)
-     using Semantics.RedVar[OF LookupFieldVarBpl]
-        apply simp
-       apply (rule FieldTyBpl)
-      apply (rule RedRhsBpl)
-     apply (simp add: NewValTypeBpl)
-     done
+      apply (rule heap_update_wf_apply)
+      using Semantics.RedVar[OF LookupHeapVarBpl]
+            apply simp
+           apply (rule HeapWellTyBpl)
+          apply (rule RedRcvBpl)
+      using Semantics.RedVar[OF LookupFieldVarBpl]
+         apply simp
+        apply (rule FieldTyBpl)
+       apply (rule RedRhsBpl)
+      apply (simp add: NewValTypeBpl)
+      done
 
-   have "red_ast_bpl P ctxt
+    have "red_ast_bpl P ctxt
            ((BigBlock name (Assign h_bpl h_upd_bpl # cs) str tr, cont), Normal ns3)
            ((BigBlock name cs str tr, cont), Normal ?ns_upd)"
-     apply (rule red_ast_bpl_one_simple_cmd)
-     apply (rule Semantics.RedAssign)
-       apply (fastforce intro!: LookupTyHeapBpl)
-     using HeapUpdWellTyBpl \<open>type_interp ctxt = _\<close>
-      apply simp
-     by (fastforce intro: RedHeapUpdBpl simp: \<open>h_upd_bpl = _\<close>)
+          apply (rule red_ast_bpl_one_simple_cmd)
+          apply (rule Semantics.RedAssign)
+          apply (fastforce intro!: LookupTyHeapBpl)
+      using HeapUpdWellTyBpl \<open>type_interp ctxt = _\<close>
+          apply simp
+      by (fastforce intro: RedHeapUpdBpl simp: \<open>h_upd_bpl = _\<close>)
     thus ?thesis
       using RedNs3 \<open>R \<omega>' ?ns_upd\<close>
       using red_ast_bpl_transitive by blast
@@ -1024,7 +1119,7 @@ proof -
 
   moreover have "state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega>' ?ns2"
   proof (rule state_rel_heap_update_2[OF StateRel1])
-    show " \<omega> = \<omega> \<and> \<omega>' = \<omega>' \<and> heap_var Tr = heap_var_def Tr"
+    show "\<omega> = \<omega> \<and> \<omega>' = \<omega>' \<and> heap_var Tr = heap_var_def Tr"
       using WellDefSame
       by simp
   next
@@ -1131,18 +1226,18 @@ lemma assert_stmt_rel:
       before the assert is executed. The first disjunct expresses the original Viper state
       as the well-definedness state, which is correct since the exhale does not change the well-definedness
       state.\<close>
-      and ResetState: "rel_general (uncurry Rexh) (\<lambda>\<omega> ns. R (snd \<omega>) ns)
+      and ResetState: "rel_general (uncurry Rexh) (\<lambda>\<omega> ns. R' (snd \<omega>) ns) 
                                    (\<lambda> \<omega>1 \<omega>2. snd \<omega>2 = fst \<omega>1 \<and>
                                              red_exhale ctxt_vpr (fst \<omega>1) A (fst \<omega>1) (RNormal (snd \<omega>1)))
                                    (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'
-                      \<or> red_ast_bpl_rel R R P ctxt \<gamma> \<gamma>'"
+                      \<or> red_ast_bpl_rel R R' P ctxt \<gamma> \<gamma>'"
                  (is "?ResetFromExhale \<or> ?ResetFromStart")
-    shows "stmt_rel R R ctxt_vpr StateCons \<Lambda>_vpr P ctxt (ViperLang.Assert A) \<gamma> \<gamma>'"
+    shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt (ViperLang.Assert A) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro_2)
   fix \<omega> ns res
   assume "R \<omega> ns" and RedStmt: "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (stmt.Assert A) \<omega> res"
-
-  show "rel_vpr_aux R P ctxt \<gamma> \<gamma>' ns res"
+    
+  show "rel_vpr_aux R' P ctxt \<gamma> \<gamma>' ns res"
   proof (rule rel_vpr_aux_intro)
     fix \<omega>'
     assume "res = RNormal \<omega>'"
@@ -1157,11 +1252,11 @@ proof (rule stmt_rel_intro_2)
       by blast
 
     from disjE[OF ResetState]
-    show "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R \<omega>' ns'"
+    show "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
     proof (cases)
       case 1
-      with rel_success_elim[OF 1] \<open>Rexh \<omega> \<omega>_exh ns_exh\<close>
-      obtain ns' where "red_ast_bpl P ctxt (\<gamma>2, Normal ns_exh) (\<gamma>', Normal ns')" and "R \<omega> ns'"
+      with rel_success_elim[OF 1] \<open>Rexh \<omega> \<omega>_exh ns_exh\<close> 
+      obtain ns' where "red_ast_bpl P ctxt (\<gamma>2, Normal ns_exh) (\<gamma>', Normal ns')" and "R' \<omega> ns'"
         using RedExh
         by fastforce
       with RedBplExh
@@ -1258,7 +1353,69 @@ proof (rule rel_intro)
     by blast
 qed (simp)
 
-subsection \<open>Method call relation\<close>
+lemma assert_stmt_rel_alt:
+  assumes InvHolds: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> Q A \<omega> \<omega>"
+      and CaptureState: "red_ast_bpl_rel R (\<lambda> \<omega> ns. (RStore0 \<omega>) \<omega> ns) P ctxt \<gamma> \<gamma>1"
+      and ExhaleRel: "\<And>\<omega>0. exhale_rel (rel_ext_eq (RStore0 \<omega>0)) (RStore \<omega>0) Q ctxt_vpr StateCons P ctxt A \<gamma>1 \<gamma>2"
+      and ResetState: "\<And> \<omega>0. rel_general (uncurry (RStore \<omega>0)) (\<lambda>\<omega> ns. R' (snd \<omega>) ns) 
+                                          (\<lambda> \<omega>1 \<omega>2. snd \<omega>2 = \<omega>0 \<and> red_exhale ctxt_vpr \<omega>0 A \<omega>0 (RNormal (snd \<omega>1)))
+                                          (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'
+                             \<or> red_ast_bpl_rel R R' P ctxt \<gamma> \<gamma>'"
+    shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt (ViperLang.Assert A) \<gamma> \<gamma>'"
+proof (rule stmt_rel_intro_2)
+  fix \<omega> ns res
+  assume "R \<omega> ns" and RedStmt: "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (stmt.Assert A) \<omega> res"
+
+
+  with CaptureState obtain ns1 where RedBplInit: "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>1, Normal ns1)" and RStoreInit: "(RStore0 \<omega>) \<omega> ns1"
+    unfolding red_ast_bpl_rel_def
+    by auto
+    
+  show "rel_vpr_aux R' P ctxt \<gamma> \<gamma>' ns res"
+  proof (rule rel_vpr_aux_intro)
+    fix \<omega>'
+    assume "res = RNormal \<omega>'"
+
+    with RedStmt obtain \<omega>_exh where RedExh: "red_exhale ctxt_vpr \<omega> A \<omega> (RNormal \<omega>_exh)" and "\<omega> = \<omega>'"
+      by (auto elim: RedAssertNormal_case)
+
+
+    from this obtain ns_exh where RedBplExh: "red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>2, Normal ns_exh)" and 
+                                  RStore: "(RStore \<omega>) \<omega> \<omega>_exh ns_exh" 
+      using exhale_rel_normal_elim[OF ExhaleRel _ InvHolds[OF \<open>R \<omega> ns\<close>]] RStoreInit red_ast_bpl_transitive[OF RedBplInit]
+      by blast
+
+    from disjE[OF ResetState[of \<omega>]]
+    show "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
+    proof (cases)
+      case 1
+        with RStore rel_success_elim[OF 1]
+        obtain ns' where "red_ast_bpl P ctxt (\<gamma>2, Normal ns_exh) (\<gamma>', Normal ns')" and "R' \<omega> ns'"
+          using RedExh
+          by fastforce
+    
+        with RedBplExh
+        show ?thesis
+          using \<open>\<omega> = \<omega>'\<close> red_ast_bpl_transitive
+          by blast
+    next
+      case 2
+      then show ?thesis 
+        by (metis \<open>R \<omega> ns\<close> \<open>\<omega> = \<omega>'\<close> red_ast_bpl_rel_def)
+    qed
+  next
+    assume "res = RFailure"
+
+    with RedStmt have RedExh: "red_exhale ctxt_vpr \<omega> A \<omega> RFailure"
+      by (auto elim: RedAssertFailure_case)
+
+    thus "\<exists>c'. red_ast_bpl P ctxt (\<gamma>, Normal ns) c' \<and> snd c' = Failure"
+      using exhale_rel_failure_elim[OF ExhaleRel _ InvHolds[OF \<open>R \<omega> ns\<close>]] RStoreInit red_ast_bpl_transitive[OF RedBplInit]
+      by (metis (no_types, opaque_lifting) snd_conv)
+  qed
+qed
+
+subsection \<open>Method call relation\<close> 
 
 fun the_var :: "ViperLang.pure_exp \<Rightarrow> ViperLang.var" where
   "the_var (ViperLang.Var x) = x"
@@ -1493,15 +1650,9 @@ abbreviation state_during_inhale_post_call
 
 subsubsection \<open>General lemma\<close>
 
-(*
-declare [[show_types]]
-declare [[show_sorts]]
-declare [[show_consts]]
-*)
-
 lemma method_call_stmt_rel_general:
-  assumes MdeclSome:  "program.methods (program_total ctxt_vpr) m = Some mdecl"
-      and ArgsAreVars: "list_all (\<lambda>x. \<exists>a. x = ViperLang.Var a) es" \<comment>\<open>simplifying assumption: only variables as arguments\<close>
+  assumes MdeclSome: "program.methods (program_total ctxt_vpr) m = Some mdecl"
+      and ArgsWfRel: "exprs_wf_rel (rel_ext_eq R) ctxt_vpr StateCons P ctxt es \<gamma> \<gamma>1"
       and RelPremises:
           "\<And> (\<omega>0 :: 'a full_total_state) ns0 v_args v_rets.
             R \<omega>0 ns0 \<Longrightarrow>
@@ -1509,9 +1660,9 @@ lemma method_call_stmt_rel_general:
             vals_well_typed (absval_interp_total ctxt_vpr) v_args (method_decl.args mdecl) \<Longrightarrow>
             vals_well_typed (absval_interp_total ctxt_vpr) v_rets (method_decl.rets mdecl) \<Longrightarrow>
             list_all2 (\<lambda>y t. y = Some t) (map \<Lambda>_vpr ys) (rets mdecl) \<Longrightarrow>
-            rel_general (\<lambda> \<omega> ns. (\<omega>,ns) = (\<omega>0,ns0) \<and> R (\<omega> :: 'a full_total_state) ns) (RExhIn (g_exh \<omega>0 ns0))
+            rel_general (\<lambda> \<omega> ns. (\<omega>,ns) = (\<omega>0,ns0)) (RExhIn (g_exh \<omega>0 ns0))
                         (\<lambda>\<omega> \<omega>'. \<omega>' = state_during_exhale_pre_call \<omega> v_args) (\<lambda>_.False)
-                        P ctxt \<gamma> \<gamma>_exh_in \<and>
+                        P ctxt \<gamma>1 \<gamma>_exh_in \<and>
            \<comment>\<open> (RExhIn (g_exh \<omega>0 ns0)) (state_during_exhale_pre_call \<omega>0 v_args) ns0 \<and>\<close>
             (stmt_rel (RExhIn (g_exh \<omega>0 ns0)) (RExhOut (g_exh \<omega>0 ns0)) ctxt_vpr StateCons \<Lambda>_vpr P ctxt
                           (Exhale (method_decl.pre mdecl)) \<gamma>_exh_in \<gamma>_exh_out) \<and>
@@ -1534,46 +1685,37 @@ lemma method_call_stmt_rel_general:
                          P ctxt \<gamma>_inh_out \<gamma>'"
     shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt (MethodCall ys m es) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro_2)
-  fix \<omega>0 ns0 res
-  assume R0: "R \<omega>0 ns0"
+  fix \<omega>0 ns0_before_args res
+  assume R0: "R \<omega>0 ns0_before_args" 
 
   let ?xs = "map the_var es"
 
-  have "es = map pure_exp.Var ?xs"
-  proof (rule nth_equalityI)
-    show "length es = length (map pure_exp.Var ?xs)"
-      by simp
-  next
-    fix i
-    assume "i < length es"
-    show "es ! i = map pure_exp.Var ?xs ! i"
-    proof -
-      have "?xs ! i = the_var (es ! i)"
-        using \<open>i < _\<close>
-        by simp
-      moreover from ArgsAreVars obtain x where
-          "es ! i = pure_exp.Var x"
-        using \<open>i < _\<close>
-        by (fastforce simp: list_all_length)
-
-      ultimately show ?thesis
-        using \<open>i < length es\<close>  by auto
-    qed
-  qed
-
   assume "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (MethodCall ys m es) \<omega>0 res"
 
-  thus "rel_vpr_aux R' P ctxt \<gamma> \<gamma>' ns0 res"
+  thus "rel_vpr_aux R' P ctxt \<gamma> \<gamma>' ns0_before_args res"
   proof (cases)
     case (RedMethodCall v_args mdecl' v_rets resPre resPost)
 
     from MdeclSome RedMethodCall have "mdecl = mdecl'"
       by force
 
-    from RelPremises[OF R0] RedMethodCall \<open>mdecl = _\<close> have
-          InitStateRel: "rel_general (\<lambda> \<omega> ns. (\<omega>,ns) = (\<omega>0,ns0) \<and> R (\<omega> :: 'a full_total_state) ns) (RExhIn (g_exh \<omega>0 ns0))
+    have *: "list_all2 (\<lambda>y t. y = Some t) (map \<Lambda>_vpr ys) (rets mdecl) "
+      using RedMethodCall \<open>mdecl = _\<close>
+      by blast            
+
+    have ListAllArgsEvalVpr: "list_all2 (\<lambda>e v. ctxt_vpr, Some \<omega>0 \<turnstile> \<langle>e; \<omega>0\<rangle> [\<Down>]\<^sub>t Val v) es v_args"
+      using red_pure_exps_total_list_all2 RedMethodCall
+      by blast
+
+    from RedMethodCall exprs_wf_rel_normal_elim[OF ArgsWfRel] R0 obtain ns0 where 
+           RedArgsBpl: "red_ast_bpl P ctxt (\<gamma>, Normal ns0_before_args) (\<gamma>1, Normal ns0)"
+       and RArgs: "R \<omega>0 ns0"  
+      by blast
+
+    from RelPremises[OF RArgs] RedMethodCall \<open>mdecl = _\<close> have 
+          InitStateRel: "rel_general (\<lambda> \<omega> ns. (\<omega>,ns) = (\<omega>0,ns0)) (RExhIn (g_exh \<omega>0 ns0))
                         (\<lambda>\<omega> \<omega>'. \<omega>' = state_during_exhale_pre_call \<omega> v_args) (\<lambda>_.False)
-                        P ctxt \<gamma> \<gamma>_exh_in"
+                        P ctxt \<gamma>1 \<gamma>_exh_in"
       and ExhalePreRel: "stmt_rel (RExhIn (g_exh \<omega>0 ns0)) (RExhOut (g_exh \<omega>0 ns0)) ctxt_vpr StateCons \<Lambda>_vpr P ctxt (Exhale (method_decl.pre mdecl)) \<gamma>_exh_in \<gamma>_exh_out"
       and ExhOutInhInRel: "rel_general (RExhOut (g_exh \<omega>0 ns0)) (RInhIn (g_inh \<omega>0 ns0))
                                        (\<lambda>\<omega> \<omega>'.  red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr
@@ -1598,9 +1740,9 @@ proof (rule stmt_rel_intro_2)
       using red_pure_exps_total_list_all2 RedMethodCall
       by blast
 
-    from rel_success_elim[OF InitStateRel] R0
+    from RedArgsBpl rel_success_elim[OF InitStateRel] RArgs
     obtain ns_exh_in where
-           RedExhIn: "red_ast_bpl P ctxt (\<gamma>, Normal ns0) (\<gamma>_exh_in, Normal ns_exh_in)"
+           RedExhIn: "red_ast_bpl P ctxt (\<gamma>1, Normal ns0) (\<gamma>_exh_in, Normal ns_exh_in)"
        and RExhIn: "RExhIn (g_exh \<omega>0 ns0) (state_during_exhale_pre_call \<omega>0 v_args) ns_exh_in"
       by blast
 
@@ -1614,7 +1756,7 @@ proof (rule stmt_rel_intro_2)
       case RFailure
       with RedMethodCall \<open>mdecl = _\<close>
       obtain c where
-          "red_ast_bpl P ctxt (\<gamma>, Normal ns0) c" and
+          "red_ast_bpl P ctxt (\<gamma>1, Normal ns0) c" and
           "snd c = Failure"
         using stmt_rel_failure_elim[OF ExhalePreRel RExhIn] RedExhIn red_ast_bpl_transitive
         by blast
@@ -1622,13 +1764,13 @@ proof (rule stmt_rel_intro_2)
         using RFailure RedMethodCall
         by argo
       ultimately show ?thesis
-        using red_ast_bpl_transitive
+        using red_ast_bpl_transitive RedArgsBpl
         by (blast intro: rel_vpr_aux_intro)
     next
       case (RNormal \<omega>pre)
       from RNormal RedMethodCall \<open>mdecl = _\<close>
       obtain nspre where
-         RedBplPre: "red_ast_bpl P ctxt (\<gamma>, Normal ns0) (\<gamma>_exh_out, Normal nspre)" and
+         RedBplPre: "red_ast_bpl P ctxt (\<gamma>1, Normal ns0) (\<gamma>_exh_out, Normal nspre)" and
          RExhOut: "RExhOut (g_exh \<omega>0 ns0) \<omega>pre nspre"
         using stmt_rel_normal_elim[OF ExhalePreRel RExhIn] RedExhIn red_ast_bpl_transitive
         by blast
@@ -1642,7 +1784,7 @@ proof (rule stmt_rel_intro_2)
              RNormal \<open>mdecl = _\<close>
         by blast
 
-      hence RedBplHavoc: "red_ast_bpl P ctxt (\<gamma>, Normal ns0) (\<gamma>_inh_in, Normal nshavoc)"
+      hence RedBplHavoc: "red_ast_bpl P ctxt (\<gamma>1, Normal ns0) (\<gamma>_inh_in, Normal nshavoc)"
         using RedBplPre red_ast_bpl_transitive
         by blast
 
@@ -1662,19 +1804,20 @@ proof (rule stmt_rel_intro_2)
         case RFailure
         with RedInh stmt_rel_failure_elim[OF InhalePostRel RInhIn] \<open>mdecl = _\<close>
         obtain c where
-            "red_ast_bpl P ctxt (\<gamma>, Normal ns0) c" and
+            "red_ast_bpl P ctxt (\<gamma>1, Normal ns0) c" and
             "snd c = Failure"
           using RedBplHavoc red_ast_bpl_transitive
           by blast
         moreover from RFailure \<open>res = _\<close> have "res = RFailure"
           by simp
         ultimately show ?thesis
+          using RedArgsBpl red_ast_bpl_transitive
           by (blast intro: rel_vpr_aux_intro)
       next
         case (RNormal \<omega>post)
           with RedInh stmt_rel_normal_elim[OF InhalePostRel RInhIn] \<open>mdecl = _\<close>
           obtain nspost where
-              RedBplPost: "red_ast_bpl P ctxt (\<gamma>, Normal ns0) (\<gamma>_inh_out, Normal nspost)" and
+              RedBplPost: "red_ast_bpl P ctxt (\<gamma>1, Normal ns0) (\<gamma>_inh_out, Normal nspost)" and
               RInhOut: "RInhOut (g_inh \<omega>0 ns0) \<omega>post nspost"
             using RedBplHavoc red_ast_bpl_transitive
             by blast
@@ -1690,34 +1833,21 @@ proof (rule stmt_rel_intro_2)
 
           thus ?thesis
             unfolding rel_vpr_aux_def \<open>res = _\<close> \<open>resPost = _\<close>
-            using RedBplPost
+            using RedBplPost RedArgsBpl
             by (metis exh_if_total.elims exh_if_total_normal_2 map_result_total.simps(1) red_ast_bpl_transitive result_total.distinct(5))
       qed
     qed
   next
     case RedSubExpressionFailure
     \<comment>\<open>Since the arguments are assumed to be arguments, this case cannot occur\<close>
-    have SubExpEq: "sub_expressions (MethodCall ys m es) = map ViperLang.Var ?xs"
-      using \<open>es = _\<close>
+    have SubExpEq: "sub_expressions (MethodCall ys m es) = es"
       by simp
 
     from RedSubExpressionFailure
     show ?thesis
-      unfolding SubExpEq
-    proof -
-      assume "red_pure_exps_total ctxt_vpr (Some \<omega>0) (map pure_exp.Var ?xs) \<omega>0 None"
-
-      from this obtain i where
-        "ctxt_vpr, Some \<omega>0 \<turnstile> \<langle>pure_exp.Var (?xs ! i); \<omega>0\<rangle> [\<Down>]\<^sub>t VFailure"
-        using red_exp_list_failure_nth
-        by (metis SubExpEq length_map local.RedSubExpressionFailure(2) nth_map)
-
-      hence False
-        by (cases) auto
-
-      thus ?thesis
-        by simp
-    qed
+      unfolding rel_vpr_aux_def
+      using exprs_wf_rel_failure_elim[OF ArgsWfRel] R0
+      by auto
   qed
 qed
 
@@ -1785,13 +1915,37 @@ lemma method_call_stmt_rel_inst:
                         ctxt_vpr StateCons \<Lambda>_vpr P ctxt
                         (Inhale (method_decl.post mdecl)) (BigBlock name_pre cs_pre_suffix str_pre tr_pre, cont_pre) \<gamma>'"
       shows "stmt_rel R (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt) ctxt_vpr StateCons \<Lambda>_vpr P ctxt (MethodCall ys m es) \<gamma> \<gamma>'"
-proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
+proof (rule method_call_stmt_rel_general[OF MdeclSome _,
       where ?g_exh="(\<lambda>\<omega>0 ns0. \<lambda>x. pred_eq (the (lookup_var (var_context ctxt) ns0 x)))" and
-            ?g_inh="(\<lambda>\<omega>0 ns0. \<lambda>x. pred_eq (the (lookup_var (var_context ctxt) ns0 x)))"], intro conjI)
+            ?g_inh="(\<lambda>\<omega>0 ns0. \<lambda>x. pred_eq (the (lookup_var (var_context ctxt) ns0 x)))"]; (intro conjI)?)
+
+\<comment>\<open>Arguments are well-defined by default since we restrict them to be variables here\<close>
+
+  show "exprs_wf_rel (rel_ext_eq R) ctxt_vpr StateCons P ctxt es \<gamma> \<gamma>"
+    unfolding exprs_wf_rel_def
+  proof (rule wf_rel_intro)
+    fix \<omega>def \<omega> ns
+    assume "rel_ext_eq R \<omega>def \<omega> ns" and 
+           "red_pure_exps_total ctxt_vpr (Some \<omega>def) es \<omega> None"
+
+    from this obtain i where "i < length es" and 
+                             "red_pure_exp_total ctxt_vpr (Some \<omega>def) (es ! i) \<omega> VFailure"
+      by (metis option.distinct(1) red_exp_list_failure_Nil red_exp_list_failure_nth)
+
+    hence False
+      using ArgsAreVars
+      by (smt (verit, ccfv_SIG) list_all_length var_never_fails)
+
+    fix contra
+    show contra
+      using \<open>False\<close>
+      by auto
+  qed (auto intro: red_ast_bpl_refl)
+
 \<comment>\<open>Initialization\<close>
   fix \<omega> :: "'a full_total_state"
   fix ns :: "'a vbpl_absval nstate"
-  fix  v_args v_rets
+  fix v_args v_rets
   assume R0: "R \<omega> ns"
      and RedArgs: "red_pure_exps_total ctxt_vpr (Some \<omega>) es \<omega> (Some v_args)"
      and ArgsWellTyped: "vals_well_typed (absval_interp_total ctxt_vpr) v_args (method_decl.args mdecl)"
@@ -2130,15 +2284,12 @@ proof (rule method_call_stmt_rel_general[OF MdeclSome ArgsAreVars,
          auto simp add: map_upd_set_lookup_2)
   qed
 
-  show "rel_general (\<lambda>\<omega>1 ns1. (\<omega>1, ns1) = (\<omega>, ns) \<and> R \<omega>1 ns1) (\<lambda>\<omega> ns. ?RCall \<omega> ns \<and> framing_exh ctxt_vpr StateCons (method_decl.pre mdecl) \<omega> \<omega>)
+  show "rel_general (\<lambda>\<omega>1 ns1. (\<omega>1, ns1) = (\<omega>, ns)) (\<lambda>\<omega> ns. ?RCall \<omega> ns \<and> framing_exh ctxt_vpr StateCons (method_decl.pre mdecl) \<omega> \<omega>)
         (\<lambda>\<omega> \<omega>'. \<omega>' = state_during_exhale_pre_call \<omega> v_args) (\<lambda>_. False) P ctxt \<gamma> \<gamma>"
   proof (rule rel_general_success_refl_2, simp)
     fix \<omega>_init ns_init \<omega>0
-    assume RInit: "(\<omega>_init, ns_init) = (\<omega>, ns) \<and> R \<omega>_init ns_init"
+    assume RInit: "(\<omega>_init, ns_init) = (\<omega>, ns)"
        and "\<omega>0 = state_during_exhale_pre_call \<omega>_init v_args"
-
-    hence R0: "R \<omega> ns"
-      by blast
 
     \<comment>\<open>Prove various properties before showing the goal\<close>
 

@@ -2,6 +2,16 @@ theory ViperUtil
 imports Main
 begin
 
+(* TODO: Does this already exist ? *)
+fun the_default :: "'a \<Rightarrow> 'a option \<Rightarrow> 'a" where
+  "the_default d None = d"
+| "the_default d (Some x) = x"
+
+(* TODO: make this a simp lemma? *)
+lemma restrict_map_eq_Some :
+  "(m |` A) x = Some y \<longleftrightarrow> m x = Some y \<and> x \<in> A"
+  by (simp add:restrict_map_def)
+
 instantiation option :: (order) order
 begin
 
@@ -48,5 +58,8 @@ lemma less_None [simp]: "None < Some a"
 
 lemma less_Some [simp]: "a < b \<Longrightarrow> Some a < Some b"
   by (simp add: less_option_def)
+
+fun nth_option :: "'a list => nat => 'a option"
+  where "nth_option xs n = (if n < length xs then Some (nth xs n) else None)"
 
 end
