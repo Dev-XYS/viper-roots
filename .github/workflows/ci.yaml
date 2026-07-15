@@ -1,0 +1,46 @@
+name: Viper Roots CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
+
+      - name: Set up Isabelle
+        uses: gauravpartha/setup-isabelle@v1
+        with: 
+          isabelle-version: 2024
+
+      - name: Isabelle version
+        run: isabelle version
+
+      - name: Set up Isabelle sessions
+        run: |
+          isabelle components -u foundational-boogie/BoogieLang
+          isabelle components -u vipersemcommon
+          isabelle components -u viper-total-heaps
+          isabelle components -u vipersemabstract
+          isabelle components -u viper-abstract-refines-total
+          isabelle components -u simple-frontend
+
+      - name: Check whether Isabelle theories go through successfully
+        # viper-total-heaps/paper-results has viper-total-heaps as a parent session
+        run: |
+          isabelle build -j4 -D viper-total-heaps/paper-results
+          isabelle build -j4 -D vipersemabstract
+          isabelle build -j4 -D viper-abstract-refines-total
+          isabelle build -j4 -D simple-frontend
+          isabelle build -j4 -D main-results
