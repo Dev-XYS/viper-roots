@@ -2276,12 +2276,20 @@ proof -
               apply (metis * InitRel \<open>\<omega>def_\<omega> = _\<close> \<open>\<omega>def_\<omega>' = _\<close> inhale_perm_single_pred_trace_same inhale_pred_normal_premise_def split_pairs state_rel_eval_welldef_eq)
              apply (metis * InitRel' \<open>\<omega>def_\<omega> = _\<close> \<open>\<omega>def_\<omega>' = _\<close> fst_eqD inhale_perm_single_pred_heap_same inhale_pred_normal_premise_def sndI state_rel_eval_welldef_eq)
             defer defer defer defer
-    subgoal sorry
+    subgoal
+    proof -
+      have "\<omega>' \<ge> \<omega>"
+        by (metis "*" \<open>\<omega>def_\<omega> = (\<omega>def, \<omega>)\<close> \<open>\<omega>def_\<omega>' = (\<omega>def', \<omega>')\<close> inhale_perm_single_pred_mono
+            inhale_pred_normal_premise_def prod.sel(2))
+      thus ?thesis
+        using state_rel_heap_knownfolded_var_rel[OF InitRel] LookupMask
+        by (metis (no_types, lifting) InitRel' MaskVar heap_knownfolded_var_rel_stable_larger_\<omega> mask_var_disjoint state_rel_state_rel0 update_var_other)
+    qed
            apply (metis InitRel MaskVar field_rel_stable mask_var_disjoint state_rel_field_rel state_rel_state_rel0 update_var_other)
-    apply (metis InitRel MaskVar boogie_const_rel_stable mask_var_disjoint state_rel_boogie_const_rel state_rel_state_rel0 update_var_other)
-    defer
+          apply (metis InitRel MaskVar boogie_const_rel_stable mask_var_disjoint state_rel_boogie_const_rel state_rel_state_rel0 update_var_other)
+         defer
     using InitRel'[unfolded state_rel_def state_rel0_def]
-    apply (metis InitRel MaskVar aux_vars_pred_sat_stable mask_var_disjoint state_rel_aux_vars_pred_sat state_rel_state_rel0 update_var_other)
+         apply (metis InitRel MaskVar aux_vars_pred_sat_stable mask_var_disjoint state_rel_aux_vars_pred_sat state_rel_state_rel0 update_var_other)
   proof -
     let ?ns' = "update_var (var_context ctxt_bpl) ns m_bpl
                   (AbsV (AMask (mb((Null, PredSnapshotField (pid,v_args_vpr)) :=
