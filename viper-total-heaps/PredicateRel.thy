@@ -1679,8 +1679,38 @@ next
       using \<open>assertion_framing_state _ _ _ _\<close>[unfolded assertion_framing_state_def assertion_self_framing_store_def]
       by (metis InhSubExpFailure option.distinct(1) red_exp_list_failure_Nil)
 
-    hence direct_expr_eval_nofail: "\<And>res. red_pure_exps_total ctxt_vpr (Some ?\<omega>def_subst) (direct_sub_expressions_assertion A) ?\<omega>_subst res \<Longrightarrow> res \<noteq> None"
-      sorry
+    have "?\<omega>def_subst \<succeq> \<omega>inh" and "?\<omega>def_subst \<succeq> ?\<omega>_subst"
+      using \<open>\<omega>inh \<oplus> ?\<omega>_subst = Some \<omega>sum\<close> \<open>?\<omega>def_subst \<succeq> \<omega>sum\<close>
+      by (metis commutative greater_equiv succ_trans)+
+    hence "?\<omega>def_subst \<ge> \<omega>inh"
+      using full_total_state_succ_implies_gte
+      by blast
+    hence AssertionFramedSubst: "assertion_framing_state ctxt_vpr StateCons A ?\<omega>def_subst"
+      using assertion_framing_state_mono[OF ConsistencyDownwardsMono \<open>assertion_framing_state ctxt_vpr StateCons A \<omega>inh\<close>]
+            AssertionConstraint
+      by blast
+    have OnlyMaskDiffers: "get_store_total ?\<omega>_subst = get_store_total ?\<omega>def_subst \<and>
+                            get_trace_total ?\<omega>_subst = get_trace_total ?\<omega>def_subst \<and>
+                            get_hh_total_full ?\<omega>_subst = get_hh_total_full ?\<omega>def_subst"
+      using full_total_state_greater_only_mask_changed[OF \<open>?\<omega>def_subst \<succeq> ?\<omega>_subst\<close>]
+      by simp
+
+    have direct_expr_eval_nofail: "\<And>res. red_pure_exps_total ctxt_vpr (Some ?\<omega>def_subst) (direct_sub_expressions_assertion A) ?\<omega>_subst res \<Longrightarrow> res \<noteq> None"
+    proof -
+      fix res
+      assume RedExps: "red_pure_exps_total ctxt_vpr (Some ?\<omega>def_subst) (direct_sub_expressions_assertion A) ?\<omega>_subst res"
+      have NoPermUnfolding: "list_all (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e) (direct_sub_expressions_assertion A)"
+        using assert_pred_subexp[of "\<lambda>_. True" "\<lambda>_. True" no_perm_pure_exp_no_rec A]
+              assert_pred_subexp[of "\<lambda>_. True" "\<lambda>_. True" no_unfolding_pure_exp_no_rec A]
+              AssertionConstraint
+        by (auto simp: list_all_length)
+      hence "red_pure_exps_total ctxt_vpr (Some ?\<omega>def_subst) (direct_sub_expressions_assertion A) ?\<omega>def_subst res"
+        using red_pure_exp_only_differ_on_mask(2)[OF RedExps] OnlyMaskDiffers
+        by blast
+      thus "res \<noteq> None"
+        using AssertionFramedSubst[unfolded assertion_framing_state_def assertion_self_framing_store_def]
+        by (metis InhSubExpFailure option.distinct(1) red_exp_list_failure_Nil)
+    qed
 
     have "es = map (\<lambda>e. substitute_args_expr e e_args_vpr) (direct_sub_expressions_assertion A)"
       by (simp add: assms(3) substitute_subexpr_assertion_commute)

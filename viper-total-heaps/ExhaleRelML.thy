@@ -229,7 +229,6 @@ ML \<open>
   fun atomic_exhale_field_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) exh_field_acc_hint =
     case exh_field_acc_hint of
       FieldAccExhHint (exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm, exp_rel_perm_access_thm) =>
-          (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
         (Rmsg' "ExhField 1" (resolve_tac ctxt @{thms exhale_rel_field_acc}) ctxt) THEN'
           (Rmsg' "ExhField wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'
           (Rmsg' "ExhField unfold current bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'
