@@ -6,29 +6,65 @@ session TotalViperDeps in TotalViperDeps = ViperCommon +
   theories
     Dependencies
 
-session TotalViper = TotalViperDeps +
+(* The "global" keywords are for avoiding changing all the imports.
+   Imports should be later changed to qualified names. *)
+
+session TotalViperSemantics in Semantics = TotalViperDeps +
   theories
-    TotalViperState
-    TotalStateUtil
-    TotalExpressions
-    TotalSemantics
-    TotalSemProperties
-    TotalUtil
-	TraceIndepProperty
-    ViperBoogieAbsValueInst
-    ViperBoogieBasicRel
-    ViperBoogieFunctionInst
-    ViperBoogieTranslationInterface
-    ViperBoogieRelUtil
-    TotalViperHelperML
+    NestedMaskInst (global)
+    NestedMaskProperties (global)
+    TotalConsistencyInst (global)
+    TotalContext (global)
+    TotalExpressions (global)
+    TotalExtConsPreservation (global)
+    TotalExtConsProps (global)
+    TotalExternalConsistency (global)
+    TotalFoldUnfold (global)
+    TotalFraming (global)
+    TotalInhaleExhale (global)
+    TotalIntConsPreservation (global)
+    TotalInternalConsistency (global)
+    TotalMaskUtil (global)
+    TotalResult (global)
+    TotalSemantics (global)
+    TotalSemanticsHelper (global)
+    TotalSemanticsProperties (global)
+    TotalSemProperties (global)
+    TotalStateInst (global)
+    TotalStateProperties (global)
+    TotalStateUtil (global)
+    TotalUtil (global)
+    TotalViperState (global)
+    TotalViperUtil (global)
+
+session TotalViperSimulation in Simulation = TotalViperSemantics +
+  theories
+    BoogieInterface (global)
+    BoogieSyntaxBasedProperties (global)
+    ExhaleRel (global)
+    ExpRel (global)
+    ExprWfRel (global)
+    InhaleRel (global)
+    KnownFolded (global)
+    PredicateRel (global)
+    Simulation (global)
+    StmtRel (global)
+    ViperBoogieAbsValueInst (global)
+    ViperBoogieBasicRel (global)
+    ViperBoogieEndToEnd (global)
+    ViperBoogieFunctionInst (global)
+    ViperBoogieRelUtil (global)
+    ViperBoogieTranslationInterface (global)
+
+session TotalViper = TotalViperSimulation +
+  theories
     CPGHelperML
-    ExpRel
-    ExpRelML
-    ExprWfRel
-    ExprWfRelML
-    StmtRel
-    InhaleRelML
     ExhaleRelML
+    ExpRelML
+    ExprWfRelML
+    InhaleRelML
+    PredicateRelML
     StmtRelML
-    ViperBoogieEndToEnd
+    TotalViperHelperML
     ViperBoogieEndToEndML
+    ViperBoogieHelperML
