@@ -1,5 +1,5 @@
 theory KnownFolded
-  imports TotalSemantics ViperBoogieAbsValueInst BoogieInterface
+  imports TotalViperSemantics.TotalSemantics ViperBoogieAbsValueInst BoogieInterface
 begin
 
 

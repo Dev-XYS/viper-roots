@@ -1,7 +1,7 @@
 section \<open>Relation between basic Viper and Boogie states\<close>
 
 theory ViperBoogieBasicRel
-  imports TotalExpressions TotalSemantics ViperBoogieAbsValueInst KnownFolded
+  imports TotalViperSemantics.TotalExpressions TotalViperSemantics.TotalSemantics ViperBoogieAbsValueInst KnownFolded
           BoogieInterface "HOL-Library.Disjoint_Sets"
 begin
 

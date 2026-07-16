@@ -1,6 +1,6 @@
 theory CPGHelperML
-  imports ViperBoogieRelUtil TotalViperHelperML ExpRelML  "HOL-Eisbach.Eisbach" "HOL-Eisbach.Eisbach_Tools"
-          PredicateRel
+  imports TotalViperSimulation.ViperBoogieRelUtil TotalViperHelperML ExpRelML  "HOL-Eisbach.Eisbach" "HOL-Eisbach.Eisbach_Tools"
+          TotalViperSimulation.PredicateRel
 begin
 
 ML \<open>

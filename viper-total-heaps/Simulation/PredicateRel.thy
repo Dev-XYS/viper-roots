@@ -1,5 +1,5 @@
 theory PredicateRel
-  imports InhaleRel ExhaleRel StmtRel TotalExtConsPreservation BoogieSyntaxBasedProperties
+  imports InhaleRel ExhaleRel StmtRel TotalViperSemantics.TotalExtConsPreservation BoogieSyntaxBasedProperties
 begin
 
 

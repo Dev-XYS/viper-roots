@@ -1,5 +1,5 @@
 theory ViperBoogieRelUtil
-  imports ViperBoogieTranslationInterface ExpRel Simulation TotalInternalConsistency
+  imports ViperBoogieTranslationInterface ExpRel Simulation TotalViperSemantics.TotalInternalConsistency
 begin
 
 

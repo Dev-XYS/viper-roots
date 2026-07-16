@@ -11,50 +11,50 @@ session TotalViperDeps in TotalViperDeps = ViperCommon +
 
 session TotalViperSemantics in Semantics = TotalViperDeps +
   theories
-    NestedMaskInst (global)
-    NestedMaskProperties (global)
-    TotalConsistencyInst (global)
-    TotalContext (global)
-    TotalExpressions (global)
-    TotalExtConsPreservation (global)
-    TotalExtConsProps (global)
-    TotalExternalConsistency (global)
-    TotalFoldUnfold (global)
-    TotalFraming (global)
-    TotalInhaleExhale (global)
-    TotalIntConsPreservation (global)
-    TotalInternalConsistency (global)
-    TotalMaskUtil (global)
-    TotalResult (global)
-    TotalSemantics (global)
-    TotalSemanticsHelper (global)
-    TotalSemanticsProperties (global)
-    TotalSemProperties (global)
-    TotalStateInst (global)
-    TotalStateProperties (global)
-    TotalStateUtil (global)
-    TotalUtil (global)
-    TotalViperState (global)
-    TotalViperUtil (global)
+    NestedMaskInst
+    NestedMaskProperties
+    TotalConsistencyInst
+    TotalContext
+    TotalExpressions
+    TotalExtConsPreservation
+    TotalExtConsProps
+    TotalExternalConsistency
+    TotalFoldUnfold
+    TotalFraming
+    TotalInhaleExhale
+    TotalIntConsPreservation
+    TotalInternalConsistency
+    TotalMaskUtil
+    TotalResult
+    TotalSemantics
+    TotalSemanticsHelper
+    TotalSemanticsProperties
+    TotalSemProperties
+    TotalStateInst
+    TotalStateProperties
+    TotalStateUtil
+    TotalUtil
+    TotalViperState
+    TotalViperUtil
 
 session TotalViperSimulation in Simulation = TotalViperSemantics +
   theories
-    BoogieInterface (global)
-    BoogieSyntaxBasedProperties (global)
-    ExhaleRel (global)
-    ExpRel (global)
-    ExprWfRel (global)
-    InhaleRel (global)
-    KnownFolded (global)
-    PredicateRel (global)
-    Simulation (global)
-    StmtRel (global)
-    ViperBoogieAbsValueInst (global)
-    ViperBoogieBasicRel (global)
-    ViperBoogieEndToEnd (global)
-    ViperBoogieFunctionInst (global)
-    ViperBoogieRelUtil (global)
-    ViperBoogieTranslationInterface (global)
+    BoogieInterface
+    BoogieSyntaxBasedProperties
+    ExhaleRel
+    ExpRel
+    ExprWfRel
+    InhaleRel
+    KnownFolded
+    PredicateRel
+    Simulation
+    StmtRel
+    ViperBoogieAbsValueInst
+    ViperBoogieBasicRel
+    ViperBoogieEndToEnd
+    ViperBoogieFunctionInst
+    ViperBoogieRelUtil
+    ViperBoogieTranslationInterface
 
 session TotalViper = TotalViperSimulation +
   theories

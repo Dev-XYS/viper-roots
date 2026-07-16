@@ -1,6 +1,6 @@
 theory ExhaleRel
-  imports ExpRel ExprWfRel ViperBoogieTranslationInterface Simulation ViperBoogieRelUtil TotalExtConsPreservation
-          TotalSemProperties
+  imports ExpRel ExprWfRel ViperBoogieTranslationInterface Simulation ViperBoogieRelUtil TotalViperSemantics.TotalExtConsPreservation
+          TotalViperSemantics.TotalSemProperties
 begin
 
 definition exhale_rel ::

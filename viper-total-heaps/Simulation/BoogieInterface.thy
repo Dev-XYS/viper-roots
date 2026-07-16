@@ -1,5 +1,5 @@
 theory BoogieInterface
-imports Boogie_Lang.Ast TotalUtil
+imports Boogie_Lang.Ast TotalViperSemantics.TotalUtil
 begin
 
 subsection \<open>Expressions\<close>

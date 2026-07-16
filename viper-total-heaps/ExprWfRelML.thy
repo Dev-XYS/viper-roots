@@ -1,5 +1,5 @@
 theory ExprWfRelML
-imports ExprWfRel ExpRelML TotalViperHelperML TotalViperHelperML CPGHelperML
+imports TotalViperSimulation.ExprWfRel ExpRelML TotalViperHelperML TotalViperHelperML CPGHelperML
 begin
 
 text \<open>We define a tactic for proving that a Boogie statement captures the well-definedness check

@@ -1,7 +1,7 @@
 section \<open>Generic definitions for simulations between front-ends and Boogie\<close>
 
 theory Simulation
-imports BoogieInterface TotalUtil
+imports BoogieInterface
 begin
 
 definition rel_general :: "('v \<Rightarrow> 'a nstate \<Rightarrow> bool) \<Rightarrow>

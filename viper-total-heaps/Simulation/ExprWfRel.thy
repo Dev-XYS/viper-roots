@@ -1,5 +1,5 @@
 theory ExprWfRel
-  imports ViperBoogieBasicRel ViperBoogieFunctionInst ExpRel Simulation TotalSemanticsProperties
+  imports ViperBoogieBasicRel ViperBoogieFunctionInst ExpRel Simulation TotalViperSemantics.TotalSemanticsProperties
 begin
 
 

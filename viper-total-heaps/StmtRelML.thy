@@ -1,5 +1,5 @@
 theory StmtRelML
-imports Boogie_Lang.HelperML ExprWfRelML StmtRel InhaleRelML ExhaleRelML PredicateRelML ViperBoogieHelperML
+imports Boogie_Lang.HelperML ExprWfRelML TotalViperSimulation.StmtRel InhaleRelML ExhaleRelML PredicateRelML ViperBoogieHelperML
 begin
 
 ML \<open>

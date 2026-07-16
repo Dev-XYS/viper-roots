@@ -1,6 +1,6 @@
 theory InhaleRel
-  imports ExpRel ExprWfRel ViperBoogieTranslationInterface Simulation ViperBoogieRelUtil TotalFraming
-          TotalExtConsPreservation
+  imports ExpRel ExprWfRel ViperBoogieTranslationInterface Simulation ViperBoogieRelUtil TotalViperSemantics.TotalFraming
+          TotalViperSemantics.TotalExtConsPreservation
 begin
 
 

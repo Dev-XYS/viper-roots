@@ -1,5 +1,5 @@
 theory ViperBoogieEndToEndML
-imports ViperBoogieEndToEnd CPGHelperML ViperBoogieHelperML ViperBoogieFunctionInst
+imports TotalViperSimulation.ViperBoogieEndToEnd CPGHelperML ViperBoogieHelperML TotalViperSimulation.ViperBoogieFunctionInst
 begin
 
 ML \<open>
