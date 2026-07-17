@@ -1,5 +1,5 @@
 theory PredicateRelML
-  imports Boogie_Lang.HelperML ExprWfRelML TotalViperSimulation.ExhaleRel ViperBoogieHelperML CPGHelperML TotalViperSimulation.PredicateRel ExhaleRelML InhaleRelML
+  imports Boogie_Lang.HelperML ExprWfRelML TotalViperSimulation.ExhaleRel ViperBoogieHelperML CPGHelperML TotalViperSimulation.PredicateRel ExhaleRelML InhaleRelML PredicateKfmUpdML
 begin
 
 
@@ -151,14 +151,7 @@ fun pred_fold_tac ctxt exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_
   (Rmsg' "fold stmt good state after inhale propagate 2" (resolve_tac ctxt @{thms rel_propagate_pre_3_only_state_rel}) ctxt) THEN'
   (Rmsg' "fold stmt good state after inhale progress 2" ((progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm basic_info) (#tr_def_thm basic_info))) ctxt) THEN'
 
-  (SUBGOAL (fn (t,_) => raise TERM ("breakpoint head", [t]))) THEN'
-
-  (Rmsg' "fold stmt test1" (resolve_tac ctxt @{thms rel_general_success_refl}) ctxt) THEN'
-  (Rmsg' "fold stmt test2" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
-  (Rmsg' "fold stmt test3" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) (* THEN'
-
-  (Rmsg' "Progress Good State" ((progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm basic_info) (#tr_def_thm basic_info)) ORELSE' (progress_red_bpl_rel_tac ctxt)) ctxt)
-  THEN' (SUBGOAL (fn (t,_) => raise TERM ("breakpoint head", [t]))) *)
+  (Rmsg' "fold stmt known-folded mask update" (kfm_upd_rel_tac ctxt basic_info exp_rel_info) ctxt)
 
 
 fun exh_in_fold_no_def_checks_tac ctxt (info: basic_stmt_rel_info) : int -> tactic =
