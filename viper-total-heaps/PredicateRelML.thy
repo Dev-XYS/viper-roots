@@ -131,6 +131,7 @@ fun pred_fold_tac ctxt exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_
   (Rmsg' "fold stmt StateRelImpliesExtCons 4" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info] ctxt) ctxt) THEN'
 
   (Rmsg' "fold stmt ArgsRestriction" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
+  (Rmsg' "fold stmt ArgsAreVarOrLit" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt BodyNoUnfolding" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt PermSimp" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt PermPos" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
@@ -140,6 +141,7 @@ fun pred_fold_tac ctxt exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_
   (Rmsg' "fold stmt StepPermPos (always assert true)" (resolve_tac ctxt @{thms red_bpl_assert_true}) ctxt) THEN'
   (Rmsg' "fold stmt simp synmult" (simp_tac_with_thms [] ctxt) ctxt) THEN'
 
+  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint debug", [t]))) THEN' *)
   (* (Rmsg' "fold stmt propagate state reset" (resolve_tac ctxt @{thms exhale_rel_propagate_post}) ctxt) THEN' *)
   (normal_exhale_rel_tac ctxt exhale_info exhale_hint) THEN'
   (* (Rmsg' "fold stmt state reset after exhale" (exhale_revert_state_relation ctxt basic_info) ctxt) THEN' *)

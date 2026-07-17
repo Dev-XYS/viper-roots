@@ -3,6 +3,9 @@ imports Boogie_Lang.HelperML ExprWfRelML TotalViperSimulation.ExhaleRel ViperBoo
         TotalViperSimulation.PredicateRel ExhaleRelML InhaleRelML
 begin
 
+
+
+
 text \<open>This theory is a working pad for the automation that discharges the known-folded permission
       mask update step of a \<^const>\<open>Fold\<close> statement (i.e. the \<open>StepKFUpdate\<close> premise of
       @{thm fold_stmt_rel}). Eventually this should be moved into the \<open>TotalViperSimulation\<close>
@@ -116,7 +119,7 @@ fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info : int -> tacti
     | SOME a =>
         (case a of
            Const (@{const_name Star}, _) $ _ $ _ =>
-             (Rmsg' "kfm upd Star rule" (resolve_tac ctxt @{thms fold_knownfolded_star_upd_rel}) ctxt THEN'
+             (Rmsg' "kfm upd Star rule" (resolve_tac ctxt @{thms fold_knownfolded_star_upd_rel'}) ctxt THEN'
               (Rmsg' "kfm upd Star CtxtPredWf" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
               (kfm_upd_rel_tac ctxt info exp_rel_info) THEN'
               (kfm_upd_rel_tac ctxt info exp_rel_info)) i

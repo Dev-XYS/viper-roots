@@ -1759,6 +1759,111 @@ next
 qed
 
 
+subsubsection \<open>Variables/literals evaluate independently of the definedness state\<close>
+
+text \<open>Unlike @{thm red_pure_exp_only_differ_on_mask} (which fixes the definedness state and only
+      lets the \<^emph>\<open>evaluated\<close> state change), the following lemma additionally lets the definedness
+      state's \<^emph>\<open>identity\<close> change -- but only for the restricted case where \<open>e\<close> is a variable or a
+      literal, for which the definedness state is never inspected at all (no \<^const>\<open>FieldAcc\<close>,
+      \<^const>\<open>Perm\<close>, \<^const>\<open>Old\<close>, or \<^const>\<open>Unfolding\<close> is involved, so there is nothing to check).\<close>
+
+fun is_var_or_lit :: "pure_exp \<Rightarrow> bool" where
+  "is_var_or_lit (pure_exp.Var _) = True"
+| "is_var_or_lit (ELit _) = True"
+| "is_var_or_lit _ = False"
+
+lemma red_pure_exp_var_or_lit_indep:
+  assumes "ctxt, \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+      and "is_var_or_lit e"
+      and "get_store_total \<omega> = get_store_total \<omega>'"
+    shows "ctxt, \<omega>def' \<turnstile> \<langle>e; \<omega>'\<rangle> [\<Down>]\<^sub>t Val v"
+proof (cases e)
+  case (Var n)
+  hence "ctxt, \<omega>def \<turnstile> \<langle>pure_exp.Var n; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+    using assms(1)
+    by simp
+  hence "get_store_total \<omega> n = Some v"
+    by (metis TotalExpressions.RedVar_case)
+  with assms(3) Var show ?thesis
+    by (auto intro: TotalExpressions.RedVar)
+next
+  case (ELit l)
+  with assms(1) show ?thesis
+    by (auto elim: TotalExpressions.RedLit_case intro: TotalExpressions.RedLit)
+qed (use assms(2) in auto)
+
+lemma red_pure_exps_var_or_lit_indep:
+  assumes "red_pure_exps_total ctxt \<omega>def es \<omega> (Some vs)"
+      and "list_all is_var_or_lit es"
+      and "get_store_total \<omega> = get_store_total \<omega>'"
+    shows "red_pure_exps_total ctxt \<omega>def' es \<omega>' (Some vs)"
+  using assms
+proof (induction es arbitrary: vs)
+  case Nil
+  hence "vs = []"
+    by (auto elim: TotalExpressions.RedExpListGeneral_case)
+  with TotalExpressions.RedExpListNil show ?case
+    by simp
+next
+  case (Cons e es)
+  obtain v0 res where
+    veq: "Some vs = map_option ((#) v0) res" and
+    e_eval0: "ctxt, \<omega>def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v0" and
+    es_eval0: "red_pure_exps_total ctxt \<omega>def es \<omega> res"
+    using Cons.prems(1)
+    by (elim TotalExpressions.RedExpListCons_case)
+  obtain vs' where res_eq: "res = Some vs'"
+    using veq
+    by (cases res) auto
+  hence "vs = v0 # vs'"
+    using veq
+    by simp
+  note e_eval = e_eval0
+  note es_eval = es_eval0[unfolded res_eq]
+  have e_indep: "ctxt, \<omega>def' \<turnstile> \<langle>e; \<omega>'\<rangle> [\<Down>]\<^sub>t Val v0"
+    apply (rule red_pure_exp_var_or_lit_indep[OF e_eval])
+    using Cons.prems(2)
+     apply (simp add: list_all_iff)
+    using Cons.prems(3)
+    apply simp
+    done
+  have es_indep: "red_pure_exps_total ctxt \<omega>def' es \<omega>' (Some vs')"
+    apply (rule Cons.IH[OF es_eval])
+    using Cons.prems(2)
+     apply (simp add: list_all_iff)
+    using Cons.prems(3)
+    apply simp
+    done
+  show ?case
+    unfolding \<open>vs = _\<close>
+    apply (rule TotalExpressions.RedExpListCons[OF e_indep es_indep])
+    by simp
+qed
+
+subsubsection \<open>Restoring the store across \<open>\<oplus>\<close>/\<open>\<succeq>\<close>\<close>
+
+text \<open>\<open>\<oplus>\<close> on \<open>full_total_state\<close> (\<open>plus_full_total_state_ext_def\<close>) only requires the store (and
+      trace, and \<open>more\<close>) of its two arguments to agree -- it never inspects what the (shared)
+      store actually \<^emph>\<open>is\<close>. So replacing that shared store throughout a \<open>\<oplus>\<close>/\<open>\<succeq>\<close> derivation is
+      always sound.\<close>
+
+lemma full_total_state_plus_store_update:
+  assumes "\<omega>1 \<oplus> \<omega>2 = Some \<omega>3"
+  shows "(\<omega>1\<lparr> get_store_total := s \<rparr>) \<oplus> (\<omega>2\<lparr> get_store_total := s \<rparr>) = Some (\<omega>3\<lparr> get_store_total := s \<rparr>)"
+  using assms
+  unfolding plus_full_total_state_ext_def
+  by (auto split: if_split_asm)
+
+lemma full_total_state_succ_store_update:
+  assumes "\<omega>1 \<succeq> \<omega>2"
+  shows "(\<omega>1\<lparr> get_store_total := s \<rparr>) \<succeq> (\<omega>2\<lparr> get_store_total := s \<rparr>)"
+  using assms full_total_state_plus_store_update[where s = s]
+  unfolding greater_def
+  by metis
+
+
+subsubsection \<open>Main Lemmas\<close>
+
 lemma fold_stmt_rel:
   assumes PredDecl: "program.predicates (program_total ctxt_vpr) pid = Some pdecl"
       and PredArgs: "predicate_decl.args pdecl = ty_args"
@@ -1769,6 +1874,9 @@ lemma fold_stmt_rel:
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
       and ArgsRestriction: "list_all no_unfolding_pure_exp e_args_vpr \<and> list_all no_perm_pure_exp e_args_vpr \<and> list_all no_old_pure_exp e_args_vpr \<and> list_all no_result_pure_exp e_args_vpr"
+      and ArgsAreVarOrLit: "list_all is_var_or_lit e_args_vpr"
+        \<comment> \<open>Additional restriction (beyond \<open>ArgsRestriction\<close>) needed to close the \<open>framing_exh\<close>
+            substitution step below: see the comment there for why the general case is hard.\<close>
       and BodyNoUnfolding: "no_unfolding_assertion (syntactic_mult p pbody)"  \<comment> \<open>Should be lifted soon.\<close>
       and PermSimp: "e_p_vpr = ELit (LPerm p)" \<comment> \<open>We only support literals as the permission.\<close>
       and PermPos: "p > 0"
@@ -1777,8 +1885,7 @@ lemma fold_stmt_rel:
       and StepExhale:
             "\<And>v_args_vpr v_p_vpr.
                 exhale_rel (rel_ext_eq R) (\<lambda>\<omega>def \<omega> ns. R'' \<omega>def \<omega> ns)
-                  (\<lambda>_ \<omega>def \<omega>. framing_exh ctxt_vpr StateCons (syntactic_mult p pbody) (\<omega>def\<lparr> get_store_total := nth_option v_args_vpr \<rparr>) (\<omega>\<lparr> get_store_total := nth_option v_args_vpr \<rparr>) \<and>
-                              red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr))
+                  (framing_exh ctxt_vpr StateCons)
                   ctxt_vpr StateCons P ctxt_bpl
                   (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<gamma>\<^sub>3 \<gamma>\<^sub>4"
       and StepInhale:
@@ -1871,6 +1978,79 @@ proof (rule stmt_rel_intro)
      apply (simp add: commutative core_is_smaller core_total_state_ext_def defined_def option.discI)
     using succ_refl
     by blast
+
+  hence "framing_exh ctxt_vpr StateCons (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<omega> \<omega>"
+    \<comment> \<open>Unfold the witness \<open>\<omega>inh\<close> (forced to zero mask by the \<open>\<oplus>\<close>/\<open>\<succeq>\<close> algebra), restore its store to
+        \<open>\<omega>\<close>'s original one (sound: \<open>\<oplus>\<close>/\<open>\<succeq>\<close> only care that both sides agree on the store, not what it
+        is), and convert via @{thm framing_with_substitution}. This needs \<open>e_args_vpr\<close> to evaluate at
+        the (zero-mask) witness, for which we rely on \<open>ArgsAreVarOrLit\<close> (a proof-engineering, not a
+        soundness, restriction: field-access args would need a different, currently unproven, fact --
+        see the git history of this step for that more general (also more difficult) analysis).\<close>
+  proof -
+    from framing_exh[unfolded framing_exh_def] obtain \<omega>inh \<omega>sum where
+      ValidMaskSubst: "valid_heap_mask (get_mh_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>))" and
+      Plus: "\<omega>inh \<oplus> (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) = Some \<omega>sum" and
+      Succ: "(\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) \<succeq> \<omega>sum" and
+      Framing: "assertion_framing_state ctxt_vpr StateCons (syntactic_mult p pbody) \<omega>inh"
+      by blast
+
+    have StoreInh: "get_store_total \<omega>inh = nth_option v_args"
+      using Plus
+      unfolding plus_full_total_state_ext_def
+      by (auto split: if_split_asm)
+
+    define \<omega>inh' where "\<omega>inh' = \<omega>inh\<lparr> get_store_total := get_store_total \<omega> \<rparr>"
+    define \<omega>sum' where "\<omega>sum' = \<omega>sum\<lparr> get_store_total := get_store_total \<omega> \<rparr>"
+
+    have PlusRestored: "\<omega>inh' \<oplus> \<omega> = Some \<omega>sum'"
+      using full_total_state_plus_store_update[OF Plus, of "get_store_total \<omega>"]
+      unfolding \<omega>inh'_def \<omega>sum'_def
+      by simp
+
+    have SuccRestored: "\<omega> \<succeq> \<omega>sum'"
+      using full_total_state_succ_store_update[OF Succ, of "get_store_total \<omega>"]
+      unfolding \<omega>sum'_def
+      by simp
+
+    have FramingRestored: "assertion_framing_state ctxt_vpr StateCons (syntactic_mult p pbody)
+                              (\<omega>inh'\<lparr> get_store_total := nth_option v_args \<rparr>)"
+      using Framing
+      unfolding \<omega>inh'_def StoreInh[symmetric]
+      by simp
+
+    have ArgsEvalInh: "red_pure_exps_total ctxt_vpr (Some \<omega>inh') e_args_vpr \<omega>inh' (Some v_args)"
+      apply (rule red_pure_exps_var_or_lit_indep[OF v_args_eval])
+      using ArgsAreVarOrLit
+       apply blast
+      unfolding \<omega>inh'_def
+      by simp
+
+    have SupportedBody: "supported_pred_body (syntactic_mult p pbody)"
+      apply (rule syntactic_mult_supported)
+      using CtxtPredWf PredDecl \<open>_ = Some pdecl'\<close> \<open>_ = Some pbody'\<close> \<open>pbody' = pbody\<close>
+      unfolding ctxt_pred_syn_wf_def
+       apply blast
+      using PermPos
+      by simp
+
+    have FramingSubst: "assertion_framing_state ctxt_vpr StateCons
+                           (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<omega>inh'"
+      apply (rule framing_with_substitution[OF FramingRestored ArgsEvalInh SupportedBody BodyNoUnfolding WfCons])
+      using ArgsRestriction
+      by simp_all
+
+    show ?thesis
+      unfolding framing_exh_def
+      apply (intro conjI)
+      using StateRelImpliesIntCons \<open>R \<omega> ns\<close>
+         apply blast
+      using StateRelImpliesExtCons \<open>R \<omega> ns\<close>
+        apply blast
+       using ValidMaskSubst
+       apply simp
+      using PlusRestored SuccRestored FramingSubst
+      by blast
+  qed
 
   moreover have exh_subst: "red_exhale ctxt_vpr \<omega> (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<omega> (RNormal \<omega>1)"
     apply (rule exhale_with_substitution)
@@ -2082,6 +2262,80 @@ next
       using succ_refl
       by blast
 
+    (* TODO: duplicated proof *)
+    hence "framing_exh ctxt_vpr StateCons (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<omega> \<omega>"
+      \<comment> \<open>Unfold the witness \<open>\<omega>inh\<close> (forced to zero mask by the \<open>\<oplus>\<close>/\<open>\<succeq>\<close> algebra), restore its store to
+          \<open>\<omega>\<close>'s original one (sound: \<open>\<oplus>\<close>/\<open>\<succeq>\<close> only care that both sides agree on the store, not what it
+          is), and convert via @{thm framing_with_substitution}. This needs \<open>e_args_vpr\<close> to evaluate at
+          the (zero-mask) witness, for which we rely on \<open>ArgsAreVarOrLit\<close> (a proof-engineering, not a
+          soundness, restriction: field-access args would need a different, currently unproven, fact --
+          see the git history of this step for that more general (also more difficult) analysis).\<close>
+    proof -
+      from framing_exh[unfolded framing_exh_def] obtain \<omega>inh \<omega>sum where
+        ValidMaskSubst: "valid_heap_mask (get_mh_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>))" and
+        Plus: "\<omega>inh \<oplus> (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) = Some \<omega>sum" and
+        Succ: "(\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) \<succeq> \<omega>sum" and
+        Framing: "assertion_framing_state ctxt_vpr StateCons (syntactic_mult p pbody) \<omega>inh"
+        by blast
+
+      have StoreInh: "get_store_total \<omega>inh = nth_option v_args"
+        using Plus
+        unfolding plus_full_total_state_ext_def
+        by (auto split: if_split_asm)
+
+      define \<omega>inh' where "\<omega>inh' = \<omega>inh\<lparr> get_store_total := get_store_total \<omega> \<rparr>"
+      define \<omega>sum' where "\<omega>sum' = \<omega>sum\<lparr> get_store_total := get_store_total \<omega> \<rparr>"
+
+      have PlusRestored: "\<omega>inh' \<oplus> \<omega> = Some \<omega>sum'"
+        using full_total_state_plus_store_update[OF Plus, of "get_store_total \<omega>"]
+        unfolding \<omega>inh'_def \<omega>sum'_def
+        by simp
+
+      have SuccRestored: "\<omega> \<succeq> \<omega>sum'"
+        using full_total_state_succ_store_update[OF Succ, of "get_store_total \<omega>"]
+        unfolding \<omega>sum'_def
+        by simp
+
+      have FramingRestored: "assertion_framing_state ctxt_vpr StateCons (syntactic_mult p pbody)
+                                (\<omega>inh'\<lparr> get_store_total := nth_option v_args \<rparr>)"
+        using Framing
+        unfolding \<omega>inh'_def StoreInh[symmetric]
+        by simp
+
+      have ArgsEvalInh: "red_pure_exps_total ctxt_vpr (Some \<omega>inh') e_args_vpr \<omega>inh' (Some v_args)"
+        apply (rule red_pure_exps_var_or_lit_indep[OF v_args_eval])
+        using ArgsAreVarOrLit
+         apply blast
+        unfolding \<omega>inh'_def
+        by simp
+
+      have SupportedBody: "supported_pred_body (syntactic_mult p pbody)"
+        apply (rule syntactic_mult_supported)
+        using CtxtPredWf PredDecl \<open>_ = Some pdecl'\<close> \<open>_ = Some pbody'\<close> \<open>pbody' = pbody\<close>
+        unfolding ctxt_pred_syn_wf_def
+         apply blast
+        using PermPos
+        by simp
+
+      have FramingSubst: "assertion_framing_state ctxt_vpr StateCons
+                             (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<omega>inh'"
+        apply (rule framing_with_substitution[OF FramingRestored ArgsEvalInh SupportedBody BodyNoUnfolding WfCons])
+        using ArgsRestriction
+        by simp_all
+
+      show ?thesis
+        unfolding framing_exh_def
+        apply (intro conjI)
+        using StateRelImpliesIntCons \<open>R \<omega> ns\<close>
+           apply blast
+        using StateRelImpliesExtCons \<open>R \<omega> ns\<close>
+          apply blast
+         using ValidMaskSubst
+         apply simp
+        using PlusRestored SuccRestored FramingSubst
+        by blast
+    qed
+
     moreover have exh_subst: "red_exhale ctxt_vpr \<omega> (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<omega> RFailure"
       apply (rule exhale_with_substitution_failure)
               apply (rule exh[unfolded \<open>Rep_preal (Abs_preal v_p) = p\<close> \<open>pbody' = pbody\<close>])
@@ -2096,7 +2350,7 @@ next
 
     ultimately show ?thesis
       using StepExhale[THEN exhale_rel_failure_elim]
-      by (metis ns\<^sub>2 ns\<^sub>3 red_ast_bpl_transitive snd_conv v_args_eval)
+      by (metis ns\<^sub>2 ns\<^sub>3 red_ast_bpl_transitive snd_conv)
   qed
 qed
 
@@ -2691,6 +2945,31 @@ proof (rule rel_intro; blast?)
     using red_ast_bpl_transitive
     by blast
 qed
+
+
+lemma fold_knownfolded_star_upd_rel':
+  assumes
+    CtxtPredWf: "ctxt_pred_syn_wf ctxt_vpr" and
+    StepLeft:
+      "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and> pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr A \<omega>)
+                   (\<lambda>\<omega> ns. R \<omega> ns)
+                   (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
+                   (\<lambda>\<omega>\<^sub>0_\<omega>. False)
+                   P ctxt_bpl \<gamma> \<gamma>\<^sub>2" and
+    StepRight:
+      "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and> pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr B \<omega>)
+                   (\<lambda>\<omega> ns. R \<omega> ns)
+                   (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
+                   (\<lambda>\<omega>\<^sub>0_\<omega>. False)
+                   P ctxt_bpl \<gamma>\<^sub>2 \<gamma>'"
+
+  shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and> pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr (A && B) \<omega>)
+                     (\<lambda>\<omega> ns. R \<omega> ns)
+                     (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
+                     (\<lambda>\<omega>\<^sub>0_\<omega>. False)
+                     P ctxt_bpl \<gamma> \<gamma>'" (is "rel_general ?R\<^sub>0 _ _ _ _ _ _ _")
+  using assms fold_knownfolded_star_upd_rel
+  by blast
 
 
 lemma fold_knownfolded_imp_upd_rel:
