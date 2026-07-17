@@ -1635,6 +1635,43 @@ qed
 
 subsection \<open>Fold\<close>
 
+text \<open>The following definition captures a premise that recurs throughout the known-folded permission
+      mask update lemmas for \<^const>\<open>Fold\<close>: the predicate arguments evaluate successfully, are
+      well-typed, and there is a substate of the mask for the folded predicate that satisfies the
+      predicate body (so that the known-folded mask update is justified).\<close>
+
+definition pred_kfm_sat_premise ::
+  "'a total_context \<Rightarrow> predicate_ident \<Rightarrow> 'a full_total_state option \<Rightarrow> pure_exp list \<Rightarrow> 'a ValueAndBasicState.val list \<Rightarrow> assertion \<Rightarrow> 'a full_total_state \<Rightarrow> bool"
+  where
+    "pred_kfm_sat_premise ctxt_vpr pid \<omega>def e_args_vpr v_args_vpr A \<omega> \<equiv>
+       red_pure_exps_total ctxt_vpr \<omega>def e_args_vpr \<omega> (Some v_args_vpr) \<and>
+       pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
+       (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
+            sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) A \<and>
+            consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>))"
+
+lemma pred_kfm_sat_premiseI:
+  assumes "red_pure_exps_total ctxt_vpr \<omega>def e_args_vpr \<omega> (Some v_args_vpr)"
+      and "pred_ty_correct_premise ctxt_vpr pid v_args_vpr"
+      and "get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s)"
+      and "nm_exh \<le> nm\<^sub>s"
+      and "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) A"
+      and "consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)"
+    shows "pred_kfm_sat_premise ctxt_vpr pid \<omega>def e_args_vpr v_args_vpr A \<omega>"
+  using assms
+  unfolding pred_kfm_sat_premise_def
+  by blast
+
+lemma pred_kfm_sat_premiseD:
+  assumes "pred_kfm_sat_premise ctxt_vpr pid \<omega>def e_args_vpr v_args_vpr A \<omega>"
+  shows "red_pure_exps_total ctxt_vpr \<omega>def e_args_vpr \<omega> (Some v_args_vpr) \<and>
+         pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
+         (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
+              sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) A \<and>
+              consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>))"
+  using assms
+  unfolding pred_kfm_sat_premise_def
+  by blast
 
 lemma framing_subst_exprs_wf_rel:
   assumes ConsistencyDownwardsMono: "mono_prop_downward_ord StateCons"
@@ -1752,11 +1789,8 @@ lemma fold_stmt_rel:
       and StepKFUpdate:
             "\<And>v_args_vpr v_p_vpr.
                 rel_general (\<lambda>\<omega> ns. R' \<omega> ns \<and>
-                                    red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr) \<and>
-                                    pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
-                                    (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
-                                         sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<and>
-                                         consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)))
+                                    pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr
+                                      (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<omega>)
                             R' (=) (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>5 \<gamma>'"
     shows "stmt_rel R R' ctxt_vpr StateCons \<Lambda>_vpr P ctxt_bpl (Fold pid e_args_vpr (PureExp e_p_vpr)) \<gamma> \<gamma>'"
 proof (rule stmt_rel_intro)
@@ -1936,6 +1970,7 @@ proof (rule stmt_rel_intro)
     apply (rule StepKFUpdate[THEN rel_success_elim, where ?\<omega>=\<omega>' and ?\<omega>'=\<omega>' and ?ns=ns\<^sub>5 and ?v_args_vpr1=v_args])
      prefer 2
      apply simp
+    unfolding pred_kfm_sat_premise_def
     apply (intro conjI)
     using conjunct2[OF ns\<^sub>5]
        apply blast
@@ -2378,11 +2413,8 @@ lemma fold_knownfolded_acc_upd_rel:
     FieldRelSingle: "field_rel_single Pr TyRep Tr f e_f_bpl \<tau>_bpl"
 
   shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
-                               red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr) \<and>
-                               pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
-                               (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
-                                  sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (Atomic (Acc e_r_vpr f (PureExp e_p_vpr))) \<and>
-                                  consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)))
+                               pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr
+                                 (Atomic (Acc e_r_vpr f (PureExp e_p_vpr))) \<omega>)
                      (\<lambda>\<omega> ns. R' \<omega> ns)
                      (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
                      (\<lambda>\<omega>\<^sub>0_\<omega>. False)
@@ -2395,7 +2427,7 @@ proof (rule rel_intro; blast?)
   hence "R \<omega> ns"
     by blast
 
-  from \<open>?R\<^sub>0 \<omega> ns\<close>
+  from \<open>?R\<^sub>0 \<omega> ns\<close>[THEN conjunct2, THEN pred_kfm_sat_premiseD]
   obtain nm_exh p\<^sub>s nm\<^sub>s where
     sub: "get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s)" and
     "nm_exh \<le> nm\<^sub>s" and
@@ -2419,7 +2451,7 @@ proof (rule rel_intro; blast?)
   have "v_r_vpr = Address addr"
     by (metis \<open>0 < v_p_vpr\<close> \<open>addr = the_address v_r_vpr\<close> less_numeral_extra(3) mh ref.exhaust_sel)
 
-  from PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close> evals_with_None
+  from PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close>[unfolded pred_kfm_sat_premise_def] evals_with_None
   have ploc_bpl_eval: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredKnownFoldedField (pid, v_args_vpr))))"
     by blast
 
@@ -2576,34 +2608,19 @@ lemma fold_knownfolded_star_upd_rel:
   assumes
     CtxtPredWf: "ctxt_pred_syn_wf ctxt_vpr" and
     StepLeft:
-      "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
-                             red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr) \<and>
-                             pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
-                             (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
-                                sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) A \<and>
-                                consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)))
+      "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and> pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr A \<omega>)
                    (\<lambda>\<omega> ns. R' \<omega> ns)
                    (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
                    (\<lambda>\<omega>\<^sub>0_\<omega>. False)
                    P ctxt_bpl \<gamma> \<gamma>\<^sub>2" and
     StepRight:
-      "rel_general (\<lambda>\<omega> ns. R' \<omega> ns \<and>
-                             red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr) \<and>
-                             pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
-                             (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
-                                sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) B \<and>
-                                consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)))
+      "rel_general (\<lambda>\<omega> ns. R' \<omega> ns \<and> pred_kfm_sat_premise ctxt_vpr pid (Some \<omega>def) e_args_vpr v_args_vpr B \<omega>)
                    (\<lambda>\<omega> ns. R'' \<omega> ns)
                    (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
                    (\<lambda>\<omega>\<^sub>0_\<omega>. False)
                    P ctxt_bpl \<gamma>\<^sub>2 \<gamma>'"
 
-  shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
-                               red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr) \<and>
-                               pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
-                               (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
-                                  sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (A && B) \<and>
-                                  consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)))
+  shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and> pred_kfm_sat_premise ctxt_vpr pid (Some \<omega>def) e_args_vpr v_args_vpr (A && B) \<omega>)
                      (\<lambda>\<omega> ns. R'' \<omega> ns)
                      (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
                      (\<lambda>\<omega>\<^sub>0_\<omega>. False)
@@ -2615,7 +2632,9 @@ proof (rule rel_intro; blast?)
   hence "R \<omega> ns"
     by blast
 
-  from \<open>?R\<^sub>0 \<omega> ns\<close> obtain nm_exh p\<^sub>s nm\<^sub>s where
+  from \<open>?R\<^sub>0 \<omega> ns\<close>[THEN conjunct2, THEN pred_kfm_sat_premiseD] obtain nm_exh p\<^sub>s nm\<^sub>s where
+    red_args: "red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)" and
+    ty_correct: "pred_ty_correct_premise ctxt_vpr pid v_args_vpr" and
     sub: "get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s)" and
     "nm_exh \<le> nm\<^sub>s" and
     sat: "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (A && B)" and
@@ -2644,13 +2663,31 @@ proof (rule rel_intro; blast?)
     using \<open>nm_exh \<le> nm\<^sub>s\<close> add.commute calculation(7) dual_order.trans nm_sum_is_bigger
     by fastforce+
 
+  have prem_left: "pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr A \<omega>"
+    apply (rule pred_kfm_sat_premiseI[OF _ ty_correct sub \<open>nm_exh_A \<le> nm\<^sub>s\<close>])
+    using red_args evals_with_None
+      apply blast
+    using \<open>sat ctxt_vpr \<omega> mh\<^sub>A mp\<^sub>A A\<close> \<open>mh\<^sub>A = _\<close> \<open>mp\<^sub>A = _\<close>
+     apply simp
+    using nm\<^sub>1_cons total_state.update_convs(2)
+    apply simp
+    done
+
   ultimately obtain ns\<^sub>2 where bpl_step\<^sub>2: "red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>\<^sub>2, Normal ns\<^sub>2) \<and> R' \<omega>' ns\<^sub>2"
-    using rel_success_elim[OF StepLeft] \<open>?R\<^sub>0 \<omega> ns\<close> \<open>\<omega> = \<omega>'\<close> evals_with_None
-    by (metis \<open>sat ctxt_vpr \<omega> mh\<^sub>A mp\<^sub>A A\<close> sub total_state.update_convs(2))
+    using rel_success_elim[OF StepLeft] \<open>R \<omega> ns\<close> prem_left \<open>\<omega> = \<omega>'\<close>
+    by blast
+
+  have prem_right: "pred_kfm_sat_premise ctxt_vpr pid (Some \<omega>def) e_args_vpr v_args_vpr B \<omega>"
+    apply (rule pred_kfm_sat_premiseI[OF red_args ty_correct sub \<open>nm_exh_B \<le> nm\<^sub>s\<close>])
+    using \<open>sat ctxt_vpr \<omega> mh\<^sub>B mp\<^sub>B B\<close> \<open>mh\<^sub>B = _\<close> \<open>mp\<^sub>B = _\<close>
+     apply simp
+    using nm\<^sub>2_cons total_state.update_convs(2)
+    apply simp
+    done
 
   then obtain ns' where "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>2, Normal ns\<^sub>2) (\<gamma>', Normal ns') \<and> R'' \<omega>' ns'"
-    using rel_success_elim[OF StepRight] bpl_step\<^sub>2 \<open>?R\<^sub>0 \<omega> ns\<close> \<open>\<omega> = \<omega>'\<close>
-    by (metis \<open>mh\<^sub>B = _\<close> \<open>mp\<^sub>B = _\<close> \<open>nm_exh_B \<le> nm\<^sub>s\<close> \<open>sat ctxt_vpr \<omega> mh\<^sub>B mp\<^sub>B B\<close> nm\<^sub>2_cons sub total_state.update_convs(2))
+    using rel_success_elim[OF StepRight] bpl_step\<^sub>2 prem_right \<open>\<omega> = \<omega>'\<close>
+    by blast
 
   with bpl_step\<^sub>2 show "\<exists>ns'. red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R'' \<omega>' ns'"
     using red_ast_bpl_transitive
@@ -2673,24 +2710,14 @@ lemma fold_knownfolded_imp_upd_rel:
     CondExpRel: "exp_rel_vpr_bpl (\<lambda>\<omega>def \<omega> ns. \<omega>def = \<omega> \<and> R \<omega> ns) ctxt_vpr ctxt_bpl e_cond_vpr e_cond_bpl" and
 
     StepRHS:
-      "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
-                             (\<exists>\<omega>def. red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)) \<and>
-                             pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
-                             (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
-                                sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) A \<and>
-                                consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)))
+      "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and> (\<exists>\<omega>def. pred_kfm_sat_premise ctxt_vpr pid (Some \<omega>def) e_args_vpr v_args_vpr A \<omega>))
                    (\<lambda>\<omega> ns. R' \<omega> ns)
                    (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
                    (\<lambda>\<omega>\<^sub>0_\<omega>. False)
                    P ctxt_bpl (thnHd, (convert_list_to_cont thnTl (KSeq next cont))) (next, cont)"
        (is "rel_general _ _ _ _ _ _ ?\<gamma>\<^sub>2 _")
 
-  shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
-                               red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr) \<and>
-                               pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
-                               (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
-                                  sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (assert.Imp e_cond_vpr A) \<and>
-                                  consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)))
+  shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and> pred_kfm_sat_premise ctxt_vpr pid (Some \<omega>def) e_args_vpr v_args_vpr (assert.Imp e_cond_vpr A) \<omega>)
                      (\<lambda>\<omega> ns. R' \<omega> ns)
                      (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
                      (\<lambda>\<omega>\<^sub>0_\<omega>. False)
@@ -2703,11 +2730,14 @@ proof (rule rel_intro; blast?)
   hence "R \<omega> ns"
     by blast
 
-  from \<open>?R\<^sub>0 \<omega> ns\<close>
+  from \<open>?R\<^sub>0 \<omega> ns\<close>[THEN conjunct2, THEN pred_kfm_sat_premiseD]
   obtain nm_exh p\<^sub>s nm\<^sub>s where
+    red_args: "red_pure_exps_total ctxt_vpr (Some \<omega>def) e_args_vpr \<omega> (Some v_args_vpr)" and
+    ty_correct: "pred_ty_correct_premise ctxt_vpr pid v_args_vpr" and
     sub: "get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s)" and
     "nm_exh \<le> nm\<^sub>s" and
-    diff_sat: "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (assert.Imp e_cond_vpr A)"
+    diff_sat: "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (assert.Imp e_cond_vpr A)" and
+    extcons: "consistent_external ctxt_vpr \<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>"
     by blast
 
   then consider (True) "ctxt_vpr, None \<turnstile> \<langle>e_cond_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
@@ -2719,19 +2749,16 @@ proof (rule rel_intro; blast?)
   proof cases
     case True
 
-    then obtain nm_exh p\<^sub>s nm\<^sub>s where
-      "get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s, nm\<^sub>s)" and
-      "nm_exh \<le> nm\<^sub>s" and
-      "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (assert.Imp e_cond_vpr A)" and
-      "consistent_external ctxt_vpr \<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>"
-      using \<open>?R\<^sub>0 _ _\<close>
-      by blast
-    moreover hence "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) A"
+    have "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) A"
+      using diff_sat
       by (metis SatImp_case True ValueAndBasicState.val.inject(2) eval_is_deterministic_single extended_val.inject)
+    hence "\<exists>\<omega>def. pred_kfm_sat_premise ctxt_vpr pid (Some \<omega>def) e_args_vpr v_args_vpr A \<omega>"
+      using pred_kfm_sat_premiseI[OF red_args ty_correct sub \<open>nm_exh \<le> nm\<^sub>s\<close> _ extcons]
+      by blast
 
-    ultimately obtain ns' where
+    then obtain ns' where
       "R' \<omega> ns'" and red_thn: "red_ast_bpl P ctxt_bpl (?\<gamma>\<^sub>2, Normal ns) ((next, cont), Normal ns')"
-      using rel_success_elim[OF StepRHS] \<open>?R\<^sub>0 \<omega> ns\<close>
+      using rel_success_elim[OF StepRHS] \<open>R \<omega> ns\<close>
       by blast
 
     have h_upd_eval: "red_expr_bpl ctxt_bpl e_cond_bpl ns (LitV (LBool True))"
@@ -3750,11 +3777,8 @@ lemma fold_knownfolded_pred_upd_rel:
     PermPosConstExpr: "\<And>\<omega>. ctxt_vpr, None \<turnstile> \<langle>e_p_fold_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> p > 0"
 
   shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
-                               red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr) \<and>
-                                  pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
-                               (\<exists>nm_exh p\<^sub>s nm\<^sub>s. get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
-                                  sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (Atomic (AccPredicate pid_fold e_args_fold_vpr (PureExp e_p_fold_vpr))) \<and>
-                                  consistent_external ctxt_vpr (\<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>)))
+                               pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr
+                                 (Atomic (AccPredicate pid_fold e_args_fold_vpr (PureExp e_p_fold_vpr))) \<omega>)
                      (\<lambda>\<omega> ns. R' \<omega> ns)
                      (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
                      (\<lambda>\<omega>\<^sub>0_\<omega>. False)
@@ -3771,7 +3795,7 @@ proof (rule rel_intro; blast?)
   hence "R \<omega> ns"
     by blast
 
-  from \<open>?R\<^sub>0 \<omega> ns\<close>
+  from \<open>?R\<^sub>0 \<omega> ns\<close>[THEN conjunct2, THEN pred_kfm_sat_premiseD]
   obtain nm_exh p\<^sub>s nm\<^sub>s where
     sub: "get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s)" and
     "nm_exh \<le> nm\<^sub>s" and
@@ -3821,12 +3845,12 @@ proof (rule rel_intro; blast?)
     using all_inversion_type_of_vbpl_val[OF WfTyRep]
     by blast+
 
-  from PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close>
+  from PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close>[unfolded pred_kfm_sat_premise_def]
   have ploc_bpl_eval: "red_expr_bpl ctxt_bpl e_ploc_bpl ns (AbsV (AField (PredKnownFoldedField (pid, v_args_vpr))))"
     using evals_with_None
     by blast
 
-  from PlocFoldRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close> e_args_fold_eval
+  from PlocFoldRel[unfolded ploc_sm_rel_vpr_bpl'_def] \<open>?R\<^sub>0 \<omega> ns\<close>[unfolded pred_kfm_sat_premise_def] e_args_fold_eval
   have ploc_fold_bpl_eval: "red_expr_bpl ctxt_bpl e_ploc_fold_bpl ns (AbsV (AField (PredKnownFoldedField (pid_fold, v_args_fold_vpr))))"
     unfolding pred_ty_correct_premise_def
     using \<open>program.predicates (program_total ctxt_vpr) pid_fold = Some pdecl_fold\<close> v_args_fold_typed
