@@ -16,15 +16,15 @@ fun unfold_bigblock_atomic (ctxt : Proof.context) (bigblock : term) : (int -> ta
   case bigblock of
     Const (bigblock_name, _) =>
     ( let val thm = Proof_Context.get_thms ctxt (bigblock_name ^ "_def")
-      in         
+      in
          simp_only_tac thm ctxt
          (*(K (unfold_tac ctxt thm))*) (* unfold_tac has an effect on all subgoals, which we avoid, since it makes tactics less robust *)
       end )
   | _ => K all_tac
 
 fun is_empty_bigblock bigblock =
-  case bigblock of 
-   Const (@{const_name BigBlock}, _) 
+  case bigblock of
+   Const (@{const_name BigBlock}, _)
    $ _ (* name *)
    $ Const (@{const_name Nil}, _)
    $ Const (@{const_name None}, _)

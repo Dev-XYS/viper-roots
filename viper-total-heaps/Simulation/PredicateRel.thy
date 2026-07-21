@@ -2984,6 +2984,8 @@ lemma fold_knownfolded_imp_upd_rel:
 
     TyInterpEq: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
 
+    EmptyElse: "is_empty_bigblock empty_else_block" and
+
     CondExpRel: "exp_rel_vpr_bpl (\<lambda>\<omega>def \<omega> ns. \<omega>def = \<omega> \<and> R \<omega> ns) ctxt_vpr ctxt_bpl e_cond_vpr e_cond_bpl" and
 
     StepRHS:
@@ -2999,7 +3001,7 @@ lemma fold_knownfolded_imp_upd_rel:
                      (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
                      (\<lambda>\<omega>\<^sub>0_\<omega>. False)
                      P ctxt_bpl
-                     (if_bigblock name (Some e_cond_bpl) (thnHd # thnTl) [empty_bigblock name], KSeq next cont)
+                     (if_bigblock name (Some e_cond_bpl) (thnHd # thnTl) [empty_else_block], KSeq next cont)
                      (next, cont)" (is "rel_general ?R\<^sub>0 _ _ _ _ _ ?\<gamma> ?\<gamma>'")
 proof (rule rel_intro; blast?)
   fix \<omega> ns \<omega>'
@@ -3066,7 +3068,7 @@ proof (rule rel_intro; blast?)
       apply (intro conjI)
        apply (rule red_ast_bpl_empty_else)
         apply fact
-       apply simp
+       apply fact
       using StateRelIn StateRelOut \<open>R \<omega> ns\<close> \<open>\<omega> = \<omega>'\<close>
       by blast
   qed

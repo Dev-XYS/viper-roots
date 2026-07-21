@@ -4,8 +4,6 @@ imports Boogie_Lang.HelperML ExprWfRelML TotalViperSimulation.ExhaleRel ViperBoo
 begin
 
 
-
-
 text \<open>This theory is a working pad for the automation that discharges the known-folded permission
       mask update step of a \<^const>\<open>Fold\<close> statement (i.e. the \<open>StepKFUpdate\<close> premise of
       @{thm fold_stmt_rel}). Eventually this should be moved into the \<open>TotalViperSimulation\<close>
@@ -67,6 +65,7 @@ fun prove_vpr_const_perm_eval_tac ctxt =
    to a goal whose assertion is \<open>Atomic (Acc e_r_vpr f (PureExp e_p_vpr))\<close>. Mirrors the manual proof
    in relational_proof_foo.thy and the structure of upd_exhale_field_acc_tac in ExhaleRelML.thy. *)
 fun upd_kfm_field_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
+  (Rmsg' "kfm upd field acc unfold current bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd field acc rule" (resolve_tac ctxt @{thms fold_knownfolded_acc_upd_rel}) ctxt) THEN'
   (Rmsg' "kfm upd field acc StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
   (Rmsg' "kfm upd field acc StateRelOut" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
@@ -119,19 +118,26 @@ fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info : in
     | SOME a =>
         (case a of
            Const (@{const_name Star}, _) $ _ $ _ =>
-             (Rmsg' "kfm upd Star rule" (resolve_tac ctxt @{thms fold_knownfolded_star_upd_rel'}) ctxt THEN'
+             ((Rmsg' "kfm upd Star rule" (resolve_tac ctxt @{thms fold_knownfolded_star_upd_rel'}) ctxt) THEN'
               (Rmsg' "kfm upd Star CtxtPredWf" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
               (kfm_upd_rel_tac ctxt info pred_name exp_rel_info) THEN'
               (kfm_upd_rel_tac ctxt info pred_name exp_rel_info)) i
          | Const (@{const_name "assert.Imp"}, _) $ _ $ _ =>
-             (Rmsg' "kfm upd Imp rule" (resolve_tac ctxt @{thms fold_knownfolded_imp_upd_rel}) ctxt THEN'
+             ((Rmsg' "kfm upd Imp rule" (resolve_tac ctxt @{thms fold_knownfolded_imp_upd_rel}) ctxt) THEN'
               (Rmsg' "kfm upd Imp StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
               (Rmsg' "kfm upd Imp StateRelOut" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
               (Rmsg' "kfm upd Imp HeapVarDefSame" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
               (Rmsg' "kfm upd Imp ExpSyntax" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
               (Rmsg' "kfm upd Imp TyInterpEq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+              (Rmsg' "kfm upd Imp EmptyElse"
+                ((unfold_bigblock_in_goal ctxt) THEN'
+                 (assm_full_simp_solved_tac ctxt)) ctxt) THEN'
               (Rmsg' "kfm upd Imp CondExpRel" (exp_rel_tac exp_rel_info ctxt |> SOLVED') ctxt) THEN'
-              (kfm_upd_rel_tac ctxt info pred_name exp_rel_info)) i
+              (Rmsg' "kfm upd Imp simp cont" (simplify_continuation ctxt) ctxt) THEN'
+              (Rmsg' "kfm upd Imp propagate (unfolding bigblock)" (resolve_tac ctxt @{thms rel_propagate_post}) ctxt) THEN'
+              (Rmsg' "kfm upd Imp unfold bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'
+              (kfm_upd_rel_tac ctxt info pred_name exp_rel_info) THEN'
+              (Rmsg' "kfm upd Imp progress (unfolding bigblock)" (progress_red_bpl_rel_tac ctxt) ctxt)) i
          | Const (@{const_name Atomic}, _) $ (Const (@{const_name Acc}, _) $ _ $ _ $ _) =>
              upd_kfm_field_acc_tac ctxt info pred_name exp_rel_info i
          | Const (@{const_name Atomic}, _) $ (Const (@{const_name AccPredicate}, _) $ _ $ _ $ _) =>

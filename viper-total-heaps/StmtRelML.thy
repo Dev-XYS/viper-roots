@@ -99,6 +99,7 @@ and
              (Rmsg' "If3 Then" (resolve_tac ctxt [@{thm stmt_rel_propagate_2_same_rel}]) ctxt) THEN'
              (* rewrite then-branch, since block will be folded *)
              (Rmsg' "If4 Then" (progress_stmt_rel_tac ctxt) ctxt) THEN'
+             (SUBGOAL (fn (t,_) => raise TERM ("breakpoint probe", [t]))) THEN'
              (stmt_rel_tac ctxt info thn_hint |> SOLVED') THEN'
              (Rmsg' "If5 Then" (progress_red_bpl_rel_tac ctxt) ctxt)
            ) THEN'
