@@ -135,6 +135,7 @@ ML \<open>
        thm * (* auxiliary variable lookup var from state relation theorem *)
        thm (* expression relation permission access theorem *)
   | PredAccExhHint of
+       string * (* predicate name *)
        exp_wf_rel_info *
        exp_rel_info *
        thm * (* auxiliary variable lookup var ty theorem *)
@@ -258,7 +259,7 @@ ML \<open>
       (Rmsg' "Exh Prove Perm Nonnegative - Success Condition"
              (assm_full_simp_solved_with_thms_tac @{thms exhale_pred_acc_rel_perm_success_def} ctxt) ctxt)
 
-  fun prove_sufficient_perm_pred_tac ctxt (info: basic_stmt_rel_info) exp_rel_info lookup_aux_var_state_rel_thm exp_rel_perm_access_thm =
+  fun prove_sufficient_perm_pred_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info lookup_aux_var_state_rel_thm exp_rel_perm_access_thm =
     (Rmsg' "Exh Prove Sufficient Perm 1" (resolve_tac ctxt @{thms rel_general_cond_2}) ctxt) THEN'
       (* if condition *)
       (Rmsg' "Exh Prove Sufficient Perm - Introduce Facts Cond"
@@ -273,7 +274,7 @@ ML \<open>
         (Rmsg' "Exh Prove Sufficient Perm - Propagate Pre Assert" (resolve_tac ctxt @{thms rel_propagate_pre_assert_2}) ctxt) THEN'
           (Rmsg' "Exh Prove Sufficient Perm - Introduce Facts Assert"
                 (EVERY' [ intro_fact_lookup_aux_var_tac ctxt lookup_aux_var_state_rel_thm,
-                          intro_fact_pred_mask_lookup_reduction ctxt info exp_rel_info exp_rel_perm_access_thm
+                          intro_fact_pred_mask_lookup_reduction ctxt info pred_name exp_rel_info exp_rel_perm_access_thm
                         ]) ctxt) THEN'
           (Rmsg' "Exh Prove Sufficient Perm - Red Assert" (prove_red_expr_bpl_tac ctxt |> SOLVED') ctxt) THEN'
           (Rmsg' "Exh Prove Sufficient Perm - Success Condition"
@@ -297,7 +298,7 @@ ML \<open>
                        fastforce_tac ctxt @{thms prat_non_negative},
                        assm_full_simp_solved_tac ctxt]) ctxt)
 
-  fun upd_exhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) exp_rel_info =
+  fun upd_exhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
     (Rmsg' "exh pred upd progress" (rewrite_rel_general_tac ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd rule" (resolve_tac ctxt @{thms exhale_rel_pred_acc_upd_rel}) ctxt) THEN'
     (Rmsg' "exh pred upd StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
@@ -318,7 +319,7 @@ ML \<open>
     (Rmsg' "exh pred upd MaskUpdateBpl" (simp_tac_with_thms @{thms read_mask_concrete_def update_mask_concrete_def} ctxt THEN'
                                         assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd PlocBpl" (simp_tac_with_thms [] ctxt) ctxt) THEN'
-    (Rmsg' "exh pred upd PlocRel" (prove_ploc_rel ctxt info exp_rel_info) ctxt) THEN'
+    (Rmsg' "exh pred upd PlocRel" (prove_ploc_rel ctxt info pred_name exp_rel_info) ctxt) THEN'
     (Rmsg' "exh pred upd AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd ProgEq" (assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm info] ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd KFRelOff" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt)
@@ -326,7 +327,7 @@ ML \<open>
   (* This tactic is not used (and not verified) at the moment. The exhale in unfold uses a different one. *)
   fun atomic_exhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) exh_pred_acc_hint =
     case exh_pred_acc_hint of
-      PredAccExhHint (exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm, exp_rel_perm_access_thm) =>
+      PredAccExhHint (_, exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm, exp_rel_perm_access_thm) =>
         (Rmsg' "ExhPred 1" (resolve_tac ctxt @{thms unfold_exhale_pred_rel}) ctxt) THEN'
           (Rmsg' "ExhPred wf args list simp" (simp_only_tac @{thms append_Cons append_Nil} ctxt) ctxt) THEN'
           (Rmsg' "ExhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'

@@ -131,6 +131,7 @@ ML \<open>
        thm * (* auxiliary variable lookup var ty theorem *)
        thm (* auxiliary variable lookup var from state relation theorem *)
   | PredicateAccInhHint of
+       string * (* predicate name *)
        exp_wf_rel_info *
        exp_rel_info *
        thm * (* auxiliary variable lookup var ty theorem *)
@@ -231,7 +232,7 @@ ML \<open>
     Thm.instantiate' [SOME cty] [NONE, SOME ctrm] @{thm spec}
   end
 
-  fun inhale_rel_pred_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info =
+  fun inhale_rel_pred_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
     (Rmsg' "inh pred acc upd rule" (resolve_tac ctxt @{thms inhale_rel_pred_acc_upd_rel}) ctxt) THEN'
     (Rmsg' "inh pred acc upd StateRel" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd aux var disjoint" (#aux_var_disj_tac info ctxt) ctxt) THEN'
@@ -249,13 +250,13 @@ ML \<open>
     (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac [@{thm update_mask_concrete_def}, #ty_repr_def_thm info] ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd 3" (assm_full_simp_solved_with_thms_tac (#ty_repr_def_thm info::(@{thms update_mask_concrete_def read_mask_concrete_def})) ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd PlocBpl" (simp_tac_with_thms [] ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd PlocRel" (prove_ploc_rel ctxt info exp_rel_info) ctxt) THEN'
+    (Rmsg' "inh pred acc upd PlocRel" (prove_ploc_rel ctxt info pred_name exp_rel_info) ctxt) THEN'
     (Rmsg' "inh pred acc upd AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info, @{thm ty_repr_basic_def}] ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd ProgEq" (simp_tac_with_thms [] ctxt) ctxt)
 
   fun atomic_inhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) inh_pred_acc_hint =
     case inh_pred_acc_hint of
-      PredicateAccInhHint (exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm) =>
+      PredicateAccInhHint (pred_name, exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm) =>
         (Rmsg' "InhPred 1" (resolve_tac ctxt @{thms inhale_predicate_acc_rel}) ctxt) THEN'
           (Rmsg' "InhPred wf args list simp" (simp_only_tac @{thms append_Cons append_Nil} ctxt) ctxt) THEN'
           (Rmsg' "InhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'
@@ -267,7 +268,7 @@ ML \<open>
             (prove_perm_non_negative_inh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
             (true_implies_true_tac ctxt) THEN'
             (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint probe", [t]))) THEN' *)
-            (inhale_rel_pred_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info)
+            (inhale_rel_pred_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info)
     | _ => error("only support PredicateAccInhHint")
 
   fun atomic_inhale_rel_inst_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) atomic_inh_hint = 

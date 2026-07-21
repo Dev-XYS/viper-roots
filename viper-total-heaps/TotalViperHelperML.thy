@@ -44,6 +44,11 @@ type method_data =
        method_post_thm : thm,
        method_lookup_thm : thm }
 
+type predicate_data =
+     { predicate_args_thm : thm,
+       predicate_body_thm : thm,
+       predicate_lookup_thm : thm }
+
 (* TODO: move to HelperML.thy
 
 The following example illustrates the difference between \<open>FIRST'\<close> and \<open>FIRST_and_THEN'\<close>. For the a goal

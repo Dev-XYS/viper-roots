@@ -66,7 +66,7 @@ fun prove_vpr_const_perm_eval_tac ctxt =
 (* Discharges the assumptions of @{thm fold_knownfolded_acc_upd_rel} once the rule has been applied
    to a goal whose assertion is \<open>Atomic (Acc e_r_vpr f (PureExp e_p_vpr))\<close>. Mirrors the manual proof
    in relational_proof_foo.thy and the structure of upd_exhale_field_acc_tac in ExhaleRelML.thy. *)
-fun upd_kfm_field_acc_tac ctxt (info: basic_stmt_rel_info) exp_rel_info =
+fun upd_kfm_field_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
   (Rmsg' "kfm upd field acc rule" (resolve_tac ctxt @{thms fold_knownfolded_acc_upd_rel}) ctxt) THEN'
   (Rmsg' "kfm upd field acc StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
   (Rmsg' "kfm upd field acc StateRelOut" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
@@ -94,7 +94,7 @@ fun upd_kfm_field_acc_tac ctxt (info: basic_stmt_rel_info) exp_rel_info =
   (Rmsg' "kfm upd field acc KnownFoldedReadBpl"
      (assm_full_simp_solved_with_thms_tac [@{thm read_heap_concrete_def}, #tr_def_thm info, #ty_repr_def_thm info] ctxt) ctxt) THEN'
   (Rmsg' "kfm upd field acc PredType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd field acc PlocRel" (prove_ploc_sm_rel' ctxt info exp_rel_info) ctxt) THEN'
+  (Rmsg' "kfm upd field acc PlocRel" (prove_ploc_sm_rel' ctxt info pred_name exp_rel_info) ctxt) THEN'
   (Rmsg' "kfm upd field acc RefExpRel" (exp_rel_tac exp_rel_info ctxt |> SOLVED') ctxt) THEN'
   (Rmsg' "kfm upd field acc FieldRelSingle" ((#field_rel_single_tac info) ctxt) ctxt)
 
@@ -111,7 +111,7 @@ fun kfm_upd_normalize_tac ctxt =
                   R' (=) (\<lambda>_. False) P ctxt_bpl \<gamma> \<gamma>'\<close>
    by dispatching on the structure of the assertion \<open>A\<close> (\<open>Atomic (Acc \<dots>)\<close>, \<open>Star\<close>, \<open>Imp\<close>, or
    \<open>Atomic (AccPredicate \<dots>)\<close> for a nested folded predicate, which is not yet automated). *)
-fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info : int -> tactic =
+fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info : int -> tactic =
   (Rmsg' "kfm upd normalize assertion" (kfm_upd_normalize_tac ctxt) ctxt) THEN'
   SUBGOAL (fn (t, i) =>
     case find_pred_kfm_sat_premise_assertion (Logic.strip_assums_concl t) of
@@ -121,8 +121,8 @@ fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info : int -> tacti
            Const (@{const_name Star}, _) $ _ $ _ =>
              (Rmsg' "kfm upd Star rule" (resolve_tac ctxt @{thms fold_knownfolded_star_upd_rel'}) ctxt THEN'
               (Rmsg' "kfm upd Star CtxtPredWf" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-              (kfm_upd_rel_tac ctxt info exp_rel_info) THEN'
-              (kfm_upd_rel_tac ctxt info exp_rel_info)) i
+              (kfm_upd_rel_tac ctxt info pred_name exp_rel_info) THEN'
+              (kfm_upd_rel_tac ctxt info pred_name exp_rel_info)) i
          | Const (@{const_name "assert.Imp"}, _) $ _ $ _ =>
              (Rmsg' "kfm upd Imp rule" (resolve_tac ctxt @{thms fold_knownfolded_imp_upd_rel}) ctxt THEN'
               (Rmsg' "kfm upd Imp StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
@@ -131,9 +131,9 @@ fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info : int -> tacti
               (Rmsg' "kfm upd Imp ExpSyntax" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
               (Rmsg' "kfm upd Imp TyInterpEq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
               (Rmsg' "kfm upd Imp CondExpRel" (exp_rel_tac exp_rel_info ctxt |> SOLVED') ctxt) THEN'
-              (kfm_upd_rel_tac ctxt info exp_rel_info)) i
+              (kfm_upd_rel_tac ctxt info pred_name exp_rel_info)) i
          | Const (@{const_name Atomic}, _) $ (Const (@{const_name Acc}, _) $ _ $ _ $ _) =>
-             upd_kfm_field_acc_tac ctxt info exp_rel_info i
+             upd_kfm_field_acc_tac ctxt info pred_name exp_rel_info i
          | Const (@{const_name Atomic}, _) $ (Const (@{const_name AccPredicate}, _) $ _ $ _ $ _) =>
              error ("kfm_upd_rel_tac: known-folded mask update for a nested folded predicate " ^
                     "access (AccPredicate) is not yet automated; see fold_knownfolded_pred_upd_rel " ^

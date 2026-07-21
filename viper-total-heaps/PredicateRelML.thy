@@ -12,7 +12,7 @@ val Rmsg' = run_and_print_if_fail_2_tac'
 
 fun atomic_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) exh_pred_acc_hint =
     case exh_pred_acc_hint of
-      PredAccExhHint (exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm, exp_rel_perm_access_thm) =>
+      PredAccExhHint (pred_name, exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm, exp_rel_perm_access_thm) =>
         (Rmsg' "UnfoldExhPred 1" (resolve_tac ctxt @{thms unfold_exhale_pred_rel}) ctxt) THEN'
         (Rmsg' "UnfoldExhPred wf args list simp" (simp_only_tac @{thms append_Cons append_Nil} ctxt) ctxt) THEN'
         (Rmsg' "UnfoldExhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'
@@ -20,16 +20,17 @@ fun atomic_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) (no_de
         (Rmsg' "UnfoldExhPred 3 propagate" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
         (store_temporary_perm_pred_exh_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
         (prove_perm_non_negative_pred_exh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
-        (prove_sufficient_perm_pred_tac ctxt info exp_rel_info lookup_aux_var_state_rel_thm exp_rel_perm_access_thm) THEN'
-        (upd_exhale_pred_acc_tac ctxt info exp_rel_info)
+        (prove_sufficient_perm_pred_tac ctxt info pred_name exp_rel_info lookup_aux_var_state_rel_thm exp_rel_perm_access_thm) THEN'
+        (upd_exhale_pred_acc_tac ctxt info pred_name exp_rel_info)
     | _ => error("Unfold only supports PredAccExhHint")
 
 
-fun pred_unfold_tac ctxt (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) atomic_exhale_hint inhale_hint =
+fun pred_unfold_tac ctxt pred_name (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) atomic_exhale_hint inhale_hint =
+  let val pred_data = lookup_predicate_data basic_info pred_name in
   (Rmsg' "unfold stmt rule" (resolve_tac ctxt @{thms unfold_stmt_rel}) ctxt) THEN'
-  (Rmsg' "unfold stmt PredDecl" (assm_full_simp_solved_with_thms_tac [#vpr_prog_def_thm basic_info] ctxt) ctxt) THEN'
-  (Rmsg' "unfold stmt PredArgs" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt) THEN'
-  (Rmsg' "unfold stmt PredBody" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt PredDecl" (assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm basic_info, #predicate_lookup_thm pred_data] ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt PredArgs" (assm_full_simp_solved_with_thms_tac (@{thms predicate_decl.defs}@[#predicate_args_thm pred_data]) ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt PredBody" (assm_full_simp_solved_with_thms_tac (@{thms predicate_decl.defs}@[#predicate_body_thm pred_data]) ctxt) ctxt) THEN'
   (Rmsg' "unfold stmt CtxtPredWf" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "unfold stmt CtxtPredSF" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "unfold stmt WfCons" (resolve_tac ctxt [#consistency_wf_thm basic_info]) ctxt) THEN'
@@ -54,6 +55,7 @@ fun pred_unfold_tac ctxt (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (
   (Rmsg' "unfold stmt simp synmult & subst" (asm_full_simp_tac ctxt) ctxt) THEN'
   (Rmsg' "unfold stmt StepInhale" (inhale_rel_tac ctxt inhale_info inhale_hint) ctxt) THEN'
   (SUBGOAL (fn (t,_) => raise TERM ("breakpoint working", [t])))
+  end
 
 \<close>
 
@@ -75,7 +77,7 @@ fun normal_exhale_rel_tac ctxt (info: 'a exhale_rel_info) (hint: 'a normal_exhal
   exhale_rel_aux_tac ctxt info (#exhale_rel_hint hint)
 
 
-fun inhale_rel_pred_acc_upd_rel_tac' ctxt (info: basic_stmt_rel_info) exp_rel_info =
+fun inhale_rel_pred_acc_upd_rel_tac' ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
   (Rmsg' "inh pred acc upd rule" (resolve_tac ctxt @{thms inhale_rel_pred_acc_upd_rel'}) ctxt) THEN'
   (Rmsg' "inh pred acc upd StateRelIn" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
   (Rmsg' "inh pred acc upd StateRelOut" (simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
@@ -94,14 +96,14 @@ fun inhale_rel_pred_acc_upd_rel_tac' ctxt (info: basic_stmt_rel_info) exp_rel_in
   (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac [@{thm update_mask_concrete_def}, #ty_repr_def_thm info] ctxt) ctxt) THEN'
   (Rmsg' "inh pred acc upd 3" (assm_full_simp_solved_with_thms_tac (#ty_repr_def_thm info::(@{thms update_mask_concrete_def read_mask_concrete_def})) ctxt) ctxt) THEN'
   (Rmsg' "inh pred acc upd PlocBpl" (simp_tac_with_thms [] ctxt) ctxt) THEN'
-  (Rmsg' "inh pred acc upd PlocRel" (prove_ploc_rel' ctxt info exp_rel_info) ctxt) THEN'
+  (Rmsg' "inh pred acc upd PlocRel" (prove_ploc_rel' ctxt info pred_name exp_rel_info) ctxt) THEN'
   (Rmsg' "inh pred acc upd AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info, @{thm ty_repr_basic_def}] ctxt) ctxt) THEN'
   (Rmsg' "inh pred acc upd ProgEq" (simp_tac_with_thms [] ctxt) ctxt)
 
 
 fun atomic_inhale_pred_acc_in_fold_tac ctxt (info: basic_stmt_rel_info) inh_pred_acc_hint =
   case inh_pred_acc_hint of
-    PredicateAccInhHint (exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm) =>
+    PredicateAccInhHint (pred_name, exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm) =>
       (Rmsg' "InhPred (fold) unfold current bigblock?" (rewrite_rel_general_tac ctxt) ctxt) THEN'
       (Rmsg' "InhPred (fold) propagate (store perm)" (resolve_tac ctxt @{thms rel_propagate_pre}) ctxt) THEN'
       (Rmsg' "InhPred (fold) red_ast_bpl_relI" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
@@ -109,17 +111,18 @@ fun atomic_inhale_pred_acc_in_fold_tac ctxt (info: basic_stmt_rel_info) inh_pred
       (Rmsg' "InhPred (fold) perm non-neg (always true)" (resolve_tac ctxt @{thms bpl_assert_true_is_skip}) ctxt) THEN'
       (true_implies_true_tac ctxt) THEN'
       (Rmsg' "InhPred (fold) propagate (reset state rel)" (resolve_tac ctxt @{thms rel_propagate_post_3}) ctxt) THEN'
-      (inhale_rel_pred_acc_upd_rel_tac' ctxt (info: basic_stmt_rel_info) exp_rel_info) THEN'
+      (inhale_rel_pred_acc_upd_rel_tac' ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info) THEN'
       (exhale_revert_state_relation ctxt info)
   | _ => error("Fold only supports PredicateAccInhHint")
 
 
-fun pred_fold_tac ctxt exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) exhale_hint atomic_inhale_hint =
+fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) exhale_hint atomic_inhale_hint =
+  let val pred_data = lookup_predicate_data basic_info pred_name in
   (Rmsg' "fold stmt rule" (resolve_tac ctxt @{thms fold_stmt_rel}) ctxt) THEN'
 
-  (Rmsg' "fold stmt PredDecl" (assm_full_simp_solved_with_thms_tac [#vpr_prog_def_thm basic_info] ctxt) ctxt) THEN'
-  (Rmsg' "fold stmt PredArgs" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt) THEN'
-  (Rmsg' "fold stmt PredBody" (assm_full_simp_solved_with_thms_tac @{thms predicate_decl.defs} ctxt) ctxt) THEN'
+  (Rmsg' "fold stmt PredDecl" (assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm basic_info, #predicate_lookup_thm pred_data] ctxt) ctxt) THEN'
+  (Rmsg' "fold stmt PredArgs" (assm_full_simp_solved_with_thms_tac (@{thms predicate_decl.defs}@[#predicate_args_thm pred_data]) ctxt) ctxt) THEN'
+  (Rmsg' "fold stmt PredBody" (assm_full_simp_solved_with_thms_tac (@{thms predicate_decl.defs}@[#predicate_body_thm pred_data]) ctxt) ctxt) THEN'
   (Rmsg' "fold stmt CtxtPredWf" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt CtxtPredSF" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt WfCons" (resolve_tac ctxt [#consistency_wf_thm basic_info]) ctxt) THEN'
@@ -153,7 +156,8 @@ fun pred_fold_tac ctxt exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_
   (Rmsg' "fold stmt good state after inhale propagate 2" (resolve_tac ctxt @{thms rel_propagate_pre_3_only_state_rel}) ctxt) THEN'
   (Rmsg' "fold stmt good state after inhale progress 2" ((progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm basic_info) (#tr_def_thm basic_info))) ctxt) THEN'
 
-  (Rmsg' "fold stmt known-folded mask update" (kfm_upd_rel_tac ctxt basic_info exp_rel_info) ctxt)
+  (Rmsg' "fold stmt known-folded mask update" (kfm_upd_rel_tac ctxt basic_info pred_name exp_rel_info) ctxt)
+  end
 
 
 fun exh_in_fold_no_def_checks_tac ctxt (info: basic_stmt_rel_info) : int -> tactic =
