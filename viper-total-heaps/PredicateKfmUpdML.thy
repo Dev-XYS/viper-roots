@@ -65,7 +65,6 @@ fun prove_vpr_const_perm_eval_tac ctxt =
    to a goal whose assertion is \<open>Atomic (Acc e_r_vpr f (PureExp e_p_vpr))\<close>. Mirrors the manual proof
    in relational_proof_foo.thy and the structure of upd_exhale_field_acc_tac in ExhaleRelML.thy. *)
 fun upd_kfm_field_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
-  (Rmsg' "kfm upd field acc unfold current bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd field acc rule" (resolve_tac ctxt @{thms fold_knownfolded_acc_upd_rel}) ctxt) THEN'
   (Rmsg' "kfm upd field acc StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
   (Rmsg' "kfm upd field acc StateRelOut" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
