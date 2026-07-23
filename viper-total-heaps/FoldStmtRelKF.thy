@@ -399,7 +399,7 @@ lemma fold_stmt_rel_kf:
       and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
-      and StateRelImpliesKFM: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns"
+      and StateRelImpliesKFRel: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns"
       and StateRelWeakening: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> R\<^sub>w \<omega> ns"
       and ArgsRestriction: "list_all no_unfolding_pure_exp e_args_vpr \<and> list_all no_perm_pure_exp e_args_vpr \<and> list_all no_old_pure_exp e_args_vpr \<and> list_all no_result_pure_exp e_args_vpr"
       and ArgsAreVarOrLit: "list_all is_var_or_lit e_args_vpr"
@@ -417,16 +417,16 @@ lemma fold_stmt_rel_kf:
                   (framing_exh ctxt_vpr StateCons)
                   ctxt_vpr StateCons P ctxt_bpl
                   (substitute_args_assertion (syntactic_mult p pbody) e_args_vpr) \<gamma>\<^sub>3 \<gamma>\<^sub>4"
-      and StepInhale:
-            "\<And>v_args_vpr v_p_vpr.
-                rel_general (\<lambda>\<omega>_def_\<omega> ns. R\<^sub>w' (fst \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>) ns \<and> ctxt_vpr, (Some (fst \<omega>_def_\<omega>)) \<turnstile> \<langle>e_p_vpr; snd \<omega>_def_\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_vpr)) (\<lambda>\<omega>_def_\<omega> ns. R\<^sub>w'' (snd \<omega>_def_\<omega>) ns)
-                  (\<lambda>\<omega>_def_\<omega> \<omega>_def_\<omega>'. fst \<omega>_def_\<omega> = fst \<omega>_def_\<omega>' \<and> inhale_pred_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr v_p_vpr (fst \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>'))
-                  (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>4 \<gamma>\<^sub>5"
       and StateRelStrengthening:
             "\<And>\<omega> ns v_args_vpr.
                 R\<^sub>w'' \<omega> ns \<Longrightarrow>
                 heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns \<Longrightarrow>
                 R' \<omega> ns"
+      and StepInhale:
+            "\<And>v_args_vpr v_p_vpr.
+                rel_general (\<lambda>\<omega>_def_\<omega> ns. R\<^sub>w' (fst \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>) ns \<and> ctxt_vpr, (Some (fst \<omega>_def_\<omega>)) \<turnstile> \<langle>e_p_vpr; snd \<omega>_def_\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_vpr)) (\<lambda>\<omega>_def_\<omega> ns. R\<^sub>w'' (snd \<omega>_def_\<omega>) ns)
+                  (\<lambda>\<omega>_def_\<omega> \<omega>_def_\<omega>'. fst \<omega>_def_\<omega> = fst \<omega>_def_\<omega>' \<and> inhale_pred_normal_premise ctxt_vpr StateCons pid e_args_vpr e_p_vpr v_args_vpr v_p_vpr (fst \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>) (snd \<omega>_def_\<omega>'))
+                  (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>4 \<gamma>\<^sub>5"
       and StepKFUpdate:
             "\<And>v_args_vpr v_p_vpr.
                 rel_general (\<lambda>\<omega> ns. R' \<omega> ns \<and>
@@ -665,7 +665,7 @@ proof (rule stmt_rel_intro)
       Lookup: "lookup_var (var_context ctxt_bpl) ns hvar = Some (AbsV (AHeap hb))" and
       KfmExists: "\<forall>lp. \<exists>kfm. hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))" and
       KfRel: "heap_knownfolded_rel (program_total ctxt_vpr) FieldTr (get_nm_total_full \<omega>) hb"
-      using StateRelImpliesKFM[OF \<open>R \<omega> ns\<close>]
+      using StateRelImpliesKFRel[OF \<open>R \<omega> ns\<close>]
       unfolding heap_knownfolded_var_rel_def
       by auto
 
@@ -946,5 +946,17 @@ next
       by (metis StateRelWeakening ns\<^sub>2 ns\<^sub>3 red_ast_bpl_transitive snd_conv)
   qed
 qed
+
+
+lemma turn_on_knownfolded_rel':
+  assumes "state_rel_def_same Pr StateCons TyRep (disable_knownfolded_rel_opt Tr) AuxPred ctxt_bpl \<omega> ns"
+      and "heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega> ns"
+      and "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))"
+    shows "state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns"
+  apply (subgoal_tac "enable_knownfolded_rel_opt Tr = Tr")
+  using turn_on_knownfolded_rel[OF assms(1), simplified, OF assms(2)] assms(3)
+   apply presburger
+  using assms(3)
+  by auto
 
 end

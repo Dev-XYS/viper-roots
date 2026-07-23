@@ -1,5 +1,5 @@
 theory PredicateRelML
-  imports Boogie_Lang.HelperML ExprWfRelML TotalViperSimulation.ExhaleRel ViperBoogieHelperML CPGHelperML TotalViperSimulation.PredicateRel ExhaleRelML InhaleRelML KnownFoldedML
+  imports Boogie_Lang.HelperML ExprWfRelML TotalViperSimulation.ExhaleRel ViperBoogieHelperML CPGHelperML TotalViperSimulation.PredicateRel ExhaleRelML InhaleRelML KnownFoldedML FoldStmtRelKF
 begin
 
 
@@ -118,7 +118,7 @@ fun atomic_inhale_pred_acc_in_fold_tac ctxt (info: basic_stmt_rel_info) inh_pred
 
 fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) exhale_hint atomic_inhale_hint =
   let val pred_data = lookup_predicate_data basic_info pred_name in
-  (Rmsg' "fold stmt rule" (resolve_tac ctxt @{thms fold_stmt_rel}) ctxt) THEN'
+  (Rmsg' "fold stmt rule" (resolve_tac ctxt @{thms fold_stmt_rel_kf}) ctxt) THEN'
 
   (Rmsg' "fold stmt PredDecl" (assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm basic_info, #predicate_lookup_thm pred_data] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt PredArgs" (assm_full_simp_solved_with_thms_tac (@{thms predicate_decl.defs}@[#predicate_args_thm pred_data]) ctxt) ctxt) THEN'
@@ -133,6 +133,10 @@ fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atom
   (Rmsg' "fold stmt StateRelImpliesExtCons 3" (assm_full_simp_solved_with_thms_tac [@{thm default_state_rel_options_def}, #tr_def_thm basic_info] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt StateRelImpliesExtCons 4" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info] ctxt) ctxt) THEN'
 
+  (Rmsg' "fold stmt StateRelImpliesKFRel" (fastforce_tac ctxt (#tr_def_thm basic_info :: @{thms state_rel_def state_rel0_def default_state_rel_options_def})) ctxt) THEN'
+
+  (Rmsg' "fold stmt StateRelWeakening" (eresolve_tac ctxt @{thms state_rel_kf_disable_consistency}) ctxt) THEN'
+
   (Rmsg' "fold stmt ArgsRestriction" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt ArgsAreVarOrLit" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt BodyNoUnfolding" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
@@ -144,19 +148,22 @@ fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atom
   (Rmsg' "fold stmt StepPermPos (always assert true)" (resolve_tac ctxt @{thms red_bpl_assert_true}) ctxt) THEN'
   (Rmsg' "fold stmt simp synmult" (simp_tac_with_thms [] ctxt) ctxt) THEN'
 
-  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint debug", [t]))) THEN' *)
-  (* (Rmsg' "fold stmt propagate state reset" (resolve_tac ctxt @{thms exhale_rel_propagate_post}) ctxt) THEN' *)
   (normal_exhale_rel_tac ctxt exhale_info exhale_hint) THEN'
-  (* (Rmsg' "fold stmt state reset after exhale" (exhale_revert_state_relation ctxt basic_info) ctxt) THEN' *)
+
+  (Rmsg' "fold stmt StateRelStrengthening 1" (eresolve_tac ctxt @{thms turn_on_knownfolded_rel'}) ctxt) THEN'
+  (Rmsg' "fold stmt StateRelStrengthening 2" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info] ctxt) ctxt) THEN'
+  (Rmsg' "fold stmt StateRelStrengthening 3" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info, @{thm default_state_rel_options_def}] ctxt) ctxt) THEN'
 
   (atomic_inhale_pred_acc_in_fold_tac ctxt basic_info atomic_inhale_hint) THEN'
+  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint debug", [t]))) THEN' *)
 
   (Rmsg' "fold stmt good state after inhale propagate 1" (resolve_tac ctxt @{thms rel_propagate_pre_3_only_state_rel}) ctxt) THEN'
   (Rmsg' "fold stmt good state after inhale progress 1" ((progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm basic_info) (#tr_def_thm basic_info))) ctxt) THEN'
   (Rmsg' "fold stmt good state after inhale propagate 2" (resolve_tac ctxt @{thms rel_propagate_pre_3_only_state_rel}) ctxt) THEN'
   (Rmsg' "fold stmt good state after inhale progress 2" ((progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm basic_info) (#tr_def_thm basic_info))) ctxt) THEN'
 
-  (Rmsg' "fold stmt known-folded mask update" (kfm_upd_rel_tac ctxt basic_info pred_name exp_rel_info) ctxt)
+  (Rmsg' "fold stmt known-folded mask update" (kfm_upd_rel_tac ctxt basic_info pred_name exp_rel_info) ctxt) THEN'
+  (SUBGOAL (fn (t,_) => raise TERM ("breakpoint head", [t])))
   end
 
 
