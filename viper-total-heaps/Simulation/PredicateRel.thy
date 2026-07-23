@@ -3985,8 +3985,6 @@ lemma fold_knownfolded_pred_upd_rel:
 
     HeapVarDefSame: "heap_var_def Tr = heap_var Tr" and
 
-    ExpSyntax: "supported_pred_expr e_r_vpr \<and> no_unfolding_pure_exp e_r_vpr" and
-
     TyInterpEq: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
     WfTyRep: "wf_ty_repr_bpl TyRep" and
     ProgEq: "program_total ctxt_vpr = Pr" and
@@ -3994,8 +3992,6 @@ lemma fold_knownfolded_pred_upd_rel:
 
     NullConst: "const_repr Tr CNull = nullConst" and
     HeapVar: "hvar = heap_var Tr" and
-
-    PermPosConstExpr: "\<And>\<omega>. ctxt_vpr, None \<turnstile> \<langle>e_p_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p) \<and> p > 0" and
 
     HeapUpdateWf: "heap_update_wf TyRep ctxt_bpl heap_upd_bpl" and
     HeapReadWf: "heap_read_wf TyRep ctxt_bpl heap_read_bpl" and
