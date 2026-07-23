@@ -62,6 +62,7 @@ session TotalViper = TotalViperSimulation +
     ExhaleRelML
     ExpRelML
     ExprWfRelML
+    FoldStmtRelKF
     InhaleRelML
     PredicateRelML
     StmtRelML

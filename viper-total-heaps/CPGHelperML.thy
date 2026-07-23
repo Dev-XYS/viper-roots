@@ -1,6 +1,6 @@
 theory CPGHelperML
   imports TotalViperSimulation.ViperBoogieRelUtil TotalViperHelperML ExpRelML  "HOL-Eisbach.Eisbach" "HOL-Eisbach.Eisbach_Tools"
-          TotalViperSimulation.PredicateRel
+          TotalViperSimulation.PredicateRel PredExhaleAssmsHelper
 begin
 
 ML \<open>
@@ -314,6 +314,13 @@ fun intro_fact_mask_lookup_reduction ctxt (info: basic_stmt_rel_info) exp_rel_in
   (Rmsg' "intro mask lookup red 10" (exp_rel_tac exp_rel_info ctxt) ctxt) THEN'
   (Rmsg' "intro mask lookup red 11" (assm_full_simp_solved_with_thms_tac @{thms read_mask_concrete_def} ctxt) ctxt)
 
+(* Deterministic (non-searching) structural case-split: repeatedly eliminate conjunctions/disjunctions
+   in the goal's premises until the target fact is a literal hypothesis, then close by assumption.
+   Unlike blast/fastforce, this never backtracks or tries alternative proof strategies - it always
+   performs the same fixed sequence of conjE/disjE eliminations. *)
+fun elim_conj_disj_then_assume_tac ctxt =
+  (REPEAT_ALL_NEW (eresolve_tac ctxt @{thms conjE disjE})) THEN_ALL_NEW (assume_tac ctxt)
+
 fun prove_ploc_reduce ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
   (* (Rmsg' "prove ploc result rule" (resolve_tac ctxt @{thms exp_result_predicate_loc}) ctxt) THEN'
   (Rmsg' "intro mask lookup red 2" (resolve_tac ctxt [#ctxt_wf_thm info]) ctxt) THEN'
@@ -332,8 +339,8 @@ fun prove_ploc_reduce ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
   (Rmsg' "prove ploc reduce rule" (resolve_tac ctxt @{thms exp_result_predicate_loc}) ctxt) THEN'
   (Rmsg' "prove ploc reduce CtxtFunWf" (resolve_tac ctxt [#ctxt_wf_thm info]) ctxt) THEN'
   (Rmsg' "prove ploc reduce StateRel" (blast_tac ctxt) ctxt) THEN'
-  (Rmsg' "prove ploc reduce RedArgsVpr" (fastforce_tac ctxt @{thms exhale_pred_acc_rel_assms_def}) ctxt) THEN'
-  (Rmsg' "prove ploc reduce ArgsWellTy" (fastforce_tac ctxt @{thms exhale_pred_acc_rel_assms_def}) ctxt) THEN'
+  (Rmsg' "prove ploc reduce RedArgsVpr" ((resolve_tac ctxt @{thms exhale_pred_acc_rel_assms_args_eval}) THEN' (elim_conj_disj_then_assume_tac ctxt)) ctxt) THEN'
+  (Rmsg' "prove ploc reduce ArgsWellTy" ((resolve_tac ctxt @{thms exhale_pred_acc_rel_assms_ty_correct}) THEN' (elim_conj_disj_then_assume_tac ctxt)) ctxt) THEN'
   (Rmsg' "prove ploc reduce FunName" (simp_tac_with_thms [] ctxt) ctxt) THEN'
   (Rmsg' "prove ploc reduce PredDecl" (simp_tac_with_thms [#vpr_program_ctxt_eq_thm info, #predicate_lookup_thm (lookup_predicate_data info pred_name)] ctxt) ctxt) THEN'
   (Rmsg' "prove ploc reduce VprArgsTy" (simp_tac_with_thms @{thms predicate_decl.defs} ctxt) ctxt) THEN'

@@ -1,4 +1,4 @@
-theory PredicateKfmUpdML
+theory KnownFoldedML
 imports Boogie_Lang.HelperML ExprWfRelML TotalViperSimulation.ExhaleRel ViperBoogieHelperML CPGHelperML
         TotalViperSimulation.PredicateRel ExhaleRelML InhaleRelML
 begin
