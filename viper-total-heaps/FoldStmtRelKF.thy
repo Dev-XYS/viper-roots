@@ -2,6 +2,366 @@ theory FoldStmtRelKF
 imports TotalViperSimulation.PredicateRel TotalViperSimulation.BoogieSyntaxBasedProperties
 begin
 
+subsection \<open>Preservation of known-folded witnesses across a fold\<close>
+
+text \<open>Elimination-direction counterpart of \<^const>\<open>contains_heap_loc\<close>/\<^const>\<open>pred_folds_perm\<close>'s
+      existing introduction lemmas \<open>*_plus_l\<close>/\<open>*_plus_r\<close> (\<open>Simulation/KnownFolded.thy\<close>): a witness
+      for a sum \<open>nm1 + nm2\<close> must already live entirely within \<open>nm1\<close> or entirely within \<open>nm2\<close>.\<close>
+
+lemma add_masks_pos_elim:
+  fixes \<pi>1 \<pi>2 :: "'b \<Rightarrow> preal"
+  assumes "add_masks \<pi>1 \<pi>2 hl > (0::preal)"
+  shows "\<pi>1 hl > 0 \<or> \<pi>2 hl > 0"
+proof (rule ccontr)
+  assume "\<not> (\<pi>1 hl > 0 \<or> \<pi>2 hl > 0)"
+  hence "\<pi>1 hl \<le> 0" and "\<pi>2 hl \<le> 0"
+    by auto
+  hence "\<pi>1 hl = 0" and "\<pi>2 hl = 0"
+    using all_pos order_antisym by blast+
+  hence "add_masks \<pi>1 \<pi>2 hl = 0"
+    unfolding add_masks_def
+    by simp
+  thus False
+    using assms
+    by simp
+qed
+
+lemma pfun_comb_cases:
+  assumes "(f +\<lparr>c\<rparr>+ g) x = Some v"
+  obtains
+    (OnlyLeft) v1 where "f x = Some v1" and "g x = None" and "v = v1"
+  | (OnlyRight) v2 where "f x = None" and "g x = Some v2" and "v = v2"
+  | (Both) v1 v2 where "f x = Some v1" and "g x = Some v2" and "v = c v1 v2"
+  using assms
+  unfolding pfun_comb_def
+  by (cases "f x"; cases "g x"; simp add: combine_options_def)
+
+lemma contains_heap_loc_plus_elim:
+  assumes "contains_heap_loc l (nm1 + nm2)"
+  shows "contains_heap_loc l nm1 \<or> contains_heap_loc l nm2"
+  using assms
+proof (induction "nm1 + nm2" arbitrary: nm1 nm2 rule: contains_heap_loc.induct)
+  case (ContainsLocDirect)
+  have step1: "add_masks (get_mh_nm nm1) (get_mh_nm nm2) l > (0::preal)"
+    using ContainsLocDirect.hyps
+    unfolding plus_nested_mask_def
+    by (simp only: get_mh_nm__merge)
+  have step2: "get_mh_nm nm1 l > (0::preal) \<or> get_mh_nm nm2 l > 0"
+    using add_masks_pos_elim[OF step1]
+    by blast
+  from step2 show ?case
+  proof
+    assume "get_mh_nm nm1 l > (0::preal)"
+    thus ?thesis using contains_heap_loc.ContainsLocDirect[of nm1] by blast
+  next
+    assume "get_mh_nm nm2 l > (0::preal)"
+    thus ?thesis using contains_heap_loc.ContainsLocDirect[of nm2] by blast
+  qed
+next
+  case (ContainsLocNested lp p\<^sub>x nm')
+  from ContainsLocNested.hyps(1)
+  have fnm_eq: "get_fnm_nm (nm1 + nm2) lp = Some (p\<^sub>x, nm')" .
+  obtain mh\<^sub>1 fnm\<^sub>1 where nm1_eq: "nm1 = NM mh\<^sub>1 fnm\<^sub>1" using nested_mask.exhaust by blast
+  obtain mh\<^sub>2 fnm\<^sub>2 where nm2_eq: "nm2 = NM mh\<^sub>2 fnm\<^sub>2" using nested_mask.exhaust by blast
+  from fnm_eq[unfolded nm1_eq nm2_eq plus_nested_mask_def nested_mask_merge.simps get_fnm_nm.simps]
+  have comb: "(fnm\<^sub>1 +\<lparr>\<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, nested_mask_merge (snd lpm\<^sub>1) (snd lpm\<^sub>2))\<rparr>+ fnm\<^sub>2) lp = Some (p\<^sub>x, nm')" .
+  show ?case
+  proof (rule pfun_comb_cases[OF comb])
+    fix v1
+    assume h1: "fnm\<^sub>1 lp = Some v1" and "fnm\<^sub>2 lp = None" and hv: "(p\<^sub>x, nm') = v1"
+    obtain p\<^sub>1 nm\<^sub>1' where v1_eq: "v1 = (p\<^sub>1, nm\<^sub>1')" using prod.exhaust by blast
+    have "contains_heap_loc l nm1"
+      apply (rule contains_heap_loc.ContainsLocNested[of nm1 lp p\<^sub>1 nm\<^sub>1'])
+      using h1 v1_eq nm1_eq
+       apply simp
+      using ContainsLocNested.hyps(2) hv v1_eq
+      by simp
+    thus ?thesis by blast
+  next
+    fix v2
+    assume "fnm\<^sub>1 lp = None" and h2: "fnm\<^sub>2 lp = Some v2" and hv: "(p\<^sub>x, nm') = v2"
+    obtain p\<^sub>2 nm\<^sub>2' where v2_eq: "v2 = (p\<^sub>2, nm\<^sub>2')" using prod.exhaust by blast
+    have "contains_heap_loc l nm2"
+      apply (rule contains_heap_loc.ContainsLocNested[of nm2 lp p\<^sub>2 nm\<^sub>2'])
+      using h2 v2_eq nm2_eq
+       apply simp
+      using ContainsLocNested.hyps(2) hv v2_eq
+      by simp
+    thus ?thesis by blast
+  next
+    fix v1 v2
+    assume h1: "fnm\<^sub>1 lp = Some v1" and h2: "fnm\<^sub>2 lp = Some v2"
+       and hv: "(p\<^sub>x, nm') = (fst v1 + fst v2, nested_mask_merge (snd v1) (snd v2))"
+    obtain p\<^sub>1 nm\<^sub>1' where v1_eq: "v1 = (p\<^sub>1, nm\<^sub>1')" using prod.exhaust by blast
+    obtain p\<^sub>2 nm\<^sub>2' where v2_eq: "v2 = (p\<^sub>2, nm\<^sub>2')" using prod.exhaust by blast
+    have nm'_eq: "nm' = nm\<^sub>1' + nm\<^sub>2'"
+      using hv v1_eq v2_eq
+      unfolding plus_nested_mask_def
+      by simp
+    have "contains_heap_loc l nm\<^sub>1' \<or> contains_heap_loc l nm\<^sub>2'"
+      using ContainsLocNested.hyps(3)[OF nm'_eq]
+      by blast
+    thus ?thesis
+    proof
+      assume "contains_heap_loc l nm\<^sub>1'"
+      hence "contains_heap_loc l nm1"
+        using contains_heap_loc.ContainsLocNested[of nm1 lp p\<^sub>1 nm\<^sub>1' l] h1 v1_eq nm1_eq
+        by simp
+      thus ?thesis by blast
+    next
+      assume "contains_heap_loc l nm\<^sub>2'"
+      hence "contains_heap_loc l nm2"
+        using contains_heap_loc.ContainsLocNested[of nm2 lp p\<^sub>2 nm\<^sub>2' l] h2 v2_eq nm2_eq
+        by simp
+      thus ?thesis by blast
+    qed
+  qed
+qed
+
+lemma pred_folds_perm_plus_elim:
+  assumes "pred_folds_perm lp l (nm1 + nm2)"
+  shows "pred_folds_perm lp l nm1 \<or> pred_folds_perm lp l nm2"
+  using assms
+proof (induction "nm1 + nm2" arbitrary: nm1 nm2 rule: pred_folds_perm.induct)
+  case (ContainsPermDirect p\<^sub>x nm')
+  from ContainsPermDirect.hyps(1)
+  have fnm_eq: "get_fnm_nm (nm1 + nm2) lp = Some (p\<^sub>x, nm')" .
+  obtain mh\<^sub>1 fnm\<^sub>1 where nm1_eq: "nm1 = NM mh\<^sub>1 fnm\<^sub>1" using nested_mask.exhaust by blast
+  obtain mh\<^sub>2 fnm\<^sub>2 where nm2_eq: "nm2 = NM mh\<^sub>2 fnm\<^sub>2" using nested_mask.exhaust by blast
+  from fnm_eq[unfolded nm1_eq nm2_eq plus_nested_mask_def nested_mask_merge.simps get_fnm_nm.simps]
+  have comb: "(fnm\<^sub>1 +\<lparr>\<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, nested_mask_merge (snd lpm\<^sub>1) (snd lpm\<^sub>2))\<rparr>+ fnm\<^sub>2) lp = Some (p\<^sub>x, nm')" .
+  show ?case
+  proof (rule pfun_comb_cases[OF comb])
+    fix v1
+    assume h1: "fnm\<^sub>1 lp = Some v1" and "fnm\<^sub>2 lp = None" and hv: "(p\<^sub>x, nm') = v1"
+    obtain p\<^sub>1 nm\<^sub>1' where v1_eq: "v1 = (p\<^sub>1, nm\<^sub>1')" using prod.exhaust by blast
+    have "pred_folds_perm lp l nm1"
+      apply (rule pred_folds_perm.ContainsPermDirect[of nm1 lp p\<^sub>1 nm\<^sub>1'])
+      using h1 v1_eq nm1_eq
+       apply simp
+      using ContainsPermDirect.hyps(2) hv v1_eq
+      by simp
+    thus ?thesis by blast
+  next
+    fix v2
+    assume "fnm\<^sub>1 lp = None" and h2: "fnm\<^sub>2 lp = Some v2" and hv: "(p\<^sub>x, nm') = v2"
+    obtain p\<^sub>2 nm\<^sub>2' where v2_eq: "v2 = (p\<^sub>2, nm\<^sub>2')" using prod.exhaust by blast
+    have "pred_folds_perm lp l nm2"
+      apply (rule pred_folds_perm.ContainsPermDirect[of nm2 lp p\<^sub>2 nm\<^sub>2'])
+      using h2 v2_eq nm2_eq
+       apply simp
+      using ContainsPermDirect.hyps(2) hv v2_eq
+      by simp
+    thus ?thesis by blast
+  next
+    fix v1 v2
+    assume h1: "fnm\<^sub>1 lp = Some v1" and h2: "fnm\<^sub>2 lp = Some v2"
+       and hv: "(p\<^sub>x, nm') = (fst v1 + fst v2, nested_mask_merge (snd v1) (snd v2))"
+    obtain p\<^sub>1 nm\<^sub>1' where v1_eq: "v1 = (p\<^sub>1, nm\<^sub>1')" using prod.exhaust by blast
+    obtain p\<^sub>2 nm\<^sub>2' where v2_eq: "v2 = (p\<^sub>2, nm\<^sub>2')" using prod.exhaust by blast
+    have nm'_eq: "nm' = nested_mask_merge nm\<^sub>1' nm\<^sub>2'"
+      using hv v1_eq v2_eq
+      by simp
+    from ContainsPermDirect.hyps(2) nm'_eq
+    have both_fact: "contains_heap_loc l (nm\<^sub>1' + nm\<^sub>2')"
+      unfolding plus_nested_mask_def
+      by simp
+    hence "contains_heap_loc l nm\<^sub>1' \<or> contains_heap_loc l nm\<^sub>2'"
+      using contains_heap_loc_plus_elim[OF both_fact]
+      by blast
+    thus ?thesis
+    proof
+      assume "contains_heap_loc l nm\<^sub>1'"
+      hence "pred_folds_perm lp l nm1"
+        using pred_folds_perm.ContainsPermDirect[of nm1 lp p\<^sub>1 nm\<^sub>1' l] h1 v1_eq nm1_eq
+        by simp
+      thus ?thesis by blast
+    next
+      assume "contains_heap_loc l nm\<^sub>2'"
+      hence "pred_folds_perm lp l nm2"
+        using pred_folds_perm.ContainsPermDirect[of nm2 lp p\<^sub>2 nm\<^sub>2' l] h2 v2_eq nm2_eq
+        by simp
+      thus ?thesis by blast
+    qed
+  qed
+next
+  case (ContainsPermNested lp' p\<^sub>x nm')
+  from ContainsPermNested.hyps(1)
+  have fnm_eq: "get_fnm_nm (nm1 + nm2) lp' = Some (p\<^sub>x, nm')" .
+  obtain mh\<^sub>1 fnm\<^sub>1 where nm1_eq: "nm1 = NM mh\<^sub>1 fnm\<^sub>1" using nested_mask.exhaust by blast
+  obtain mh\<^sub>2 fnm\<^sub>2 where nm2_eq: "nm2 = NM mh\<^sub>2 fnm\<^sub>2" using nested_mask.exhaust by blast
+  from fnm_eq[unfolded nm1_eq nm2_eq plus_nested_mask_def nested_mask_merge.simps get_fnm_nm.simps]
+  have comb: "(fnm\<^sub>1 +\<lparr>\<lambda>lpm\<^sub>1 lpm\<^sub>2. (fst lpm\<^sub>1 + fst lpm\<^sub>2, nested_mask_merge (snd lpm\<^sub>1) (snd lpm\<^sub>2))\<rparr>+ fnm\<^sub>2) lp' = Some (p\<^sub>x, nm')" .
+  show ?case
+  proof (rule pfun_comb_cases[OF comb])
+    fix v1
+    assume h1: "fnm\<^sub>1 lp' = Some v1" and "fnm\<^sub>2 lp' = None" and hv: "(p\<^sub>x, nm') = v1"
+    obtain p\<^sub>1 nm\<^sub>1' where v1_eq: "v1 = (p\<^sub>1, nm\<^sub>1')" using prod.exhaust by blast
+    have "pred_folds_perm lp l nm1"
+      apply (rule pred_folds_perm.ContainsPermNested[of nm1 lp' p\<^sub>1 nm\<^sub>1'])
+      using h1 v1_eq nm1_eq
+       apply simp
+      using ContainsPermNested.hyps(2) hv v1_eq
+      by simp
+    thus ?thesis by blast
+  next
+    fix v2
+    assume "fnm\<^sub>1 lp' = None" and h2: "fnm\<^sub>2 lp' = Some v2" and hv: "(p\<^sub>x, nm') = v2"
+    obtain p\<^sub>2 nm\<^sub>2' where v2_eq: "v2 = (p\<^sub>2, nm\<^sub>2')" using prod.exhaust by blast
+    have "pred_folds_perm lp l nm2"
+      apply (rule pred_folds_perm.ContainsPermNested[of nm2 lp' p\<^sub>2 nm\<^sub>2'])
+      using h2 v2_eq nm2_eq
+       apply simp
+      using ContainsPermNested.hyps(2) hv v2_eq
+      by simp
+    thus ?thesis by blast
+  next
+    fix v1 v2
+    assume h1: "fnm\<^sub>1 lp' = Some v1" and h2: "fnm\<^sub>2 lp' = Some v2"
+       and hv: "(p\<^sub>x, nm') = (fst v1 + fst v2, nested_mask_merge (snd v1) (snd v2))"
+    obtain p\<^sub>1 nm\<^sub>1' where v1_eq: "v1 = (p\<^sub>1, nm\<^sub>1')" using prod.exhaust by blast
+    obtain p\<^sub>2 nm\<^sub>2' where v2_eq: "v2 = (p\<^sub>2, nm\<^sub>2')" using prod.exhaust by blast
+    have nm'_eq: "nm' = nm\<^sub>1' + nm\<^sub>2'"
+      using hv v1_eq v2_eq
+      unfolding plus_nested_mask_def
+      by simp
+    have "pred_folds_perm lp l nm\<^sub>1' \<or> pred_folds_perm lp l nm\<^sub>2'"
+      using ContainsPermNested.hyps(3)[OF nm'_eq]
+      by blast
+    thus ?thesis
+    proof
+      assume "pred_folds_perm lp l nm\<^sub>1'"
+      hence "pred_folds_perm lp l nm1"
+        using pred_folds_perm.ContainsPermNested[of nm1 lp' p\<^sub>1 nm\<^sub>1' lp l] h1 v1_eq nm1_eq
+        by simp
+      thus ?thesis by blast
+    next
+      assume "pred_folds_perm lp l nm\<^sub>2'"
+      hence "pred_folds_perm lp l nm2"
+        using pred_folds_perm.ContainsPermNested[of nm2 lp' p\<^sub>2 nm\<^sub>2' lp l] h2 v2_eq nm2_eq
+        by simp
+      thus ?thesis by blast
+    qed
+  qed
+qed
+
+text \<open>The actual "fold preserves known-folded witnesses" lemma: only the single top-level
+      \<open>lp0\<close>-slot of \<open>nm\<close> changes under \<^const>\<open>add_to_lpm_nonzero_nm\<close> (growing from whatever was
+      already there, possibly nothing, to include \<open>nm_exh\<close>); any existing \<^const>\<open>pred_folds_perm\<close>
+      witness either never looked at that slot (unaffected, reused verbatim) or did look at it (in
+      which case the witness still applies to the now-larger slot, by the existing monotonicity
+      lemmas \<open>pred_folds_perm_stable_larger_nm\<close>/\<open>contains_heap_loc_stable_larger_nm\<close> and
+      \<open>nm_sum_is_bigger\<close>). No induction on the derivation's depth is needed: the top-level case
+      split (\<open>ContainsPermDirect\<close> vs \<open>ContainsPermNested\<close>, and within each, whether the referenced
+      predicate location equals \<open>lp0\<close>) suffices.\<close>
+
+lemma pred_folds_perm_fold_preserved:
+  assumes "pred_folds_perm lp l nm"
+  shows "pred_folds_perm lp l (add_to_lpm_nonzero_nm nm lp0 p_extra nm_exh)"
+  using assms
+proof cases
+  case (ContainsPermDirect p subm)
+  note hyps1 = ContainsPermDirect(1)
+  note hyps2 = ContainsPermDirect(2)
+  show ?thesis
+  proof (cases "lp = lp0")
+    assume eq: "lp = lp0"
+    have new_fnm: "get_fnm_nm (add_to_lpm_nonzero_nm nm lp0 p_extra nm_exh) lp0 = Some (p + p_extra, subm + nm_exh)"
+      using hyps1 eq
+      by (cases nm; simp add: plus_nested_mask_def)
+    have "subm \<le> subm + nm_exh"
+      using nm_sum_is_bigger
+      by blast
+    hence "contains_heap_loc l (subm + nm_exh)"
+      using hyps2 contains_heap_loc_stable_larger_nm
+      by blast
+    thus ?thesis
+      unfolding eq
+      using pred_folds_perm.ContainsPermDirect[OF new_fnm]
+      by blast
+  next
+    assume neq: "lp \<noteq> lp0"
+    have unch: "get_fnm_nm (add_to_lpm_nonzero_nm nm lp0 p_extra nm_exh) lp = get_fnm_nm nm lp"
+      using neq
+      by (cases nm; simp)
+    show ?thesis
+      using pred_folds_perm.ContainsPermDirect[OF unch[unfolded hyps1]] hyps2
+      by simp
+  qed
+next
+  case (ContainsPermNested lp' p subm)
+  note hyps1 = ContainsPermNested(1)
+  note hyps2 = ContainsPermNested(2)
+  show ?thesis
+  proof (cases "lp' = lp0")
+    assume eq: "lp' = lp0"
+    have new_fnm: "get_fnm_nm (add_to_lpm_nonzero_nm nm lp0 p_extra nm_exh) lp0 = Some (p + p_extra, subm + nm_exh)"
+      using hyps1 eq
+      by (cases nm; simp add: plus_nested_mask_def)
+    have "subm \<le> subm + nm_exh"
+      using nm_sum_is_bigger
+      by blast
+    hence "pred_folds_perm lp l (subm + nm_exh)"
+      using hyps2 pred_folds_perm_stable_larger_nm
+      by blast
+    thus ?thesis
+      unfolding eq
+      using pred_folds_perm.ContainsPermNested[OF new_fnm]
+      by blast
+  next
+    assume neq: "lp' \<noteq> lp0"
+    have unch: "get_fnm_nm (add_to_lpm_nonzero_nm nm lp0 p_extra nm_exh) lp' = get_fnm_nm nm lp'"
+      using neq
+      by (cases nm; simp)
+    show ?thesis
+      using pred_folds_perm.ContainsPermNested[OF unch[unfolded hyps1]] hyps2
+      by simp
+  qed
+qed
+
+text \<open>Sum-aware variant: the witness may live either in the untouched \<open>nm\<close> part (reduces to
+      \<open>pred_folds_perm_fold_preserved\<close> directly) or in \<open>nm_exh\<close> (needs one extra
+      \<open>ContainsPermNested\<close> hop through the newly-grown \<open>lp0\<close> slot, whose nested submask
+      is now \<open>\<ge> nm_exh\<close> by \<open>nm_sum_is_bigger\<close>).\<close>
+
+lemma pred_folds_perm_fold_preserved_sum:
+  assumes "pred_folds_perm lp l (nm1 + nm_exh)"
+  shows "pred_folds_perm lp l (add_to_lpm_nonzero_nm nm1 lp0 p_extra nm_exh)"
+  using pred_folds_perm_plus_elim[OF assms]
+proof
+  assume "pred_folds_perm lp l nm1"
+  thus ?thesis
+    using pred_folds_perm_fold_preserved
+    by blast
+next
+  assume h: "pred_folds_perm lp l nm_exh"
+  show ?thesis
+  proof (cases "get_fnm_nm nm1 lp0")
+    case None
+    have new_fnm: "get_fnm_nm (add_to_lpm_nonzero_nm nm1 lp0 p_extra nm_exh) lp0 = Some (p_extra, nm_exh)"
+      using None
+      by (cases nm1; simp)
+    show ?thesis
+      using pred_folds_perm.ContainsPermNested[OF new_fnm h]
+      by simp
+  next
+    case (Some pnm)
+    obtain p0 nm0 where pnm_eq: "pnm = (p0, nm0)" using prod.exhaust by blast
+    have new_fnm: "get_fnm_nm (add_to_lpm_nonzero_nm nm1 lp0 p_extra nm_exh) lp0 = Some (p0 + p_extra, nm0 + nm_exh)"
+      using Some pnm_eq
+      by (cases nm1; simp)
+    have "nm_exh \<le> nm0 + nm_exh"
+      using nm_sum_is_bigger add.commute
+      by metis
+    hence "pred_folds_perm lp l (nm0 + nm_exh)"
+      using h pred_folds_perm_stable_larger_nm
+      by blast
+    thus ?thesis
+      using pred_folds_perm.ContainsPermNested[OF new_fnm]
+      by simp
+  qed
+qed
+
 text \<open>Known-folded-aware version of \<open>fold_stmt_rel\<close> (\<open>Simulation/PredicateRel.thy\<close>, left completely
       untouched). \<open>fold_stmt_rel\<close> assumes the known-folded invariant holds throughout the exhale of
       the predicate body and the subsequent inhale of the predicate instance (everything stays on
@@ -39,7 +399,7 @@ lemma fold_stmt_rel_kf:
       and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
-      and StateRelImpliesKFM: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) (program_total ctxt_vpr) \<Lambda>_bpl FieldTr hvar \<omega> ns"
+      and StateRelImpliesKFM: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns"
       and StateRelWeakening: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> R\<^sub>w \<omega> ns"
       and ArgsRestriction: "list_all no_unfolding_pure_exp e_args_vpr \<and> list_all no_perm_pure_exp e_args_vpr \<and> list_all no_old_pure_exp e_args_vpr \<and> list_all no_result_pure_exp e_args_vpr"
       and ArgsAreVarOrLit: "list_all is_var_or_lit e_args_vpr"
@@ -65,7 +425,7 @@ lemma fold_stmt_rel_kf:
       and StateRelStrengthening:
             "\<And>\<omega> ns v_args_vpr.
                 R\<^sub>w'' \<omega> ns \<Longrightarrow>
-                heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) (program_total ctxt_vpr) \<Lambda>_bpl FieldTr hvar \<omega> ns \<Longrightarrow>
+                heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns \<Longrightarrow>
                 R' \<omega> ns"
       and StepKFUpdate:
             "\<And>v_args_vpr v_p_vpr.
@@ -290,9 +650,61 @@ proof (rule stmt_rel_intro)
     by fastforce
 
   \<comment> \<open>Fifth step: known-folded permission mask update\<close>
-  have kf_restore: "heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) (program_total ctxt_vpr) \<Lambda>_bpl FieldTr hvar \<omega>' ns\<^sub>5"
-    using StateRelWeakening[OF \<open>R \<omega> ns\<close>] bpl_no_heap_assignment
-    sorry
+  have kf_restore: "heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega>' ns\<^sub>5"
+  proof -
+    have s2: "red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>\<^sub>2, Normal ns\<^sub>2)" using conjunct1[OF ns\<^sub>2] .
+    have s3: "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>2, Normal ns\<^sub>2) (\<gamma>\<^sub>3, Normal ns\<^sub>3)" using conjunct1[OF ns\<^sub>3] .
+    have s4: "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>3, Normal ns\<^sub>3) (\<gamma>\<^sub>4, Normal ns\<^sub>4)" using conjunct1[OF ns\<^sub>4] .
+    have s5: "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>4, Normal ns\<^sub>4) (\<gamma>\<^sub>5, Normal ns\<^sub>5)" using conjunct1[OF ns\<^sub>5] .
+    have bpl_red_ns_ns5: "red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>\<^sub>5, Normal ns\<^sub>5)"
+      using red_ast_bpl_transitive[OF red_ast_bpl_transitive[OF red_ast_bpl_transitive[OF s2 s3] s4] s5] .
+    have hvar_stable: "lookup_var (var_context ctxt_bpl) ns hvar = lookup_var (var_context ctxt_bpl) ns\<^sub>5 hvar"
+      using bpl_no_heap_assignment[OF NoHeapAssignBetween PPSyntacticRestriction bpl_red_ns_ns5] .
+
+    obtain hb where
+      Lookup: "lookup_var (var_context ctxt_bpl) ns hvar = Some (AbsV (AHeap hb))" and
+      KfmExists: "\<forall>lp. \<exists>kfm. hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))" and
+      KfRel: "heap_knownfolded_rel (program_total ctxt_vpr) FieldTr (get_nm_total_full \<omega>) hb"
+      using StateRelImpliesKFM[OF \<open>R \<omega> ns\<close>]
+      unfolding heap_knownfolded_var_rel_def
+      by auto
+
+    have nm_omega_eq: "get_nm_total_full \<omega> = get_nm_total_full \<omega>1 + nm_exh"
+      using \<open>\<omega>0 = _\<close> \<open>get_nm_total_full \<omega>1 + nm_exh = get_nm_total_full \<omega>0\<close>
+      by simp
+    have nm_omega'_eq: "get_nm_total_full \<omega>' = add_to_lpm_nonzero_nm (get_nm_total_full \<omega>1) (pid,v_args) (Abs_posreal (Abs_preal v_p)) nm_exh"
+      using \<open>\<omega>' = _\<close>
+      by simp
+
+    have KfRel': "heap_knownfolded_rel (program_total ctxt_vpr) FieldTr (get_nm_total_full \<omega>') hb"
+      unfolding heap_knownfolded_rel_def
+    proof (intro allI impI)
+      fix lp kfm l field_ty_vpr field_bpl
+      assume h1: "hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))"
+         and h2: "declared_fields (program_total ctxt_vpr) (snd l) = Some field_ty_vpr"
+         and h3: "FieldTr (snd l) = Some field_bpl"
+         and h4: "kfm (Address (fst l), NormalField field_bpl field_ty_vpr)"
+      have "pred_folds_perm lp l (get_nm_total_full \<omega>)"
+        using KfRel[unfolded heap_knownfolded_rel_def] h1 h2 h3 h4
+        by blast
+      hence "pred_folds_perm lp l (get_nm_total_full \<omega>1 + nm_exh)"
+        unfolding nm_omega_eq .
+      thus "pred_folds_perm lp l (get_nm_total_full \<omega>')"
+        unfolding nm_omega'_eq
+        using pred_folds_perm_fold_preserved_sum
+        by blast
+    qed
+
+    have Lookup5: "lookup_var (var_context ctxt_bpl) ns\<^sub>5 hvar = Some (AbsV (AHeap hb))"
+      using Lookup hvar_stable
+      by simp
+
+    show ?thesis
+      unfolding heap_knownfolded_var_rel_def
+      apply (rule exI[of _ hb])
+      using Lookup5 KfmExists KfRel'
+      by auto
+  qed
 
   moreover have "\<exists>nm_exh p\<^sub>s nm\<^sub>s.
                     get_fnm_total_full \<omega>' (pid, v_args) = Some (p\<^sub>s,nm\<^sub>s) \<and> nm_exh \<le> nm\<^sub>s \<and>
