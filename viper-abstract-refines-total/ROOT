@@ -1,5 +1,5 @@
 session ViperAbstractRefinesTotal = ViperAbstract +
   sessions
-    TotalViperSemantics
+    ViperAbstractRefinesTotalDeps
   theories
     AbstractRefinesTotal
