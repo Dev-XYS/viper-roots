@@ -4,15 +4,17 @@ session ViperCommon = "HOL" +
     theories
         Binop
         DeBruijn
+        PartialMap
         PosPerm
         PosRat
+        PosReal
         PredicatesUtil
+        SepAlgebra
+        SepAlgebraDef
+        SepLogic
         StrictlyPosReal
         ValueAndBasicState
         ViperLang
         ViperTyping
         ViperUtil
         WellFormedness
-        PosReal
-        PartialMap
-        SepAlgebra

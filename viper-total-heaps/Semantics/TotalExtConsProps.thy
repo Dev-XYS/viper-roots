@@ -280,7 +280,7 @@ proof -
       from v_p_eval show "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
         by blast
     next
-      show "eval_binop False (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
+      show "eval_binop (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
         by force
     qed
   next
@@ -393,7 +393,7 @@ proof -
       from v_p_eval show "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)"
         using assms(1) assms(3) by fastforce
     next
-      show "eval_binop False (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
+      show "eval_binop (VPerm (Rep_preal p)) Mult (VPerm v_p) = BinopNormal (VPerm (Rep_preal p * v_p))"
         by force
     qed
   next
@@ -631,7 +631,7 @@ proof -
     "ctxt, \<omega>_def \<turnstile> \<langle>ELit NoPerm; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and
     v2: "ctxt, \<omega>_def \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and
     "eval_binop_lazy v1 Mult = None" and
-    "eval_binop False v1 Mult v2 = BinopNormal (VPerm p)"
+    "eval_binop v1 Mult v2 = BinopNormal (VPerm p)"
     using assms
     by (fastforce elim: RedBinop_case)
   hence *: "(\<exists>p2. v2 = VPerm p2) \<or> (\<exists>i2. v2 = VInt i2)"
@@ -758,7 +758,7 @@ proof -
     v1: "ctxt, \<omega>_def \<turnstile> \<langle>real_to_expr q; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and
     v2: "ctxt, \<omega>_def \<turnstile> \<langle>Binop (real_to_expr p) Mult e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and
     "eval_binop_lazy v1 Mult = None" and
-    v1_mult_v2: "eval_binop False v1 Mult v2 = BinopNormal v"
+    v1_mult_v2: "eval_binop v1 Mult v2 = BinopNormal v"
     by (auto elim: RedBinop_case)
 
   from v1[simplified] have "v1 = VPerm q"
@@ -768,7 +768,7 @@ proof -
     v21: "ctxt, \<omega>_def \<turnstile> \<langle>real_to_expr p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v21" and
     v22: "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v22" and
     "eval_binop_lazy v21 Mult = None" and
-    v21_mult_v22: "eval_binop False v21 Mult v22 = BinopNormal v2"
+    v21_mult_v22: "eval_binop v21 Mult v22 = BinopNormal v2"
     by (auto elim: RedBinop_case)
 
   from v21[simplified] have "v21 = VPerm p"
@@ -795,7 +795,7 @@ proof -
     v1: "ctxt, \<omega>_def \<turnstile> \<langle>real_to_expr q; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and
     v2: "ctxt, \<omega>_def \<turnstile> \<langle>real_to_expr p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and
     "eval_binop_lazy v1 Mult = None" and
-    v1_mult_v2: "eval_binop False v1 Mult v2 = BinopNormal v"
+    v1_mult_v2: "eval_binop v1 Mult v2 = BinopNormal v"
     by (auto elim: RedBinop_case)
 
   hence "v1 = VPerm q" and "v2 = VPerm p"
@@ -1144,11 +1144,11 @@ proof -
 
   obtain val_p where
     val_p: "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val val_p" and
-    v_p\<^sub>1_calc: "eval_binop False (VPerm p) Mult val_p = BinopNormal (VPerm v_p\<^sub>1)"
+    v_p\<^sub>1_calc: "eval_binop (VPerm p) Mult val_p = BinopNormal (VPerm v_p\<^sub>1)"
     using v_p\<^sub>1
     by (fastforce elim: RedBinop_case RedLit_case)
 
-  have v_p\<^sub>2_calc: "eval_binop False (VPerm q) Mult val_p = BinopNormal (VPerm v_p\<^sub>2)"
+  have v_p\<^sub>2_calc: "eval_binop (VPerm q) Mult val_p = BinopNormal (VPerm v_p\<^sub>2)"
     using v_p\<^sub>2 eval_is_deterministic(1)[OF val_p]
     by (fastforce elim: RedBinop_case RedLit_case)
 
@@ -1278,11 +1278,11 @@ proof -
 
   obtain val_p where
     val_p: "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val val_p" and
-    v_p\<^sub>1_calc: "eval_binop False (VPerm p) Mult val_p = BinopNormal (VPerm v_p\<^sub>1)"
+    v_p\<^sub>1_calc: "eval_binop (VPerm p) Mult val_p = BinopNormal (VPerm v_p\<^sub>1)"
     using v_p\<^sub>1
     by (fastforce elim: RedBinop_case RedLit_case)
 
-  have v_p\<^sub>2_calc: "eval_binop False (VPerm q) Mult val_p = BinopNormal (VPerm v_p\<^sub>2)"
+  have v_p\<^sub>2_calc: "eval_binop (VPerm q) Mult val_p = BinopNormal (VPerm v_p\<^sub>2)"
     using v_p\<^sub>2 eval_is_deterministic(1)[OF val_p]
     by (fastforce elim: RedBinop_case RedLit_case)
 

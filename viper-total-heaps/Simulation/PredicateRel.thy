@@ -3627,7 +3627,7 @@ proof (induction arbitrary: A mh' mp' B')
   obtain v1 v2 where
     3: "ctxt, None \<turnstile> \<langle>ELit (LPerm q); \<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and
     eval_e_p: "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and
-    1: "eval_binop False v1 Mult v2 = BinopNormal (VPerm p')"
+    1: "eval_binop v1 Mult v2 = BinopNormal (VPerm p')"
     using H.hyps(2)[unfolded \<open>e_p' = _\<close>]
     by (auto elim: RedBinop_case)
 
@@ -3648,7 +3648,7 @@ proof (induction arbitrary: A mh' mp' B')
   obtain v1' v2' where
     "ctxt', None \<turnstile> \<langle>ELit (LPerm q'); \<omega>\<rangle> [\<Down>]\<^sub>t Val v1'" and
     eval_v2': "ctxt', None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2'" and
-    2: "eval_binop False v1' Mult v2' = BinopNormal (VPerm p'')"
+    2: "eval_binop v1' Mult v2' = BinopNormal (VPerm p'')"
     using eval_p''
     by (auto elim: RedBinop_case)
 
@@ -3715,14 +3715,14 @@ next
   obtain v1 v2 where
     eval_v1: "ctxt, None \<turnstile> \<langle>ELit (LPerm q); \<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and
     eval_e_p: "ctxt, None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and
-    1: "eval_binop False v1 Mult v2 = BinopNormal (VPerm p')"
+    1: "eval_binop v1 Mult v2 = BinopNormal (VPerm p')"
     using H.hyps(2)[unfolded \<open>e_p' = _\<close>]
     by (auto elim: RedBinop_case)
 
   obtain v1' v2' where
     eval_v1': "ctxt', None \<turnstile> \<langle>ELit (LPerm q'); \<omega>\<rangle> [\<Down>]\<^sub>t Val v1'" and
     eval_v2': "ctxt', None \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2'" and
-    2: "eval_binop False v1' Mult v2' = BinopNormal (VPerm p'')"
+    2: "eval_binop v1' Mult v2' = BinopNormal (VPerm p'')"
     using eval_p''
     by (auto elim: RedBinop_case)
 

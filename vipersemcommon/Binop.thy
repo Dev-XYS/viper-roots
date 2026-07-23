@@ -46,36 +46,36 @@ fun eval_unop :: "unop \<Rightarrow> 'a val \<Rightarrow> ('a val) binop_result"
 | "eval_unop Minus (VPerm r) = BinopNormal (VPerm (- r))"
 | "eval_unop _ _ = BinopTypeFailure"
 
-fun eval_int_int:: "bool \<Rightarrow> int \<Rightarrow> binop \<Rightarrow> int \<Rightarrow> ('a val) binop_result" where
-  "eval_int_int _ a Eq b = BinopNormal (VBool (a = b))"
-| "eval_int_int _ a Neq b = BinopNormal (VBool (a \<noteq> b))"
+fun eval_int_int:: "int \<Rightarrow> binop \<Rightarrow> int \<Rightarrow> ('a val) binop_result" where
+  "eval_int_int a Eq b = BinopNormal (VBool (a = b))"
+| "eval_int_int a Neq b = BinopNormal (VBool (a \<noteq> b))"
 
-| "eval_int_int _ a Add b = BinopNormal (VInt (a + b))"
-| "eval_int_int _ a Sub b = BinopNormal (VInt (a - b))"
-| "eval_int_int _ a Mult b = BinopNormal (VInt (a * b))"
-| "eval_int_int t a IntDiv b = (if b \<noteq> 0 \<or> t then BinopNormal (VInt (smt_div a b) ) else BinopOpFailure)"
-| "eval_int_int t a PermDiv b = (if b \<noteq> 0 \<or> t then BinopNormal (VPerm (a / b)) else BinopOpFailure)"
-| "eval_int_int t a Mod b = (if b \<noteq> 0 \<or> t then BinopNormal (VInt (smt_mod a b)) else BinopOpFailure)"
-| "eval_int_int _ a Gt b = BinopNormal (VBool (a > b))"
-| "eval_int_int _ a Gte b = BinopNormal (VBool (a \<ge> b))"
-| "eval_int_int _ a Lt b = BinopNormal (VBool (a < b))"
-| "eval_int_int _ a Lte b = BinopNormal (VBool (a \<le> b))"
-| "eval_int_int _ _ _ _ = BinopTypeFailure"
+| "eval_int_int a Add b = BinopNormal (VInt (a + b))"
+| "eval_int_int a Sub b = BinopNormal (VInt (a - b))"
+| "eval_int_int a Mult b = BinopNormal (VInt (a * b))"
+| "eval_int_int a IntDiv b = (if b \<noteq> 0 then BinopNormal (VInt (smt_div a b) ) else BinopOpFailure)"
+| "eval_int_int a PermDiv b = (if b \<noteq> 0 then BinopNormal (VPerm (a / b)) else BinopOpFailure)"
+| "eval_int_int a Mod b = (if b \<noteq> 0 then BinopNormal (VInt (smt_mod a b)) else BinopOpFailure)"
+| "eval_int_int a Gt b = BinopNormal (VBool (a > b))"
+| "eval_int_int a Gte b = BinopNormal (VBool (a \<ge> b))"
+| "eval_int_int a Lt b = BinopNormal (VBool (a < b))"
+| "eval_int_int a Lte b = BinopNormal (VBool (a \<le> b))"
+| "eval_int_int _ _ _ = BinopTypeFailure"
 
-fun eval_perm_perm:: "bool \<Rightarrow> real \<Rightarrow> binop \<Rightarrow> real \<Rightarrow> ('a val) binop_result" where
-  "eval_perm_perm _ a Eq b = BinopNormal (VBool (a = b))"
-| "eval_perm_perm _ a Neq b = BinopNormal (VBool (a \<noteq> b))"
+fun eval_perm_perm:: "real \<Rightarrow> binop \<Rightarrow> real \<Rightarrow> ('a val) binop_result" where
+  "eval_perm_perm a Eq b = BinopNormal (VBool (a = b))"
+| "eval_perm_perm a Neq b = BinopNormal (VBool (a \<noteq> b))"
 
-| "eval_perm_perm _ a Add b = BinopNormal (VPerm (a + b))"
-| "eval_perm_perm _ a Sub b = BinopNormal (VPerm (a - b))"
-| "eval_perm_perm _ a Mult b = BinopNormal (VPerm (a * b))"
-| "eval_perm_perm t a PermDiv b = (if b \<noteq> 0 \<or> t then BinopNormal (VPerm (a / b)) else BinopOpFailure)"
+| "eval_perm_perm a Add b = BinopNormal (VPerm (a + b))"
+| "eval_perm_perm a Sub b = BinopNormal (VPerm (a - b))"
+| "eval_perm_perm a Mult b = BinopNormal (VPerm (a * b))"
+| "eval_perm_perm a PermDiv b = (if b \<noteq> 0 then BinopNormal (VPerm (a / b)) else BinopOpFailure)"
 
-| "eval_perm_perm _ a Gt b = BinopNormal (VBool (a > b))"
-| "eval_perm_perm _ a Gte b = BinopNormal (VBool (a \<ge> b))"
-| "eval_perm_perm _ a Lt b = BinopNormal (VBool (a < b))"
-| "eval_perm_perm _ a Lte b = BinopNormal (VBool (a \<le> b))"
-| "eval_perm_perm _ _ _ _ = BinopTypeFailure"
+| "eval_perm_perm a Gt b = BinopNormal (VBool (a > b))"
+| "eval_perm_perm a Gte b = BinopNormal (VBool (a \<ge> b))"
+| "eval_perm_perm a Lt b = BinopNormal (VBool (a < b))"
+| "eval_perm_perm a Lte b = BinopNormal (VBool (a \<le> b))"
+| "eval_perm_perm _ _ _ = BinopTypeFailure"
 
 fun eval_bool_bool:: "bool \<Rightarrow> binop \<Rightarrow> bool \<Rightarrow> ('a val) binop_result" where
   "eval_bool_bool a Eq b = BinopNormal (VBool (a = b))"
@@ -85,16 +85,16 @@ fun eval_bool_bool:: "bool \<Rightarrow> binop \<Rightarrow> bool \<Rightarrow> 
 | "eval_bool_bool a BImp b = BinopNormal (VBool (a \<longrightarrow> b))"
 | "eval_bool_bool _ _ _ = BinopTypeFailure"
 
-fun eval_int_perm :: "bool \<Rightarrow> int \<Rightarrow> binop \<Rightarrow> real \<Rightarrow> ('a val) binop_result" where
-  "eval_int_perm _ a Mult b = BinopNormal (VPerm (a * b))"
-| "eval_int_perm t a PermDiv b = (if b \<noteq> 0 \<or> t then BinopNormal (VPerm (a / b)) else BinopOpFailure)"
-| "eval_int_perm _ _ _ _ = BinopTypeFailure" \<comment>\<open>we do not lift the remaining operealions for now
+fun eval_int_perm :: "int \<Rightarrow> binop \<Rightarrow> real \<Rightarrow> ('a val) binop_result" where
+  "eval_int_perm a Mult b = BinopNormal (VPerm (a * b))"
+| "eval_int_perm a PermDiv b = (if b \<noteq> 0 then BinopNormal (VPerm (a / b)) else BinopOpFailure)"
+| "eval_int_perm _ _ _ = BinopTypeFailure" \<comment>\<open>we do not lift the remaining operealions for now
                                                (also not permitted by the Viper type checker)\<close>
 
-fun eval_perm_int :: "bool \<Rightarrow> real \<Rightarrow> binop \<Rightarrow> int \<Rightarrow> ('a val) binop_result" where
-  "eval_perm_int _ a Mult b = BinopNormal (VPerm (a * b))"
-| "eval_perm_int t a PermDiv b = (if b \<noteq> 0 \<or> t then BinopNormal (VPerm (a / (real_of_int b))) else BinopOpFailure)"
-| "eval_perm_int _ _ _ _ = BinopTypeFailure" \<comment>\<open>we do not lift the remaining operealions for now
+fun eval_perm_int :: "real \<Rightarrow> binop \<Rightarrow> int \<Rightarrow> ('a val) binop_result" where
+  "eval_perm_int a Mult b = BinopNormal (VPerm (a * b))"
+| "eval_perm_int a PermDiv b = (if b \<noteq> 0 then BinopNormal (VPerm (a / (real_of_int b))) else BinopOpFailure)"
+| "eval_perm_int _ _ _ = BinopTypeFailure" \<comment>\<open>we do not lift the remaining operealions for now
                                                (also not permitted by the Viper type checker)\<close>
 
 fun eval_ref_ref :: "ref \<Rightarrow> binop \<Rightarrow> ref \<Rightarrow> ('a val) binop_result" where
@@ -114,45 +114,45 @@ the type checker for the non-abstract values.
 Side remark: There was a case where the more liberal equality made things simpler. If we run into
 such a case again, we can rethink how (in)equality is reduced.\<close>
 
-fun eval_binop :: "bool \<Rightarrow> 'a val \<Rightarrow> binop \<Rightarrow> 'a val \<Rightarrow> ('a val) binop_result" where
-  "eval_binop t (VInt a) op (VInt b) = eval_int_int t a op b"
-| "eval_binop t (VPerm a) op (VPerm b) = eval_perm_perm t a op b"
-| "eval_binop t (VBool a) op (VBool b) = eval_bool_bool a op b"
-| "eval_binop t (VInt a) op (VPerm b) = eval_int_perm t a op b"
-| "eval_binop t (VPerm a) op (VInt b) = eval_perm_int t a op b"
-| "eval_binop t (VRef a) op (VRef b) = eval_ref_ref a op b"
-| "eval_binop t (VAbs a) op (VAbs b) = eval_abs_abs a op b"
-| "eval_binop _ _ _ _ = BinopTypeFailure" \<comment>\<open>we do not lift the remaining operations for now
+fun eval_binop :: "'a val \<Rightarrow> binop \<Rightarrow> 'a val \<Rightarrow> ('a val) binop_result" where
+  "eval_binop (VInt a) op (VInt b) = eval_int_int a op b"
+| "eval_binop (VPerm a) op (VPerm b) = eval_perm_perm a op b"
+| "eval_binop (VBool a) op (VBool b) = eval_bool_bool a op b"
+| "eval_binop (VInt a) op (VPerm b) = eval_int_perm a op b"
+| "eval_binop (VPerm a) op (VInt b) = eval_perm_int a op b"
+| "eval_binop (VRef a) op (VRef b) = eval_ref_ref a op b"
+| "eval_binop (VAbs a) op (VAbs b) = eval_abs_abs a op b"
+| "eval_binop _ _ _ = BinopTypeFailure" \<comment>\<open>we do not lift the remaining operations for now
                                              (also not permitted by the Viper type checker)\<close>
 
 lemma eval_binop_eq:
   assumes "(is_VBool v1 \<and> is_VBool v2) \<or> (is_VInt v1 \<and> is_VInt v2) \<or> (is_VPerm v1 \<and> is_VPerm v2) \<or>
            (is_VRef v1 \<and> is_VRef v2) \<or> (is_VAbs v1 \<and> is_VAbs v2)"
-  shows "eval_binop t v1 Eq v2 = BinopNormal (VBool (v1 = v2))"
+  shows "eval_binop v1 Eq v2 = BinopNormal (VBool (v1 = v2))"
   using assms
   by (cases v1; cases v2; auto)
 
 lemma eval_binop_neq:
   assumes "(is_VBool v1 \<and> is_VBool v2) \<or> (is_VInt v1 \<and> is_VInt v2) \<or> (is_VPerm v1 \<and> is_VPerm v2) \<or>
            (is_VRef v1 \<and> is_VRef v2) \<or> (is_VAbs v1 \<and> is_VAbs v2)"
-  shows "eval_binop t v1 Neq v2 = BinopNormal (VBool (v1 \<noteq> v2))"
+  shows "eval_binop v1 Neq v2 = BinopNormal (VBool (v1 \<noteq> v2))"
   using assms
   by (cases v1; cases v2; auto)
 
-lemma eval_binop_failure: "eval_binop t v1 bop v2 = BinopOpFailure \<Longrightarrow> bop \<in> {IntDiv, PermDiv, Mod}"
+lemma eval_binop_failure: "eval_binop v1 bop v2 = BinopOpFailure \<Longrightarrow> bop \<in> {IntDiv, PermDiv, Mod}"
   by (erule eval_binop.elims; simp_all; cases bop; auto)
 
-lemma eval_binop_failure_int: "bop \<in> {IntDiv, Mod} \<Longrightarrow> eval_binop t v1 bop v2 = BinopOpFailure \<Longrightarrow> v2 = VInt(0)"
+lemma eval_binop_failure_int: "bop \<in> {IntDiv, Mod} \<Longrightarrow> eval_binop v1 bop v2 = BinopOpFailure \<Longrightarrow> v2 = VInt(0)"
   by (erule eval_binop.elims) (auto split: if_split_asm)
 
-lemma eval_binop_failure_perm: "bop = PermDiv \<Longrightarrow> eval_binop t v1 bop v2 = BinopOpFailure \<Longrightarrow> v2 = VPerm(0) \<or> v2 = VInt(0)"
+lemma eval_binop_failure_perm: "bop = PermDiv \<Longrightarrow> eval_binop v1 bop v2 = BinopOpFailure \<Longrightarrow> v2 = VPerm(0) \<or> v2 = VInt(0)"
   by (erule eval_binop.elims) (auto split: if_split_asm)
 
-lemma eval_binop_not_failure: " bop \<notin> {IntDiv, PermDiv, Mod} \<Longrightarrow> eval_binop t v1 bop v2 \<noteq> BinopOpFailure"
+lemma eval_binop_not_failure: "bop \<notin> {IntDiv, PermDiv, Mod} \<Longrightarrow> eval_binop v1 bop v2 \<noteq> BinopOpFailure"
   using eval_binop_failure
   by blast
 
-lemma eval_binop_not_failure_2: "bop \<in> {IntDiv, Mod, PermDiv} \<Longrightarrow> eval_binop False v1 bop v2 = BinopNormal v' \<Longrightarrow> v2 \<noteq> VPerm(0) \<and> v2 \<noteq> VInt(0)"
+lemma eval_binop_not_failure_2: "bop \<in> {IntDiv, Mod, PermDiv} \<Longrightarrow> eval_binop v1 bop v2 = BinopNormal v' \<Longrightarrow> v2 \<noteq> VPerm(0) \<and> v2 \<noteq> VInt(0)"
   by (erule eval_binop.elims) (auto split: if_split_asm)
 
 text \<open>The result \<^term>\<open>Some (v1,v2)\<close> expresses that the binary operealor is lazy in the case where
@@ -192,7 +192,7 @@ lemma eval_binop_lazy_some_bool:
 
 lemma op_bimp_and_or_reduces_bool:
   assumes "op = Or \<or> op = And \<or> op = BImp"
-      and "is_BinopNormal (eval_binop t a op b)"
+      and "is_BinopNormal (eval_binop a op b)"
     shows "\<exists>b'. b = VBool b'"
   apply (cases op)
   using assms apply auto
@@ -200,7 +200,7 @@ lemma op_bimp_and_or_reduces_bool:
 
 lemma eval_binop_implies_eval_normal:
   assumes "eval_binop_lazy a op = Some x"
-      and "eval_binop t a op b = BinopNormal y"
+      and "eval_binop a op b = BinopNormal y"
     shows "x = y"
   apply (cases op)
   using assms(1) apply auto
@@ -224,8 +224,8 @@ lemma eval_binop_implies_eval_normal:
 
 lemma eval_binop_typing_agree:
   assumes "a \<in> sem_vtyp \<Delta> ty1" "b \<in> sem_vtyp \<Delta> ty2"
-  assumes "eval_binop t a op b \<noteq> BinopOpFailure"
-  shows "(binop_type op ty1 ty2 ty3) \<longleftrightarrow> (\<exists> v. BinopNormal v = eval_binop t a op b \<and> v \<in> sem_vtyp \<Delta> ty3)"
+  assumes "eval_binop a op b \<noteq> BinopOpFailure"
+  shows "(binop_type op ty1 ty2 ty3) \<longleftrightarrow> (\<exists> v. BinopNormal v = eval_binop a op b \<and> v \<in> sem_vtyp \<Delta> ty3)"
   using assms
   apply (cases ty1; cases ty2; safe elim!:binop_type_elim; clarsimp split:if_splits)
   by (cases op; auto split:if_splits intro:binop_type.intros)+
@@ -233,7 +233,7 @@ lemma eval_binop_typing_agree:
 lemma binop_type_non_fail_exists :
   assumes "binop_type bop \<tau>1 \<tau>2 \<tau>"
   assumes "v1 \<in> sem_vtyp \<Delta> \<tau>1"
-  shows "\<exists>v2. eval_binop t v1 bop v2 \<noteq> BinopTypeFailure"
+  shows "\<exists>v2. eval_binop v1 bop v2 \<noteq> BinopTypeFailure"
   using assms
   apply (induction rule:binop_type.induct; clarsimp)
   apply (safe; (solves \<open>rule exI[where ?x="VPerm _"]; clarsimp split:if_splits\<close> |
@@ -265,28 +265,10 @@ lemma eval_unop_typing_agree:
 subsection \<open>Some Other Lemmas (Todo: move to proper sections)\<close>
 
 lemma eval_binop_perm_mult_constant:
-  assumes "eval_binop t (VPerm p) Mult x = BinopNormal (VPerm r)"
-  shows "eval_binop t (VPerm (q * p)) Mult x = BinopNormal (VPerm (q * r))"
+  assumes "eval_binop (VPerm p) Mult x = BinopNormal (VPerm r)"
+  shows "eval_binop (VPerm (q * p)) Mult x = BinopNormal (VPerm (q * r))"
   apply (cases x)
   using assms by force+
 
-lemma eval_total_non_total_same_or_fail:
-  assumes "eval_binop t a bop b = BinopNormal v"
-  shows "eval_binop t' a bop b = BinopNormal v \<or> eval_binop t' a bop b = BinopOpFailure"
-  using assms
-  apply (cases a; cases b; simp?; cases bop; force?)
-       apply (metis binop_result.distinct(5) eval_int_int.simps(6))
-      apply (metis binop_result.distinct(5) eval_int_int.simps(7))
-     apply (metis binop_result.distinct(5) eval_int_int.simps(8))
-    apply (metis binop_result.distinct(5) eval_int_perm.simps(2))
-   apply (metis binop_result.distinct(5) eval_perm_int.simps(2))
-  by (metis binop_result.distinct(5) eval_perm_perm.simps(6))
-
-lemma eval_total_non_total_not_fail_same:
-  assumes "eval_binop t a bop b = BinopNormal v"
-      and "eval_binop t' a bop b \<noteq> BinopOpFailure"
-    shows "eval_binop t' a bop b = BinopNormal v"
-  using assms(1) assms(2) eval_total_non_total_same_or_fail
-  by blast
 
 end

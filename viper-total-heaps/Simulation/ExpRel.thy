@@ -53,7 +53,7 @@ lemma binop_lazy_rel_correct:
   by (cases v_bpl; (rename_tac lit, case_tac lit, auto))+
 
 lemma binop_nonlazy_rel_correct:
-  assumes "eval_binop False v1_vpr bop_vpr v2_vpr = BinopNormal v_vpr" and
+  assumes "eval_binop v1_vpr bop_vpr v2_vpr = BinopNormal v_vpr" and
           "binop_rel bop_vpr = bop_bpl" and
           "bop_vpr \<noteq> Mult"
   shows   "binop_eval_val bop_bpl (val_rel_vpr_bpl v1_vpr) (val_rel_vpr_bpl v2_vpr) = Some (val_rel_vpr_bpl v_vpr)"
@@ -352,7 +352,7 @@ proof (rule exp_rel_vpr_bpl_intro)
     fix v1 v2
     assume RedE1Vpr: "ctxt_vpr, None \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and 
            RedE2Vpr: "ctxt_vpr, None \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and
-           BopEvalNormalVpr: "eval_binop False v1 bop v2 = BinopNormal v"
+           BopEvalNormalVpr: "eval_binop v1 bop v2 = BinopNormal v"
 
     have RedE1Bpl:"red_expr_bpl ctxt e1_bpl ns (val_rel_vpr_bpl v1)"
       apply (rule exp_rel_vpr_bpl_elim[OF E1Rel])
@@ -364,7 +364,7 @@ proof (rule exp_rel_vpr_bpl_intro)
       using R RedE2Vpr
       by auto
 
-    moreover have "eval_binop False v1 bop v2 = BinopNormal v"
+    moreover have "eval_binop v1 bop v2 = BinopNormal v"
       using is_none_code BopEvalNormalVpr
       by force
 

@@ -9,19 +9,6 @@ subsection \<open>Expression Evaluation Properties\<close>
 
 inductive_cases RedResult_case: "ctxt, \<omega>_def \<turnstile> \<langle>Result; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
 
-lemma eval_binop_with_True:
-  assumes "eval_binop False v1 bop v2 = BinopNormal v"
-    shows "eval_binop True v1 bop v2 = BinopNormal v"
-  using assms
-  apply (cases v1; cases v2; simp; cases bop; simp)
-  by (meson binop_result.distinct(5) binop_result.inject)+
-
-lemma eval_binop_with_True_no_type_error:
-  assumes "eval_binop False v1 bop v2 \<noteq> BinopTypeFailure"
-    shows "eval_binop True v1 bop v2 \<noteq> BinopTypeFailure"
-  using assms
-  by (cases v1; cases v2; simp; cases bop; simp)
-
 
 lemma eval_with_None_helper:
   assumes "\<And>e v. e \<in> set es \<Longrightarrow>
@@ -82,8 +69,7 @@ next
 next
   case IH: (Binop e1 bop e2)
   then show ?case
-    using eval_binop_with_True is_none_code(2)
-    by (smt (verit, ccfv_threshold) RedBinop_case is_none_code(2) red_exp_intros(4) red_exp_intros(5))
+    by (meson RedBinop RedBinop_case red_exp_intros(4))
 next
   case (CondExp cond e1 e2)
   then show ?case
@@ -195,11 +181,11 @@ next
     using IH(10) IH(11) IH(12) IH(4)
     by auto
 
-  have "eval_binop False v1\<^sub>2 bop v2\<^sub>2 \<noteq> BinopOpFailure"
+  have "eval_binop v1\<^sub>2 bop v2\<^sub>2 \<noteq> BinopOpFailure"
     using IH.hyps(1) IH.prems(1) IH.prems(3) RedBinopOpFailure \<open>v1\<^sub>1 = v1\<^sub>2\<close> eval_is_deterministic(1) extended_val.discI v1\<^sub>2 v2\<^sub>2
     by blast
-  hence "eval_binop False v1\<^sub>2 bop v2\<^sub>2 = BinopNormal v"
-    using IH(6) eval_total_non_total_not_fail_same \<open>v1\<^sub>1 = v1\<^sub>2\<close> \<open>v2\<^sub>1 = v2\<^sub>2\<close>
+  hence "eval_binop v1\<^sub>2 bop v2\<^sub>2 = BinopNormal v"
+    using IH(6) \<open>v1\<^sub>1 = v1\<^sub>2\<close> \<open>v2\<^sub>1 = v2\<^sub>2\<close>
     by blast
   then show ?case
     using IH.hyps(1) IH.prems(1) IH.prems(2) IH.prems(3) RedBinop \<open>v1\<^sub>1 = v1\<^sub>2\<close> eval_is_deterministic v1\<^sub>2 v2\<^sub>2
@@ -482,7 +468,7 @@ next
         using eval_with_same_store_same_hh(1)[OF IH(3) r2\<^sub>2] IH.prems(1) IH.prems(2) IH.prems(3) IH(10)
         by fastforce
       then show ?thesis
-        by (metis (full_types) IH.hyps(1) IH.hyps(2) RedBinop RedBinopOpFailure \<open>r1\<^sub>2 = Val v1\<close> eval_total_non_total_same_or_fail r1\<^sub>2 r2\<^sub>2)
+        by (metis (full_types) IH.hyps(1) IH.hyps(2) RedBinop \<open>r1\<^sub>2 = Val v1\<close> r1\<^sub>2 r2\<^sub>2)
     next
       case VFailure
       then show ?thesis
