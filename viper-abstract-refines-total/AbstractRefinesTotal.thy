@@ -1,5 +1,5 @@
 theory AbstractRefinesTotal
-  imports ViperAbstract.Instantiation TotalViper.TraceIndepProperty ViperAbstract.EquiSemAuxLemma ViperAbstract.AbstractSemanticsProperties
+  imports ViperAbstract.Instantiation TotalViperRefinementDeps.TraceIndepProperty ViperAbstract.EquiSemAuxLemma ViperAbstract.AbstractSemanticsProperties
 begin
 
 section \<open>general lemmas and definitions\<close>
@@ -18,7 +18,7 @@ lemma RNormal_eq_ex_if_total[simp] :
 
 (* TODO: Better name? *)
 definition total_state_mask :: "heap_loc set \<Rightarrow> 'a full_total_state" where
-"total_state_mask hls = undefined\<lparr>get_total_full := undefined\<lparr>get_mh_total := (\<lambda> hl. if hl \<in> hls then 1 else 0) \<rparr> \<rparr>"
+"total_state_mask hls = upd_mh_total_full undefined (\<lambda> hl. if hl \<in> hls then 1 else 0)"
 
 subsection \<open>abs_state properties\<close>
 
@@ -97,54 +97,56 @@ lemma epsilon_preal_bounds :
 subsection \<open>red_pure_exps_total\<close>
 
 inductive_simps red_pure_exps_total_simps :
-  "red_pure_exps_total ctxt R \<omega>_def (Cons e es) \<omega> r"
-  "red_pure_exps_total ctxt R \<omega>_def Nil \<omega> r"
+  "red_pure_exps_total ctxt \<omega>_def (Cons e es) \<omega> r"
+  "red_pure_exps_total ctxt \<omega>_def Nil \<omega> r"
 
 lemma red_pure_exps_total_singleton_None [simp]:
-  "red_pure_exps_total ctxt R \<omega>_def [e] \<omega> None \<longleftrightarrow> ctxt, R, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
+  "red_pure_exps_total ctxt \<omega>_def [e] \<omega> None \<longleftrightarrow> ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
   by (auto simp add:red_pure_exps_total_simps)
 
 lemma red_pure_exps_total_two_None [simp]:
-  "red_pure_exps_total ctxt R \<omega>_def [e1, e2] \<omega> None \<longleftrightarrow>
-    ctxt, R, \<omega>_def \<turnstile> \<langle>e1; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<or>
-  ((\<exists>v. ctxt, R, \<omega>_def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and>  ctxt, R, \<omega>_def \<turnstile> \<langle>e2; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure)"
+  "red_pure_exps_total ctxt \<omega>_def [e1, e2] \<omega> None \<longleftrightarrow>
+    ctxt, \<omega>_def \<turnstile> \<langle>e1; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure \<or>
+  ((\<exists>v. ctxt, \<omega>_def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v) \<and>  ctxt, \<omega>_def \<turnstile> \<langle>e2; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure)"
   by (auto simp add:red_pure_exps_total_simps)
 
 subsection \<open>simp and elim rules for inductives\<close>
 
 inductive_cases red_pure_exp_elim:
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>ELit x;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Var x;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Unop op e;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Binop e1 op e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>CondExp e1 e2 e3;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>FieldAcc e f;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Old l e;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Perm e f;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>PermPred p es;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>FunApp f es;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Result;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Unfolding p es e;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Let e1 e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>PExists ty e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>PForall ty e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>ELit x;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Var x;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Unop op e;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Binop e1 op e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>CondExp e1 e2 e3;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>FieldAcc e f;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Old l e;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Perm e f;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>PermPred p es;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>FunApp f es;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Result;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Unfolding p es e;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Let e1 e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>PExists ty e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>PForall ty e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>DummyExpr;\<omega>\<rangle> [\<Down>]\<^sub>t v"
 
 inductive_simps red_pure_exp_simps:
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>ELit x;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Var x;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Unop op e;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Binop e1 op e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>CondExp e1 e2 e3;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>FieldAcc e f;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Old l e;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Perm e f;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>PermPred p es;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>FunApp f es;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Result;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Unfolding p es e;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>Let e1 e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>PExists ty e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
-  "ctxt, R, \<omega>_def \<turnstile> \<langle>PForall ty e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>ELit x;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Var x;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Unop op e;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Binop e1 op e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>CondExp e1 e2 e3;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>FieldAcc e f;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Old l e;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Perm e f;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>PermPred p es;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>FunApp f es;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Result;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Unfolding p es e;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>Let e1 e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>PExists ty e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>PForall ty e2;\<omega>\<rangle> [\<Down>]\<^sub>t v"
+  "ctxt, \<omega>_def \<turnstile> \<langle>DummyExpr;\<omega>\<rangle> [\<Down>]\<^sub>t v"
 
 inductive_simps red_stmt_total_simps :
   "red_stmt_total ctxt R \<Lambda> (stmt.Inhale e) \<omega> r"
@@ -178,15 +180,15 @@ inductive_simps red_inhale_simps :
   "red_inhale ctxt R (Exists ty A) \<omega> r"
 
 inductive_simps red_exhale_simps :
-  "red_exhale ctxt R \<omega>1 (Atomic a) \<omega>2 r"
-  "red_exhale ctxt R \<omega>1 (Imp p A) \<omega>2 r"
-  "red_exhale ctxt R \<omega>1 (CondAssert p A1 A2) \<omega>2 r"
-  "red_exhale ctxt R \<omega>1 (ImpureAnd A1 A2) \<omega>2 r"
-  "red_exhale ctxt R \<omega>1 (ImpureOr A1 A2) \<omega>2 r"
-  "red_exhale ctxt R \<omega>1 (Star A1 A2) \<omega>2 r"
-  "red_exhale ctxt R \<omega>1 (Wand A1 A2) \<omega>2 r"
-  "red_exhale ctxt R \<omega>1 (ForAll ty A) \<omega>2 r"
-  "red_exhale ctxt R \<omega>1 (Exists ty A) \<omega>2 r"
+  "red_exhale ctxt \<omega>1 (Atomic a) \<omega>2 r"
+  "red_exhale ctxt \<omega>1 (Imp p A) \<omega>2 r"
+  "red_exhale ctxt \<omega>1 (CondAssert p A1 A2) \<omega>2 r"
+  "red_exhale ctxt \<omega>1 (ImpureAnd A1 A2) \<omega>2 r"
+  "red_exhale ctxt \<omega>1 (ImpureOr A1 A2) \<omega>2 r"
+  "red_exhale ctxt \<omega>1 (Star A1 A2) \<omega>2 r"
+  "red_exhale ctxt \<omega>1 (Wand A1 A2) \<omega>2 r"
+  "red_exhale ctxt \<omega>1 (ForAll ty A) \<omega>2 r"
+  "red_exhale ctxt \<omega>1 (Exists ty A) \<omega>2 r"
 
 inductive_simps th_result_rel_RFailure [simp] :
   "th_result_rel b1 b2 W RFailure"
@@ -204,6 +206,7 @@ fun valid_a2t_exp_no_rec :: "pure_exp \<Rightarrow> bool"
   | "valid_a2t_exp_no_rec (FunApp f es) = False"
   | "valid_a2t_exp_no_rec (Let f es) = False"
   | "valid_a2t_exp_no_rec (Unfolding p es e) = False"
+  | "valid_a2t_exp_no_rec DummyExpr = False"
   | "valid_a2t_exp_no_rec _ = True"
 
 abbreviation valid_a2t_exp
@@ -256,11 +259,11 @@ abbreviation red_pure_exp_det_exp
 lemma valid_a2t_exp_implies_red_pure_exp_det_exp [simp]:
   assumes "valid_a2t_exp e"
   shows "red_pure_exp_det_exp e"
-  using assms by (induction e; simp)
+  using assms by (induction e; simp add: pure_exp_pred.simps)
 
 lemma red_pure_exp_det :
-  assumes "ctxt, R, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t v1"
-  assumes "ctxt, R, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t v2"
+  assumes "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t v1"
+  assumes "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t v2"
   assumes "red_pure_exp_det_exp e"
   shows "v1 = v2"
   using assms
@@ -294,6 +297,8 @@ next
   case (PExists x1a e) then show ?case by (safe elim!:red_pure_exp_elim; simp; auto)
 next
   case (PForall x1a e) then show ?case by (safe elim!:red_pure_exp_elim; simp; auto)
+next
+  case DummyExpr then show ?case by (safe elim!:red_pure_exp_elim)
 qed
 
 subsection \<open>translation of ctxt\<close>
@@ -392,7 +397,7 @@ lemma red_pure_exp_typed :
   \<comment>\<open>assumes "program_total ctxt = Pr"\<close>
   (* TODO: Why can the following not be in an assumes? *)
   shows "total_state_typing ctxt \<Lambda> \<omega> \<Longrightarrow> valid_a2t_exp e \<Longrightarrow>
-     \<exists> r. ctxt, R, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r \<and> (\<forall> v. r = Val v \<longrightarrow> v \<in> sem_vtyp (absval_interp_total ctxt) ty)"
+     \<exists> r. ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r \<and> (\<forall> v. r = Val v \<longrightarrow> v \<in> sem_vtyp (absval_interp_total ctxt) ty)"
   unfolding total_state_typing_def using assms
 proof (induction arbitrary:\<omega>_def \<omega> rule: pure_exp_typing.induct )
   case (TypVar \<Lambda> x ty)
@@ -404,7 +409,7 @@ next
   then show ?case by (simp add: red_pure_exp_simps)
 next
   case (TypUnop uop \<tau>1 \<tau> \<Lambda> e)
-  obtain r where Hr : "ctxt, R, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r \<and>
+  obtain r where Hr : "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r \<and>
         (\<forall>v. r = Val v \<longrightarrow> v \<in> sem_vtyp (absval_interp_total ctxt) \<tau>1)" using TypUnop.prems TypUnop.IH by fastforce
   from this TypUnop.hyps show ?case
     apply (simp add: red_pure_exp_simps)
@@ -415,9 +420,9 @@ next
     done
 next
   case (TypBinop bop \<tau>1 \<tau>2 \<tau> \<Lambda> e1 e2)
-  obtain r1 where Hr1 : "ctxt, R, \<omega>_def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t r1 \<and>
+  obtain r1 where Hr1 : "ctxt, \<omega>_def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t r1 \<and>
         (\<forall>v. r1 = Val v \<longrightarrow> v \<in> sem_vtyp (absval_interp_total ctxt) \<tau>1)" using TypBinop by fastforce
-  obtain r2 where Hr2 : "ctxt, R, \<omega>_def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t r2 \<and>
+  obtain r2 where Hr2 : "ctxt, \<omega>_def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t r2 \<and>
         (\<forall>v. r2 = Val v \<longrightarrow> v \<in> sem_vtyp (absval_interp_total ctxt) \<tau>2)" using TypBinop by fastforce
   then show ?case
   proof (cases r1)
@@ -485,11 +490,11 @@ next
   qed
 next
   case (TypCondExp \<Lambda> b e1 \<tau> e2)
-  obtain rb where Hb : "ctxt, R, \<omega>_def \<turnstile> \<langle>b;\<omega>\<rangle> [\<Down>]\<^sub>t rb \<and>
+  obtain rb where Hb : "ctxt, \<omega>_def \<turnstile> \<langle>b;\<omega>\<rangle> [\<Down>]\<^sub>t rb \<and>
         (\<forall>v. rb = Val v \<longrightarrow> v \<in> sem_vtyp (absval_interp_total ctxt) TBool)" using TypCondExp by fastforce
-  obtain r1 where Hr1 : "ctxt, R, \<omega>_def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t r1 \<and>
+  obtain r1 where Hr1 : "ctxt, \<omega>_def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t r1 \<and>
         (\<forall>v. r1 = Val v \<longrightarrow> v \<in> sem_vtyp (absval_interp_total ctxt) \<tau>)" using TypCondExp by fastforce
-  obtain r2 where Hr2 : "ctxt, R, \<omega>_def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t r2 \<and>
+  obtain r2 where Hr2 : "ctxt, \<omega>_def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t r2 \<and>
         (\<forall>v. r2 = Val v \<longrightarrow> v \<in> sem_vtyp (absval_interp_total ctxt) \<tau>)" using TypCondExp by fastforce
   show ?case
   proof (cases rb)
@@ -507,7 +512,7 @@ next
   qed
 next
   case (TypFieldAcc \<Lambda> e f \<tau>)
-  obtain r where Hr : "ctxt, R, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r \<and>
+  obtain r where Hr : "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r \<and>
         (\<forall>v. r = Val v \<longrightarrow> v \<in> sem_vtyp (absval_interp_total ctxt) TRef)" using TypFieldAcc by fastforce
   show ?case
   proof (cases r)
@@ -541,7 +546,7 @@ next
 (*
   proof (cases "get_trace_total \<omega> lbl")
     case (Some \<phi>)
-    then obtain r where Hr : "ctxt, R, map_option (get_total_full_update (\<lambda>_. \<phi>)) \<omega>_def \<turnstile> \<langle>e;\<omega>\<lparr>get_total_full := \<phi>\<rparr>\<rangle> [\<Down>]\<^sub>t r \<and>
+    then obtain r where Hr : "ctxt, map_option (get_total_full_update (\<lambda>_. \<phi>)) \<omega>_def \<turnstile> \<langle>e;\<omega>\<lparr>get_total_full := \<phi>\<rparr>\<rangle> [\<Down>]\<^sub>t r \<and>
         (\<forall>v. r = Val v \<longrightarrow> v \<in> sem_vtyp (absval_interp_total ctxt) \<tau>)"
       using TypOld.prems TypOld.IH[of "\<omega>\<lparr>get_total_full := \<phi>\<rparr>" "map_option (get_total_full_update (\<lambda>_. \<phi>)) \<omega>_def"]
       apply (simp add:trace_typing_def)
@@ -559,7 +564,7 @@ next
 *)
 next
   case (TypPerm \<Lambda> e f \<tau>)
-  obtain r where Hr : "ctxt, R, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r \<and>
+  obtain r where Hr : "ctxt, \<omega>_def \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>]\<^sub>t r \<and>
         (\<forall>v. r = Val v \<longrightarrow> v \<in> sem_vtyp (absval_interp_total ctxt) TRef)" using TypPerm by fastforce
   show ?case
   proof (cases r)
@@ -624,7 +629,7 @@ lemma red_inhale_preserves_typing :
 
 
 lemma red_exhale_preserves_heap_and_store :
-  assumes "red_exhale ctxt R \<omega>0 A \<omega> r"
+  assumes "red_exhale ctxt \<omega>0 A \<omega> r"
   assumes "RNormal \<omega>' = r"
   shows "get_store_total \<omega>' = get_store_total \<omega> \<and> get_trace_total \<omega>' = get_trace_total \<omega> \<and> get_hh_total (get_total_full \<omega>') = get_hh_total (get_total_full \<omega>)"
   using assms
@@ -642,7 +647,7 @@ proof (induction A arbitrary:\<omega> \<omega>' \<omega>0 r)
   next
     case (AccPredicate x31 x32 x33)
     from this Atomic show ?thesis
-      by (auto simp add:red_exhale_simps inhale_perm_single_pred_def split:if_splits)
+      by (auto simp add:red_exhale_simps exhale_pred_def split:if_splits)
   qed
 next
   case (Star A1 A2)
@@ -651,7 +656,7 @@ next
 qed (clarsimp simp add:red_exhale_simps; blast)+
 
 lemma red_exhale_preserves_typing :
-  assumes "red_exhale ctxt R \<omega>0 A \<omega> r"
+  assumes "red_exhale ctxt \<omega>0 A \<omega> r"
   assumes "RNormal \<omega>' = r"
   assumes "total_state_typing ctxt \<Lambda> \<omega>"
   shows "total_state_typing ctxt \<Lambda> \<omega>'"
@@ -713,12 +718,12 @@ lemma not_fail_Inhale :
 
 lemma not_fail_Exhale :
   "\<not> red_stmt_total ctxt R \<Lambda> (stmt.Exhale A) \<omega> RFailure \<longleftrightarrow>
-    \<not> red_exhale ctxt R \<omega> A \<omega> RFailure"
+    \<not> red_exhale ctxt \<omega> A \<omega> RFailure"
   by (metis RedExhaleFailure red_stmt_total_inversion_thms(9) sub_expressions.simps(8))
 
 lemma not_fail_Assert :
   "\<not> red_stmt_total ctxt R \<Lambda> (stmt.Assert A) \<omega> RFailure \<longleftrightarrow>
-    \<not> red_exhale ctxt R \<omega> A \<omega> RFailure"
+    \<not> red_exhale ctxt \<omega> A \<omega> RFailure"
   by (metis RedAssertFailure red_stmt_total_inversion_thms(11) sub_expressions.simps(9))
 
 lemma not_fail_If :
@@ -726,13 +731,13 @@ lemma not_fail_If :
   assumes "total_state_typing ctxt \<Lambda> \<omega>"
   assumes "valid_a2t_stmt (stmt.If e C1 C2)"
   shows "\<not> red_stmt_total ctxt R \<Lambda> (stmt.If e C1 C2) \<omega> RFailure \<longleftrightarrow>
-    (\<exists> b. ctxt, R, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<and>
+    (\<exists> b. ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool b) \<and>
       \<not> red_stmt_total ctxt R \<Lambda> (if b then C1 else C2) \<omega> RFailure)"
   using assms
   (* TODO: Why is the if in the goal rewritten? *)
   apply (clarsimp simp add:red_stmt_total_simps)
   apply (erule stmt_typing_elim)
-  apply (frule red_pure_exp_typed[where ?ctxt="ctxt", where ?R="R", where ?\<omega>_def="Some \<omega>"]; assumption?)
+  apply (frule red_pure_exp_typed[where ?ctxt="ctxt", where ?\<omega>_def="Some \<omega>"]; assumption?)
   apply (erule exE)
   apply (case_tac r; clarsimp)
   apply (case_tac b; clarsimp; safe; auto?; drule red_pure_exp_det; assumption?; auto)
@@ -752,11 +757,11 @@ lemma not_fail_LocalAssign:
   assumes "total_state_typing ctxt \<Lambda> \<omega>"
   assumes "valid_a2t_stmt (stmt.LocalAssign x e)"
   shows "\<not> red_stmt_total ctxt R \<Lambda> (stmt.LocalAssign x e) \<omega> RFailure \<longleftrightarrow>
-    (\<exists> v ty. \<Lambda> x = Some ty \<and> ctxt, R, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v \<and> v \<in> sem_vtyp (absval_interp_total ctxt) ty)"
+    (\<exists> v ty. \<Lambda> x = Some ty \<and> ctxt, (Some \<omega>) \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val v \<and> v \<in> sem_vtyp (absval_interp_total ctxt) ty)"
   using assms
   apply (clarsimp simp add:red_stmt_total_simps)
   apply (erule stmt_typing_elim)
-  apply (frule red_pure_exp_typed[where ?ctxt="ctxt", where ?R="R", where ?\<omega>_def="Some \<omega>"]; assumption?)
+  apply (frule red_pure_exp_typed[where ?ctxt="ctxt", where ?\<omega>_def="Some \<omega>"]; assumption?)
   apply (safe)
    apply (case_tac r; auto; fail)
   apply (auto dest:red_pure_exp_det)
@@ -768,15 +773,15 @@ lemma not_fail_FieldAssign :
   assumes "valid_a2t_stmt (stmt.FieldAssign e1 f e2)"
   shows "\<not> red_stmt_total ctxt R \<Lambda> (stmt.FieldAssign e1 f e2) \<omega> RFailure \<longleftrightarrow>
     (\<exists> a v ty. declared_fields (program_total ctxt) f = Some ty \<and>
-     ctxt, R, (Some \<omega>) \<turnstile> \<langle>e1; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a)) \<and>
-     ctxt, R, (Some \<omega>) \<turnstile> \<langle>e2; \<omega>\<rangle> [\<Down>]\<^sub>t Val v \<and>
+     ctxt, (Some \<omega>) \<turnstile> \<langle>e1; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef (Address a)) \<and>
+     ctxt, (Some \<omega>) \<turnstile> \<langle>e2; \<omega>\<rangle> [\<Down>]\<^sub>t Val v \<and>
      (a,f) \<in> get_writeable_locs \<omega> \<and>
      v \<in> sem_vtyp (absval_interp_total ctxt) ty)"
   using assms
   apply (clarsimp simp add:red_stmt_total_simps)
   apply (erule stmt_typing_elim)
-  apply (drule red_pure_exp_typed[where ?e="e1", where ?ctxt="ctxt", where ?R="R", where ?\<omega>_def="Some \<omega>"]; assumption?)
-  apply (drule red_pure_exp_typed[where ?e="e2", where ?ctxt="ctxt", where ?R="R", where ?\<omega>_def="Some \<omega>"]; assumption?)
+  apply (drule red_pure_exp_typed[where ?e="e1", where ?ctxt="ctxt", where ?\<omega>_def="Some \<omega>"]; assumption?)
+  apply (drule red_pure_exp_typed[where ?e="e2", where ?ctxt="ctxt", where ?\<omega>_def="Some \<omega>"]; assumption?)
   apply (clarsimp)
   apply (case_tac r; clarsimp; (solves \<open>auto dest:red_pure_exp_det\<close>)?)
   apply (case_tac ra; clarsimp; (solves \<open>auto dest:red_pure_exp_det\<close>)?)
@@ -911,7 +916,7 @@ definition a2t_extend_heap :: "'a total_context \<Rightarrow> 'a partial_heap \<
 "a2t_extend_heap ctxt h hl = case_option (well_typed_val (absval_interp_total ctxt) (the (declared_fields (program_total ctxt) (snd hl)))) id (h hl)"
 
 definition a2t_extend_state :: "'a total_context \<Rightarrow> 'a virtual_state \<Rightarrow> 'a total_state" where
-"a2t_extend_state ctxt st = total_state.make (a2t_extend_heap ctxt (get_vh st)) undefined (get_vm st) zero_mask"
+"a2t_extend_state ctxt st = total_state.make (a2t_extend_heap ctxt (get_vh st)) (NM (get_vm st) Map.empty)"
 
 definition a2t_extend :: "'a total_context \<Rightarrow> 'a equi_state \<Rightarrow> 'a full_total_state" where
 "a2t_extend ctxt \<omega> = full_total_state.make (get_store \<omega>) ((\<lambda> x. Some (a2t_extend_state ctxt x)) \<circ>\<^sub>m get_trace \<omega>) (a2t_extend_state ctxt (get_state \<omega>))"
@@ -935,9 +940,9 @@ lemma a2t_extend_typed :
       full_total_state.defs total_state.defs partial_trace_typing_def trace_typing_def map_comp_Some_iff)
   using a2t_extend_heap_typed by force
 
-lemma a2t_extend_mp_empty: "get_mp_total_full (a2t_extend ctxt \<omega>) = zero_mask"   
+lemma a2t_extend_mp_empty: "get_mp_total_full (a2t_extend ctxt \<omega>) = zero_mask"
   unfolding a2t_extend_def a2t_extend_state_def full_total_state.defs(1) total_state.defs(1)
-  by simp
+  by (rule ext; simp add: zero_mask_def)
 
 definition a2t_states :: "'a total_context \<Rightarrow> 'a equi_state \<Rightarrow> 'a full_total_state set" where
 "a2t_states ctxt \<omega> = {\<omega>\<^sub>t. \<omega> = t2a_state \<omega>\<^sub>t |`\<^sub>a dom (get_vh (get_state \<omega>)) \<and>
@@ -1017,7 +1022,13 @@ lemma get_mh_total_a2t_states [simp] :
   shows "get_mh_total (get_total_full \<omega>\<^sub>t) = get_vm (get_state \<omega>)"
   apply (subgoal_tac "\<exists> A. \<omega> = t2a_state \<omega>\<^sub>t |`\<^sub>a A")
    prefer 2 using assms apply (simp add:a2t_states_def) apply blast
-  using assms by (clarsimp simp add:t2a_state_get_state a2t_states_mask_wf)
+  using assms pmin_1_id[OF a2t_states_mask_wf[OF assms]]
+  by (clarsimp simp add:t2a_state_get_state a2t_states_mask_wf)
+
+lemma get_mh_nm_a2t_states [simp] :
+  assumes "\<omega>\<^sub>t \<in> a2t_states ctxt \<omega>"
+  shows "get_mh_nm (get_nm_total (get_total_full \<omega>\<^sub>t)) = get_vm (get_state \<omega>)"
+  using get_mh_total_a2t_states[OF assms] by simp
 
 lemma get_hh_total_lookup_a2t_states [simp] :
   assumes "\<omega>\<^sub>t \<in> a2t_states ctxt \<omega>"
@@ -1135,6 +1146,11 @@ lemma get_mh_total_a2t_state[simp] :
   shows "get_mh_total (get_total_full (a2t_state ctxt \<omega>)) = get_vm (get_state \<omega>)"
   by (rule a2t_stateI; simp add:assms)
 
+lemma get_mh_nm_a2t_state[simp] :
+  assumes "a2t_state_wf ctxt (get_trace \<omega>)"
+  shows "get_mh_nm (get_nm_total (get_total_full (a2t_state ctxt \<omega>))) = get_vm (get_state \<omega>)"
+  using get_mh_total_a2t_state[OF assms] by simp
+
 lemma get_hh_total_lookup_a2t_state [simp] :
   assumes "get_vh (get_state \<omega>) hl = Some x"
   assumes "a2t_state_wf ctxt (get_trace \<omega>)"
@@ -1199,9 +1215,13 @@ lemma concrete_red_stmt_post_stable_wf :
 
 subsection \<open>refinement of pure expressions\<close>
 
+lemma red_pure_DummyExpr_false [simp] :
+  "\<not> \<Delta> \<turnstile> \<langle>DummyExpr;\<omega>\<rangle> [\<Down>] v"
+  by (auto elim: red_pure.cases)
+
 lemma red_pure_refines_red_pure_total :
   assumes "valid_a2t_exp e"
-  shows "ctxt, R, Some \<omega>\<^sub>t \<turnstile> \<langle>e; \<omega>\<^sub>t\<rangle> [\<Down>]\<^sub>t Val v \<longleftrightarrow> \<Delta> \<turnstile> \<langle>e; stabilize (t2a_state \<omega>\<^sub>t)\<rangle> [\<Down>] Val v"
+  shows "ctxt, Some \<omega>\<^sub>t \<turnstile> \<langle>e; \<omega>\<^sub>t\<rangle> [\<Down>]\<^sub>t Val v \<longleftrightarrow> \<Delta> \<turnstile> \<langle>e; stabilize (t2a_state \<omega>\<^sub>t)\<rangle> [\<Down>] Val v"
   using assms
 proof (induction e arbitrary:\<omega>\<^sub>t v)
   case (Binop e1 x2a e2)
@@ -1228,12 +1248,16 @@ lemma ppos_get_mh_total_total_state_mask[simp] :
   apply (simp add:total_state_mask_def)
   using gr_0_is_ppos by blast
 
+lemma ppos_get_mh_nm_total_state_mask[simp] :
+ "ppos (get_mh_nm (get_nm_total (get_total_full (total_state_mask A))) hl) \<longleftrightarrow> hl \<in> A"
+  using ppos_get_mh_total_total_state_mask by simp
+
 abbreviation "a2t_mask \<omega> \<equiv> total_state_mask (dom (get_vh (get_state \<omega>)))"
 
 lemma red_pure_exp_cong_mh :
   assumes "\<And> hl. ppos (get_mh_total (get_total_full \<omega>0) hl) = ppos (get_mh_total (get_total_full \<omega>0') hl)"
   assumes "valid_a2t_exp e"
-  shows "ctxt, R, Some \<omega>0 \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r \<longleftrightarrow> ctxt, R, Some \<omega>0' \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r"
+  shows "ctxt, Some \<omega>0 \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r \<longleftrightarrow> ctxt, Some \<omega>0' \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r"
   using assms
 proof (induction e arbitrary:\<omega>0 \<omega>0' \<omega> r)
   case (Binop e1 x2a e2)
@@ -1261,21 +1285,21 @@ qed (simp add: red_pure_exp_simps)+
 lemma red_pure_exp_cong_mh_eq :
   assumes "\<And> hl. ppos (get_mh_total (get_total_full \<omega>0) hl) = ppos (get_mh_total (get_total_full \<omega>) hl)"
   assumes "valid_a2t_exp e"
-  shows "ctxt, R, Some \<omega>0 \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r \<longleftrightarrow> ctxt, R, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r"
+  shows "ctxt, Some \<omega>0 \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r \<longleftrightarrow> ctxt, Some \<omega> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t r"
   using assms by (rule red_pure_exp_cong_mh)
 
 lemma red_pure_exp_a2t_mask :
   assumes "stable \<omega>"
   assumes "\<omega>\<^sub>t \<in> a2t_states ctxt \<omega>"
   assumes "valid_a2t_exp e"
-  shows "ctxt, R, Some (a2t_mask \<omega>) \<turnstile> \<langle>e; \<omega>\<^sub>t'\<rangle> [\<Down>]\<^sub>t r \<longleftrightarrow> ctxt, R, Some \<omega>\<^sub>t \<turnstile> \<langle>e; \<omega>\<^sub>t'\<rangle> [\<Down>]\<^sub>t r"
+  shows "ctxt, Some (a2t_mask \<omega>) \<turnstile> \<langle>e; \<omega>\<^sub>t'\<rangle> [\<Down>]\<^sub>t r \<longleftrightarrow> ctxt, Some \<omega>\<^sub>t \<turnstile> \<langle>e; \<omega>\<^sub>t'\<rangle> [\<Down>]\<^sub>t r"
   using assms apply (subst red_pure_exp_cong_mh; simp?)
   by (subst stable_dom_get_vh_eq_get_vm; (simp add:stable_get_state)?)
 
 lemma red_pure_refines_red_pure_total_unstable :
   assumes "\<omega>\<^sub>t \<in> a2t_states ctxt \<omega>"
   assumes "valid_a2t_exp e"
-  shows "ctxt, R, Some (a2t_mask \<omega>) \<turnstile> \<langle>e; \<omega>\<^sub>t\<rangle> [\<Down>]\<^sub>t Val v \<longleftrightarrow> \<Delta> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>] Val v"
+  shows "ctxt, Some (a2t_mask \<omega>) \<turnstile> \<langle>e; \<omega>\<^sub>t\<rangle> [\<Down>]\<^sub>t Val v \<longleftrightarrow> \<Delta> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>] Val v"
   using assms
 proof (induction e arbitrary:\<omega> \<omega>\<^sub>t v)
   case (Binop e1 x2a e2)
@@ -1310,7 +1334,7 @@ lemma red_exhale_a2t_mask :
   assumes "stable \<omega>"
   assumes "\<omega>\<^sub>t \<in> a2t_states ctxt \<omega>"
   assumes "valid_a2t_assert A"
-  shows "red_exhale ctxt R (a2t_mask \<omega>) A \<omega>\<^sub>t' r \<longleftrightarrow> red_exhale ctxt R \<omega>\<^sub>t A \<omega>\<^sub>t' r"
+  shows "red_exhale ctxt (a2t_mask \<omega>) A \<omega>\<^sub>t' r \<longleftrightarrow> red_exhale ctxt \<omega>\<^sub>t A \<omega>\<^sub>t' r"
   using assms
 proof (induction A arbitrary: \<omega>\<^sub>t \<omega>\<^sub>t' r)
   case (Atomic a)
@@ -1394,7 +1418,7 @@ proof -
   note calc = calc this
   then obtain b where "(\<Delta> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>] Val (VBool b))"
     apply (clarsimp simp add:assertion_typing_simps atomic_assertion_typing_simps)
-    apply (frule red_pure_exp_typed[where ?ctxt="ctxt" and ?R="R" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_state ctxt \<omega>)"]; simp)
+    apply (frule red_pure_exp_typed[where ?ctxt="ctxt" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_state ctxt \<omega>)"]; simp)
     apply (clarsimp)
     by (case_tac "r"; clarsimp simp add:red_inhale_simps red_pure_refines_red_pure_total[where ?\<Delta>="\<Delta>"])
   note calc = calc this
@@ -1427,14 +1451,133 @@ proof -
   then
   show "?thesis"
     apply (clarsimp simp add:assertion_typing_simps atomic_assertion_typing_simps exp_or_wildcard_typing.simps)
-    apply (drule red_pure_exp_typed[where ?ctxt="ctxt" and ?R="R" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_state ctxt \<omega>)"]; simp)
+    apply (drule red_pure_exp_typed[where ?ctxt="ctxt" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_state ctxt \<omega>)"]; simp)
     apply (clarsimp)
     apply (case_tac "r"; clarsimp simp add:red_inhale_simps red_pure_refines_red_pure_total[where ?\<Delta>="\<Delta>"])
-    apply (drule red_pure_exp_typed[where ?ctxt="ctxt" and ?R="R" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_state ctxt \<omega>)"]; simp)
+    apply (drule red_pure_exp_typed[where ?ctxt="ctxt" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_state ctxt \<omega>)"]; simp)
     apply (clarsimp)
     by (case_tac "r"; auto simp add:red_inhale_simps red_pure_refines_red_pure_total[where ?\<Delta>="\<Delta>"])
 qed
 
+lemma get_fnm_nm_empty_of_mp_zero :
+  assumes "get_mp_nm nm = zero_mask"
+  shows "get_fnm_nm nm = Map.empty"
+proof (rule ext)
+  fix lp
+  show "get_fnm_nm nm lp = None"
+  proof (rule ccontr)
+    assume "get_fnm_nm nm lp \<noteq> None"
+    then obtain q nm' where Hsome: "get_fnm_nm nm lp = Some (q, nm')"
+      by (cases "get_fnm_nm nm lp") auto
+    have "get_mp_nm nm lp = Rep_posreal q"
+      using Hsome by simp
+    moreover have "get_mp_nm nm lp = 0"
+      using assms by (simp add: zero_mask_def)
+    ultimately have "Rep_posreal q = 0" by simp
+    moreover have "Rep_posreal q > 0"
+      using Rep_posreal by auto
+    ultimately show False by simp
+  qed
+qed
+
+lemma ex_full_total_state_neq :
+  fixes x :: "'a full_total_state"
+  shows "\<exists>y. y \<noteq> x"
+proof -
+  define A where "A = x\<lparr>get_store_total := (get_store_total x)(0 := Some (VBool True))\<rparr>"
+  define B where "B = x\<lparr>get_store_total := (get_store_total x)(0 := Some (VBool False))\<rparr>"
+  have HA: "get_store_total A 0 = Some (VBool True)"
+    unfolding A_def by simp
+  have HB: "get_store_total B 0 = Some (VBool False)"
+    unfolding B_def by simp
+  have "A \<noteq> B"
+    using HA HB by auto
+  thus ?thesis by (metis (full_types))
+qed
+
+lemma R_trivial_ex [simp] :
+  "\<exists>y :: 'a full_total_state. x = y \<longrightarrow> R y"
+proof -
+  obtain y where "y \<noteq> x" using ex_full_total_state_neq by blast
+  thus ?thesis by auto
+qed
+
+lemma upd_mh_nm_twice [simp] :
+  "upd_mh_nm (upd_mh_nm nm x) y = upd_mh_nm nm y"
+  by (cases nm; simp)
+
+lemma upd_mh_total_twice [simp] :
+  "upd_mh_total (upd_mh_total \<phi> x) y = upd_mh_total \<phi> y"
+  by simp
+
+lemma upd_mh_total_full_twice [simp] :
+  "upd_mh_total_full (upd_mh_total_full \<omega> x) y = upd_mh_total_full \<omega> y"
+  by simp
+
+lemma get_mh_total_upd_mh_total [simp] :
+  "get_mh_total (upd_mh_total \<phi> mh) = mh"
+  by simp
+
+lemma get_mh_total_full_upd_mh_total_full [simp] :
+  "get_mh_total_full (upd_mh_total_full \<omega> mh) = mh"
+  by simp
+
+lemma upd_mh_nm_id [simp] :
+  "upd_mh_nm nm (get_mh_nm nm) = nm"
+  by (cases nm; simp)
+
+lemma upd_mh_total_full_id [simp] :
+  "upd_mh_total_full \<omega> (get_mh_total_full \<omega>) = \<omega>"
+  by simp
+
+lemma upd_mh_total_full_a2t_states_id [simp] :
+  assumes "\<omega>\<^sub>t \<in> a2t_states ctxt \<omega>"
+  shows "upd_mh_total_full \<omega>\<^sub>t (get_vm (get_state \<omega>)) = \<omega>\<^sub>t"
+  using get_mh_total_a2t_states[OF assms, symmetric] by simp
+
+lemma upd_mh_nm_a2t_states_id [simp] :
+  assumes "\<omega>\<^sub>t \<in> a2t_states ctxt \<omega>"
+  shows "upd_mh_nm (get_nm_total (get_total_full \<omega>\<^sub>t)) (get_vm (get_state \<omega>)) = get_nm_total (get_total_full \<omega>\<^sub>t)"
+  using get_mh_nm_a2t_states[OF assms, symmetric] by simp
+
+lemma get_mp_nm_a2t_states [simp] :
+  assumes "\<omega>\<^sub>t \<in> a2t_states ctxt \<omega>"
+  shows "option_fold (Rep_posreal \<circ> fst) 0 \<circ> get_fnm_nm (get_nm_total (get_total_full \<omega>\<^sub>t)) = zero_mask"
+  using a2t_states_mp_empty[OF assms] by simp
+
+lemma add_perm_nm_eq :
+  assumes "\<omega>\<^sub>t \<in> a2t_states ctxt (set_state \<omega> (add_perm (get_state \<omega>) hl (Abs_preal p) v))"
+  assumes "get_m \<omega> hl + Abs_preal p \<le> 1"
+  shows "get_nm_total (get_total_full \<omega>\<^sub>t) =
+         upd_mh_nm (get_nm_total (get_total_full \<omega>\<^sub>t)) ((get_m \<omega>)(hl := get_m \<omega> hl + Abs_preal p))"
+proof -
+  have Fact1: "get_mh_nm (get_nm_total (get_total_full \<omega>\<^sub>t)) =
+        (get_m \<omega>) (hl := pmin 1 (get_m \<omega> hl + Abs_preal p))"
+    using get_mh_nm_a2t_states[OF assms(1)] by simp
+  have Fact2: "pmin 1 (get_m \<omega> hl + Abs_preal p) = get_m \<omega> hl + Abs_preal p"
+    using assms(2) by (simp add: pmin_is pgte.rep_eq less_eq_preal.rep_eq)
+  show ?thesis
+    using Fact1 Fact2 upd_mh_nm_id by metis
+qed
+
+lemma del_perm_nm_eq :
+  assumes "\<omega>\<^sub>t \<in> a2t_states ctxt (set_state \<omega> (del_perm (get_state \<omega>) hl p))"
+  shows "get_nm_total (get_total_full \<omega>\<^sub>t) =
+         upd_mh_nm (get_nm_total (get_total_full \<omega>\<^sub>t)) ((get_m \<omega>)(hl := get_m \<omega> hl - p))"
+proof -
+  have Fact1: "get_mh_nm (get_nm_total (get_total_full \<omega>\<^sub>t)) = (get_m \<omega>)(hl := get_m \<omega> hl - p)"
+    using get_mh_nm_a2t_states[OF assms] by simp
+  show ?thesis
+    using Fact1 upd_mh_nm_id by metis
+qed
+
+lemma self_a2t_states_stabilize :
+  assumes "a2t_extend_ok ctxt (stabilize (t2a_state \<omega>')) \<omega>'"
+  assumes "valid_heap_mask (get_mh_nm (get_nm_total (get_total_full \<omega>')))"
+  assumes "option_fold (Rep_posreal \<circ> fst) 0 \<circ> get_fnm_nm (get_nm_total (get_total_full \<omega>')) = zero_mask"
+  shows "\<omega>' \<in> a2t_states ctxt (stabilize (t2a_state \<omega>'))"
+  apply (rule a2t_statesI_direct_stable[OF stabilize_is_stable refl])
+  using assms by auto
 
 lemma red_inhale_set_AccPureI :
   assumes "\<Delta> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>] Val (VRef r)"
@@ -1445,13 +1588,13 @@ lemma red_inhale_set_AccPureI :
   assumes "\<Delta> = ctxt_to_interp ctxt"
   shows  "red_inhale_set ctxt R (Atomic (Acc e f (PureExp ep))) (a2t_states ctxt \<omega>) =
     (if r = Null then (if p = 0 then (a2t_states ctxt \<omega>) else {}) else
-     Set.bind (a2t_states ctxt \<omega>) (\<lambda> \<omega>'. inhale_perm_single R \<omega>' (the_address r, f) (Some (Abs_preal p))))"  
+     Set.bind (a2t_states ctxt \<omega>) (\<lambda> \<omega>'. inhale_perm_single R \<omega>' (the_address r, f) (Some (Abs_preal p))))"
   using assms
     apply (auto simp add:red_inhale_set_def red_inhale_simps th_result_rel.simps
               red_pure_refines_red_pure_total[where ?\<Delta>="\<Delta>"] a2t_states_in_stable a2t_extend_mp_empty
-              dest:red_pure_det)  (* Long *)      
+              dest:red_pure_det)  (* Long *)
       apply (auto)
-  by (metis a2t_statesI_direct_stable assms(3) get_mp_total_full.elims red_pure_val_unique(1) val.inject(3) val.inject(4))+
+  by (metis self_a2t_states_stabilize red_pure_val_unique(1) val.inject(3) val.inject(4))+
 
 
 lemma red_inhale_ok_AccWildcardE :
@@ -1470,7 +1613,7 @@ proof -
   then
   show "?thesis"
     apply (clarsimp simp add:assertion_typing_simps atomic_assertion_typing_simps exp_or_wildcard_typing.simps)
-    apply (drule red_pure_exp_typed[where ?ctxt="ctxt" and ?R="R" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_state ctxt \<omega>)"]; simp)
+    apply (drule red_pure_exp_typed[where ?ctxt="ctxt" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_state ctxt \<omega>)"]; simp)
     apply (clarsimp)
     apply (case_tac "r"; clarsimp simp add:red_inhale_simps red_pure_refines_red_pure_total[where ?\<Delta>="\<Delta>"])
     by (auto)
@@ -1504,7 +1647,7 @@ proof -
   note calc = calc this
   then obtain b where "(\<Delta> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>] Val (VBool b))"
     apply (clarsimp simp add:assertion_typing_simps)
-    apply (frule red_pure_exp_typed[where ?ctxt="ctxt" and ?R="R" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_state ctxt \<omega>)"]; simp)
+    apply (frule red_pure_exp_typed[where ?ctxt="ctxt" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_state ctxt \<omega>)"]; simp)
     apply (clarsimp)
     by (case_tac "r"; clarsimp simp add:red_inhale_simps red_pure_refines_red_pure_total[where ?\<Delta>="\<Delta>"])
   note calc = calc this
@@ -1546,7 +1689,7 @@ proof -
   note calc = calc this
   then obtain b where "(\<Delta> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>] Val (VBool b))"
     apply (clarsimp simp add:assertion_typing_simps)
-    apply (frule red_pure_exp_typed[where ?ctxt="ctxt" and ?R="R" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_state ctxt \<omega>)"]; simp)
+    apply (frule red_pure_exp_typed[where ?ctxt="ctxt" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_state ctxt \<omega>)"]; simp)
     apply (clarsimp)
     by (case_tac "r"; clarsimp simp add:red_inhale_simps red_pure_refines_red_pure_total[where ?\<Delta>="\<Delta>"])
   note calc = calc this
@@ -1582,7 +1725,7 @@ subsection \<open>red_exhale_set lemmas\<close>
 
 definition red_exhale_set :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> (_, _) assert \<Rightarrow>
   'a full_total_state set \<Rightarrow> 'a full_total_state set" where
-"red_exhale_set ctxt R \<omega>0 A \<Omega> = {\<omega>'. \<exists> \<omega>. \<omega> \<in> \<Omega> \<and> red_exhale ctxt R \<omega>0 A \<omega> (RNormal \<omega>')}"
+"red_exhale_set ctxt R \<omega>0 A \<Omega> = {\<omega>'. \<exists> \<omega>. \<omega> \<in> \<Omega> \<and> red_exhale ctxt \<omega>0 A \<omega> (RNormal \<omega>')}"
 
 
 lemma red_exhale_set_mono :
@@ -1611,7 +1754,7 @@ lemma red_exhale_set_preserves_typing_a2t :
 
 definition red_exhale_set_ok :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> 'a full_total_state \<Rightarrow> (_, _) assert \<Rightarrow>
   'a full_total_state set \<Rightarrow> bool" where
-"red_exhale_set_ok ctxt R \<omega>0 A \<Omega> \<longleftrightarrow> (\<forall> \<omega>. \<omega> \<in> \<Omega> \<longrightarrow> \<not> red_exhale ctxt R \<omega>0 A \<omega> RFailure)"
+"red_exhale_set_ok ctxt R \<omega>0 A \<Omega> \<longleftrightarrow> (\<forall> \<omega>. \<omega> \<in> \<Omega> \<longrightarrow> \<not> red_exhale ctxt \<omega>0 A \<omega> RFailure)"
 
 
 lemma red_exhale_set_ok_mono :
@@ -1624,7 +1767,7 @@ lemma red_exhale_set_ok_mono :
 lemma red_exhale_set_okE :
   assumes "red_exhale_set_ok ctxt R \<omega>0 A \<Omega>"
   assumes "\<omega> \<in> \<Omega>"
-  shows "\<not> red_exhale ctxt R \<omega>0 A \<omega> RFailure"
+  shows "\<not> red_exhale ctxt \<omega>0 A \<omega> RFailure"
   using assms by (simp add:red_exhale_set_ok_def)
 
 lemma red_exhale_ok_PureE :
@@ -1636,12 +1779,12 @@ lemma red_exhale_ok_PureE :
   shows  "(\<Delta> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>] Val (VBool True))"
 proof -
   note calc = assms a2t_state_in_a2t_states[of ctxt \<omega>]
-  hence "\<not> red_exhale ctxt R (a2t_mask \<omega>) (Atomic (Pure e)) (a2t_state ctxt \<omega>) RFailure"
+  hence "\<not> red_exhale ctxt (a2t_mask \<omega>) (Atomic (Pure e)) (a2t_state ctxt \<omega>) RFailure"
     by (simp add: red_exhale_set_ok_def)
   note calc = calc this
   then have "(\<Delta> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>] Val (VBool True))"
     apply (clarsimp simp add:assertion_typing_simps atomic_assertion_typing_simps)
-    apply (frule red_pure_exp_typed[where ?ctxt="ctxt" and ?R="R" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_mask \<omega>)"]; simp)
+    apply (frule red_pure_exp_typed[where ?ctxt="ctxt" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_mask \<omega>)"]; simp)
     apply (clarsimp)
     apply (case_tac "r"; clarsimp simp add:red_exhale_simps exh_if_total_unfold red_pure_refines_red_pure_total_unstable[where ?\<Delta>="\<Delta>"])
     by (metis (full_types))
@@ -1666,19 +1809,19 @@ lemma red_exhale_ok_ImpE :
   shows  "\<exists> b. (\<Delta> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>] Val (VBool b)) \<and> (b \<longrightarrow> red_exhale_set_ok ctxt R (a2t_mask \<omega>) A (a2t_states ctxt \<omega>))"
 proof -
   note calc = assms a2t_state_in_a2t_states[of ctxt \<omega>]
-  hence "\<not> red_exhale ctxt R (a2t_mask \<omega>) (Imp e A) (a2t_state ctxt \<omega>) RFailure"
+  hence "\<not> red_exhale ctxt (a2t_mask \<omega>) (Imp e A) (a2t_state ctxt \<omega>) RFailure"
     by (simp add: red_exhale_set_ok_def)
   note calc = calc this
   then obtain b where "(\<Delta> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>] Val (VBool b))"
     apply (clarsimp simp add:assertion_typing_simps)
-    apply (frule red_pure_exp_typed[where ?ctxt="ctxt" and ?R="R" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_mask \<omega>)"]; simp)
+    apply (frule red_pure_exp_typed[where ?ctxt="ctxt" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_mask \<omega>)"]; simp)
     apply (clarsimp)
     by (case_tac "r"; clarsimp simp add:red_exhale_simps red_pure_refines_red_pure_total_unstable[where ?\<Delta>="\<Delta>"])
   note calc = calc this
   have "b \<Longrightarrow> red_exhale_set_ok ctxt R (a2t_mask \<omega>) A (a2t_states ctxt \<omega>)"
     unfolding red_exhale_set_ok_def apply (rule, rule) proof -
     fix \<omega>' assume Hin : "\<omega>' \<in> a2t_states ctxt \<omega>" assume b
-    show "\<not> red_exhale ctxt R (a2t_mask \<omega>) A \<omega>' RFailure"
+    show "\<not> red_exhale ctxt (a2t_mask \<omega>) A \<omega>' RFailure"
       apply (insert red_exhale_set_okE[OF assms(1) Hin])
       using calc apply (simp add:red_exhale_simps Hin red_pure_refines_red_pure_total_unstable[where ?\<Delta>="\<Delta>"])
       using Hin calc \<open>b\<close> by (clarsimp)
@@ -1706,19 +1849,19 @@ lemma red_exhale_ok_CondAssertE :
    red_exhale_set_ok ctxt R (a2t_mask \<omega>) (if b then A1 else A2) (a2t_states ctxt \<omega>)"
 proof -
   note calc = assms a2t_state_in_a2t_states[of ctxt \<omega>]
-  hence "\<not> red_exhale ctxt R (a2t_mask \<omega>) (CondAssert e A1 A2) (a2t_state ctxt \<omega>) RFailure"
+  hence "\<not> red_exhale ctxt (a2t_mask \<omega>) (CondAssert e A1 A2) (a2t_state ctxt \<omega>) RFailure"
     by (simp add: red_exhale_set_ok_def)
   note calc = calc this
   then obtain b where "(\<Delta> \<turnstile> \<langle>e;\<omega>\<rangle> [\<Down>] Val (VBool b))"
     apply (clarsimp simp add:assertion_typing_simps)
-    apply (frule red_pure_exp_typed[where ?ctxt="ctxt" and ?R="R" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_mask \<omega>)"]; simp)
+    apply (frule red_pure_exp_typed[where ?ctxt="ctxt" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_mask \<omega>)"]; simp)
     apply (clarsimp)
     by (case_tac "r"; clarsimp simp add:red_exhale_simps red_pure_refines_red_pure_total_unstable[where ?\<Delta>="\<Delta>"])
   note calc = calc this
   have "red_exhale_set_ok ctxt R (a2t_mask \<omega>) (if b then A1 else A2) (a2t_states ctxt \<omega>)"
     unfolding red_exhale_set_ok_def apply (rule, rule) proof -
     fix \<omega>' assume Hin : "\<omega>' \<in> a2t_states ctxt \<omega>"
-    show "\<not> red_exhale ctxt R (a2t_mask \<omega>) (if b then A1 else A2) \<omega>' RFailure"
+    show "\<not> red_exhale ctxt (a2t_mask \<omega>) (if b then A1 else A2) \<omega>' RFailure"
       apply (insert red_exhale_set_okE[OF assms(1) Hin])
       using calc apply (simp add:red_exhale_simps Hin red_pure_refines_red_pure_total_unstable[where ?\<Delta>="\<Delta>"])
       using Hin calc by (cases "b"; clarsimp)
@@ -1736,6 +1879,8 @@ lemma red_exhale_set_CondAssertI :
   using assms
   by (auto simp add:red_exhale_set_def red_exhale_simps red_pure_refines_red_pure_total_unstable[where ?\<Delta>="\<Delta>"] dest:red_pure_det)
 
+
+
 lemma red_exhale_ok_AccPureE :
   assumes "red_exhale_set_ok ctxt R (a2t_mask \<omega>) (Atomic (Acc e f (PureExp ep))) (a2t_states ctxt \<omega>)"
   assumes "assertion_typing (program_total ctxt) \<Lambda> (Atomic (Acc e f (PureExp ep)))"
@@ -1746,19 +1891,19 @@ lemma red_exhale_ok_AccPureE :
      0 \<le> p \<and> (if r = Null then p = 0 else Abs_preal p \<le> get_vm (get_state \<omega>) (the_address r, f))"
 proof -
   note calc = assms a2t_state_in_a2t_states[of ctxt \<omega>]
-  hence "\<not> red_exhale ctxt R (a2t_mask \<omega>) (Atomic (Acc e f (PureExp ep))) (a2t_state ctxt \<omega>) RFailure"
+  hence "\<not> red_exhale ctxt (a2t_mask \<omega>) (Atomic (Acc e f (PureExp ep))) (a2t_state ctxt \<omega>) RFailure"
     by (simp add: red_exhale_set_ok_def)
   note calc = calc this
   then
   show "?thesis"
     apply (clarsimp simp add:assertion_typing_simps atomic_assertion_typing_simps exp_or_wildcard_typing.simps)
-    apply (drule red_pure_exp_typed[where ?ctxt="ctxt" and ?R="R" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_mask \<omega>)"]; simp)
+    apply (drule red_pure_exp_typed[where ?ctxt="ctxt" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_mask \<omega>)"]; simp)
     apply (clarsimp)
     apply (case_tac "r"; clarsimp simp add:red_exhale_simps red_pure_refines_red_pure_total_unstable[where ?\<Delta>="\<Delta>"])
-    apply (drule red_pure_exp_typed[where ?ctxt="ctxt" and ?R="R" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_mask \<omega>)"]; simp)
+    apply (drule red_pure_exp_typed[where ?ctxt="ctxt" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_mask \<omega>)"]; simp)
     apply (clarsimp)
     apply (case_tac "r"; clarsimp simp add:red_pure_refines_red_pure_total_unstable[where ?\<Delta>="\<Delta>"])
-    by (metis PosReal.pgte.rep_eq get_mh_total_a2t_state less_eq_preal.rep_eq)
+    by fastforce
 qed
 
 lemma ppos_pmin_1 :
@@ -1767,19 +1912,23 @@ lemma ppos_pmin_1 :
 
 lemma a2t_states_del_perm :
   "a2t_states ctxt (set_state \<omega> (del_perm (get_state \<omega>) hl p)) =
-     (\<lambda> \<omega>\<^sub>t. \<omega>\<^sub>t\<lparr>get_total_full := get_total_full \<omega>\<^sub>t
-                     \<lparr>get_mh_total := (get_mh_total (get_total_full \<omega>\<^sub>t))
-                        (hl := get_mh_total (get_total_full \<omega>\<^sub>t) hl - p)\<rparr>\<rparr>) ` a2t_states ctxt \<omega>"
+     (\<lambda> \<omega>\<^sub>t. upd_mh_total_full \<omega>\<^sub>t
+                        ((get_mh_total_full \<omega>\<^sub>t)
+                        (hl := get_mh_total_full \<omega>\<^sub>t hl - p))) ` a2t_states ctxt \<omega>"
   apply (safe; clarsimp simp add:Set.image_iff Bex_def)
   subgoal for \<omega>\<^sub>t
-    apply (rule exI[of _ "\<omega>\<^sub>t\<lparr>get_total_full := get_total_full \<omega>\<^sub>t\<lparr>get_mh_total := (get_vm (get_state \<omega>))(hl := get_vm (get_state \<omega>) hl)\<rparr>\<rparr>"])
+    apply (rule exI[of _ "upd_mh_total_full \<omega>\<^sub>t ((get_vm (get_state \<omega>))(hl := get_vm (get_state \<omega>) hl))"])
     apply (clarsimp)
-    apply (rule a2t_statesI_direct; (simp add:a2t_extend_ok_def)?)
-    apply (rule full_state_ext; simp add:get_trace_a2t_states[symmetric])
-    apply (rule virtual_state_ext; simp add:t2a_state_get_state)
-     apply (rule ext; simp add:restrict_map_def) using vstate_wf_Some 
+    apply (rule conjI)
+     apply (rule a2t_statesI_direct; (simp add:a2t_extend_ok_def)?)
+     apply (rule full_state_ext; simp add:get_trace_a2t_states[symmetric])
+     apply (rule virtual_state_ext; simp add:t2a_state_get_state)
+     apply (rule ext; simp add:restrict_map_def) using vstate_wf_Some
      apply fastforce
-    by (metis a2t_states_mp_empty get_mp_total_full.elims)
+    apply (rule full_total_state.equality; simp)
+    apply (rule total_state.equality; simp)
+    apply (rule del_perm_nm_eq; assumption)
+    done
   subgoal for \<omega>\<^sub>t
     apply (rule a2t_statesI_direct; (simp add:a2t_extend_ok_def)?)
     apply (rule full_state_ext; simp add:get_trace_a2t_states[symmetric])
@@ -1793,8 +1942,6 @@ lemma a2t_states_del_perm :
     subgoal
       apply (rule wf_mask_simpleI; simp)
       using get_vm_bound by (metis del_perm_get_vm fun_upd_same)
-    subgoal      
-      by (metis a2t_states_mp_empty get_mp_total_full.simps)
     done
   done
 
@@ -1825,13 +1972,13 @@ lemma red_exhale_ok_AccWildcardE :
   shows  "\<exists> r. (\<Delta> \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>] Val (VRef r)) \<and> r \<noteq> Null \<and> 0 < get_vm (get_state \<omega>) (the_address r, f)"
 proof -
   note calc = assms a2t_state_in_a2t_states[of ctxt \<omega>]
-  hence "\<not> red_exhale ctxt R (a2t_mask \<omega>) (Atomic (Acc e f Wildcard)) (a2t_state ctxt \<omega>) RFailure"
+  hence "\<not> red_exhale ctxt (a2t_mask \<omega>) (Atomic (Acc e f Wildcard)) (a2t_state ctxt \<omega>) RFailure"
     by (simp add: red_exhale_set_ok_def)
   note calc = calc this
   then
   show "?thesis"
     apply (clarsimp simp add:assertion_typing_simps atomic_assertion_typing_simps exp_or_wildcard_typing.simps)
-    apply (drule red_pure_exp_typed[where ?ctxt="ctxt" and ?R="R" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_mask \<omega>)"]; simp)
+    apply (drule red_pure_exp_typed[where ?ctxt="ctxt" and ?\<omega>="a2t_state ctxt \<omega>" and ?\<omega>_def="Some (a2t_mask \<omega>)"]; simp)
     apply (clarsimp)
     apply (case_tac "r"; clarsimp simp add:red_exhale_simps red_pure_refines_red_pure_total_unstable[where ?\<Delta>="\<Delta>"])
     using not_gr_0 by auto
@@ -1919,39 +2066,23 @@ lemma red_stmt_total_ok_InhaleE :
 lemma red_stmt_total_set_InhaleI :
   shows "red_stmt_total_set ctxt R \<Lambda> (stmt.Inhale e) (a2t_states ctxt \<omega>) =
     {\<omega>\<^sub>t'. \<exists> \<omega>\<^sub>t. \<omega>\<^sub>t \<in> a2t_states ctxt \<omega> \<and> red_inhale ctxt R e \<omega>\<^sub>t (RNormal \<omega>\<^sub>t')}"
-  by (auto simp add:red_stmt_total_set_def red_stmt_total_simps)
+  (* Note: RedInhale's "res = RNormal \<omega>' \<Longrightarrow> R \<omega>'" premise has \<omega>' as a free rule-schema
+     variable not tied to the conclusion, so it existentializes (via inductive_simps) to
+     "\<exists>\<omega>'. \<omega>\<^sub>t' = \<omega>' \<longrightarrow> R \<omega>'" -- a tautology (R_trivial_ex, since full_total_state has
+     \<ge> 2 values), not an actual guarantee that R holds of the result. So it is *not* sound to
+     add "\<and> R \<omega>\<^sub>t'" to this statement; the version below (matching the pre-migration statement)
+     is what the semantics actually supports. *)
+  unfolding red_stmt_total_set_def
+  by (auto simp add: red_stmt_total_simps)
 
 lemma red_stmt_total_ok_ExhaleE :
   assumes "red_stmt_total_set_ok ctxt R \<Lambda> (stmt.Exhale e) (a2t_states ctxt \<omega>)"
   assumes "stable \<omega>"
   assumes "valid_a2t_stmt (stmt.Exhale e)"
   shows "red_exhale_set_ok ctxt R (a2t_mask \<omega>) e (a2t_states ctxt \<omega>)"
-  using assms by (simp add:red_stmt_total_set_ok_def not_fail_Exhale red_exhale_set_ok_def red_exhale_a2t_mask)
+  using assms
+  by (simp add:red_stmt_total_set_ok_def not_fail_Exhale red_exhale_set_ok_def red_exhale_a2t_mask)
 
-lemma red_stmt_total_set_ExhaleI :
-  assumes "stable \<omega>"
-  assumes "valid_a2t_stmt (stmt.Exhale e)"
-  shows "red_stmt_total_set ctxt R \<Lambda> (stmt.Exhale e) (a2t_states ctxt \<omega>) =
-   Set.bind (red_exhale_set ctxt R (a2t_mask \<omega>) e (a2t_states ctxt \<omega>)) (\<lambda> \<omega>_exh.
-       havoc_locs_state ctxt \<omega>_exh {loc. ppos (get_vm (get_state \<omega>) loc) \<and>
-          get_mh_total (get_total_full \<omega>_exh) loc = PosReal.pnone})"
-  using assms apply (auto simp add:red_stmt_total_set_def red_stmt_total_simps red_exhale_set_def red_exhale_a2t_mask gr_0_is_ppos)
-  using red_exhale_a2t_mask apply blast
-   by fastforce
-
-lemma red_stmt_total_ok_AssertE :
-  assumes "red_stmt_total_set_ok ctxt R \<Lambda> (stmt.Assert e) (a2t_states ctxt \<omega>)"
-  assumes "stable \<omega>"
-  assumes "valid_a2t_stmt (stmt.Assert e)"
-  shows "red_exhale_set_ok ctxt R (a2t_mask \<omega>) e (a2t_states ctxt \<omega>)"
-  using assms by (simp add:red_stmt_total_set_ok_def not_fail_Assert red_exhale_set_ok_def red_exhale_a2t_mask)
-
-lemma red_stmt_total_set_AssertI :
-  assumes "stable \<omega>"
-  assumes "valid_a2t_stmt (stmt.Assert e)"
-  shows "red_stmt_total_set ctxt R \<Lambda> (stmt.Assert e) (a2t_states ctxt \<omega>) = Set.filter (\<lambda> \<omega>\<^sub>t. \<exists> \<omega>\<^sub>t'. red_exhale ctxt R (a2t_mask \<omega>) e \<omega>\<^sub>t (RNormal \<omega>\<^sub>t')) (a2t_states ctxt \<omega>)"
-  using assms by (auto simp add:red_stmt_total_set_def red_stmt_total_simps red_exhale_set_def red_exhale_a2t_mask)
-  (* by fastforce *)
 
 lemma red_stmt_total_ok_IfE :
   assumes "red_stmt_total_set_ok ctxt R \<Lambda> (stmt.If e C1 C2) (a2t_states ctxt \<omega>)"
@@ -2147,14 +2278,13 @@ proof (induction A arbitrary:\<omega>)
             apply (simp add:red_inhale_set_AccPureI)
             apply (safe; simp add:acc_def add_set_ex_comm_r split:bool_to_assertion_splits)
             subgoal (* p = 0*)
-              apply (simp add:inhale_perm_single_def norm_preal padd_pnone zero_preal_def[symmetric] Bex_def get_vm_bound)
-              by (rule exI[of _ "\<omega>\<^sub>t'"]; simp)
+              by (simp add:inhale_perm_single_def norm_preal padd_pnone zero_preal_def[symmetric] Bex_def get_vm_bound)
             apply (simp add:inhale_perm_single_def)
             apply (drule acc_heap_loc_starE)
             apply (clarsimp simp add:norm_preal Bex_def)
-            apply (rule exI[of _ "\<omega>\<^sub>t'\<lparr>get_total_full := get_total_full \<omega>\<^sub>t'
-                \<lparr>get_mh_total := (get_vm (get_state \<omega>))
-                   ((the_address r, f) := get_vm (get_state \<omega>) (the_address r, f))\<rparr>\<rparr>"])
+            apply (rule exI[of _ "upd_mh_total_full \<omega>\<^sub>t'
+                   ((get_vm (get_state \<omega>))
+                   ((the_address r, f) := get_vm (get_state \<omega>) (the_address r, f)))"])
             apply (simp) apply (safe)
             subgoal for v
               apply (rule a2t_statesI_direct)
@@ -2170,15 +2300,15 @@ proof (induction A arbitrary:\<omega>)
                 apply (simp add:a2t_extend_ok_def abs_state_typing_def)
                 by (rule partial_heap_typing_insert; simp add:assms(1))
               subgoal by (simp)
-              subgoal 
-                apply simp
+              subgoal
                 using a2t_states_mp_empty
                 by fastforce
               done
             subgoal
               apply (rule full_total_state.equality; simp)
               apply (rule total_state.equality; simp)
-              by (rule ext; clarsimp simp add:preal_to_real)
+              apply (rule add_perm_nm_eq; assumption)
+              done
             done
           done
         done
@@ -2205,9 +2335,9 @@ proof (induction A arbitrary:\<omega>)
             apply (drule acc_heap_loc_starE)
             apply (clarsimp simp add:norm_preal Bex_def)
             subgoal for p v
-            apply (rule exI[of _ "\<omega>\<^sub>t'\<lparr>get_total_full := get_total_full \<omega>\<^sub>t'
-                \<lparr>get_mh_total := (get_vm (get_state \<omega>))
-                   ((the_address r, f) := get_vm (get_state \<omega>) (the_address r, f))\<rparr>\<rparr>"])
+            apply (rule exI[of _ "upd_mh_total_full \<omega>\<^sub>t'
+                   ((get_vm (get_state \<omega>))
+                   ((the_address r, f) := get_vm (get_state \<omega>) (the_address r, f)))"])
             apply (simp) apply (safe)
             subgoal
               apply (rule a2t_statesI_direct)
@@ -2224,7 +2354,6 @@ proof (induction A arbitrary:\<omega>)
                 by (rule partial_heap_typing_insert; simp add:assms(1))
               subgoal by (simp)
               subgoal
-                apply simp
                 using a2t_states_mp_empty
                 by fastforce
               done
@@ -2232,7 +2361,9 @@ proof (induction A arbitrary:\<omega>)
               apply (rule exI[of _ "Abs_preal p"]; simp add:preal_to_real)
               apply (rule full_total_state.equality; simp)
               apply (rule total_state.equality; simp)
-              by (rule ext; clarsimp simp add:preal_to_real)
+              apply (rule add_perm_nm_eq)
+               apply assumption
+              by (simp add: preal_to_real)
             done
           done
         done
@@ -2667,9 +2798,6 @@ proof -
         apply (rule heap_typing_insert; simp?)
          apply (rule partial_heap_typing_insert; simp?)
         by (rule partial_heap_typing_elim; assumption)
-      subgoal
-        using a2t_states_mp_empty
-        by fastforce
       done
     subgoal
       apply (rule full_total_state.equality; simp)
@@ -2714,6 +2842,170 @@ proof (rule subsetI)
     apply (simp add:vstate_stabilize_structure(2) restrict_map_eq_Some)
     by fastforce
 qed
+
+
+
+lemma has_sumA_ex_all_zero :
+  assumes "\<exists>pf :: 'k \<Rightarrow> real. (pf has_sumA D) \<and> (\<forall>x. pf x = 0)"
+  shows "D = 0"
+proof -
+  from assms obtain pf :: "'k \<Rightarrow> real"
+    where Hsum: "pf has_sumA D" and Hzero: "\<forall>x. pf x = 0"
+    by blast
+  have "pf has_sumA 0"
+    using Hzero by (intro has_sum_0) simp
+  with Hsum show ?thesis
+    using has_sum_unique by blast
+qed
+
+lemma nm_loc_sum_no_pred :
+  assumes "get_fnm_nm nm = Map.empty"
+  shows "nm_loc_sum loc nm q \<longleftrightarrow> q = get_mh_nm nm loc"
+proof (cases nm)
+  case (NM mh fnm)
+  hence Hfnm: "fnm = Map.empty"
+    using assms by simp
+  have mheq: "get_mh_nm nm loc = mh loc"
+    using NM by simp
+  \<comment>\<open>With no nested predicates, the sum characterisation collapses to a direct mask lookup.\<close>
+  show ?thesis
+  proof
+    assume "nm_loc_sum loc nm q"
+    note fact = this[unfolded NM Hfnm nm_loc_sum.simps nm_loc_sum'.simps option_fold.simps]
+    have le: "Rep_preal (mh loc) \<le> Rep_preal q"
+      using fact by simp
+    have "Rep_preal q - Rep_preal (mh loc) = 0"
+      by (rule has_sumA_ex_all_zero[OF conjunct2[OF fact]])
+    with le have "Rep_preal q = Rep_preal (mh loc)"
+      by simp
+    thus "q = get_mh_nm nm loc"
+      using mheq by (simp add: Rep_preal_inject)
+  next
+    assume "q = get_mh_nm nm loc"
+    hence Heq2: "Rep_preal q = Rep_preal (mh loc)"
+      using mheq by simp
+    show "nm_loc_sum loc nm q"
+      unfolding NM Hfnm nm_loc_sum.simps
+      apply (subst nm_loc_sum'.simps)
+      apply (rule conjI)
+       apply (simp add: Heq2)
+      apply (rule exI[of _ "\<lambda>_. 0"])
+      apply (rule conjI)
+       apply (simp add: Heq2 has_sum_0)
+      apply simp
+      done
+  qed
+qed
+
+lemma red_exhale_preserves_fnm :
+  assumes "red_exhale ctxt \<omega>0 A \<omega> r"
+  assumes "RNormal \<omega>' = r"
+  assumes "valid_a2t_assert A"
+  shows "get_fnm_nm (get_nm_total_full \<omega>') = get_fnm_nm (get_nm_total_full \<omega>)"
+  using assms
+proof (induction A arbitrary:\<omega> \<omega>' \<omega>0 r)
+  case (Atomic a)
+  show ?case
+  proof (cases a)
+    case (Pure e)
+    from this Atomic show ?thesis
+      by (clarsimp simp add:red_exhale_simps split:if_splits)
+  next
+    case (Acc e f ep)
+    from this Atomic show ?thesis
+      by (cases ep; clarsimp simp add:red_exhale_simps split:if_splits)
+  next
+    case (AccPredicate x31 x32 x33)
+    from this Atomic show ?thesis by simp
+  qed
+next
+  case (Star A1 A2)
+  then show ?case
+    apply (simp add:red_exhale_simps) by metis
+qed (clarsimp simp add:red_exhale_simps; blast)+
+
+\<comment>\<open>Bridge: with no predicate permissions the RedExhale havoc-set condition
+   (stated via \<^const>\<open>nm_loc_sum\<close>) collapses to the plain field-mask condition.\<close>
+lemma havoc_set_no_pred_eq :
+  assumes "get_fnm_nm (get_nm_total_full \<omega>0) = Map.empty"
+  assumes "get_fnm_nm (get_nm_total_full \<omega>1) = Map.empty"
+  shows "{loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full \<omega>0) p) \<and> nm_loc_sum loc (get_nm_total_full \<omega>1) 0}
+       = {loc. get_mh_total_full \<omega>0 loc > 0 \<and> get_mh_total_full \<omega>1 loc = 0}"
+proof (rule Collect_cong, rule conj_cong)
+  fix loc
+  show "(\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full \<omega>0) p) = (get_mh_total_full \<omega>0 loc > 0)"
+    using nm_loc_sum_no_pred[OF assms(1)] by auto
+next
+  fix loc
+  show "nm_loc_sum loc (get_nm_total_full \<omega>1) 0 = (get_mh_total_full \<omega>1 loc = 0)"
+    using nm_loc_sum_no_pred[OF assms(2)] by auto
+qed
+
+lemma a2t_states_fnm_empty :
+  assumes "\<omega>\<^sub>t \<in> a2t_states ctxt \<omega>"
+  shows "get_fnm_nm (get_nm_total_full \<omega>\<^sub>t) = Map.empty"
+proof (rule get_fnm_nm_empty_of_mp_zero)
+  show "get_mp_nm (get_nm_total_full \<omega>\<^sub>t) = zero_mask"
+    using a2t_states_mp_empty[OF assms] by simp
+qed
+
+lemma exhale_havoc_set_eq :
+  assumes A1: "\<omega>' \<in> a2t_states ctxt \<omega>"
+  assumes A2: "valid_a2t_assert e"
+  assumes A3: "red_exhale ctxt \<omega>' e \<omega>' (RNormal \<omega>_exh)"
+  shows "{loc. (\<exists>p>0. nm_loc_sum' loc (get_nm_total (get_total_full \<omega>')) (Rep_preal p)) \<and>
+               nm_loc_sum' loc (get_nm_total (get_total_full \<omega>_exh)) (Rep_preal 0)}
+       = {loc. ppos (get_vm (get_state \<omega>) loc) \<and>
+               get_mh_nm (get_nm_total (get_total_full \<omega>_exh)) loc = 0}"
+proof -
+  have F0: "get_fnm_nm (get_nm_total (get_total_full \<omega>')) = Map.empty"
+    using a2t_states_fnm_empty[OF A1] by simp
+  have F1: "get_fnm_nm (get_nm_total (get_total_full \<omega>_exh)) = Map.empty"
+    using red_exhale_preserves_fnm[OF A3 refl A2] F0 by simp
+  \<comment>\<open>collapse both \<^const>\<open>nm_loc_sum'\<close> conditions to plain mask lookups (single rewrite, no unfolding of \<^const>\<open>nm_loc_sum'\<close>)\<close>
+  note C0 = nm_loc_sum_no_pred[OF F0, unfolded nm_loc_sum.simps]
+  note C1 = nm_loc_sum_no_pred[OF F1, unfolded nm_loc_sum.simps]
+  have MH: "get_mh_nm (get_nm_total (get_total_full \<omega>')) = get_vm (get_state \<omega>)"
+    using get_mh_nm_a2t_states[OF A1] by simp
+  show ?thesis
+    apply (rule Collect_cong, rule conj_cong)
+    subgoal for loc
+      apply (simp only: C0 MH)
+      using gr_0_is_ppos by auto
+    subgoal for loc
+      using C1[of loc 0] by auto
+    done
+qed
+
+lemma red_stmt_total_set_ExhaleI :
+  assumes "stable \<omega>"
+  assumes "valid_a2t_stmt (stmt.Exhale e)"
+  shows "red_stmt_total_set ctxt R \<Lambda> (stmt.Exhale e) (a2t_states ctxt \<omega>) =
+   Set.bind (red_exhale_set ctxt R (a2t_mask \<omega>) e (a2t_states ctxt \<omega>)) (\<lambda> \<omega>_exh.
+       havoc_locs_state ctxt \<omega>_exh {loc. ppos (get_vm (get_state \<omega>) loc) \<and>
+          get_mh_total (get_total_full \<omega>_exh) loc = PosReal.pnone})"
+proof -
+  have V: "valid_a2t_assert e"
+    using assms(2) by simp
+  show ?thesis
+    apply (rule set_eqI)
+    apply (auto simp add: red_stmt_total_set_def red_stmt_total_simps red_exhale_set_def Set.bind_def)
+    subgoal for x \<omega>' \<omega>_exh
+      apply (rule exI[of _ \<omega>_exh], rule conjI)
+       apply (rule exI[of _ \<omega>'], rule conjI, assumption)
+       apply (erule red_exhale_a2t_mask[OF assms(1) _ V, THEN iffD2, rotated]; assumption)
+      apply (subst exhale_havoc_set_eq[OF _ V, symmetric]; assumption)
+      done
+    subgoal for x \<omega>_exh \<omega>'
+      apply (rule exI[of _ \<omega>'], rule conjI, assumption)
+      apply (rule exI[of _ \<omega>_exh])
+      apply (subst (asm) red_exhale_a2t_mask[OF assms(1) _ V]; assumption?)
+      apply (rule conjI, assumption)
+      apply (subst exhale_havoc_set_eq[OF _ V]; assumption)
+      done
+    done
+qed
+
 
 theorem abstract_refines_total :
   assumes "R = (\<lambda> _. True)"
@@ -2978,7 +3270,7 @@ lemma valid_a2t_exp_to_core:
   assumes "valid_a2t_exp e"
   shows "exp_in_core_subset e"
   using assms
-  by (induction e) simp_all
+  by (induction e) (simp_all add: pure_exp_pred.simps)
 
 lemma valid_a2t_atomic_assert_todo:
   assumes "valid_a2t_atomic_assert atm"
@@ -3007,182 +3299,60 @@ lemma valid_a2t_stmt_to_core:
 lemma vpr_method_correct_red_stmt_total_set_ok:
   assumes MethodCorrect:
           "vpr_method_correct_total (ctxt :: 'a total_context) (\<lambda>_. True) (triple_as_method_decl tys P C Q)"
-      and "\<Lambda> = nth_option tys"
+      and LamEq: "\<Lambda> = nth_option tys"
       and ValidStmt: "valid_a2t_stmt C \<and> valid_a2t_assert P \<and> valid_a2t_assert Q"
     shows "red_stmt_total_set_ok ctxt (\<lambda>_. True) \<Lambda> ((stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q))) {\<omega>. is_initial_vcg_state ctxt \<Lambda> \<omega>}"
-  unfolding red_stmt_total_set_ok_def
-proof (rule allI, rule impI, rule notI, simp)
-  fix \<omega> :: "'a full_total_state"
-  assume Init: "is_initial_vcg_state ctxt \<Lambda> \<omega>"
-     and Red: "red_stmt_total ctxt (\<lambda>_. True) \<Lambda> (stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q)) \<omega> RFailure"
-
+proof -
   let ?mdecl = "triple_as_method_decl tys P C Q"
-
-  show False
-  proof (rule vpr_method_correct_totalE[OF MethodCorrect])
-    from Init[simplified is_initial_vcg_state_def]
-    show "vpr_store_well_typed (absval_interp_total ctxt) (nth_option (method_decl.args (triple_as_method_decl tys P C Q) @ rets (triple_as_method_decl tys P C Q)))
-     (get_store_total \<omega>)"
-      unfolding triple_as_method_decl_def vpr_store_well_typed_def \<open>\<Lambda> = _\<close>
-      by simp
-  next
-    show "red_inhale ctxt (\<lambda>_. True) (method_decl.pre (triple_as_method_decl tys P C Q)) \<omega> (RNormal \<omega>)"
+  let ?body = "stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q)"
+  \<comment>\<open>the body is in the core subset, so trace-independence applies to it\<close>
+  have CoreBody: "stmt_in_core_subset ?body"
+    using ValidStmt by (intro valid_a2t_stmt_to_core) simp
+  show ?thesis
+    unfolding red_stmt_total_set_ok_def
+  proof (rule allI, rule impI, rule notI)
+    fix \<omega> :: "'a full_total_state"
+    assume Init: "\<omega> \<in> {\<omega>. is_initial_vcg_state ctxt \<Lambda> \<omega>}"
+       and Red: "red_stmt_total ctxt (\<lambda>_. True) \<Lambda> ?body \<omega> RFailure"
+    from Init have Init': "is_initial_vcg_state ctxt \<Lambda> \<omega>" by simp
+    have HeapWt: "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>)"
+      using Init' by (simp add: is_initial_vcg_state_def)
+    have Empty: "is_empty_total_full \<omega>"
+      using Init' by (simp add: is_initial_vcg_state_def)
+    have StoreWt: "vpr_store_well_typed (absval_interp_total ctxt)
+                     (nth_option (method_decl.args ?mdecl @ method_decl.rets ?mdecl)) (get_store_total \<omega>)"
+      using Init' LamEq
+      by (auto simp add: is_initial_vcg_state_def vpr_store_well_typed_def triple_as_method_decl_def)
+    \<comment>\<open>inhaling the trivial precondition \<^term>\<open>True\<close> leaves the state unchanged\<close>
+    have EvalTrue: "ctxt, Some \<omega> \<turnstile> \<langle>ELit (LBool True); \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)"
+      by (rule TotalExpressions.RedLit[where l="LBool True", simplified])
+    have InhPre: "red_inhale ctxt (\<lambda>_. True) (method_decl.pre ?mdecl) \<omega> (RNormal \<omega>)"
       unfolding triple_as_method_decl_def
-      apply simp
-      apply (rule inh_pure_normal)
-      using RedLit
-      by (metis val_of_lit.simps(1))
-  next
-    assume BodyCorrect: "vpr_method_body_correct ctxt (\<lambda>_. True) (triple_as_method_decl tys P C Q) \<omega>"
-
-    show False
-    proof (rule BodyCorrect[simplified vpr_method_body_correct_def, THEN allE[where ?x=RFailure], THEN impE], assumption,
-           simp add: triple_as_method_decl_def)
-      show "red_stmt_total ctxt (\<lambda>_. True) (nth_option tys) (stmt.Seq (stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q)) (stmt.Exhale (Atomic (Pure (ELit (LBool True))))))
-     (\<omega>\<lparr>get_trace_total := [old_label \<mapsto> get_total_full \<omega>]\<rparr>) RFailure"
-      proof (rule RedSeqFailureOrMagic)
-        have InSubset: "stmt_in_core_subset (stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q))"
-          apply (rule valid_a2t_stmt_to_core)
-          using ValidStmt
-          by simp
-
-        show "red_stmt_total ctxt (\<lambda>_. True) (nth_option tys) (stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q))
-     (\<omega>\<lparr>get_trace_total := [old_label \<mapsto> get_total_full \<omega>]\<rparr>) RFailure"
-          using red_stmt_trace_indep[OF Red InSubset]
-          unfolding \<open>\<Lambda> = _\<close> 
-          by auto
-      qed (simp)
-    qed simp
-  qed  (insert Init[simplified is_initial_vcg_state_def], auto simp: triple_as_method_decl_def)
+      using TotalInhaleExhale.red_inhale.InhPure[OF EvalTrue] by simp
+    \<comment>\<open>method correctness \<Longrightarrow> the (labelled) body does not fail\<close>
+    have BodyCorrect: "vpr_method_body_correct ctxt (\<lambda>_. True) ?mdecl \<omega>"
+      using vpr_method_correct_total_aux_normalD[OF
+              MethodCorrect[unfolded vpr_method_correct_total_def] InhPre StoreWt HeapWt Empty]
+      by (simp add: triple_as_method_decl_def)
+    \<comment>\<open>transfer the assumed failure to the old-labelled state via trace independence\<close>
+    let ?\<omega>' = "update_trace_total \<omega> (Map.empty(old_label \<mapsto> get_total_full \<omega>))"
+    have Diff: "states_differ_only_on_trace \<omega> ?\<omega>'"
+      by simp
+    have RedBody': "red_stmt_total ctxt (\<lambda>_. True) \<Lambda> ?body ?\<omega>' RFailure"
+      using red_stmt_trace_indep[OF Red CoreBody Diff] by simp
+    have RedSeqFail: "red_stmt_total ctxt (\<lambda>_. True) \<Lambda>
+            (stmt.Seq ?body (stmt.Exhale (method_decl.post ?mdecl))) ?\<omega>' RFailure"
+      by (rule TotalSemantics.RedSeqFailureOrMagic[OF RedBody']) simp
+    from BodyCorrect[unfolded vpr_method_body_correct_def]
+    have "\<not> red_stmt_total ctxt (\<lambda>_. True)
+            (nth_option (method_decl.args ?mdecl @ method_decl.rets ?mdecl))
+            (stmt.Seq (the (method_decl.body ?mdecl)) (stmt.Exhale (method_decl.post ?mdecl))) ?\<omega>' RFailure"
+      by blast
+    thus False
+      using RedSeqFail LamEq by (simp add: triple_as_method_decl_def)
+  qed
 qed
 
 
-definition initial_vcg_states_equi where 
-      "initial_vcg_states_equi \<Delta> \<equiv> {\<omega> :: 'a equi_state. stable \<omega> \<and> 
-                                    typed \<Delta> \<omega> \<and> 
-                                    get_trace \<omega> = Map.empty \<and> (\<forall>l. get_m \<omega> l = 0)
-                                  }"
-
-text \<open>The following lemma shows that the correctness of a Viper method encoding a Hoare triple
-(w.r.t. VCGSem) implies the correctness of \<open>inhale P; C; exhale Q\<close> w.r.t ViperCore's
-operational semantics. This lemma can be directly connected to formal results proved for the VCG 
-back-end.
-
-In this lemma, \<^term>\<open>triple_as_method_decl tys P C Q\<close> is the Viper method that encodes \<open>inhale P; C; exhale Q\<close>.
-Its body is \<open>inhale P; C; exhale Q\<close> and the variables considered in the method are represented by 
-the list of types \<^term>\<open>tys\<close> (variable i has the i-th type in \<^term>\<open>tys\<close>).
-\<^term>\<open>vpr_method_correct_total ctxt (\<lambda>_ :: 'a full_total_state. True) (triple_as_method_decl tys P C Q)\<close> 
-expresses when the method is correct w.r.t. VCGSem.
-\<close>
-
-corollary VCG_to_verifies_set :                             
-  assumes MethodCorrect: "vpr_method_correct_total ctxt (\<lambda>_ :: 'a full_total_state. True) (triple_as_method_decl tys P C Q)"
-      and "\<Lambda> = nth_option tys"
-      and Typed: "stmt_typing (program_total ctxt) \<Lambda> (stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q))"
-      and ValidBodyPrePost: "valid_a2t_stmt C \<and> valid_a2t_assert P \<and> valid_a2t_assert Q"
-      and AbsTypeWf: "abs_type_wf (absval_interp_total ctxt)"
-    shows "ConcreteSemantics.verifies_set (t2a_ctxt ctxt \<Lambda>) (initial_vcg_states_equi (t2a_ctxt ctxt \<Lambda>))
-            (compile (ctxt_to_interp ctxt) (\<Lambda>, declared_fields (program_total ctxt)) 
-               (stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q)))"  
-proof (rule abstract_refines_total_verifies_set[OF _ Typed])
-  let ?\<Delta> = "(t2a_ctxt ctxt \<Lambda>)"
-
-  fix \<omega>
-  assume "\<omega> \<in> initial_vcg_states_equi ?\<Delta>"
-  hence "stable \<omega>" and "typed (t2a_ctxt ctxt \<Lambda>) \<omega>" and "get_trace \<omega> = Map.empty" and 
-        EmptyMask: "\<forall>l. get_m \<omega> l = 0"
-    unfolding initial_vcg_states_equi_def
-    by auto
-
-  from MethodCorrect \<open>\<Lambda> = _\<close>
-  have "red_stmt_total_set_ok ctxt (\<lambda>_. True) \<Lambda> 
-          ((stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q))) {\<omega>. is_initial_vcg_state ctxt \<Lambda> \<omega>}"
-    using vpr_method_correct_red_stmt_total_set_ok ValidBodyPrePost
-    by blast
-    
-  moreover have "a2t_states ctxt \<omega> \<subseteq> {\<omega>. is_initial_vcg_state ctxt \<Lambda> \<omega>}"
-  proof 
-    fix \<omega>t
-    assume "\<omega>t \<in> a2t_states ctxt \<omega>"
-
-    show "\<omega>t \<in> {\<omega>. is_initial_vcg_state ctxt \<Lambda> \<omega>}"      
-    proof 
-      show "is_initial_vcg_state ctxt \<Lambda> \<omega>t"
-        unfolding is_initial_vcg_state_def
-      proof (intro conjI)
-        from \<open>typed ?\<Delta> \<omega>\<close> have StoreTyped: 
-          "well_typed_heap (custom_context (t2a_ctxt ctxt \<Lambda>)) (snd (get_abs_state \<omega>))"
-          unfolding TypedEqui.typed_def well_typed_def
-          by simp
-
-        thus "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>t)"
-          using \<open>\<omega>t \<in> _\<close>
-          unfolding t2a_ctxt_def
-          by (simp add: heap_typing_total_heap_well_typed snd_get_abs_state)
-      next
-        show "is_empty_total_full \<omega>t"          
-          unfolding is_empty_total_full_def is_empty_total_def zero_mask_def
-          apply (rule conjI)
-          using EmptyMask \<open>\<omega>t \<in>  _\<close> 
-           apply fastforce
-          using a2t_states_mp_empty[OF \<open>\<omega>t \<in>  _\<close> ]
-          unfolding zero_mask_def
-          by simp
-      next
-        from \<open>typed ?\<Delta> \<omega>\<close> have StoreTyped: "store_typed (variables ?\<Delta>) (get_store \<omega>)"
-          unfolding TypedEqui.typed_def TypedEqui.typed_store_def
-          by blast
-
-        show "\<forall>x t. \<Lambda> x = Some t \<longrightarrow> (\<exists>v. get_store_total \<omega>t x = Some v \<and> get_type (absval_interp_total ctxt) v = t)"
-          using StoreTyped[simplified store_typed_def] t2a_ctxt_def sem_store_def
-          by (smt (verit, ccfv_SIG) StoreTyped \<open>\<omega>t \<in> a2t_states ctxt \<omega>\<close> get_store_a2t_states sem_vtyp_to_get_type store_typed_lookup t2a_ctxt_variables)
-      qed
-    qed
-  qed
-
-  ultimately show
-    "red_stmt_total_set_ok ctxt (\<lambda>_. True) \<Lambda> (stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q)) (a2t_states ctxt \<omega>)"  
-    using red_stmt_total_set_ok_mono 
-    by blast
-next 
-  let ?\<Delta> = "(t2a_ctxt ctxt \<Lambda>)"
-
-  fix \<omega>
-  assume "\<omega> \<in> initial_vcg_states_equi ?\<Delta>" 
-     and TypedState: "typed (t2a_ctxt ctxt \<Lambda>) \<omega>"
-
-  show "abs_state_typing ctxt \<Lambda> \<omega>"
-    unfolding abs_state_typing_def
-  proof (intro conjI)
-    from TypedState have "store_typed (variables (t2a_ctxt ctxt \<Lambda>)) (get_store \<omega>)"
-      unfolding TypedEqui.typed_def TypedEqui.typed_store_def
-      by blast
-
-    thus "store_typing ctxt \<Lambda> (get_store \<omega>)"
-      by (simp add: store_typing_def t2a_ctxt_def)
-  next
-    from TypedState have HeapTyped: "well_typed_heap (custom_context (t2a_ctxt ctxt \<Lambda>)) (snd (get_abs_state \<omega>))"
-      unfolding TypedEqui.typed_def well_typed_def
-      by blast
-    thus "well_typed_heap (sem_fields (absval_interp_total ctxt) (declared_fields (program_total ctxt))) (get_state \<omega>)"
-      by (simp add: snd_get_abs_state t2a_ctxt_def)
-  next
-    show "partial_trace_typing ctxt (get_trace \<omega>)"
-      using \<open>\<omega> \<in> _\<close>
-      by (simp add: partial_trace_typing_def initial_vcg_states_equi_def)
-  qed
-next
-  let ?\<Delta> = "(t2a_ctxt ctxt \<Lambda>)"
-
-  fix \<omega>
-  assume "\<omega> \<in> initial_vcg_states_equi ?\<Delta>"
-
-  thus "a2t_state_wf ctxt (get_trace \<omega>)"
-    unfolding a2t_state_wf_def initial_vcg_states_equi_def
-    by (simp add: AbsTypeWf)
-next
-  show "valid_a2t_stmt (stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q))"
-    by (simp add: ValidBodyPrePost)
-qed
 
 end

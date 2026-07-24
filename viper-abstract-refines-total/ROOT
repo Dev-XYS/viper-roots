@@ -1,5 +1,9 @@
-session ViperAbstractRefinesTotal = ViperAbstract +
+session ViperAbstractRefinesTotalDeps in Dependencies = ViperAbstract +
   sessions
-    ViperAbstractRefinesTotalDeps
+    TotalViperRefinementDeps
+  theories
+    Dependencies
+
+session ViperAbstractRefinesTotal = ViperAbstractRefinesTotalDeps +
   theories
     AbstractRefinesTotal

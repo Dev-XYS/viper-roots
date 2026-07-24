@@ -70,6 +70,6 @@ session TotalViper = TotalViperSimulation +
     ViperBoogieEndToEndML
     ViperBoogieHelperML
 
-session ViperAbstractRefinesTotalDeps in Others = TotalViperSemantics +
+session TotalViperRefinementDeps in Others = TotalViperSemantics +
   theories
     TraceIndepProperty

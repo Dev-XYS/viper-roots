@@ -23,6 +23,7 @@ fun exp_in_core_subset_no_rec :: "pure_exp \<Rightarrow> bool"
 | "exp_in_core_subset_no_rec (pure_exp.Let e e_body) \<longleftrightarrow> False"
 | "exp_in_core_subset_no_rec (pure_exp.PExists ty e) \<longleftrightarrow> False"
 | "exp_in_core_subset_no_rec (pure_exp.PForall ty e) \<longleftrightarrow> False"
+| "exp_in_core_subset_no_rec pure_exp.DummyExpr \<longleftrightarrow> False"
 
 abbreviation exp_in_core_subset
   where "exp_in_core_subset \<equiv> pure_exp_pred exp_in_core_subset_no_rec"
