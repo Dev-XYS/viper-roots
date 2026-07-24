@@ -1905,8 +1905,10 @@ theorem CSL_sound:
     shows "CSL (tcfe \<Delta> tys) P C Q"
   using assms
   apply (induct rule: CSL_syn.induct)
-  by (simp_all add: rule_skip rule_seq rule_conseq_typed rule_if rule_while
+  apply (simp_all add: rule_skip rule_seq rule_conseq_typed rule_if rule_while
       rule_write rule_assign rule_alloc rule_free rule_read frame_rule rule_par can_convert_to_Stabilize can_inhalify)
+  using can_inhalify
+  by force
 
 
 

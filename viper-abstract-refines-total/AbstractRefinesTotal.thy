@@ -3353,6 +3353,137 @@ proof -
   qed
 qed
 
+definition initial_vcg_states_equi where
+      "initial_vcg_states_equi \<Delta> \<equiv> {\<omega> :: 'a equi_state. stable \<omega> \<and>
+                                    typed \<Delta> \<omega> \<and>
+                                    get_trace \<omega> = Map.empty \<and> (\<forall>l. get_m \<omega> l = 0)
+                                  }"
 
+text \<open>The following lemma shows that the correctness of a Viper method encoding a Hoare triple
+(w.r.t. VCGSem) implies the correctness of \<open>inhale P; C; exhale Q\<close> w.r.t ViperCore's
+operational semantics. This lemma can be directly connected to formal results proved for the VCG
+back-end.
+
+In this lemma, \<^term>\<open>triple_as_method_decl tys P C Q\<close> is the Viper method that encodes \<open>inhale P; C; exhale Q\<close>.
+Its body is \<open>inhale P; C; exhale Q\<close> and the variables considered in the method are represented by
+the list of types \<^term>\<open>tys\<close> (variable i has the i-th type in \<^term>\<open>tys\<close>).
+\<^term>\<open>vpr_method_correct_total ctxt (\<lambda>_ :: 'a full_total_state. True) (triple_as_method_decl tys P C Q)\<close>
+expresses when the method is correct w.r.t. VCGSem.
+\<close>
+
+corollary VCG_to_verifies_set :
+  assumes MethodCorrect: "vpr_method_correct_total ctxt (\<lambda>_ :: 'a full_total_state. True) (triple_as_method_decl tys P C Q)"
+      and "\<Lambda> = nth_option tys"
+      and Typed: "stmt_typing (program_total ctxt) \<Lambda> (stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q))"
+      and ValidBodyPrePost: "valid_a2t_stmt C \<and> valid_a2t_assert P \<and> valid_a2t_assert Q"
+      and AbsTypeWf: "abs_type_wf (absval_interp_total ctxt)"
+    shows "ConcreteSemantics.verifies_set (t2a_ctxt ctxt \<Lambda>) (initial_vcg_states_equi (t2a_ctxt ctxt \<Lambda>))
+            (compile (ctxt_to_interp ctxt) (\<Lambda>, declared_fields (program_total ctxt))
+               (stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q)))"
+proof (rule abstract_refines_total_verifies_set[OF _ Typed])
+  let ?\<Delta> = "(t2a_ctxt ctxt \<Lambda>)"
+
+  fix \<omega>
+  assume "\<omega> \<in> initial_vcg_states_equi ?\<Delta>"
+  hence "stable \<omega>" and "typed (t2a_ctxt ctxt \<Lambda>) \<omega>" and "get_trace \<omega> = Map.empty" and
+        EmptyMask: "\<forall>l. get_m \<omega> l = 0"
+    unfolding initial_vcg_states_equi_def
+    by auto
+
+  from MethodCorrect \<open>\<Lambda> = _\<close>
+  have "red_stmt_total_set_ok ctxt (\<lambda>_. True) \<Lambda>
+          ((stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q))) {\<omega>. is_initial_vcg_state ctxt \<Lambda> \<omega>}"
+    using vpr_method_correct_red_stmt_total_set_ok ValidBodyPrePost
+    by blast
+
+  moreover have "a2t_states ctxt \<omega> \<subseteq> {\<omega>. is_initial_vcg_state ctxt \<Lambda> \<omega>}"
+  proof
+    fix \<omega>t
+    assume "\<omega>t \<in> a2t_states ctxt \<omega>"
+
+    show "\<omega>t \<in> {\<omega>. is_initial_vcg_state ctxt \<Lambda> \<omega>}"
+    proof
+      show "is_initial_vcg_state ctxt \<Lambda> \<omega>t"
+        unfolding is_initial_vcg_state_def
+      proof (intro conjI)
+        from \<open>typed ?\<Delta> \<omega>\<close> have StoreTyped:
+          "well_typed_heap (custom_context (t2a_ctxt ctxt \<Lambda>)) (snd (get_abs_state \<omega>))"
+          unfolding TypedEqui.typed_def well_typed_def
+          by simp
+
+        thus "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>t)"
+          using \<open>\<omega>t \<in> _\<close>
+          unfolding t2a_ctxt_def
+          by (simp add: heap_typing_total_heap_well_typed snd_get_abs_state)
+      next
+        \<comment>\<open>the mask and predicate-mask (fnm) of the resulting state are both empty, so its nested-mask is 0\<close>
+        show "is_empty_total_full \<omega>t"
+          unfolding is_empty_total_full_def is_empty_total_def
+        proof (cases "get_nm_total (get_total_full \<omega>t)")
+          case (NM mh fnm)
+          have MH: "mh = zero_mask"
+            using NM get_mh_nm_a2t_states[OF \<open>\<omega>t \<in> _\<close>] EmptyMask
+            by (fastforce simp add: zero_mask_def)
+          have FNM: "fnm = Map.empty"
+            using NM a2t_states_fnm_empty[OF \<open>\<omega>t \<in> _\<close>] by simp
+          show "get_nm_total (get_total_full \<omega>t) = 0"
+            using NM MH FNM by (simp add: zero_nested_mask_def)
+        qed
+      next
+        from \<open>typed ?\<Delta> \<omega>\<close> have StoreTyped: "store_typed (variables ?\<Delta>) (get_store \<omega>)"
+          unfolding TypedEqui.typed_def TypedEqui.typed_store_def
+          by blast
+
+        show "\<forall>x t. \<Lambda> x = Some t \<longrightarrow> (\<exists>v. get_store_total \<omega>t x = Some v \<and> get_type (absval_interp_total ctxt) v = t)"
+          using StoreTyped[simplified store_typed_def] t2a_ctxt_def sem_store_def
+          by (smt (verit, ccfv_SIG) StoreTyped \<open>\<omega>t \<in> a2t_states ctxt \<omega>\<close> get_store_a2t_states sem_vtyp_to_get_type store_typed_lookup t2a_ctxt_variables)
+      qed
+    qed
+  qed
+
+  ultimately show
+    "red_stmt_total_set_ok ctxt (\<lambda>_. True) \<Lambda> (stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q)) (a2t_states ctxt \<omega>)"
+    using red_stmt_total_set_ok_mono
+    by blast
+next
+  let ?\<Delta> = "(t2a_ctxt ctxt \<Lambda>)"
+
+  fix \<omega>
+  assume "\<omega> \<in> initial_vcg_states_equi ?\<Delta>"
+     and TypedState: "typed (t2a_ctxt ctxt \<Lambda>) \<omega>"
+
+  show "abs_state_typing ctxt \<Lambda> \<omega>"
+    unfolding abs_state_typing_def
+  proof (intro conjI)
+    from TypedState have "store_typed (variables (t2a_ctxt ctxt \<Lambda>)) (get_store \<omega>)"
+      unfolding TypedEqui.typed_def TypedEqui.typed_store_def
+      by blast
+
+    thus "store_typing ctxt \<Lambda> (get_store \<omega>)"
+      by (simp add: store_typing_def t2a_ctxt_def)
+  next
+    from TypedState have HeapTyped: "well_typed_heap (custom_context (t2a_ctxt ctxt \<Lambda>)) (snd (get_abs_state \<omega>))"
+      unfolding TypedEqui.typed_def well_typed_def
+      by blast
+    thus "well_typed_heap (sem_fields (absval_interp_total ctxt) (declared_fields (program_total ctxt))) (get_state \<omega>)"
+      by (simp add: snd_get_abs_state t2a_ctxt_def)
+  next
+    show "partial_trace_typing ctxt (get_trace \<omega>)"
+      using \<open>\<omega> \<in> _\<close>
+      by (simp add: partial_trace_typing_def initial_vcg_states_equi_def)
+  qed
+next
+  let ?\<Delta> = "(t2a_ctxt ctxt \<Lambda>)"
+
+  fix \<omega>
+  assume "\<omega> \<in> initial_vcg_states_equi ?\<Delta>"
+
+  thus "a2t_state_wf ctxt (get_trace \<omega>)"
+    unfolding a2t_state_wf_def initial_vcg_states_equi_def
+    by (simp add: AbsTypeWf)
+next
+  show "valid_a2t_stmt (stmt.Seq (stmt.Seq (stmt.Inhale P) C) (stmt.Exhale Q))"
+    by (simp add: ValidBodyPrePost)
+qed
 
 end

@@ -191,14 +191,14 @@ proof (rule verifies_moreI)
   assume "ConcreteSemantics.red_stmt \<Gamma> (abs_stmt.Inhale A') \<omega> S'"
   then show "\<exists>S\<subseteq>S'. ConcreteSemantics.red_stmt \<Gamma> (abs_stmt.Inhale A) \<omega> S"
   proof (rule ConcreteSemantics.red_stmt_Inhale_elim)
-    assume asm1: "S' = Set.filter (\<lambda>\<omega>. sep_algebra_class.stable \<omega> \<and> typed \<Gamma> \<omega>) ({\<omega>} \<otimes> A')"
+    assume asm1: "S' = {a \<in> {\<omega>} \<otimes> A'. sep_algebra_class.stable a \<and> typed \<Gamma> a}"
       "rel_stable_assertion \<omega> A'"
     then have "ConcreteSemantics.red_stmt \<Gamma> (abs_stmt.Inhale A) \<omega> (Set.filter (\<lambda>\<omega>. sep_algebra_class.stable \<omega> \<and> typed \<Gamma> \<omega>) ({\<omega>} \<otimes> A))"
-      by (simp add: ConcreteSemantics.RedInhale asm0(1) asm0(2) assms(1))
+      using ConcreteSemantics.RedInhale asm0(1,2) assms(1) by blast
     moreover have "Set.filter (\<lambda>\<omega>. sep_algebra_class.stable \<omega> \<and> typed \<Gamma> \<omega>) ({\<omega>} \<otimes> A) \<subseteq> Set.filter (\<lambda>\<omega>. sep_algebra_class.stable \<omega> \<and> typed \<Gamma> \<omega>) ({\<omega>} \<otimes> A')"
-      by (smt (verit, ccfv_SIG) asm0(1) assms(2) member_filter singletonD subsetI x_elem_set_product)
+      by (smt (verit, ccfv_threshold) Set.filter_eq asm0(1) assms(2) mem_Collect_eq singletonD subsetI x_elem_set_product)
     ultimately show "\<exists>S\<subseteq>S'. ConcreteSemantics.red_stmt \<Gamma> (abs_stmt.Inhale A) \<omega> S"
-      by (metis (no_types, lifting) asm1(1))
+      by (metis (no_types, lifting) ext Set.filter_eq asm1(1))
   qed
 qed
 
@@ -954,7 +954,7 @@ next
     apply (rule verifies_more_seq)
     apply (rule verifies_more_seq)
         apply (rule verifies_more_exhale)
-    using verifies_more_translation_parallel_exhale apply blast
+    using verifies_more_translation_parallel_exhale apply fastforce
     apply (metis n_havoc_same verifies_more_refl)
     apply auto[1]
      apply (rule verifies_more_inhale)
@@ -978,7 +978,7 @@ next
     apply (rule verifies_more_seq)
       apply (rule verifies_more_seq)
     apply (rule verifies_more_exhale)    
-    using verifies_more_translation_while_exhale apply blast
+    using verifies_more_translation_while_exhale apply fastforce
        apply (metis n_havoc_same verifies_more_refl)
     using ConcreteSemantics.wf_abs_stmt.simps(3) apply blast
      apply (rule verifies_more_inhale)
@@ -1071,7 +1071,7 @@ next
          apply (simp add: Let_def)
       using asm0(7)
 
-      apply (metis ConcreteSemantics.wf_abs_stmt.simps(7))
+      apply fastforce
       using asm0
       apply (meson ConcreteSemantics.wf_abs_stmt.simps(2) ConcreteSemantics.wf_abs_stmt.simps(7) insertCI)
        apply (simp add: Let_def)
@@ -1091,7 +1091,7 @@ next
       using asm0 apply simp_all
          apply (simp add: Let_def)
       using asm0(7)
-      apply (metis ConcreteSemantics.wf_abs_stmt.simps(7))
+      apply fastforce
       using asm0
       apply (meson ConcreteSemantics.wf_abs_stmt.simps(2) ConcreteSemantics.wf_abs_stmt.simps(7) insertCI)
        apply (simp add: Let_def)
@@ -1143,7 +1143,7 @@ next
       using asm0(2) apply force
       using ConcreteSemantics.wf_abs_stmt.simps(7) asm0(3) asm0(4) r apply blast
        apply (rule verifies_more_exhale)
-      apply (metis verifies_more_while_snd_exhale_bis)
+      apply (simp add: TypedEqui.typed_state_then_stabilize_typed)
       using ConcreteSemantics.wf_abs_stmt.simps(7) asm0(3) asm0(4) r
       by blast
     then show "\<exists>Csyn\<in>snd (translate_syn (Cwhile b I C)). verifies_more (tcfe \<Delta> tys) Csem (compile \<Delta> (tcfes tys) Csyn)"

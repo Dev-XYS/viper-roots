@@ -149,7 +149,7 @@ lemma exhale_havoc_inhale:
          apply (simp_all add: assms)
     using wrL_wrC_same apply auto[1]
     using entailment_1 apply blast
-    using entailment_2 by blast
+    using entailment_2 by auto
   done
 
 
