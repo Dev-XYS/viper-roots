@@ -98,28 +98,33 @@ fun upd_kfm_field_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_inf
 
 (* Discharges the assumptions of @{thm fold_knownfolded_pred_upd_rel} once the rule has been applied
    to a goal whose assertion is \<open>Atomic (AccPredicate pid_fold e_args_fold_vpr (PureExp e_p_fold_vpr))\<close>
-   (a nested folded predicate access). Mirrors \<open>upd_kfm_field_acc_tac\<close> above; the extra premises
-   compared to the field-access case (\<open>WfTyRep\<close>, \<open>ProgEq\<close>, \<open>FunInterp\<close>, \<open>PMaskReadWf\<close>, the
-   \<open>New KFM Prop\<close>/\<open>Ploc*SynProp\<close>/\<open>*SubstWf\<close> family, \<open>LookupTyTemp\<close>, \<open>TempFresh\<close>, \<open>StateConsOn\<close>,
-   and a second \<open>PermPosConstExpr\<close>) stem from the rule introducing a fresh known-folded-mask
-   Boogie variable (\<open>new_kfm_var\<close>) and a quantified Boogie assume statement combining the
-   already-known-folded mask with the freshly-folded nested predicate's footprint. *)
+   (a nested folded predicate access). Mirrors \<open>upd_kfm_field_acc_tac\<close> above and the manual proof of
+   the corresponding schematic goal in \<open>relational_proof_foo.thy\<close>. The extra premises compared to the
+   field-access case (\<open>WfTyRep\<close>, \<open>ProgEq\<close>, \<open>FunInterp\<close>, \<open>PMaskReadWf\<close>, the \<open>NewKFMProp*\<close>/
+   \<open>Ploc*SynProp\<close>/\<open>*SubstWf\<close> family, \<open>LookupTyTemp\<close>, \<open>TempFresh\<close>, \<open>StateConsOn\<close>) stem from the rule
+   introducing a fresh known-folded-mask Boogie variable (\<open>new_kfm_var\<close>) and a quantified Boogie
+   assume statement combining the already-known-folded mask with the freshly-folded nested
+   predicate's footprint. \<open>KnownFoldedReadBpl\<close>'s reads and \<open>KFMOrigTrueSynProp*\<close>/etc. syntactic
+   side-conditions need the Boogie functions reading/updating the known-folded pmask
+   (e.g. \<open>readPMask\<close>/\<open>P#sm\<close>) to be simplifiable, for which the caller must include the relevant
+   per-program lemmas (mirroring e.g. \<open>mfunreadHeap\<close>/\<open>mfunreadPMask\<close>/\<open>mfunPAAsm\<close> in the manual
+   proof) in \<open>#lookup_fun_bpl_thms exp_rel_info\<close>; similarly \<open>LookupTyTemp\<close> needs the
+   \<open>lookup_var_decl\<close> fact for whichever local Boogie variable ends up instantiated for
+   \<open>new_kfm_var\<close> (e.g. \<open>lvar14(1)\<close>) to be included in \<open>#lookup_var_thms exp_rel_info\<close>. *)
 fun upd_kfm_pred_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
-  (SUBGOAL (fn (t,_) => raise TERM ("breakpoint debug", [t]))) THEN'
   (Rmsg' "kfm upd pred acc rule" (resolve_tac ctxt @{thms fold_knownfolded_pred_upd_rel}) ctxt) THEN'
   (Rmsg' "kfm upd pred acc StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
-  (Rmsg' "kfm upd pred acc StateRelOut" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
+  (Rmsg' "kfm upd pred acc StateRelOut"
+     (((rotate_tac ~1 THEN' assume_tac ctxt) |> SOLVED')
+      ORELSE' (simp_then_if_not_solved_blast_tac ctxt |> SOLVED')) ctxt) THEN'
   (Rmsg' "kfm upd pred acc HeapVarDefSame" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc ExpSyntax" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc TyInterpEq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc WfTyRep" (resolve_tac ctxt [#wf_ty_repr_thm info]) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc ProgEq" (resolve_tac ctxt [#vpr_program_ctxt_eq_thm info]) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc FunInterp" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
+  (Rmsg' "kfm upd pred acc ProgEq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc FunInterp"
+     ((cut_tac (#fun_interp_wf_thm info) THEN' assm_full_simp_solved_tac ctxt) |> SOLVED') ctxt) THEN'
   (Rmsg' "kfm upd pred acc NullConst" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc HeapVar" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc PermPosConstExpr conjI" (resolve_tac ctxt @{thms conjI}) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc PermPosConstExpr eval" (prove_vpr_const_perm_eval_tac ctxt |> SOLVED') ctxt) THEN'
-  (Rmsg' "kfm upd pred acc PermPosConstExpr pos" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc HeapUpdateWf"
      (resolve_tac ctxt [@{thm heap_update_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]] THEN'
       assm_full_simp_solved_tac ctxt) ctxt) THEN'
@@ -129,26 +134,25 @@ fun upd_kfm_pred_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info
   (Rmsg' "kfm upd pred acc PMaskReadWf"
      (resolve_tac ctxt [@{thm pmask_read_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]] THEN'
       assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc NewKFMPropBpl" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc NewKFMPropBodyBpl" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc NewKFMPropLHSBpl" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc KFMOrigTrueBpl" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc KFMFoldTrueBpl" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc NewKFMPropBpl" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc NewKFMPropBodyBpl" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc NewKFMPropLHSBpl" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc KFMOrigTrueBpl" (assm_full_simp_solved_with_thms_tac [@{thm read_pmask_concrete_def}] ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc KFMFoldTrueBpl" (assm_full_simp_solved_with_thms_tac [@{thm read_pmask_concrete_def}] ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc KFMOrigReadBpl"
-     (assm_full_simp_solved_with_thms_tac [@{thm read_heap_concrete_def}, #tr_def_thm info, #ty_repr_def_thm info] ctxt) ctxt) THEN'
+     (assm_full_simp_solved_with_thms_tac [@{thm read_heap_concrete_def}, #ty_repr_def_thm info] ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc KFMFoldReadBpl"
-     (assm_full_simp_solved_with_thms_tac [@{thm read_heap_concrete_def}, #tr_def_thm info, #ty_repr_def_thm info] ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc KnownFoldedReadBpl"
-     (assm_full_simp_solved_with_thms_tac [@{thm read_pmask_concrete_def}, #tr_def_thm info, #ty_repr_def_thm info] ctxt) ctxt) THEN'
+     (assm_full_simp_solved_with_thms_tac [@{thm read_heap_concrete_def}, #ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc KnownFoldedReadBpl" (assm_full_simp_solved_with_thms_tac [@{thm read_pmask_concrete_def}] ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc KnownFoldedUpdBpl"
      (assm_full_simp_solved_with_thms_tac [@{thm update_heap_concrete_def}, #tr_def_thm info, #ty_repr_def_thm info] ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc KFMOrigTrueSynProp1" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc KFMOrigTrueSynProp2" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc KFMFoldTrueSynProp1" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc KFMFoldTrueSynProp2" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc KFMNewTrueSynProp1" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc KFMNewTrueSynProp2" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc LookupTyTemp" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc KFMOrigTrueSynProp1" (assm_full_simp_solved_with_thms_tac (#lookup_fun_bpl_thms exp_rel_info) ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc KFMOrigTrueSynProp2" (assm_full_simp_solved_with_thms_tac (#lookup_fun_bpl_thms exp_rel_info) ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc KFMFoldTrueSynProp1" (assm_full_simp_solved_with_thms_tac (#lookup_fun_bpl_thms exp_rel_info) ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc KFMFoldTrueSynProp2" (assm_full_simp_solved_with_thms_tac (#lookup_fun_bpl_thms exp_rel_info) ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc KFMNewTrueSynProp1" (assm_full_simp_solved_with_thms_tac (#lookup_fun_bpl_thms exp_rel_info) ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc KFMNewTrueSynProp2" (assm_full_simp_solved_with_thms_tac (#lookup_fun_bpl_thms exp_rel_info) ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc LookupTyTemp" (assm_full_simp_solved_with_thms_tac (#ty_repr_def_thm info :: #lookup_var_thms exp_rel_info) ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PredType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PredTypeSynProp" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PredTypeFold" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
@@ -161,14 +165,14 @@ fun upd_kfm_pred_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info
   (Rmsg' "kfm upd pred acc PlocFoldSynProp1" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PlocFoldSynProp2" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PlocFoldSynProp3" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc PMaskReadSubstWf" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc HeapReadSubstWf" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc PMaskReadSubstWf" (assm_full_simp_solved_with_thms_tac [@{thm read_pmask_concrete_def}] ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc HeapReadSubstWf" (assm_full_simp_solved_with_thms_tac [@{thm read_heap_concrete_def}] ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc KFMOrigReadSubstWf" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc TempFresh" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc StateConsOn" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc PermPosConstExpr2 conjI" (resolve_tac ctxt @{thms conjI}) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc PermPosConstExpr2 eval" (prove_vpr_const_perm_eval_tac ctxt |> SOLVED') ctxt) THEN'
-  (Rmsg' "kfm upd pred acc PermPosConstExpr2 pos" (assm_full_simp_solved_tac ctxt) ctxt)
+  (Rmsg' "kfm upd pred acc TempFresh" ((#aux_var_disj_tac info) ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc StateConsOn" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info, @{thm default_state_rel_options_def}] ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc PermPosConstExpr conjI" (resolve_tac ctxt @{thms conjI}) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc PermPosConstExpr eval" (prove_vpr_const_perm_eval_tac ctxt |> SOLVED') ctxt) THEN'
+  (Rmsg' "kfm upd pred acc PermPosConstExpr pos" (assm_full_simp_solved_tac ctxt) ctxt)
 
 (* Normalizes the assertion embedded in the goal (e.g. unfolds \<^const>\<open>substitute_args_assertion\<close>
    and \<^const>\<open>syntactic_mult\<close>, which wrap the predicate body as it comes out of @{thm fold_stmt_rel})

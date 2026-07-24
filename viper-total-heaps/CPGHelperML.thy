@@ -133,7 +133,8 @@ fun rewrite_rel_general_tac ctxt =
       type_interp_econtext: thm,
       vpr_prog_def_thm: thm,
       ty_repr_def_thm: thm,
-      wf_ty_repr_thm: thm
+      wf_ty_repr_thm: thm,
+      fun_interp_wf_thm: thm
   }
 
   fun lookup_predicate_data (info: basic_stmt_rel_info) pred_name : predicate_data =
