@@ -53,7 +53,7 @@ inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_st
   "\<lbrakk> ctxt, \<omega>_def \<turnstile> \<langle>e1; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1 ;
      ctxt, \<omega>_def \<turnstile> \<langle>e2; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2 ;
      eval_binop_lazy v1 bop = None;
-     eval_binop False v1 bop v2 = BinopNormal v \<rbrakk> \<Longrightarrow>
+     eval_binop v1 bop v2 = BinopNormal v \<rbrakk> \<Longrightarrow>
    ctxt, \<omega>_def \<turnstile> \<langle>Binop e1 bop e2; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
 | RedBinopRightFailure:
   "\<lbrakk> ctxt, \<omega>_def \<turnstile> \<langle>e1; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1;
@@ -61,12 +61,12 @@ inductive red_pure_exp_total :: "'a total_context \<Rightarrow> 'a full_total_st
      eval_binop_lazy v1 bop = None;
      \<comment>\<open>The following premise makes sure in this case that the binary operation does not reduce if
        e1 evaluates to a value that renders the binary operation ill-typed\<close>
-     (\<exists> v2. eval_binop False v1 bop v2 \<noteq> BinopTypeFailure) \<rbrakk> \<Longrightarrow>
+     (\<exists> v2. eval_binop v1 bop v2 \<noteq> BinopTypeFailure) \<rbrakk> \<Longrightarrow>
    ctxt, \<omega>_def \<turnstile> \<langle>Binop e1 bop e2; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
 | RedBinopOpFailure:
   "\<lbrakk> ctxt, \<omega>_def \<turnstile> \<langle>e1; \<omega>\<rangle> [\<Down>]\<^sub>t Val v1;
      ctxt, \<omega>_def \<turnstile> \<langle>e2; \<omega>\<rangle> [\<Down>]\<^sub>t Val v2;
-     eval_binop False v1 bop v2 = BinopOpFailure;
+     eval_binop v1 bop v2 = BinopOpFailure;
      eval_binop_lazy v1 bop = None \<rbrakk> \<Longrightarrow>
    ctxt, \<omega>_def \<turnstile> \<langle>Binop e1 bop e2; \<omega>\<rangle> [\<Down>]\<^sub>t VFailure" \<comment>\<open>happens for division by 0, modulo 0\<close>
 

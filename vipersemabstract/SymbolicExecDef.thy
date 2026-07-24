@@ -408,6 +408,7 @@ fun sexec_exp :: "'a sym_state \<Rightarrow> pure_exp \<Rightarrow> ('a sym_stat
 | "sexec_exp \<sigma> (Let _ _) Q = sfail (''Not supported expression: Let'')"
 | "sexec_exp \<sigma> (PExists _ _) Q = sfail (''Not supported expression: PExists'')"
 | "sexec_exp \<sigma> (PForall _ _) Q = sfail (''Not supported expression: PForall'')"
+| "sexec_exp \<sigma> DummyExpr Q = sfail (''DummyExpr should not appear in normal expressions'')"
 
 
 fun sproduce :: "'a sym_state \<Rightarrow> (pure_exp, pure_exp atomic_assert) assert \<Rightarrow> ('a sym_state \<Rightarrow> bool) \<Rightarrow> bool" where

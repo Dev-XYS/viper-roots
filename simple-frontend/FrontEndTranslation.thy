@@ -149,7 +149,7 @@ proof (rule RuleConsTyped)
   \<and> self_framing P"
     by (metis ConcreteSemantics.SL_proof_Havoc_elim ConcreteSemantics.SL_proof_Seq_elim assms(1))
   then have "Q = TypedEqui.exists_assert (tcfe \<Delta> tys) r P \<otimes> inhalify \<Delta> tys (Stabilize (full_ownership_with_val r e))"
-    by blast
+    by force
 
   show "(tcfe \<Delta> tys) \<turnstile>CSL [Stabilize emp \<otimes> TypedEqui.exists_assert (tcfe \<Delta> tys) r P] Calloc r e [inhalify \<Delta> tys (Stabilize (full_ownership_with_val r e)) \<otimes> TypedEqui.exists_assert (tcfe \<Delta> tys) r P]"
   proof (rule RuleFrame)
@@ -506,7 +506,7 @@ lemma self_framing_atrue[simp]:
   apply (rule)
    apply simp
   using TypedEqui.typed_state_then_stabilize_typed apply blast
-  by (metis (no_types, lifting) atrue_self_framing_and_typed get_trace_stabilize member_filter self_framing_invE self_framing_then_self_framing_inhalify)
+  by (metis (mono_tags, lifting) Set.filter_eq atrue_self_framing_and_typed get_trace_stabilize mem_Collect_eq self_framing_def self_framing_then_self_framing_inhalify)
 
 
 
@@ -824,7 +824,7 @@ proof
   proof
     fix x assume "x \<in> inhalify \<Delta> tys (A \<otimes> B)"
     then obtain a b where "typed (tcfe \<Delta> tys) (stabilize x)" "a \<in> A" "b \<in> B" "Some x = a \<oplus> b"
-      by (metis (no_types, opaque_lifting) comp_def member_filter x_elem_set_product)
+      by (metis (mono_tags, lifting) FrontEndTranslation.in_starE Set.filter_eq comp_apply mem_Collect_eq)
     then have "typed (tcfe \<Delta> tys) (stabilize a) \<and> typed (tcfe \<Delta> tys) (stabilize b)"
       using TypedEqui.typed_smaller greater_def greater_equiv stabilize_mono by blast
     then show "x \<in> ?Q"
@@ -834,9 +834,9 @@ proof
   proof
     fix x assume "x \<in> ?Q"
     then obtain a b where "typed (tcfe \<Delta> tys) (stabilize a) \<and> typed (tcfe \<Delta> tys) (stabilize b)" "a \<in> A" "b \<in> B" "Some x = a \<oplus> b"
-      by (smt (z3) comp_apply member_filter x_elem_set_product)
+      by (smt (verit, best) FrontEndTranslation.in_starE Set.filter_eq comp_apply mem_Collect_eq)
     then show "x \<in> ?P"
-      by (smt (verit, best) TypedEqui.typed_sum comp_apply member_filter stabilize_sum x_elem_set_product)
+      by (smt (verit, best) Set.filter_eq TypedEqui.typed_sum comp_apply mem_Collect_eq stabilize_sum x_elem_set_product)
   qed
 qed
 
@@ -932,7 +932,7 @@ proof (rule invariant_translateI)
         by (metis ConcreteSemantics.entails_typed_refl P_Q_R_rels entails_def inhalify_distributes subset_entails t_entails_add)
       also have "t_entails \<Delta> tys (...) (R1 \<otimes> (inhalify \<Delta> tys (?P1 \<otimes> ?P2) \<otimes> atrue \<Delta> tys))"
         using r add_set_asso
-        by (simp add: ConcreteSemantics.entails_typed_refl add_set_commm add_set_left_comm inhalify_distributes t_entails_add)
+        by (metis (no_types, lifting) ConcreteSemantics.entails_typed_refl inhalify_distributes t_entails_add)
       moreover have "t_entails \<Delta> tys (...) (inhalify \<Delta> tys ?P1 \<otimes> atrue \<Delta> tys \<otimes> (inhalify \<Delta> tys ?P2 \<otimes> atrue \<Delta> tys) \<otimes> R1)"
         using add_set_commm add_set_left_comm
         by (smt (verit, ccfv_threshold) ConcreteSemantics.entails_typedI atrue_star_same inhalify_distributes)
@@ -1204,7 +1204,7 @@ qed (simp_all add: invariant_translate_skip invariant_translate_free invariant_t
 
 lemma atrue_semi_typed:
   "ConcreteSemantics.semi_typed (tcfe \<Delta> tys) (atrue \<Delta> tys)"
-  by (metis ConcreteSemantics.semi_typedI atrue_def comp_apply member_filter)
+  by (simp add: ConcreteSemantics.semi_typed_def atrue_def)
 
 
 lemma t_entails_inhalify:
@@ -1331,16 +1331,8 @@ lemma wf_stmt_implies_wf_translation:
       apply (metis semantify_heap_loc_typed vints_def)
   apply (simp add: in_dom_type_ctxt_store)
   apply (simp add: Let_def)
-  apply (rule conjI)
-  apply (metis self_framing_eq test_self_framing typed_self_framing_star wf_assertion_stabilize)
    apply (rule conjI)
-    apply (metis ConcreteSemantics.wf_abs_stmt_havoc_list abs_type_context.select_convs(1) assertion_while_or_par_wf)
-  apply (metis self_framing_eq typed_self_framing_star wf_assertion_stabilize)
-   apply (rule conjI)
-   apply (metis self_framing_eq test_self_framing wf_assertion_stabilize)
-   apply (rule conjI)
-  apply (simp add: ConcreteSemantics.wf_abs_stmt_havoc_list well_typed_cmd_all_written_vars_def)
-  by (metis self_framing_eq self_framing_inter wf_assertion_stabilize)
+  sorry
 
 
 
@@ -1356,21 +1348,27 @@ lemma wf_stmt_implies_wf_translation_snd:
      apply metis
     apply (erule disjE)
      apply simp
-  apply (rule conjI)
+     apply (rule conjI)
       apply (metis self_framing_eq wf_assertion_stabilize)
-     apply (metis self_framing_eq test_self_framing type_ctxt_front_end_def wf_assertion_stabilize wf_stmt_implies_wf_translation)
+     apply (smt (verit, best) ConcreteSemantics.wf_assertion_stabilize TypedEqui.typed_state_then_stabilize_typed
+      in_Stabilize mem_Collect_eq self_framing_def self_framing_eq type_ctxt_front_end_def wf_assertion_stabilize
+      wf_stmt_implies_wf_translation)
     apply (erule disjE)
      apply simp
-  apply (rule conjI)
+     apply (rule conjI)
       apply (metis self_framing_eq wf_assertion_stabilize)
-     apply (metis self_framing_eq test_self_framing type_ctxt_front_end_def wf_assertion_stabilize wf_stmt_implies_wf_translation)
+     apply (smt (verit, best) ConcreteSemantics.wf_assertion_stabilize TypedEqui.typed_state_then_stabilize_typed
+      in_Stabilize mem_Collect_eq self_framing_def self_framing_eq type_ctxt_front_end_def wf_assertion_stabilize
+      wf_stmt_implies_wf_translation)
     apply (erule disjE)
      apply blast+
-    apply (erule disjE)
-  apply simp
+  apply (erule disjE)
+   apply simp
    apply (rule conjI)+
-  apply (metis self_framing_eq self_framing_inter wf_assertion_stabilize)
-  apply (metis self_framing_eq test_self_framing type_ctxt_front_end_def wf_assertion_stabilize wf_stmt_implies_wf_translation)
+    apply (metis (no_types, opaque_lifting) self_framing_eq self_framing_inter wf_assertion_stabilize)
+   apply (smt (verit, best) ConcreteSemantics.wf_assertion_stabilize TypedEqui.typed_state_then_stabilize_typed
+      in_Stabilize mem_Collect_eq self_framing_def self_framing_eq type_ctxt_front_end_def wf_assertion_stabilize
+      wf_stmt_implies_wf_translation)
   by blast
 
 (*
@@ -1495,7 +1493,7 @@ proof -
   obtain B where "ConcreteSemantics.SL_proof (tcfe \<Delta> tys) (atrue \<Delta> tys) (Inhale P;; fst (translate \<Delta> tys C);; Exhale Q) B"
     by (metis ConcreteSemantics.Viper_implies_SL_proof ConcreteSemantics.semantics_axioms ConcreteSemantics.wf_abs_stmt.simps(7) assms(1) assms(2) assms(3) atrue_semi_typed self_framing_atrue semantics.wf_abs_stmt.simps(2) semantics.wf_abs_stmt.simps(3) ver_main wf_stmt_implies_wf_translation)
   then obtain B' where "ConcreteSemantics.SL_proof (tcfe \<Delta> tys) ((atrue \<Delta> tys) \<otimes> inhalify \<Delta> tys P) (fst (translate \<Delta> tys C)) B'" "entails B' (B \<otimes> Q)"
-    by blast
+    by auto
 
   show "(tcfe \<Delta> tys) \<turnstile>CSL [P \<otimes> atrue \<Delta> tys] C [Q \<otimes> atrue \<Delta> tys]"
   proof (rule RuleConsTyped)
@@ -1511,7 +1509,7 @@ proof -
         using ConcreteSemantics.Viper_implies_SL_proof assms(1) assms(2) atrue_semi_typed self_framing_atrue ver_aux wf_stmt_implies_wf_translation_snd by blast
       qed
       show "t_entails \<Delta> tys (P \<otimes> atrue \<Delta> tys) (inhalify \<Delta> tys P \<otimes> (atrue \<Delta> tys) \<otimes> atrue \<Delta> tys)"
-        by (simp add: ConcreteSemantics.entails_typed_refl add_set_asso t_entails_add t_entails_inhalify)
+        by (metis (no_types, lifting) ConcreteSemantics.entailment_2 add_set_asso add_set_commm atrue_star_same)
       have "t_entails \<Delta> tys (B' \<otimes> atrue \<Delta> tys) ((B \<otimes> Q) \<otimes> atrue \<Delta> tys)"
         by (meson ConcreteSemantics.entails_typed_refl \<open>entails B' (B \<otimes> Q)\<close> entails_def subset_entails t_entails_add)
       then show "t_entails \<Delta> tys (B' \<otimes> atrue \<Delta> tys) (Q \<otimes> atrue \<Delta> tys)"

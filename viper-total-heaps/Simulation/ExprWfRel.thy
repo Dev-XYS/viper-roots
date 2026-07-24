@@ -346,11 +346,11 @@ abbreviation wf_rel_bop_op
   where "wf_rel_bop_op R R' ctxt_vpr StateCons P ctxt e1 bop e2 \<equiv>  wf_rel R R'
             (\<lambda>\<omega>def \<omega>. (\<exists>v1 v2. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v1) \<and> 
                                 ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v2) \<and> 
-                                (\<exists>v'. eval_binop False v1 bop v2 = BinopNormal v'))
+                                (\<exists>v'. eval_binop v1 bop v2 = BinopNormal v'))
                        )
             (\<lambda>\<omega>def \<omega>. (\<exists>v1 v2. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v1) \<and> 
                                 ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t (Val v2) \<and> 
-                                eval_binop False v1 bop v2 = BinopOpFailure))
+                                eval_binop v1 bop v2 = BinopOpFailure))
             P ctxt"
 
 lemma binop_eager_expr_wf_rel:
@@ -438,7 +438,7 @@ lemma binop_lazy_expr_wf_rel:
    Rel1: "expr_wf_rel R ctxt_vpr StateCons P ctxt e1 \<gamma>0 \<gamma>1" and
    Rel2a: "expr_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> 
                         (\<exists>b. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b) \<and> b \<noteq> b1 \<and> 
-                             (\<exists> v2. eval_binop False b bop v2 \<noteq> BinopTypeFailure))
+                             (\<exists> v2. eval_binop b bop v2 \<noteq> BinopTypeFailure))
                        ) ctxt_vpr StateCons P ctxt e2 \<gamma>1 \<gamma>2" and
    Rel2b: "wf_rel R R (\<lambda>\<omega>def \<omega>. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b1)) (\<lambda>_ _. False) P ctxt \<gamma>1 \<gamma>2"
  shows "expr_wf_rel R ctxt_vpr StateCons P ctxt (ViperLang.Binop e1 bop e2) \<gamma>0 \<gamma>2"
@@ -451,7 +451,7 @@ proof (rule expr_wf_rel_intro)
   proof cases
     case (RedBinop v1 v2)
     hence "v1 \<noteq> b1" using Lazy eval_binop_lazy_iff by force
-    from RedBinop have v1BinopWellTy:"\<exists> v2. eval_binop False v1 bop v2 \<noteq> BinopTypeFailure"
+    from RedBinop have v1BinopWellTy:"\<exists> v2. eval_binop v1 bop v2 \<noteq> BinopTypeFailure"
       by (metis (full_types) binop_result.distinct(3))
     from RedBinop obtain ns' where
              "R \<omega>def \<omega> ns'" and
@@ -497,7 +497,7 @@ next
       using Lazy eval_binop_lazy_iff by force
     from this show ?thesis
       using Red_s_s' wf_rel_failure_elim[OF Rel2a HOL.conjI[OF Red_s_s'(1)] RedBinopRightFailure(2)] RedBinopRightFailure(1)
-            \<open>\<exists>v2. eval_binop False v1 bop v2 \<noteq> BinopTypeFailure\<close>
+            \<open>\<exists>v2. eval_binop v1 bop v2 \<noteq> BinopTypeFailure\<close>
       using red_ast_bpl_transitive
       by blast
   next
@@ -793,7 +793,7 @@ lemma wf_rel_bop_op_trivial:
 
 lemma eval_binop_div_mod_normal_types:
   assumes "bop \<in> {IntDiv, PermDiv, ViperLang.Mod}"
-          "eval_binop t v1 bop v2 = BinopNormal v'"
+          "eval_binop v1 bop v2 = BinopNormal v'"
   shows "((\<exists>i. v1 = VInt i) \<or> (\<exists>p. v1 = VPerm p)) \<and> ((\<exists>i. v2 = VInt i) \<or> (\<exists>p. v2 = VPerm p))"
   by (rule eval_binop.elims[OF assms(2)], insert assms(1), auto)
 
@@ -814,8 +814,8 @@ lemma syn_bop_op_non_trivial_wf_rel:
 proof (rule wf_rel_intro)
 \<comment>\<open>Normal case\<close>
   fix v \<omega>def \<omega> ns
-  assume R: "R \<omega>def \<omega> ns" and "\<exists>v1 v2. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1 \<and> ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2 \<and> (\<exists>v'. eval_binop False v1 bop v2 = BinopNormal v')"
-  from this obtain v1 v2 v' where Red2:"ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and EvalBinop: "eval_binop False v1 bop v2 = BinopNormal v'"
+  assume R: "R \<omega>def \<omega> ns" and "\<exists>v1 v2. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1 \<and> ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2 \<and> (\<exists>v'. eval_binop v1 bop v2 = BinopNormal v')"
+  from this obtain v1 v2 v' where Red2:"ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and EvalBinop: "eval_binop v1 bop v2 = BinopNormal v'"
     by auto
   hence NonZero:"v2 \<noteq> VInt(0) \<and> v2 \<noteq> VPerm(0)"
     using eval_binop_not_failure_2 Bop
@@ -898,8 +898,8 @@ proof (rule wf_rel_intro)
 next
 \<comment>\<open>Failure case\<close>
   fix v \<omega>def \<omega> ns
-  assume R: "R \<omega>def \<omega> ns" and "\<exists>v1 v2. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1 \<and> ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2 \<and> (eval_binop False v1 bop v2 = BinopOpFailure)"
-  from this obtain v1 v2 where Red2:"ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and EvalBinop: "eval_binop False v1 bop v2 = BinopOpFailure"
+  assume R: "R \<omega>def \<omega> ns" and "\<exists>v1 v2. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1 \<and> ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2 \<and> (eval_binop v1 bop v2 = BinopOpFailure)"
+  from this obtain v1 v2 where Red2:"ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e2;\<omega>\<rangle> [\<Down>]\<^sub>t Val v2" and EvalBinop: "eval_binop v1 bop v2 = BinopOpFailure"
     by auto
   hence IntOrPerm:"v2 = VInt 0 \<or> v2 = VPerm 0"
     by (metis Bop eval_binop_failure_int eval_binop_failure_perm insert_iff)
@@ -1027,7 +1027,7 @@ lemma syn_lazy_bop_short_circuit_wf_rel:
   shows
    Rel2a: "expr_wf_rel (\<lambda>\<omega>def \<omega> s. R \<omega>def \<omega> s \<and> 
                                     (\<exists>b. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t (Val b) \<and> b \<noteq> b1 \<and>
-                                         (\<exists> v2. eval_binop False b bop v2 \<noteq> BinopTypeFailure))) 
+                                         (\<exists> v2. eval_binop b bop v2 \<noteq> BinopTypeFailure))) 
                         ctxt_vpr StateCons P ctxt e2 
                         (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd#thnTl) els)) None, cont)
                         \<gamma>'" (is "expr_wf_rel ?R_ext _ _ _ _ _ ?\<gamma> ?\<gamma>'")
@@ -1038,7 +1038,7 @@ proof (rule expr_wf_rel_intro)
 
   from Rext obtain v1 v2 where
     RedE1: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and NotB1:"v1 \<noteq> b1" and
-    v1BopWellTy: "eval_binop False v1 bop v2 \<noteq> BinopTypeFailure"
+    v1BopWellTy: "eval_binop v1 bop v2 \<noteq> BinopTypeFailure"
     by blast
 
   from Lazy v1BopWellTy obtain b where "v1 = VBool b"
@@ -1085,7 +1085,7 @@ next
     by blast
 
   from Rext obtain v1 v2 where RedE1: "ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val v1" and NotB1:"v1 \<noteq> b1" and
-                            v1BopWellTy: "eval_binop False v1 bop v2 \<noteq> BinopTypeFailure"
+                            v1BopWellTy: "eval_binop v1 bop v2 \<noteq> BinopTypeFailure"
     by blast
 
   from Lazy v1BopWellTy  obtain b where "v1 = VBool b"
@@ -1224,7 +1224,7 @@ proof (rule binop_lazy_expr_wf_rel[OF Lazy])
   show "expr_wf_rel R ctxt_vpr StateCons P ctxt e1 \<gamma>0 (?b_if, ?cont_if)"
     by (auto intro: wf_rel_extend_1 Rel1 Red2)
 next
-  show "expr_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> (\<exists>b. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b \<and> b \<noteq> b1 \<and> (\<exists>v2. eval_binop False b bop v2 \<noteq> BinopTypeFailure)))
+  show "expr_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> (\<exists>b. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b \<and> b \<noteq> b1 \<and> (\<exists>v2. eval_binop b bop v2 \<noteq> BinopTypeFailure)))
      ctxt_vpr StateCons P ctxt e2 (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd # thnTl) [empty_bigblock elseName])) None, KSeq bNext cont) (bNext, cont)"
     apply (rule syn_lazy_bop_short_circuit_wf_rel[OF Lazy])
     apply (insert Guard)
@@ -1263,7 +1263,7 @@ proof (rule binop_lazy_expr_wf_rel[OF Lazy])
 next                                                                             
   from ElseBlockEmpty obtain else_name where "empty_else_block = empty_bigblock else_name" 
     using is_empty_bigblock.elims(2) by auto
-  have "expr_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> (\<exists>b. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b \<and> b \<noteq> b1 \<and> (\<exists>v2. eval_binop False b bop v2 \<noteq> BinopTypeFailure)))
+  have "expr_wf_rel (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> (\<exists>b. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b \<and> b \<noteq> b1 \<and> (\<exists>v2. eval_binop b bop v2 \<noteq> BinopTypeFailure)))
      ctxt_vpr StateCons P ctxt e2 (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd # thnTl) [empty_bigblock else_name])) None, KSeq bNext cont) (bNext, cont)"
     apply (rule syn_lazy_bop_short_circuit_wf_rel[OF Lazy])
        apply (insert Guard)
@@ -1274,7 +1274,7 @@ next
      apply (rule WfRel)
     by (fastforce intro: Red3) 
   thus "expr_wf_rel
-     (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> (\<exists>b. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b \<and> b \<noteq> b1 \<and> (\<exists>v2. eval_binop False b bop v2 \<noteq> BinopTypeFailure)))
+     (\<lambda>\<omega>def \<omega> ns. R \<omega>def \<omega> ns \<and> (\<exists>b. ctxt_vpr, Some \<omega>def \<turnstile> \<langle>e1;\<omega>\<rangle> [\<Down>]\<^sub>t Val b \<and> b \<noteq> b1 \<and> (\<exists>v2. eval_binop b bop v2 \<noteq> BinopTypeFailure)))
      ctxt_vpr StateCons P ctxt e2 (BigBlock name [] (Some (ParsedIf (Some guard) (thnHd # thnTl) [empty_else_block])) None, KSeq bNext cont) (bNext, cont)"
     using \<open>empty_else_block = _\<close>
     by simp

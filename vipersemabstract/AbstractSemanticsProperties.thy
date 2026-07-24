@@ -324,7 +324,7 @@ proof -
   proof (induct rule: red_stmt_sequential_composition.inducts(1)[of \<Delta> C \<omega> S "\<lambda>\<Delta> C \<omega> S. P \<Delta> \<omega> \<longrightarrow> (\<forall>\<omega>'\<in>S. P \<Delta> \<omega>')" "\<lambda>\<Delta> S C S'. (\<forall>\<omega>\<in>S. P \<Delta> \<omega>) \<longrightarrow> (\<forall>\<omega>\<in>S'. P \<Delta> \<omega>)"])
     case (RedInhale \<omega> A \<Delta>)
     then show ?case using assms
-      by (smt (verit, ccfv_SIG) member_filter singletonD x_elem_set_product)
+      by (smt (verit, ccfv_SIG) Set.filter_eq mem_Collect_eq singletonD x_elem_set_product)
   next
     case (RedExhale a A \<omega> \<omega>' \<Delta>)
     then show ?case using assms(5) by blast
@@ -424,7 +424,7 @@ proof -
   proof (induct rule: red_stmt_sequential_composition.inducts(1)[of \<Delta> C \<omega> S "\<lambda>\<Delta> C \<omega> S. P \<Delta> \<omega> \<and> wf_abs_stmt \<Delta> C \<longrightarrow> (\<forall>\<omega>'\<in>S. P \<Delta> \<omega>')" "\<lambda>\<Delta> S C S'. (\<forall>\<omega>\<in>S. P \<Delta> \<omega>) \<and> wf_abs_stmt \<Delta> C \<longrightarrow> (\<forall>\<omega>\<in>S'. P \<Delta> \<omega>)"])
     case (RedInhale \<omega> A \<Delta>)
     then show ?case using assms
-      by (smt (verit, best) member_filter singletonD wf_abs_stmt.simps(2) x_elem_set_product)
+      by (smt (verit, best) Set.filter_eq mem_Collect_eq singletonD wf_abs_stmt.simps(2) x_elem_set_product)
   next
     case (RedExhale a A \<omega> \<omega>' \<Delta>)
     then show ?case
@@ -890,7 +890,7 @@ next
   have "SA = ?S1 \<union> ?S2"
   proof
     show "?S1 \<union> ?S2 \<subseteq> SA"
-      by (simp add: Set.filter_def)
+      by simp
     show "SA \<subseteq> ?S1 \<union> ?S2"
     proof
       fix \<omega> assume "\<omega> \<in> SA"
@@ -1018,7 +1018,7 @@ next
       by force
     show "\<omega> \<in> Stabilize (\<Union> (f ` SA)) \<Longrightarrow> \<omega> \<in> ?B1 \<union> ?B2"
       using \<open>SA = Set.filter (\<lambda>\<omega>. b (snd \<omega>) = Some True) SA \<union> Set.filter (\<lambda>\<omega>. b (snd \<omega>) = Some False) SA\<close>
-      by auto
+      by fastforce
   qed (simp_all)
   ultimately show ?case
     by argo
@@ -1080,7 +1080,7 @@ next
         proof
           fix x assume "x \<in> ?B"
           then obtain p where "p \<in> P" "Some x = \<omega> \<oplus> p" "typed \<Delta> (stabilize x)"
-            by (metis comp_apply in_singleton_star member_filter)
+            using in_singleton_star by fastforce
           then have "typed \<Delta> (stabilize p)"
             using greater_equiv stabilize_mono typed_smaller by blast
           then show "x \<in> ?A"
@@ -1106,7 +1106,7 @@ next
     proof
       fix \<omega> assume "\<omega> \<in> Set.filter stable (?A \<otimes> Set.filter (typed \<Delta> \<circ> stabilize) P)"
       then obtain a p where asm0: "stable \<omega>" "Some \<omega> = a \<oplus> p" "a \<in> ?A" "p \<in> Set.filter (typed \<Delta> \<circ> stabilize) P" "a \<in> Stabilize (snd ` SA)"
-        by (smt (verit, ccfv_threshold) mem_Collect_eq member_filter add_set_def)
+        by (metis (mono_tags, lifting) Set.filter_eq in_starE mem_Collect_eq)
       then have "Some \<omega> = stabilize a \<oplus> p"
         using stabilize_sum_result_stable by blast
       moreover obtain l where "l \<in> SA" "snd l = stabilize a"
@@ -1114,9 +1114,9 @@ next
       then have "red_stmt \<Delta> (Inhale P) (stabilize a) (f l)"
         by (metis Inhale.prems(1))
       then have "f l = Set.filter (\<lambda>\<omega>. sep_algebra_class.stable \<omega> \<and> typed \<Delta> \<omega>)  ({stabilize a} \<otimes> P) \<and> rel_stable_assertion (stabilize a) P"
-        using red_stmt_Inhale_elim by blast
+        using red_stmt_Inhale_elim by auto
       then have "\<omega> \<in> f l"
-        by (smt (verit, best) Inhale.prems(4) \<open>l \<in> SA\<close> \<open>snd l = stabilize a\<close> already_stable asm0(1) asm0(2) asm0(4) calculation comp_apply is_in_set_sum member_filter stabilize_sum typed_sum)
+        by (smt (verit, best) Inhale.prems(4) \<open>l \<in> SA\<close> \<open>snd l = stabilize a\<close> already_stable asm0(1) asm0(2) asm0(4) calculation comp_apply is_in_set_sum Set.filter_eq mem_Collect_eq stabilize_sum typed_sum)
       then show "\<omega> \<in> \<Union> (f ` SA)"
         using \<open>l \<in> SA\<close> by blast
     qed
@@ -1129,20 +1129,21 @@ next
         using Inhale.prems(1) by blast
       then show "\<omega> \<in> Set.filter stable (Stabilize (snd ` SA) \<otimes> Set.filter (typed \<Delta> \<circ> stabilize) P)"
       proof (rule red_stmt_Inhale_elim)
-        assume "f x = Set.filter (\<lambda>\<omega>. sep_algebra_class.stable \<omega> \<and> typed \<Delta> \<omega>) ({snd x} \<otimes> P)"
+        assume "f x = {a \<in> {snd x} \<otimes> P. sep_algebra_class.stable a \<and> typed \<Delta> a}"
+           and "rel_stable_assertion (snd x) P"
         then obtain p where "p \<in> P" "Some \<omega> = snd x \<oplus> p" "(\<lambda>\<omega>. sep_algebra_class.stable \<omega> \<and> typed \<Delta> \<omega>) \<omega>"
-          by (smt (verit, ccfv_SIG) \<open>\<omega> \<in> f x\<close> member_filter singletonD x_elem_set_product)
+          using \<open>\<omega> \<in> f x\<close> in_singleton_star by force
         then have "typed \<Delta> p"
           using greater_equiv typed_smaller by blast
         then have "\<omega> \<in> Stabilize (snd ` SA) \<otimes> Set.filter (typed \<Delta> \<circ> stabilize) P"
-          by (smt (verit, ccfv_threshold) Inhale.prems(3) \<open>Some \<omega> = snd x \<oplus> p\<close> \<open>p \<in> P\<close> \<open>x \<in> SA\<close> already_stable comp_apply image_iff in_Stabilize member_filter typed_then_stabilize_typed wf_set_def wf_state_def x_elem_set_product)
-        then show "\<omega> \<in> Set.filter stable (Stabilize (snd ` SA) \<otimes> Set.filter (typed \<Delta> \<circ> stabilize) P)"
+          by (smt (verit, ccfv_threshold) Inhale.prems(3) \<open>Some \<omega> = snd x \<oplus> p\<close> \<open>p \<in> P\<close> \<open>x \<in> SA\<close> already_stable comp_apply image_iff in_Stabilize Set.filter_eq mem_Collect_eq typed_then_stabilize_typed wf_set_def wf_state_def x_elem_set_product)
+        then show "\<omega> \<in> Set.filter sep_algebra_class.stable (Stabilize (snd ` SA) \<otimes> Set.filter (typed \<Delta> \<circ> stabilize) P)"
           by (simp add: \<open>sep_algebra_class.stable \<omega> \<and> typed \<Delta> \<omega>\<close>)
       qed
     qed
   qed
   ultimately show ?case
-    by (metis (no_types, lifting) Stabilize_ext member_filter self_framing_eq)
+    by (metis (no_types, lifting) Set.filter_eq Stabilize_ext mem_Collect_eq self_framing_eq)
 next
   case (Exhale P)
 
@@ -2087,14 +2088,16 @@ proof (rule verifies_setI)
     apply (erule red_stmt_Seq_elim)
     apply (erule red_stmt_Inhale_elim)
   proof -
-    fix S0 S1 assume "sequential_composition \<Delta> S0 C S1"
-      "S0 = Set.filter (\<lambda>\<omega>. sep_algebra_class.stable \<omega> \<and> typed \<Delta> \<omega>) ({\<omega>} \<otimes> A)"
+    fix S0 S1 assume "sequential_composition \<Delta> S0 (abs_stmt.Exhale B) S"
+      "sequential_composition \<Delta> S1 C S0"
+      "S1 = {a \<in> {\<omega>} \<otimes> A. sep_algebra_class.stable a \<and> typed \<Delta> a}"
     then have "|\<omega>| \<in> A"
       by (simp add: \<open>sep_algebra_class.stable \<omega>\<close> \<open>typed \<Delta> \<omega>\<close> assms(1))
     then have "\<omega> \<in> Set.filter (\<lambda>\<omega>. sep_algebra_class.stable \<omega> \<and> typed \<Delta> \<omega>) ({\<omega>} \<otimes> A)"
       by (simp add: \<open>sep_algebra_class.stable \<omega>\<close> \<open>typed \<Delta> \<omega>\<close> core_is_smaller is_in_set_sum)
     then show "verifies \<Delta> C \<omega>"
-      using \<open>S0 = Set.filter (\<lambda>\<omega>. sep_algebra_class.stable \<omega> \<and> typed \<Delta> \<omega>) ({\<omega>} \<otimes> A)\<close> \<open>sequential_composition \<Delta> S0 C S1\<close> verifies_def by blast
+      using \<open>S1 = _\<close> \<open>sequential_composition \<Delta> S1 C S0\<close> verifies_def
+      by auto
   qed
 qed
 
@@ -2131,7 +2134,8 @@ lemma entailment_2:
   "entails_typed \<Delta> (Q \<otimes> F) (F \<otimes> Set.filter (local.typed \<Delta> \<circ> stabilize) Q)"
   apply (rule entails_typedI)
   apply (erule in_starE)
-  by (smt (verit, best) commutative comp_eq_dest_lhs greater_def member_filter typed_smaller typed_state.typed_state_then_stabilize_typed typed_state_axioms x_elem_set_product)
+  by (smt (verit, best) Set.filter_eq commutative greater_def mem_Collect_eq o_apply semantics_axioms semantics_def
+      typed_state.typed_smaller typed_state.typed_then_stabilize_typed x_elem_set_product)
 
 
 end

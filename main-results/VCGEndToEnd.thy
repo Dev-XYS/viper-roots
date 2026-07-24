@@ -1,5 +1,5 @@
 theory VCGEndToEnd
-imports SimpleViperFrontEnd.SyntacticTranslation ViperAbstractRefinesTotal.AbstractRefinesTotal TotalViper.TraceIndepProperty
+imports SimpleViperFrontEnd.SyntacticTranslation ViperAbstractRefinesTotal.AbstractRefinesTotal TotalViperRefinementDeps.TraceIndepProperty
 begin
 
 subsection \<open>Helper\<close>

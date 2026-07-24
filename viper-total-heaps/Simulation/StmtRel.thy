@@ -3407,7 +3407,7 @@ proof (rule exp_rel_equiv_vpr[OF _ assms])
     assume "ctxt_vpr, \<omega>_def_opt \<turnstile> \<langle>ELit (ViperLang.lit.LBool True);\<omega>\<rangle> [\<Down>]\<^sub>t Val v1a"
     hence "v1a = VBool True"
       by (metis TotalExpressions.RedLit_case extended_val.inject val_of_lit.simps(1))
-    assume "eval_binop False v1a BImp v2 = BinopNormal v1"
+    assume "eval_binop v1a BImp v2 = BinopNormal v1"
     hence "v2 = v1"
       unfolding \<open>v1a = _\<close>
       by (rule eval_binop.elims) auto

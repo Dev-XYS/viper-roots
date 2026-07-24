@@ -891,7 +891,8 @@ proof
     then have "Some x = x \<oplus> |x|"
       using core_is_smaller by auto
     then show "x \<in> ?P"
-      by (smt (verit, ccfv_threshold) CollectI \<open>x \<in> Set.filter (\<lambda>\<omega>. b \<omega> = Some True) A\<close> assms(1) max_projection_prop_def max_projection_prop_pure_core member_filter pure_Stabilize_def wf_exp_def x_elem_set_product)
+      by (smt (verit, best) Set.filter_eq \<open>x \<in> Set.filter (\<lambda>\<omega>. b \<omega> = Some True) A\<close> assms(1) local.add_set_def
+          local.core_in_emp_core local.emp_core_def local.wf_exp_def mem_Collect_eq pure_Stabilize_def)
   qed
 qed
 
@@ -1057,7 +1058,7 @@ proof (rule self_framingI)
     then obtain r' where "Some r' = stabilize r \<oplus> |stabilize a|"
       by (metis commutative defined_def max_projection_prop_def max_projection_prop_pure_core max_projection_prop_stable_stabilize option.exhaust_sel smaller_compatible)
     then show ?Q
-      by (smt (verit) \<open>\<omega> \<in> A \<otimes> pure_Stabilize b\<close> assms(1) assms(2) assms(3) member_filter pure_Stabilize_eq self_framing_def wf_exp_framed_by_stabilize)
+      by (smt (verit, ccfv_threshold) CollectD Set.filter_eq \<open>\<omega> \<in> A \<otimes> pure_Stabilize b\<close> assms(1,2,3) in_star_pure_stab pure_Stabilize_eq self_framing_def wf_exp_framed_by_stabilize)
   next
     assume ?Q
     then show ?P

@@ -996,7 +996,7 @@ lemma well_typedly_add_set2 :
   shows "well_typedly \<Delta> F (A1 \<otimes> A2) \<subseteq> well_typedly \<Delta> F A1 \<otimes> well_typedly \<Delta> F A2"
   unfolding well_typedly_def add_set_def
   using well_typedly_plus
-  by (smt (verit) mem_Collect_eq member_filter subsetI)
+  by (smt (verit) Set.filter_eq mem_Collect_eq subsetI)
 
 
 lemma well_typedly_add_set :
@@ -1007,7 +1007,7 @@ lemma well_typedly_add_set_l :
   shows "well_typedly \<Delta> F (A1 \<otimes> A2) \<subseteq> A1 \<otimes> well_typedly \<Delta> F A2"
   unfolding well_typedly_def add_set_def
   using well_typedly_plus
-  by (smt (verit) CollectD CollectI member_filter subsetI)
+  by (smt (verit) CollectD CollectI Set.filter_eq subsetI)
 
 lemma Stable_well_typedly :
   assumes "Stable A"
@@ -1079,7 +1079,7 @@ lemma concrete_post_Inhale :
   assumes "(Set.filter sep_algebra_class.stable ({\<omega>} \<otimes> A)) \<subseteq> S"
   shows "concrete_red_stmt_post \<Delta> (abs_stmt.Inhale A) \<omega> S"
   using assms unfolding concrete_red_stmt_post_def
-  by (smt (verit, del_insts) ConcreteSemantics.RedInhale in_mono member_filter subsetI)
+  by (smt (verit) ConcreteSemantics.RedInhale Set.filter_eq mem_Collect_eq subset_iff)
 
 lemma concrete_post_Exhale_raw :
   assumes "a \<in> A"

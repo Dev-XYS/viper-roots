@@ -319,12 +319,9 @@ next
     then show ?thesis 
     proof (cases)
       case NormalE2
-      show ?thesis using NormalE1 RedBinop(5-8)
-        apply (subgoal_tac "eval_binop (Option.is_none \<omega>def_opt') v1 bop v2 = BinopNormal v \<or>
-                            eval_binop (Option.is_none \<omega>def_opt') v1 bop v2 = BinopOpFailure")
-        using NormalE2 RedBinopOpFailure red_pure_exp_total_red_pure_exps_total.RedBinop
-         apply blast
-        by (simp add: eval_total_non_total_same_or_fail)
+      show ?thesis
+        using NormalE1 NormalE2 RedBinop(5-8) TotalExpressions.RedBinop
+        by blast
     next
       case FailureE2
       have "ctxt, \<omega>def_opt' \<turnstile> \<langle>Binop e1 bop e2;\<omega>\<rangle> [\<Down>]\<^sub>t VFailure"
@@ -333,7 +330,7 @@ next
           apply (rule FailureE2)
         using RedBinop
          apply blast
-        by (metis RedBinop.hyps(2) binop_result.distinct(1) binop_result.distinct(3) eval_total_non_total_same_or_fail)
+        by (metis RedBinop.hyps(2) binop_result.distinct(3))
       thus ?thesis
         by simp
     qed      
@@ -827,8 +824,7 @@ next
     proof (cases)
       case E2Fail
       then show ?thesis 
-        using E1Normal
-        by (metis RedBinop.hyps(1) RedBinop.hyps(2) RedBinopRightFailure binop_result.distinct(3) binop_result.distinct_disc(1) eval_total_non_total_not_fail_same)
+        by (metis E1Normal RedBinop.hyps(1,2) RedBinopRightFailure binop_result.distinct(3))
     next
       case E2Normal
       then show ?thesis 
@@ -2514,7 +2510,7 @@ next
      apply blast
     using RedBinopOpFailure
     apply simp
-    by (metis (full_types) is_none_code(2) red_pure_exp_total_red_pure_exps_total.RedBinopOpFailure)
+    by (metis (full_types) red_pure_exp_total_red_pure_exps_total.RedBinopOpFailure)
 next
   case (RedUnop \<omega>_def_opt e \<omega> v unop v')
   then show ?case
@@ -2996,7 +2992,8 @@ next
 next
   case (ExhSubExpFailure A \<omega>)
   hence "list_all supported_pure_exp (direct_sub_expressions_assertion A)"
-    by (metis assert_pred_subexp list.pred_mono_strong pure_exp_pred.simps)
+    using assert_pred_subexp
+    by presburger
   with ExhSubExpFailure have "red_pure_exps_total ctxt (Some \<omega>def2) (direct_sub_expressions_assertion A) \<omega>2 None"
     using red_pure_exp_store_same_on_free_var(2) assert_pred_subexp free_var_assertion_map_free_var_pure_exp
     by blast
