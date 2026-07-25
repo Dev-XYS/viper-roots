@@ -10,6 +10,122 @@ ML \<open>
 
 val Rmsg' = run_and_print_if_fail_2_tac'
 
+(* Helpers for discharging \<^const>\<open>contains_no_heap_assignment_until\<close> and
+   \<^const>\<open>program_point_restriction\<close> (\<open>fold_stmt_rel_kf\<close>'s trailing \<open>NoHeapAssignBetween\<close>/
+   \<open>PPSyntacticRestriction\<close> premises), which are purely syntactic checks on the generated Boogie
+   AST between the fold's known-folded-mask-update position and the rest of the method body.
+   Bigblocks appear in the generated AST as opaque named constants (e.g. \<open>bigblock_15\<close>), so both
+   need to repeatedly unfold whichever bigblock constant is currently blocking progress. *)
+
+(* Recursively walks a \<^typ>\<open>bigblock \<times> cont\<close>/\<open>cont\<close>/\<open>bigblock list\<close>-shaped term, collecting the
+   names of every opaque bigblock constant reachable without unfolding anything (i.e. everything
+   visible in the term as it currently stands). Repeated calls (each preceded by unfolding the
+   previously found names) reveal further nested names hidden inside \<^const>\<open>ParsedIf\<close> branches. *)
+fun safe_resolve_tac msg ctxt thms i st =
+  case Seq.pull ((resolve_tac ctxt thms i) st) of
+    NONE => raise TERM (msg, [Thm.prop_of st])
+  | some => Seq.make (fn () => some)
+
+fun collect_bigblock_names (t : term) : string list =
+  case t of
+    Const (@{const_name Product_Type.Pair}, _) $ bb $ cont =>
+      collect_bigblock_names bb @ collect_bigblock_names cont
+  | Const (@{const_name KSeq}, _) $ bb $ cont =>
+      collect_bigblock_names bb @ collect_bigblock_names cont
+  | Const (@{const_name KEndBlock}, _) $ cont => collect_bigblock_names cont
+  | Const (@{const_name KStop}, _) => []
+  | Const (@{const_name BigBlock}, _) $ _ $ _ $ opt_if $ _ =>
+      (case opt_if of
+         Const (@{const_name Some}, _) $ (Const (@{const_name ParsedIf}, _) $ _ $ then_bbs $ else_bbs) =>
+           collect_bigblock_list then_bbs @ collect_bigblock_list else_bbs
+       | _ => [])
+  | _ =>
+      (case Term.head_of t of
+         Const (name, _) => [name]
+       | _ => [])
+and collect_bigblock_list (t : term) : string list =
+  case t of
+    Const (@{const_name Nil}, _) => []
+  | Const (@{const_name Cons}, _) $ x $ xs => collect_bigblock_names x @ collect_bigblock_list xs
+  | _ => []
+
+(* Extracts the \<open>(bigblock \<times> cont)\<close>-typed arguments from the current goal's conclusion, whichever
+   of \<^const>\<open>contains_no_heap_assignment_until\<close> or \<^const>\<open>program_point_restriction\<close> it is. *)
+fun program_points_in_goal (t : term) : term list =
+  case Logic.strip_assums_concl t of
+    @{term Trueprop} $ (Const (@{const_name contains_no_heap_assignment_until}, _) $ _ $ pp1 $ pp2) => [pp1, pp2]
+  | @{term Trueprop} $ (Const (@{const_name program_point_restriction}, _) $ pp) => [pp]
+  | _ => []
+
+(* Unfolds every currently-visible opaque bigblock constant in the goal's program point(s) via its
+   \<open>_def\<close> lemma (if one exists); a no-op if nothing (further) can be unfolded. *)
+fun unfold_visible_bigblocks_tac ctxt = SUBGOAL (fn (t, i) =>
+  let
+    val names = maps collect_bigblock_names (program_points_in_goal t) |> distinct (op =)
+    val thms = @{thms convert_list_to_cont.simps} @
+               maps (fn name => Proof_Context.get_thms ctxt (name ^ "_def") handle ERROR _ => []) names
+  in
+    CHANGED (simp_only_tac thms ctxt i)
+  end)
+
+(* Repeatedly unfolds bigblocks (revealing further nested names each round) until no more progress
+   can be made; bounded to avoid ever looping indefinitely on a malformed/cyclic AST. *)
+fun unfold_all_bigblocks_tac ctxt = REPEAT_DETERM' (unfold_visible_bigblocks_tac ctxt)
+
+(* Discharges \<^const>\<open>program_point_restriction \<gamma>\<close>: fully unfold every bigblock reachable from \<open>\<gamma>\<close>,
+   then close via plain simp (\<^const>\<open>bigblock_restriction\<close>/\<^const>\<open>flatten_cont\<close> are plain \<open>fun\<close>s,
+   so their equations are already default simp rules). *)
+fun program_point_restriction_tac ctxt =
+  (unfold_all_bigblocks_tac ctxt) THEN' (assm_full_simp_solved_tac ctxt)
+
+(* Discharges \<^const>\<open>contains_no_heap_assignment_until hvar \<gamma>\<^sub>b \<gamma>\<close> by repeatedly applying the
+   inductive definition's constructors (mirroring the worked example in
+   \<open>BoogieSyntaxBasedProperties.thy\<close>): \<open>NoAssignReach\<close> once \<open>\<gamma>\<close> has been walked down to (syntactically
+   equal to, after unfolding) \<open>\<gamma>\<^sub>b\<close>; \<open>NoAssignSimpleCmd\<close> to consume one command at a time (the
+   "not an assignment to hvar, not a havoc" side condition is a simple syntactic fact about
+   concrete variable indices, closed by simp); \<open>NoAssignIf\<close> to descend into both branches of an
+   \<open>ParsedIf\<close>; \<open>NoAssignCont\<close> to move past an already-empty bigblock into the next one. Bigblocks
+   are unfolded on demand (via \<open>unfold_visible_bigblocks_tac\<close>) whenever a rule's syntactic pattern
+   would otherwise not match an opaque bigblock name. *)
+(* Deterministically decides which of \<open>NoAssignReach\<close>/\<open>NoAssignSimpleCmd\<close>/\<open>NoAssignIf\<close>/
+   \<open>NoAssignCont\<close> applies by inspecting the actual term shape of the goal's two program points,
+   instead of letting \<open>resolve_tac\<close> search for a match (\<open>NoAssignReach\<close>'s conclusion has the same
+   schematic variable \<open>\<gamma>\<^sub>b\<close> repeated twice, and blindly attempting it via unification against a
+   large, growing goal term at every one of the (up to) ~100 recursion levels needed to walk the
+   whole method body turned out to be the source of a severe slowdown/hang; a cheap structural
+   check up front avoids invoking the unifier on alternatives that cannot possibly match). *)
+fun dispatch_no_heap_assign_tac ctxt (pp2 : term) : int -> tactic =
+  case pp2 of
+    Const (@{const_name Product_Type.Pair}, _) $
+      (Const (@{const_name BigBlock}, _) $ _ $ cs $ str $ _) $ cont =>
+      (case cs of
+         Const (@{const_name Cons}, _) $ _ $ _ =>
+           safe_resolve_tac "DEBUG NoAssignSimpleCmd did not unify" ctxt @{thms NoAssignSimpleCmd}
+       | Const (@{const_name Nil}, _) =>
+           (case str of
+              Const (@{const_name Some}, _) $ (Const (@{const_name ParsedIf}, _) $ _ $ _ $ _) =>
+                safe_resolve_tac "DEBUG NoAssignIf did not unify" ctxt @{thms NoAssignIf}
+            | Const (@{const_name None}, _) =>
+                (case cont of
+                   Const (@{const_name KSeq}, _) $ _ $ _ =>
+                     safe_resolve_tac "DEBUG NoAssignCont did not unify" ctxt @{thms NoAssignCont}
+                 | _ => (fn _ => raise TERM ("DEBUG dead end: empty bigblock, str=None, cont not KSeq", [pp2])))
+            | _ => (fn _ => raise TERM ("DEBUG dead end: empty bigblock, str neither Some(ParsedIf) nor None", [pp2, str])))
+       | _ => (fn _ => raise TERM ("DEBUG dead end: cs neither Cons nor Nil", [pp2, cs])))
+  | _ => (fn _ => raise TERM ("DEBUG dead end: pp2 not a BigBlock pair", [pp2]))
+
+fun no_heap_assignment_until_step_tac ctxt = SUBGOAL (fn (t, i) =>
+  case program_points_in_goal t of
+    [pp1, pp2] =>
+      if pp1 aconv pp2 then safe_resolve_tac "DEBUG NoAssignReach did not unify" ctxt @{thms NoAssignReach} i
+      else dispatch_no_heap_assign_tac ctxt pp2 i
+  | _ => raise TERM ("DEBUG side-condition not closed by simp", [Logic.strip_assums_concl t]))
+
+fun no_heap_assignment_until_tac ctxt : int -> tactic =
+  (TRY_TAC' (unfold_visible_bigblocks_tac ctxt)) THEN'
+  no_heap_assignment_until_step_tac ctxt THEN_ALL_NEW
+    (fn i => (assm_full_simp_solved_tac ctxt i) ORELSE (no_heap_assignment_until_tac ctxt i))
+
 fun atomic_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) exh_pred_acc_hint =
     case exh_pred_acc_hint of
       PredAccExhHint (pred_name, exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm, exp_rel_perm_access_thm) =>
@@ -163,7 +279,9 @@ fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atom
   (Rmsg' "fold stmt good state after inhale progress 2" ((progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm basic_info) (#tr_def_thm basic_info))) ctxt) THEN'
 
   (Rmsg' "fold stmt known-folded mask update" (kfm_upd_rel_tac ctxt basic_info pred_name exp_rel_info) ctxt) THEN'
-  (SUBGOAL (fn (t,_) => raise TERM ("breakpoint head", [t])))
+
+  (Rmsg' "fold stmt NoHeapAssignBetween" (no_heap_assignment_until_tac ctxt |> SOLVED') ctxt) THEN'
+  (Rmsg' "fold stmt PPSyntacticRestriction" (program_point_restriction_tac ctxt |> SOLVED') ctxt)
   end
 
 

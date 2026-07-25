@@ -25,10 +25,10 @@ inductive contains_no_heap_assignment_until :: "vname \<Rightarrow> (bigblock \<
    \<rbrakk> \<Longrightarrow>
    contains_no_heap_assignment_until hvar \<gamma>\<^sub>b (BigBlock name (c#cs) str tr, cont)"
 | NoAssignIf:
-  "\<lbrakk> contains_no_heap_assignment_until hvar \<gamma>\<^sub>b (then_bb, cont);
-     contains_no_heap_assignment_until hvar \<gamma>\<^sub>b (else_bb, cont)
+  "\<lbrakk> contains_no_heap_assignment_until hvar \<gamma>\<^sub>b (then_hd, convert_list_to_cont then_tl cont);
+     contains_no_heap_assignment_until hvar \<gamma>\<^sub>b (else_hd, convert_list_to_cont else_tl cont)
    \<rbrakk> \<Longrightarrow>
-   contains_no_heap_assignment_until hvar \<gamma>\<^sub>b (BigBlock name [] (Some (ParsedIf _ [then_bb] [else_bb])) None, cont)"
+   contains_no_heap_assignment_until hvar \<gamma>\<^sub>b (BigBlock name [] (Some (ParsedIf _ (then_hd # then_tl) (else_hd # else_tl))) None, cont)"
 | NoAssignCont:
   "contains_no_heap_assignment_until hvar \<gamma>\<^sub>b (b, cont)
    \<Longrightarrow>
@@ -60,6 +60,7 @@ lemma
   apply (rule NoAssignSimpleCmd)
    apply fastforce
   apply (rule NoAssignIf)
+   apply (simp only: convert_list_to_cont.simps)
    apply (subst bigblock_1_def)
    apply (rule NoAssignSimpleCmd)
     apply fastforce
@@ -81,6 +82,7 @@ lemma
     apply fastforce
    apply (subst bigblock_3\<^sub>b_def)
    apply (rule NoAssignReach)
+  apply (simp only: convert_list_to_cont.simps)
   apply (subst bigblock_2_def)
   apply (rule NoAssignCont)
   apply (subst bigblock_3_def)
@@ -416,7 +418,7 @@ next
     qed (insert bpl_red_final_normal_implies_initial_normal[OF step(2)[unfolded \<open>config = _\<close>]], simp_all)
   qed
 next
-  case (NoAssignIf then_bb cont else_bb name guard)
+  case (NoAssignIf then_hd then_tl cont else_hd else_tl name guard)
   note NoAssignIf.prems(2)[unfolded red_ast_bpl_def]
   then show ?case
   proof (cases rule: converse_rtranclpE)
@@ -425,17 +427,17 @@ next
       by simp
   next
     case (step config)
-    then obtain b' cont' s' where "red_bigblock (type_interp ctxt_bpl) ([] :: ast proc_context) (var_context ctxt_bpl) (fun_interp ctxt_bpl) (rtype_interp ctxt_bpl) P (if_bigblock name guard [then_bb] [else_bb], cont, Normal ns) (b', cont', s')" and "config = ((b', cont'), s')"
+    then obtain b' cont' s' where "red_bigblock (type_interp ctxt_bpl) ([] :: ast proc_context) (var_context ctxt_bpl) (fun_interp ctxt_bpl) (rtype_interp ctxt_bpl) P (if_bigblock name guard (then_hd # then_tl) (else_hd # else_tl), cont, Normal ns) (b', cont', s')" and "config = ((b', cont'), s')"
       by (auto elim: red_bigblock_small.cases)
     then show ?thesis
     proof (cases)
       case RedParsedIfTrue
       thus ?thesis
-        by (metis NoAssignIf.IH(1) NoAssignIf.prems(1) \<open>config = _\<close> convert_list_to_cont.simps(1) step(1,2) red_ast_bpl_def red_bigblock_small_preserves_restriction)
+        by (metis NoAssignIf.IH(1) NoAssignIf.prems(1) \<open>config = _\<close> step(1,2) red_ast_bpl_def red_bigblock_small_preserves_restriction)
     next
       case RedParsedIfFalse
       thus ?thesis
-        by (metis NoAssignIf.IH(2) NoAssignIf.prems(1) \<open>config = _\<close> convert_list_to_cont.simps(1) step(1,2) red_ast_bpl_def red_bigblock_small_preserves_restriction)
+        by (metis NoAssignIf.IH(2) NoAssignIf.prems(1) \<open>config = _\<close> step(1,2) red_ast_bpl_def red_bigblock_small_preserves_restriction)
     qed auto
   qed
 next
