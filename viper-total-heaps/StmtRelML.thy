@@ -149,7 +149,9 @@ ML \<open>
        exp_rel_info *
        (atomic_exhale_rel_hint exhale_rel_info) *
        (atomic_exhale_rel_hint normal_exhale_rel_complete_hint) *
-       atomic_inhale_rel_hint
+       atomic_inhale_rel_hint *
+       thm list (* lookup_var_decl theorems for the known-folded-mask temporary variable(s)
+                   allocated when folding a predicate whose body contains a nested predicate access *)
   | MethodCallHint of
        string * (* callee name *)
        thm list * (* Boogie return variable lookup decl theorem *)
@@ -372,8 +374,8 @@ ML \<open>
         (assert_rel_tac ctxt exhale_info assert_complete_hint)
      | UnfoldHint (pred_name, inhale_info, atomic_exhale_hint, inhale_hint) =>
         (pred_unfold_tac ctxt pred_name inhale_info exhale_info basic_info atomic_exhale_hint (#inhale_rel_hint inhale_hint))
-     | FoldHint (pred_name, exp_wf_rel_info, exp_rel_info, exhale_info, exhale_hint, atomic_inhale_hint) =>
-        (pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info inhale_info exhale_info basic_info exhale_hint atomic_inhale_hint)
+     | FoldHint (pred_name, exp_wf_rel_info, exp_rel_info, exhale_info, exhale_hint, atomic_inhale_hint, kfm_temp_var_lookup_thms) =>
+        (pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info inhale_info exhale_info basic_info exhale_hint atomic_inhale_hint kfm_temp_var_lookup_thms)
      | MethodCallHint (callee_name, rets_lookup_decl_thms, inhale_info_call, exhale_info_call, exh_pre_complete_hint, inh_post_complete_hint) =>
         let val callee_data = Symtab.lookup (#method_data_table basic_info) callee_name |> Option.valOf in
         (Rmsg' "MethodCall Start" (resolve_tac ctxt [@{thm method_call_stmt_rel_inst} OF [#consistency_wf_thm basic_info, #consistency_down_mono_thm basic_info]]) ctxt) THEN'

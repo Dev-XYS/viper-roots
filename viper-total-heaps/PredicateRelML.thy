@@ -273,7 +273,7 @@ fun atomic_inhale_pred_acc_in_fold_tac ctxt (info: basic_stmt_rel_info) inh_pred
   | _ => error("Fold only supports PredicateAccInhHint")
 
 
-fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) exhale_hint atomic_inhale_hint =
+fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) exhale_hint atomic_inhale_hint (kfm_temp_var_lookup_thms : thm list) =
   let val pred_data = lookup_predicate_data basic_info pred_name in
   (Rmsg' "fold stmt rule" (resolve_tac ctxt @{thms fold_stmt_rel_kf}) ctxt) THEN'
 
@@ -319,7 +319,7 @@ fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atom
   (Rmsg' "fold stmt good state after inhale propagate 2" (resolve_tac ctxt @{thms rel_propagate_pre_3_only_state_rel}) ctxt) THEN'
   (Rmsg' "fold stmt good state after inhale progress 2" ((progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm basic_info) (#tr_def_thm basic_info))) ctxt) THEN'
 
-  (Rmsg' "fold stmt known-folded mask update" (kfm_upd_rel_tac ctxt basic_info pred_name exp_rel_info) ctxt) THEN'
+  (Rmsg' "fold stmt known-folded mask update" (kfm_upd_rel_tac ctxt basic_info pred_name exp_rel_info kfm_temp_var_lookup_thms) ctxt) THEN'
 
   (Rmsg' "fold stmt NoHeapAssignBetween" (no_heap_assignment_until_tac ctxt |> SOLVED') ctxt) THEN'
   (Rmsg' "fold stmt PPSyntacticRestriction" (program_point_restriction_tac ctxt |> SOLVED') ctxt)

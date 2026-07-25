@@ -111,7 +111,7 @@ fun upd_kfm_field_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_inf
    proof) in \<open>#lookup_fun_bpl_thms exp_rel_info\<close>; similarly \<open>LookupTyTemp\<close> needs the
    \<open>lookup_var_decl\<close> fact for whichever local Boogie variable ends up instantiated for
    \<open>new_kfm_var\<close> (e.g. \<open>lvar14(1)\<close>) to be included in \<open>#lookup_var_thms exp_rel_info\<close>. *)
-fun upd_kfm_pred_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
+fun upd_kfm_pred_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info (kfm_temp_var_lookup_thms : thm list) =
   (Rmsg' "kfm upd pred acc rule" (resolve_tac ctxt @{thms fold_knownfolded_pred_upd_rel}) ctxt) THEN'
   (Rmsg' "kfm upd pred acc StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
   (Rmsg' "kfm upd pred acc StateRelOut"
@@ -152,7 +152,7 @@ fun upd_kfm_pred_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info
   (Rmsg' "kfm upd pred acc KFMFoldTrueSynProp2" (assm_full_simp_solved_with_thms_tac (#lookup_fun_bpl_thms exp_rel_info) ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc KFMNewTrueSynProp1" (assm_full_simp_solved_with_thms_tac (#lookup_fun_bpl_thms exp_rel_info) ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc KFMNewTrueSynProp2" (assm_full_simp_solved_with_thms_tac (#lookup_fun_bpl_thms exp_rel_info) ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc LookupTyTemp" (assm_full_simp_solved_with_thms_tac (#ty_repr_def_thm info :: #lookup_var_thms exp_rel_info) ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc LookupTyTemp" (assm_full_simp_solved_with_thms_tac (#ty_repr_def_thm info :: kfm_temp_var_lookup_thms) ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PredType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PredTypeSynProp" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PredTypeFold" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
@@ -187,7 +187,7 @@ fun kfm_upd_normalize_tac ctxt =
                   R' (=) (\<lambda>_. False) P ctxt_bpl \<gamma> \<gamma>'\<close>
    by dispatching on the structure of the assertion \<open>A\<close> (\<open>Atomic (Acc \<dots>)\<close>, \<open>Star\<close>, \<open>Imp\<close>, or
    \<open>Atomic (AccPredicate \<dots>)\<close> for a nested folded predicate, which is not yet automated). *)
-fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info : int -> tactic =
+fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info (kfm_temp_var_lookup_thms : thm list) : int -> tactic =
   (Rmsg' "kfm upd normalize assertion" (kfm_upd_normalize_tac ctxt) ctxt) THEN'
   SUBGOAL (fn (t, i) =>
     case find_pred_kfm_sat_premise_assertion (Logic.strip_assums_concl t) of
@@ -197,8 +197,8 @@ fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info : in
            Const (@{const_name Star}, _) $ _ $ _ =>
              ((Rmsg' "kfm upd Star rule" (resolve_tac ctxt @{thms fold_knownfolded_star_upd_rel'}) ctxt) THEN'
               (Rmsg' "kfm upd Star CtxtPredWf" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-              (kfm_upd_rel_tac ctxt info pred_name exp_rel_info) THEN'
-              (kfm_upd_rel_tac ctxt info pred_name exp_rel_info)) i
+              (kfm_upd_rel_tac ctxt info pred_name exp_rel_info kfm_temp_var_lookup_thms) THEN'
+              (kfm_upd_rel_tac ctxt info pred_name exp_rel_info kfm_temp_var_lookup_thms)) i
          | Const (@{const_name "assert.Imp"}, _) $ _ $ _ =>
              ((Rmsg' "kfm upd Imp rule" (resolve_tac ctxt @{thms fold_knownfolded_imp_upd_rel}) ctxt) THEN'
               (Rmsg' "kfm upd Imp StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
@@ -213,12 +213,12 @@ fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info : in
               (Rmsg' "kfm upd Imp simp cont" (simplify_continuation ctxt) ctxt) THEN'
               (Rmsg' "kfm upd Imp propagate (unfolding bigblock)" (resolve_tac ctxt @{thms rel_propagate_post}) ctxt) THEN'
               (Rmsg' "kfm upd Imp unfold bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'
-              (kfm_upd_rel_tac ctxt info pred_name exp_rel_info) THEN'
+              (kfm_upd_rel_tac ctxt info pred_name exp_rel_info kfm_temp_var_lookup_thms) THEN'
               (Rmsg' "kfm upd Imp progress (unfolding bigblock)" (progress_red_bpl_rel_tac ctxt) ctxt)) i
          | Const (@{const_name Atomic}, _) $ (Const (@{const_name Acc}, _) $ _ $ _ $ _) =>
              upd_kfm_field_acc_tac ctxt info pred_name exp_rel_info i
          | Const (@{const_name Atomic}, _) $ (Const (@{const_name AccPredicate}, _) $ _ $ _ $ _) =>
-             upd_kfm_pred_acc_tac ctxt info pred_name exp_rel_info i
+             upd_kfm_pred_acc_tac ctxt info pred_name exp_rel_info kfm_temp_var_lookup_thms i
          | _ => raise TERM ("kfm_upd_rel_tac: unsupported assertion structure for known-folded mask update", [a])))
 
 \<close>
