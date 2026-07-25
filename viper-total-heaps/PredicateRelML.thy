@@ -87,31 +87,73 @@ fun program_point_restriction_tac ctxt =
    \<open>ParsedIf\<close>; \<open>NoAssignCont\<close> to move past an already-empty bigblock into the next one. Bigblocks
    are unfolded on demand (via \<open>unfold_visible_bigblocks_tac\<close>) whenever a rule's syntactic pattern
    would otherwise not match an opaque bigblock name. *)
+(* Returns the name of the opaque constant blocking pattern-matching of a bigblock/cont term (i.e.
+   the term is not already a raw \<^const>\<open>BigBlock\<close>/\<^const>\<open>KSeq\<close>/\<^const>\<open>KEndBlock\<close>/\<^const>\<open>KStop\<close>
+   application), or \<open>NONE\<close> if it is already fully revealed at the top level. *)
+fun blocking_name (already_head : term -> bool) (t : term) : string option =
+  if already_head t then NONE
+  else case Term.head_of t of
+    Const (name, _) => SOME name
+  | _ => NONE
+
+fun is_bigblock_head (Const (@{const_name BigBlock}, _) $ _ $ _ $ _ $ _) = true
+  | is_bigblock_head _ = false
+
+fun is_cont_head (Const (@{const_name KSeq}, _) $ _ $ _) = true
+  | is_cont_head (Const (@{const_name KEndBlock}, _) $ _) = true
+  | is_cont_head (Const (@{const_name KStop}, _)) = true
+  | is_cont_head _ = false
+
+(* Unfolds exactly one opaque name (via its \<open>_def\<close> lemma, plus \<^const>\<open>convert_list_to_cont\<close>'s
+   own equations, which the generalized \<open>NoAssignIf\<close> can introduce) across the whole goal. Applied
+   lazily (only the single name currently blocking progress at the CURRENT walk position, never the
+   whole remaining method body up front) to avoid inflating the goal with unrelated, not-yet-reached
+   bigblocks -- unfolding everything reachable from the target program point eagerly (as an earlier
+   version of this tactic did) makes the goal grow with the entire rest of the method and was the
+   source of a severe slowdown. *)
+fun unfold_one_name_tac ctxt (name : string) : int -> tactic =
+  case Proof_Context.get_thms ctxt (name ^ "_def") handle ERROR _ => [] of
+    [] => K no_tac
+  | thms => (fn i => CHANGED (simp_only_tac (thms @ @{thms convert_list_to_cont.simps}) ctxt i))
+
 (* Deterministically decides which of \<open>NoAssignReach\<close>/\<open>NoAssignSimpleCmd\<close>/\<open>NoAssignIf\<close>/
    \<open>NoAssignCont\<close> applies by inspecting the actual term shape of the goal's two program points,
    instead of letting \<open>resolve_tac\<close> search for a match (\<open>NoAssignReach\<close>'s conclusion has the same
    schematic variable \<open>\<gamma>\<^sub>b\<close> repeated twice, and blindly attempting it via unification against a
    large, growing goal term at every one of the (up to) ~100 recursion levels needed to walk the
-   whole method body turned out to be the source of a severe slowdown/hang; a cheap structural
-   check up front avoids invoking the unifier on alternatives that cannot possibly match). *)
+   whole method body turned out to be a severe source of slowdown; a cheap structural check up
+   front avoids invoking the unifier on alternatives that cannot possibly match). Whenever the
+   current bigblock/cont is still hidden behind an opaque name, unfolds just that one name (via
+   \<open>unfold_one_name_tac\<close>) instead of the whole reachable set. *)
 fun dispatch_no_heap_assign_tac ctxt (pp2 : term) : int -> tactic =
   case pp2 of
-    Const (@{const_name Product_Type.Pair}, _) $
-      (Const (@{const_name BigBlock}, _) $ _ $ cs $ str $ _) $ cont =>
-      (case cs of
-         Const (@{const_name Cons}, _) $ _ $ _ =>
-           safe_resolve_tac "DEBUG NoAssignSimpleCmd did not unify" ctxt @{thms NoAssignSimpleCmd}
-       | Const (@{const_name Nil}, _) =>
-           (case str of
-              Const (@{const_name Some}, _) $ (Const (@{const_name ParsedIf}, _) $ _ $ _ $ _) =>
-                safe_resolve_tac "DEBUG NoAssignIf did not unify" ctxt @{thms NoAssignIf}
-            | Const (@{const_name None}, _) =>
-                (case cont of
-                   Const (@{const_name KSeq}, _) $ _ $ _ =>
-                     safe_resolve_tac "DEBUG NoAssignCont did not unify" ctxt @{thms NoAssignCont}
-                 | _ => (fn _ => raise TERM ("DEBUG dead end: empty bigblock, str=None, cont not KSeq", [pp2])))
-            | _ => (fn _ => raise TERM ("DEBUG dead end: empty bigblock, str neither Some(ParsedIf) nor None", [pp2, str])))
-       | _ => (fn _ => raise TERM ("DEBUG dead end: cs neither Cons nor Nil", [pp2, cs])))
+    Const (@{const_name Product_Type.Pair}, _) $ bb $ cont =>
+      if not (is_bigblock_head bb) then
+        (case blocking_name is_bigblock_head bb of
+           SOME name => unfold_one_name_tac ctxt name
+         | NONE => (fn _ => raise TERM ("DEBUG dead end: pp2's bigblock is not headed by a constant", [pp2])))
+      else
+        let val Const (@{const_name BigBlock}, _) $ _ $ cs $ str $ _ = bb in
+          case cs of
+            Const (@{const_name Cons}, _) $ _ $ _ =>
+              safe_resolve_tac "DEBUG NoAssignSimpleCmd did not unify" ctxt @{thms NoAssignSimpleCmd}
+          | Const (@{const_name Nil}, _) =>
+              (case str of
+                 Const (@{const_name Some}, _) $ (Const (@{const_name ParsedIf}, _) $ _ $ _ $ _) =>
+                   safe_resolve_tac "DEBUG NoAssignIf did not unify" ctxt @{thms NoAssignIf}
+               | Const (@{const_name None}, _) =>
+                   if not (is_cont_head cont) then
+                     (case blocking_name is_cont_head cont of
+                        SOME name => unfold_one_name_tac ctxt name
+                      | NONE => (fn _ => raise TERM ("DEBUG dead end: pp2's cont is not headed by a constant", [pp2])))
+                   else
+                     (case cont of
+                        Const (@{const_name KSeq}, _) $ _ $ _ =>
+                          safe_resolve_tac "DEBUG NoAssignCont did not unify" ctxt @{thms NoAssignCont}
+                      | _ => (fn _ => raise TERM ("DEBUG dead end: empty bigblock, str=None, cont is KStop/KEndBlock", [pp2])))
+               | _ => (fn _ => raise TERM ("DEBUG dead end: empty bigblock, str neither Some(ParsedIf) nor None", [pp2, str])))
+          | _ => (fn _ => raise TERM ("DEBUG dead end: cs neither Cons nor Nil", [pp2, cs]))
+        end
   | _ => (fn _ => raise TERM ("DEBUG dead end: pp2 not a BigBlock pair", [pp2]))
 
 fun no_heap_assignment_until_step_tac ctxt = SUBGOAL (fn (t, i) =>
@@ -122,7 +164,6 @@ fun no_heap_assignment_until_step_tac ctxt = SUBGOAL (fn (t, i) =>
   | _ => raise TERM ("DEBUG side-condition not closed by simp", [Logic.strip_assums_concl t]))
 
 fun no_heap_assignment_until_tac ctxt : int -> tactic =
-  (TRY_TAC' (unfold_visible_bigblocks_tac ctxt)) THEN'
   no_heap_assignment_until_step_tac ctxt THEN_ALL_NEW
     (fn i => (assm_full_simp_solved_tac ctxt i) ORELSE (no_heap_assignment_until_tac ctxt i))
 
