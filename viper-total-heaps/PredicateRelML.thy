@@ -255,7 +255,10 @@ fun inhale_rel_pred_acc_upd_rel_tac' ctxt (info: basic_stmt_rel_info) pred_name 
   (Rmsg' "inh pred acc upd PlocBpl" (simp_tac_with_thms [] ctxt) ctxt) THEN'
   (Rmsg' "inh pred acc upd PlocRel" (prove_ploc_rel' ctxt info pred_name exp_rel_info) ctxt) THEN'
   (Rmsg' "inh pred acc upd AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info, @{thm ty_repr_basic_def}] ctxt) ctxt) THEN'
-  (Rmsg' "inh pred acc upd ProgEq" (simp_tac_with_thms [] ctxt) ctxt)
+  (Rmsg' "inh pred acc upd ProgEq" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+  (Rmsg' "inh pred acc upd KFPosOff" (assm_full_simp_solved_with_thms_tac
+                                       ([#tr_def_thm info, #ty_repr_def_thm info] @
+                                          @{thms default_state_rel_options_def}) ctxt) ctxt)
 
 
 fun atomic_inhale_pred_acc_in_fold_tac ctxt (info: basic_stmt_rel_info) inh_pred_acc_hint =
@@ -275,6 +278,8 @@ fun atomic_inhale_pred_acc_in_fold_tac ctxt (info: basic_stmt_rel_info) inh_pred
 
 fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) exhale_hint atomic_inhale_hint (kfm_temp_var_lookup_thms : thm list) =
   let val pred_data = lookup_predicate_data basic_info pred_name in
+  (Rmsg' "fold stmt propogate (good state)" (resolve_tac ctxt [@{thm stmt_rel_propagate_3}]) ctxt) THEN'
+
   (Rmsg' "fold stmt rule" (resolve_tac ctxt @{thms fold_stmt_rel_kf}) ctxt) THEN'
 
   (Rmsg' "fold stmt PredDecl" (assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm basic_info, #predicate_lookup_thm pred_data] ctxt) ctxt) THEN'
@@ -310,9 +315,9 @@ fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atom
   (Rmsg' "fold stmt StateRelStrengthening 1" (eresolve_tac ctxt @{thms turn_on_knownfolded_rel'}) ctxt) THEN'
   (Rmsg' "fold stmt StateRelStrengthening 2" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt StateRelStrengthening 3" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info, @{thm default_state_rel_options_def}] ctxt) ctxt) THEN'
+  (Rmsg' "fold stmt StateRelStrengthening 4" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info, @{thm default_state_rel_options_def}] ctxt) ctxt) THEN'
 
   (atomic_inhale_pred_acc_in_fold_tac ctxt basic_info atomic_inhale_hint) THEN'
-  (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint debug", [t]))) THEN' *)
 
   (Rmsg' "fold stmt good state after inhale propagate 1" (resolve_tac ctxt @{thms rel_propagate_pre_3_only_state_rel}) ctxt) THEN'
   (Rmsg' "fold stmt good state after inhale progress 1" ((progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm basic_info) (#tr_def_thm basic_info))) ctxt) THEN'
@@ -322,7 +327,8 @@ fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atom
   (Rmsg' "fold stmt known-folded mask update" (kfm_upd_rel_tac ctxt basic_info pred_name exp_rel_info kfm_temp_var_lookup_thms) ctxt) THEN'
 
   (Rmsg' "fold stmt NoHeapAssignBetween" (no_heap_assignment_until_tac ctxt |> SOLVED') ctxt) THEN'
-  (Rmsg' "fold stmt PPSyntacticRestriction" (program_point_restriction_tac ctxt |> SOLVED') ctxt)
+  (Rmsg' "fold stmt PPSyntacticRestriction" (program_point_restriction_tac ctxt |> SOLVED') ctxt) THEN'
+  (Rmsg' "fold stmt good state final" ((progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm basic_info) (#tr_def_thm basic_info))) ctxt)
   end
 
 

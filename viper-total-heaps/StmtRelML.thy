@@ -235,7 +235,8 @@ ML \<open>
   fun exhale_havoc_tac ctxt (info: basic_stmt_rel_info) (lookup_decl_exhale_heap_thm: thm) =
     let val tr_thm = #tr_def_thm info in
       (Rmsg' "exhale havoc 1" (resolve_tac ctxt @{thms exhale_stmt_rel_finish}) ctxt) THEN'
-      (Rmsg' "exhale havoc StateRel"  (assm_full_simp_solved_with_thms_tac [tr_thm] ctxt) ctxt) THEN'
+      (Rmsg' "exhale havoc StateRel"  ((assume_tac ctxt) ORELSE'
+                                        (assm_full_simp_solved_with_thms_tac [tr_thm] ctxt)) ctxt) THEN'
       (Rmsg' "exhale havoc CtxtWf"  (resolve_tac ctxt [#ctxt_wf_thm info]) ctxt) THEN'
       (Rmsg' "exhale havoc WfTyRepr"  (resolve_tac ctxt [#wf_ty_repr_thm info]) ctxt) THEN'
       (Rmsg' "exhale havoc ProgramTotal" (resolve_tac ctxt [@{thm HOL.sym} OF [#vpr_program_ctxt_eq_thm info]]) ctxt) THEN'
@@ -253,7 +254,10 @@ ML \<open>
       (Rmsg' "exhale havoc HeapVar" (assm_full_simp_solved_with_thms_tac [tr_thm] ctxt) ctxt) THEN'
       (Rmsg' "exhale havoc MaskVar" (assm_full_simp_solved_with_thms_tac [tr_thm] ctxt) ctxt) THEN'
       (Rmsg' "exhale havoc LookupDeclExhaleHeap" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info, lookup_decl_exhale_heap_thm] ctxt) ctxt) THEN'
-      (Rmsg' "exhale havoc ExhaleHeapFresh" (#aux_var_disj_tac info ctxt) ctxt)
+      (Rmsg' "exhale havoc ExhaleHeapFresh" (#aux_var_disj_tac info ctxt) ctxt) THEN'
+      (* The exhale runs with the unguarded known-folded relation given up and the permission-guarded
+         one kept (see exhale_knownfolded_rel_opt); the original record is restored by the havoc. *)
+      (Rmsg' "exhale havoc TrExhale" (assm_full_simp_solved_with_thms_tac [tr_thm] ctxt) ctxt)
     end
 
   fun exhale_pure_no_havoc_tac ctxt =
@@ -266,18 +270,26 @@ ML \<open>
     (Rmsg' "exhale no havoc pure assertion cond" (assm_full_simp_solved_tac ctxt) ctxt)
 
   fun normal_exhale_rel_tac ctxt (info: 'a exhale_rel_info) (hint: 'a normal_exhale_rel_complete_hint) =
+    (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint debug", [t]))) THEN' *)
     (Rmsg' "stmt rel exhale pre propagate" (resolve_tac ctxt @{thms exhale_rel_propagate_pre_no_inv_same_exh}) ctxt) THEN'
     (Rmsg' "stmt rel exhale propagate progress" (resolve_tac ctxt @{thms red_ast_bpl_rel_transitive} THEN' (progress_red_bpl_rel_tac ctxt)) ctxt) THEN'
 (*  old version: (Rmsg' "stmt rel exhale track well-def" (resolve_tac ctxt [@{thm red_ast_bpl_rel_weaken_input} OF @{thms state_rel_def_same_to_state_rel}] THEN' simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'*)
     (Rmsg' "stmt rel exhale track well-def propagate" (resolve_tac ctxt @{thms red_ast_bpl_rel_transitive}) ctxt) THEN'
-    (Rmsg' "stmt rel exhale track well-def" (resolve_tac ctxt @{thms red_ast_bpl_rel_to_state_rel} THEN' simp_then_if_not_solved_blast_tac ctxt) ctxt) THEN'
+    (Rmsg' "stmt rel exhale track well-def"
+       (resolve_tac ctxt @{thms red_ast_bpl_rel_to_state_rel} THEN'
+        (* Give up the unguarded known-folded relation for the duration of the exhale, keeping the
+           permission-guarded one, which every exhale step preserves. *)
+        ((resolve_tac ctxt @{thms state_rel_kf_exhale_weaken} THEN'
+          simp_then_if_not_solved_blast_tac ctxt THEN'
+          assm_full_simp_solved_with_thms_tac
+            [#tr_def_thm (#basic_info info), @{thm default_state_rel_options_def}] ctxt)
+         ORELSE' simp_then_if_not_solved_blast_tac ctxt)) ctxt) THEN'
     (Rmsg' "setup well-def state exhale" ((#setup_well_def_state_tac hint) (#basic_info info) ctxt) ctxt) THEN'
-    (SUBGOAL (fn (t,_) => raise TERM ("breakpoint 1", [t]))) THEN'
     exhale_rel_aux_tac ctxt info (#exhale_rel_hint hint) THEN'
-    (Rmsg' "stmt rel exhale havoc pre propagate" (resolve_tac ctxt @{thms rel_propagate_pre_2_only_state_rel}) ctxt) THEN'
+    (Rmsg' "stmt rel exhale havoc pre propagate" (resolve_tac ctxt @{thms rel_propagate_pre_4_only_state_rel}) ctxt) THEN'
     (* apply transitive rule such to make sure that the active big block before exhale_finish_tac is unfolded *)
     (Rmsg' "stmt rel exhale red ast bpl transitive" (resolve_tac ctxt @{thms red_ast_bpl_rel_transitive_3}) ctxt) THEN'
-      (Rmsg' "exhale revert state relation" (exhale_revert_state_relation ctxt (#basic_info info)) ctxt) THEN'
+      (Rmsg' "exhale revert state relation" (exhale_revert_state_relation_keep_rel ctxt) ctxt) THEN'
       (Rmsg' "stmt rel exhale progress" (progress_red_bpl_rel_tac ctxt) ctxt) THEN'
     (case (#lookup_decl_exhale_heap hint) of
          SOME lookup_decl_exhale_heap_thm =>
@@ -344,9 +356,9 @@ ML \<open>
 
   fun atomic_rel_inst_tac ctxt (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) (atomic_hint : atomic_rel_hint)  =
     (case atomic_hint of
-        AssignHint (exp_wf_rel_info, exp_rel_info, lookup_bpl_target_thm) =>
+       AssignHint (exp_wf_rel_info, exp_rel_info, lookup_bpl_target_thm) =>
                red_assign_tac ctxt basic_info exp_wf_rel_info exp_rel_info lookup_bpl_target_thm
-     |  FieldAssignHint _ => field_assign_rel_tac ctxt basic_info atomic_hint
+     | FieldAssignHint _ => field_assign_rel_tac ctxt basic_info atomic_hint
      | InhaleHint inh_complete_hint =>
         (Rmsg' "AtomincInh Start" (resolve_tac ctxt [#inhale_stmt_rel_thm inh_complete_hint]) ctxt) THEN'
         (Rmsg' "AtomincInh StateRel" (assm_full_simp_solved_tac ctxt) ctxt) THEN'

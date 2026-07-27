@@ -1847,4 +1847,260 @@ proof -
 qed
 
 
+
+
+lemma add_masks_pos_iff:
+  fixes m\<^sub>1 m\<^sub>2 :: "'b \<Rightarrow> preal"
+  shows "(0 < add_masks m\<^sub>1 m\<^sub>2 l) = (0 < m\<^sub>1 l \<or> 0 < m\<^sub>2 l)"
+proof -
+  have Sum: "Rep_preal (add_masks m\<^sub>1 m\<^sub>2 l) = Rep_preal (m\<^sub>1 l) + Rep_preal (m\<^sub>2 l)"
+    by (simp add: add_masks_def plus_preal.rep_eq)
+  have "Rep_preal (m\<^sub>1 l) \<ge> 0" and "Rep_preal (m\<^sub>2 l) \<ge> 0"
+    by (simp_all add: prat_non_negative)
+  thus ?thesis
+    using Sum
+    by (auto simp: less_preal.rep_eq zero_preal.rep_eq)
+qed
+
+
+lemma Abs_preal_pos_iff:
+  assumes "v \<ge> 0"
+  shows "(0 < Abs_preal v) = (0 < v)"
+  by (metis Abs_preal_inverse assms less_preal.rep_eq mem_Collect_eq zero_preal.rep_eq)
+
+lemma eval_mult_pos_iff:
+  assumes "ctxt, \<omega>_def \<turnstile> \<langle>Binop (real_to_expr p\<^sub>1) Mult e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v\<^sub>1)"
+      and "ctxt, \<omega>_def \<turnstile> \<langle>Binop (real_to_expr p\<^sub>2) Mult e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v\<^sub>2)"
+      and "p\<^sub>1 > 0" and "p\<^sub>2 > 0" and "v\<^sub>1 \<ge> 0" and "v\<^sub>2 \<ge> 0"
+    shows "(0 < v\<^sub>1) = (0 < v\<^sub>2)"
+proof -
+  obtain u\<^sub>1 w\<^sub>1 where
+    a\<^sub>1: "ctxt, \<omega>_def \<turnstile> \<langle>real_to_expr p\<^sub>1; \<omega>\<rangle> [\<Down>]\<^sub>t Val u\<^sub>1" and
+    b\<^sub>1: "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val w\<^sub>1" and
+    c\<^sub>1: "eval_binop u\<^sub>1 Mult w\<^sub>1 = BinopNormal (VPerm v\<^sub>1)"
+    using assms(1)
+    by (auto elim: RedBinop_case)
+  obtain u\<^sub>2 w\<^sub>2 where
+    a\<^sub>2: "ctxt, \<omega>_def \<turnstile> \<langle>real_to_expr p\<^sub>2; \<omega>\<rangle> [\<Down>]\<^sub>t Val u\<^sub>2" and
+    b\<^sub>2: "ctxt, \<omega>_def \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val w\<^sub>2" and
+    c\<^sub>2: "eval_binop u\<^sub>2 Mult w\<^sub>2 = BinopNormal (VPerm v\<^sub>2)"
+    using assms(2)
+    by (auto elim: RedBinop_case)
+  have "u\<^sub>1 = VPerm p\<^sub>1"
+    using a\<^sub>1[simplified]
+    by (auto elim: RedLit_case)
+  moreover have "u\<^sub>2 = VPerm p\<^sub>2"
+    using a\<^sub>2[simplified]
+    by (auto elim: RedLit_case)
+  moreover have "w\<^sub>1 = w\<^sub>2"
+    using b\<^sub>1 b\<^sub>2 eval_is_deterministic(1)
+    by blast
+  ultimately show ?thesis
+    using c\<^sub>1 c\<^sub>2 assms(3,4,5,6)
+    by (cases w\<^sub>2; auto simp: zero_less_mult_iff split: if_split_asm)
+qed
+
+text \<open>The masks that satisfy a scaled assertion in a fixed state all have the same support: the
+      scaling factor changes the permission amounts, but not which locations carry permission.\<close>
+
+lemma sat_same_support:
+    fixes p\<^sub>1 p\<^sub>2 :: real
+  assumes "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult p\<^sub>1 A)"
+      and "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult p\<^sub>2 A)"
+      and "p\<^sub>1 > 0" and "p\<^sub>2 > 0"
+    shows "(\<forall>l. (0 < mh\<^sub>1 l) = (0 < mh\<^sub>2 l)) \<and> (\<forall>lp. (0 < mp\<^sub>1 lp) = (0 < mp\<^sub>2 lp))"
+  using assms(1,2)
+proof (induct A arbitrary: mh\<^sub>1 mp\<^sub>1 mh\<^sub>2 mp\<^sub>2)
+  case (Atomic x)
+  show ?case
+  proof (cases x)
+    case (Pure e)
+    thus ?thesis
+      using Atomic.prems
+      by (auto elim: SatPure_case simp: zero_mask_def)
+  next
+    case (Acc e_r f e_p)
+    show ?thesis
+    proof (cases e_p)
+      case (PureExp e)
+      obtain r\<^sub>1 v\<^sub>1 where
+        R\<^sub>1: "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r\<^sub>1)" and
+        P\<^sub>1: "ctxt, None \<turnstile> \<langle>Binop (real_to_expr p\<^sub>1) Mult e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v\<^sub>1)" and
+        N\<^sub>1: "v\<^sub>1 \<ge> 0" and
+        H\<^sub>1: "if r\<^sub>1 = Null then v\<^sub>1 = 0 \<and> mh\<^sub>1 = zero_mask
+              else mh\<^sub>1 = singleton_mh (the_address r\<^sub>1, f) (Abs_preal v\<^sub>1)" and
+        M\<^sub>1: "mp\<^sub>1 = zero_mask"
+        using Atomic.prems(1)[simplified \<open>x = _\<close> \<open>e_p = _\<close>]
+        by (auto elim: SatAcc_case)
+      obtain r\<^sub>2 v\<^sub>2 where
+        R\<^sub>2: "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r\<^sub>2)" and
+        P\<^sub>2: "ctxt, None \<turnstile> \<langle>Binop (real_to_expr p\<^sub>2) Mult e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v\<^sub>2)" and
+        N\<^sub>2: "v\<^sub>2 \<ge> 0" and
+        H\<^sub>2: "if r\<^sub>2 = Null then v\<^sub>2 = 0 \<and> mh\<^sub>2 = zero_mask
+              else mh\<^sub>2 = singleton_mh (the_address r\<^sub>2, f) (Abs_preal v\<^sub>2)" and
+        M\<^sub>2: "mp\<^sub>2 = zero_mask"
+        using Atomic.prems(2)[simplified \<open>x = _\<close> \<open>e_p = _\<close>]
+        by (auto elim: SatAcc_case)
+      have "r\<^sub>1 = r\<^sub>2"
+        using R\<^sub>1 R\<^sub>2 eval_is_deterministic(1)
+        by blast
+      moreover have "(0 < v\<^sub>1) = (0 < v\<^sub>2)"
+        by (rule eval_mult_pos_iff[OF P\<^sub>1 P\<^sub>2 assms(3) assms(4) N\<^sub>1 N\<^sub>2])
+      ultimately show ?thesis
+        using H\<^sub>1 H\<^sub>2 M\<^sub>1 M\<^sub>2 N\<^sub>1 N\<^sub>2 Abs_preal_pos_iff
+        by (auto simp: zero_mask_def split: if_split_asm)
+    next
+      case Wildcard
+      obtain r\<^sub>1 q\<^sub>1 where
+        R\<^sub>1: "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r\<^sub>1)" and
+        "r\<^sub>1 \<noteq> Null" and "q\<^sub>1 > 0" and
+        H\<^sub>1: "mh\<^sub>1 = singleton_mh (the_address r\<^sub>1, f) q\<^sub>1" and
+        M\<^sub>1: "mp\<^sub>1 = zero_mask"
+        using Atomic.prems(1)[simplified \<open>x = _\<close> \<open>e_p = _\<close>] assms(3)
+        by (auto elim: SatAccWildcard_case)
+      obtain r\<^sub>2 q\<^sub>2 where
+        R\<^sub>2: "ctxt, None \<turnstile> \<langle>e_r; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VRef r\<^sub>2)" and
+        "r\<^sub>2 \<noteq> Null" and "q\<^sub>2 > 0" and
+        H\<^sub>2: "mh\<^sub>2 = singleton_mh (the_address r\<^sub>2, f) q\<^sub>2" and
+        M\<^sub>2: "mp\<^sub>2 = zero_mask"
+        using Atomic.prems(2)[simplified \<open>x = _\<close> \<open>e_p = _\<close>] assms(4)
+        by (auto elim: SatAccWildcard_case)
+      have "r\<^sub>1 = r\<^sub>2"
+        using R\<^sub>1 R\<^sub>2 eval_is_deterministic(1)
+        by blast
+      thus ?thesis
+        using H\<^sub>1 H\<^sub>2 M\<^sub>1 M\<^sub>2 \<open>q\<^sub>1 > 0\<close> \<open>q\<^sub>2 > 0\<close>
+        by (auto simp: zero_mask_def)
+    qed
+  next
+    case (AccPredicate pid e_args e_p)
+    show ?thesis
+    proof (cases e_p)
+      case (PureExp e)
+      obtain vs\<^sub>1 v\<^sub>1 where
+        A\<^sub>1: "red_pure_exps_total ctxt None e_args \<omega> (Some vs\<^sub>1)" and
+        P\<^sub>1: "ctxt, None \<turnstile> \<langle>Binop (real_to_expr p\<^sub>1) Mult e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v\<^sub>1)" and
+        N\<^sub>1: "v\<^sub>1 \<ge> 0" and
+        H\<^sub>1: "mh\<^sub>1 = zero_mask" and
+        M\<^sub>1: "mp\<^sub>1 = singleton_mp (pid, vs\<^sub>1) (Abs_preal v\<^sub>1)"
+        using Atomic.prems(1)[simplified \<open>x = _\<close> \<open>e_p = _\<close>]
+        by (auto elim: SatAccPred_case)
+      obtain vs\<^sub>2 v\<^sub>2 where
+        A\<^sub>2: "red_pure_exps_total ctxt None e_args \<omega> (Some vs\<^sub>2)" and
+        P\<^sub>2: "ctxt, None \<turnstile> \<langle>Binop (real_to_expr p\<^sub>2) Mult e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v\<^sub>2)" and
+        N\<^sub>2: "v\<^sub>2 \<ge> 0" and
+        H\<^sub>2: "mh\<^sub>2 = zero_mask" and
+        M\<^sub>2: "mp\<^sub>2 = singleton_mp (pid, vs\<^sub>2) (Abs_preal v\<^sub>2)"
+        using Atomic.prems(2)[simplified \<open>x = _\<close> \<open>e_p = _\<close>]
+        by (auto elim: SatAccPred_case)
+      have "vs\<^sub>1 = vs\<^sub>2"
+        using A\<^sub>1 A\<^sub>2 eval_is_deterministic(2)
+        by blast
+      moreover have "(0 < v\<^sub>1) = (0 < v\<^sub>2)"
+        by (rule eval_mult_pos_iff[OF P\<^sub>1 P\<^sub>2 assms(3) assms(4) N\<^sub>1 N\<^sub>2])
+      ultimately show ?thesis
+        using H\<^sub>1 H\<^sub>2 M\<^sub>1 M\<^sub>2 N\<^sub>1 N\<^sub>2 Abs_preal_pos_iff
+        by (auto simp: zero_mask_def)
+    next
+      case Wildcard
+      obtain vs\<^sub>1 q\<^sub>1 where
+        A\<^sub>1: "red_pure_exps_total ctxt None e_args \<omega> (Some vs\<^sub>1)" and
+        "q\<^sub>1 > 0" and
+        H\<^sub>1: "mh\<^sub>1 = zero_mask" and
+        M\<^sub>1: "mp\<^sub>1 = singleton_mp (pid, vs\<^sub>1) q\<^sub>1"
+        using Atomic.prems(1)[simplified \<open>x = _\<close> \<open>e_p = _\<close>] assms(3)
+        by (auto elim: SatAccPredWildcard_case)
+      obtain vs\<^sub>2 q\<^sub>2 where
+        A\<^sub>2: "red_pure_exps_total ctxt None e_args \<omega> (Some vs\<^sub>2)" and
+        "q\<^sub>2 > 0" and
+        H\<^sub>2: "mh\<^sub>2 = zero_mask" and
+        M\<^sub>2: "mp\<^sub>2 = singleton_mp (pid, vs\<^sub>2) q\<^sub>2"
+        using Atomic.prems(2)[simplified \<open>x = _\<close> \<open>e_p = _\<close>] assms(4)
+        by (auto elim: SatAccPredWildcard_case)
+      have "vs\<^sub>1 = vs\<^sub>2"
+        using A\<^sub>1 A\<^sub>2 eval_is_deterministic(2)
+        by blast
+      thus ?thesis
+        using H\<^sub>1 H\<^sub>2 M\<^sub>1 M\<^sub>2 \<open>q\<^sub>1 > 0\<close> \<open>q\<^sub>2 > 0\<close>
+        by (auto simp: zero_mask_def)
+    qed
+  qed
+next
+  case (Imp e A)
+  show ?case
+  proof (cases "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)")
+    case True
+    have NotFalse: "\<not> (ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False))"
+      using True eval_is_deterministic(1)
+      by fastforce
+    have "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult p\<^sub>1 A)"
+      using Imp.prems(1) NotFalse
+      by (auto elim: SatImp_case)
+    moreover have "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult p\<^sub>2 A)"
+      using Imp.prems(2) NotFalse
+      by (auto elim: SatImp_case)
+    ultimately show ?thesis
+      using Imp.hyps
+      by blast
+  next
+    case False
+    have "mh\<^sub>1 = zero_mask" and "mp\<^sub>1 = zero_mask"
+      using Imp.prems(1) False
+      by (auto elim: SatImp_case)
+    moreover have "mh\<^sub>2 = zero_mask" and "mp\<^sub>2 = zero_mask"
+      using Imp.prems(2) False
+      by (auto elim: SatImp_case)
+    ultimately show ?thesis
+      by (simp add: zero_mask_def)
+  qed
+next
+  case (CondAssert e A B)
+  show ?case
+  proof (cases "ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)")
+    case True
+    have NotFalse: "\<not> (ctxt, None \<turnstile> \<langle>e; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False))"
+      using True eval_is_deterministic(1)
+      by fastforce
+    have "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult p\<^sub>1 A)"
+      using CondAssert.prems(1) NotFalse
+      by (auto elim: SatCond_case)
+    moreover have "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult p\<^sub>2 A)"
+      using CondAssert.prems(2) NotFalse
+      by (auto elim: SatCond_case)
+    ultimately show ?thesis
+      using CondAssert.hyps(1)
+      by blast
+  next
+    case False
+    have "sat ctxt \<omega> mh\<^sub>1 mp\<^sub>1 (syntactic_mult p\<^sub>1 B)"
+      using CondAssert.prems(1) False
+      by (auto elim: SatCond_case)
+    moreover have "sat ctxt \<omega> mh\<^sub>2 mp\<^sub>2 (syntactic_mult p\<^sub>2 B)"
+      using CondAssert.prems(2) False
+      by (auto elim: SatCond_case)
+    ultimately show ?thesis
+      using CondAssert.hyps(2)
+      by blast
+  qed
+next
+  case (Star A B)
+  obtain mhA\<^sub>1 mhB\<^sub>1 mpA\<^sub>1 mpB\<^sub>1 where
+    Split\<^sub>1: "mh\<^sub>1 = add_masks mhA\<^sub>1 mhB\<^sub>1" "mp\<^sub>1 = add_masks mpA\<^sub>1 mpB\<^sub>1" and
+    SatA\<^sub>1: "sat ctxt \<omega> mhA\<^sub>1 mpA\<^sub>1 (syntactic_mult p\<^sub>1 A)" and
+    SatB\<^sub>1: "sat ctxt \<omega> mhB\<^sub>1 mpB\<^sub>1 (syntactic_mult p\<^sub>1 B)"
+    using Star.prems(1)
+    by (auto elim: SatStar_case)
+  obtain mhA\<^sub>2 mhB\<^sub>2 mpA\<^sub>2 mpB\<^sub>2 where
+    Split\<^sub>2: "mh\<^sub>2 = add_masks mhA\<^sub>2 mhB\<^sub>2" "mp\<^sub>2 = add_masks mpA\<^sub>2 mpB\<^sub>2" and
+    SatA\<^sub>2: "sat ctxt \<omega> mhA\<^sub>2 mpA\<^sub>2 (syntactic_mult p\<^sub>2 A)" and
+    SatB\<^sub>2: "sat ctxt \<omega> mhB\<^sub>2 mpB\<^sub>2 (syntactic_mult p\<^sub>2 B)"
+    using Star.prems(2)
+    by (auto elim: SatStar_case)
+  show ?case
+    using Star.hyps(1)[OF SatA\<^sub>1 SatA\<^sub>2] Star.hyps(2)[OF SatB\<^sub>1 SatB\<^sub>2] Split\<^sub>1 Split\<^sub>2
+    by (simp add: add_masks_pos_iff)
+qed (auto elim: SatImpureAnd_case SatImpureOr_case SatWand_case SatForAll_case SatExists_case)
+
+
+
 end

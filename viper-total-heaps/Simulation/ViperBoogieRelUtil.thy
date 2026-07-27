@@ -1034,7 +1034,8 @@ proof -
     by (rule heap_var_rel_stable) auto
 
   have KnownFoldedVarRel: "heap_knownfolded_var_rel (knownfolded_state_rel_opt (state_rel_opt Tr)) Pr (var_context ctxt) (field_translation Tr) hvar' (upd_hh_total_full \<omega> hh') ?ns'"
-    unfolding heap_knownfolded_var_rel_def
+    unfolding heap_knownfolded_var_rel_def knownfolded_masks_normal_fields_def
+              heap_knownfolded_rel_pos_def
     using lookup_var_decl_ty_Some LookupDeclNewVar HeapTyBpl KnownFoldedRel TotalHeapWellTy KnownFoldedEmpty
     by auto
 
@@ -1139,8 +1140,10 @@ proof -
     apply (intro conjI)
     using hb_lookup
       apply auto[1]
-     apply (simp add: hb_empty)
-    by (simp add: hb_empty heap_knownfolded_rel_def)
+       apply (simp add: hb_empty)
+      apply (simp add: hb_empty knownfolded_masks_normal_fields_def)
+     apply (simp add: hb_empty heap_knownfolded_rel_def)
+    by (simp add: hb_empty heap_knownfolded_rel_pos_def)
 
   with mask_var_upd_red_ast_bpl_propagate_general[OF StateRel1 LookupTyMask _ _ TypeInterp _ RedMaskBpl[OF StateRel1]]
   obtain ns'' where
@@ -1193,7 +1196,9 @@ definition pred_eq_heap_aux
                vbpl_absval_ty_opt TyRep (AHeap hb) = Some ((THeapId TyRep) ,[]) \<and>
                heap_rel Pr FieldTr (get_hh_total_full \<omega>) hb \<and>
                (\<forall>lp. \<exists>kfm. hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))) \<and>
-               (kf_turned_on kf_opt \<longrightarrow> heap_knownfolded_rel Pr FieldTr (get_nm_total_full \<omega>) hb)"
+               knownfolded_masks_normal_fields hb \<and>
+               (kf_turned_on kf_opt \<longrightarrow> heap_knownfolded_rel Pr FieldTr (get_nm_total_full \<omega>) hb) \<and>
+               (kf_pos_turned_on kf_opt \<longrightarrow> heap_knownfolded_rel_pos Pr FieldTr (get_nm_total_full \<omega>) hb)"
 
 
 definition pred_eq_heap

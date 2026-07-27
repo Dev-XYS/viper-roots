@@ -150,7 +150,8 @@ lemma exhale_rel_pred_acc_upd_rel_general:
     AbsInterpEq: "absval_interp_total ctxt_vpr = domain_type TyRep" and
     ProgEq: "program_total ctxt_vpr = Pr" and
 
-    KFRelOff: "\<not> (kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr)))"
+    KFRelOff: "\<not> (kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr)))" and
+    ConsOn: "consistent_state_rel_opt (state_rel_opt Tr)"
 
   shows "rel_general R R'
            (\<lambda>\<omega>def_\<omega> \<omega>def_\<omega>'. fst \<omega>def_\<omega> = fst \<omega>def_\<omega>' \<and>
@@ -332,8 +333,13 @@ proof -
     using InitRel state_rel_eval_welldef_eq trace_same apply fastforce
     using InitRel state_rel_eval_welldef_eq hh_same apply fastforce
             defer defer defer defer
-    using KFRelOff heap_knownfolded_var_rel_def
-            apply (metis InitRel' MaskVar heap_var_disjoint state_rel_heap_knownfolded_var_rel state_rel_state_rel0 update_var_apply)
+            apply (rule heap_knownfolded_var_rel_rm_from_lpm
+                          [OF state_rel_heap_knownfolded_var_rel[OF InitRel'] KFRelOff])
+    using state_rel_consistent[OF InitRel' ConsOn]
+              apply blast
+    using InitRel' MaskVar heap_var_disjoint state_rel_state_rel0 update_var_other
+             apply metis
+            apply (simp add: \<open>\<omega>' = _\<close>)
            apply (metis InitRel MaskVar field_rel_stable mask_var_disjoint state_rel_field_rel state_rel_state_rel0 update_var_other)
           apply (metis InitRel MaskVar boogie_const_rel_stable mask_var_disjoint state_rel_boogie_const_rel state_rel_state_rel0 update_var_other)
          defer

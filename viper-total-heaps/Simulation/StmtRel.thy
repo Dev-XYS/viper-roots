@@ -929,6 +929,28 @@ lemma exhale_stmt_rel_inst_framing_inv:
   using assms
   by auto
 
+lemma state_rel_heap_knownfolded_rel_pos:
+  assumes StateRel: "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns"
+      and KfOn: "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))"
+      and LookupHeap: "lookup_var (var_context ctxt) ns (heap_var Tr) = Some (AbsV (AHeap hb))"
+    shows "heap_knownfolded_rel_pos Pr (field_translation Tr) (get_nm_total_full \<omega>) hb"
+proof -
+  obtain hb' where
+    L: "lookup_var (var_context ctxt) ns (heap_var Tr) = Some (AbsV (AHeap hb'))" and
+    R: "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr)) \<longrightarrow>
+        heap_knownfolded_rel Pr (field_translation Tr) (get_nm_total_full \<omega>) hb'"
+    using state_rel_heap_knownfolded_var_rel[OF StateRel]
+    unfolding heap_knownfolded_var_rel_def
+    by blast
+  have "hb' = hb"
+    using L LookupHeap
+    by simp
+  thus ?thesis
+    using R KfOn heap_knownfolded_rel_imp_pos
+    by blast
+qed
+
+
 lemma exhale_stmt_rel_finish:
   assumes StateRel: "state_rel_def_same Pr StateCons (TyRep :: 'a ty_repr_bpl) Tr AuxPred ctxt \<omega> ns" and
           CtxtWf: "ctxt_wf Pr TyRep F FunMap FunDom ctxt" and
@@ -948,13 +970,18 @@ lemma exhale_stmt_rel_finish:
                       (ran (var_translation Tr)) \<union>
                       (ran (field_translation Tr)) \<union>
                       (range (const_repr Tr)) \<union>
-                      dom AuxPred)"
+                      dom AuxPred)" and
+          \<comment>\<open>The exhale runs with the unguarded known-folded relation given up and the
+             permission-guarded one kept; the original record \<^term>\<open>Tr_out\<close> is restored here, which
+             is possible because the exhale heap resets the known-folded masks of the predicates
+             that lost all of their permission.\<close>
+          TrExhale: "Tr = exhale_knownfolded_rel_opt Tr_out"
   shows "\<exists>ns'. red_ast_bpl P ctxt ((BigBlock name (Havoc hvar_exh #
                                                    Assume (FunExp id_on_known_locs_name [] [Var hvar, Var hvar_exh, Var mvar]) #
                                                    Assign hvar (Var hvar_exh) #
                                                    cs) str tr, cont), Normal ns)
                                   ((BigBlock name cs str tr, cont), Normal ns') \<and>
-               state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega>' ns'" (is "\<exists>ns'. ?red ns' \<and> ?rel ns'")
+               state_rel_def_same Pr StateCons TyRep Tr_out AuxPred ctxt \<omega>' ns'" (is "\<exists>ns'. ?red ns' \<and> ?rel ns'")
 proof -
   from state_rel_heap_var_rel[OF StateRel]
   obtain hb where
@@ -1008,6 +1035,80 @@ proof -
            hb'' loc_bpl = hb' loc_bpl"
     using heap_rel_stable_2_well_typed[OF * HeapKnownFoldedRel ** HeapVarWellTy]
     by blast
+
+  have NewHeapPredMask: "\<And>lp. hb'' (Null, PredKnownFoldedField lp) = hb (Null, PredKnownFoldedField lp)"
+    using NewHeapProperty ProgramTotal
+    unfolding vpr_heap_locations_bpl_def
+    by simp
+
+  have KFRelPos: "\<And>hb. lookup_var (var_context ctxt) ns (heap_var Tr) = Some (AbsV (AHeap hb)) \<Longrightarrow>
+                        heap_knownfolded_rel_pos Pr (field_translation Tr) (get_nm_total_full \<omega>) hb"
+    using state_rel_heap_knownfolded_var_rel[OF StateRel] TrExhale
+    unfolding heap_knownfolded_var_rel_def
+    by auto
+
+  have ResetNormalFieldsHb: "knownfolded_masks_normal_fields hb"
+    by (rule heap_knownfolded_var_rel_masks_normal_fields
+               [OF state_rel_heap_knownfolded_var_rel[OF StateRel] LookupHeapVar])
+
+  \<comment>\<open>Predicates that lost all of their permission may have a stale known-folded mask in the Boogie
+     heap. The exhale heap is not constrained at these locations by the framing axioms (the direct
+     permission of a known-folded mask field location is 0 by \<^const>\<open>mask_rel\<close>, and the two
+     predicate axioms are guarded by the predicate having direct permission), so we reset them.
+     This is what allows the known-folded relation to be re-established after the exhale.\<close>
+
+  define hbr where "hbr = reset_knownfolded_heap (get_nm_total_full \<omega>) hb''"
+
+  have ResetOutside: "\<And>loc. (\<forall>lp. loc \<noteq> (Null, PredKnownFoldedField lp)) \<Longrightarrow> hbr loc = hb'' loc"
+    unfolding hbr_def
+    using reset_knownfolded_heap_not_pred_knownfolded
+    by blast
+
+  have ResetLive: "\<And>lp. get_mp_nm (get_nm_total_full \<omega>) lp \<noteq> 0 \<Longrightarrow>
+                        hbr (Null, PredKnownFoldedField lp) = hb'' (Null, PredKnownFoldedField lp)"
+    unfolding hbr_def
+    by simp
+
+  have KFPosNewHeap: "heap_knownfolded_rel_pos Pr (field_translation Tr) (get_nm_total_full \<omega>) hb''"
+    apply (rule heap_knownfolded_rel_pos_stable[OF KFRelPos[OF LookupHeapVar]])
+    using NewHeapProperty ProgramTotal
+    unfolding vpr_heap_locations_bpl_def
+    by simp
+
+  have ResetKFRel: "heap_knownfolded_rel Pr (field_translation Tr) (get_nm_total_full \<omega>) hbr"
+    unfolding hbr_def
+    by (rule reset_knownfolded_heap_knownfolded_rel[OF KFPosNewHeap])
+
+  have ResetHeapRel: "heap_rel (program_total ctxt_vpr) (field_translation Tr) (get_hh_total_full \<omega>') hbr"
+    apply (rule heap_rel_stable[OF NewHeapRel])
+    unfolding hbr_def
+    using reset_knownfolded_heap_vpr_loc
+    by metis
+
+  have ResetWellTy: "vbpl_absval_ty_opt TyRep (AHeap hbr) = Some (THeapId TyRep, [])"
+    unfolding hbr_def
+    by (rule reset_knownfolded_heap_well_typed[OF NewHeapWellTy])
+
+  have KfmExistsHb: "\<And>lp. \<exists>kfm. hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))"
+    using state_rel_heap_knownfolded_var_rel[OF StateRel] LookupHeapVar
+    unfolding heap_knownfolded_var_rel_def
+    by auto
+
+  have KfmExistsNewHeap: "\<And>lp. \<exists>kfm. hb'' (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))"
+    using KfmExistsHb NewHeapPredMask
+    by simp
+
+  have ResetKfmExists: "\<And>lp. \<exists>kfm. hbr (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))"
+    unfolding hbr_def
+    apply (rule reset_knownfolded_heap_knownfolded_exists)
+    by (rule KfmExistsNewHeap)
+
+  have ResetNormalFields: "knownfolded_masks_normal_fields hbr"
+    unfolding hbr_def
+    apply (rule reset_knownfolded_heap_masks_normal_fields)
+    using ResetNormalFieldsHb NewHeapPredMask
+    unfolding knownfolded_masks_normal_fields_def
+    by simp
 
   have IdOnKnownCondNormalField: "\<forall>r f t. 0 < mb (r, NormalField f t) \<longrightarrow> hb (r, NormalField f t) = hb'' (r, NormalField f t)"
   proof clarify
@@ -1077,7 +1178,128 @@ proof -
     qed
   qed
 
-  let ?ns1 = "update_var (var_context ctxt) ns hvar_exh (AbsV (AHeap hb''))"
+  \<comment>\<open>Locations whose permission sum is non-zero in \<^term>\<open>\<omega>\<close> are not havoced.\<close>
+  have HeapLocFramed: "\<And>heap_loc. \<not> nm_loc_sum heap_loc (get_nm_total_full \<omega>) 0 \<Longrightarrow>
+                         get_hh_total_full \<omega> heap_loc = get_hh_total_full \<omega>' heap_loc"
+    using \<open>\<omega>' \<in> _\<close>
+    unfolding havoc_locs_state_def havoc_locs_heap_def
+    by fastforce
+
+  \<comment>\<open>Direct permission of a predicate implies that its known-folded mask is not reset.\<close>
+  have PredPermPos: "\<And>lp. mb (Null, PredSnapshotField lp) > 0 \<Longrightarrow> get_mp_nm (get_nm_total_full \<omega>) lp \<noteq> 0"
+  proof -
+    fix lp
+    assume "mb (Null, PredSnapshotField lp) > 0"
+    hence "Rep_preal (get_mp_total_full \<omega> lp) > 0"
+      using MaskRel
+      unfolding mask_rel_def
+      by (metis prod.collapse)
+    hence "get_mp_total_full \<omega> lp \<noteq> 0"
+      by (metis zero_preal.rep_eq order_less_irrefl)
+    thus "get_mp_nm (get_nm_total_full \<omega>) lp \<noteq> 0"
+      by simp
+  qed
+
+  \<comment>\<open>First axiom, adapted to the reset heap: known-folded mask field locations carry no direct
+     permission, so resetting them is unobservable.\<close>
+  have IdOnKnownCondReset: "\<forall>r f. 0 < mb (r, f) \<longrightarrow> hb (r, f) = hbr (r, f)"
+  proof clarify
+    fix r f
+    assume PermPos: "0 < mb (r, f)"
+    show "hb (r, f) = hbr (r, f)"
+    proof (cases "\<exists>lp. (r, f) = (Null, PredKnownFoldedField lp)")
+      case True
+      hence "mb (r, f) = 0"
+        using MaskRel
+        unfolding mask_rel_def
+        by fastforce
+      thus ?thesis
+        using PermPos
+        by simp
+    next
+      case False
+      thus ?thesis
+        using ResetOutside IdOnKnownCond PermPos
+        by (metis (mono_tags, opaque_lifting))
+    qed
+  qed
+
+  \<comment>\<open>Second axiom: the known-folded masks of predicates with direct permission are framed. No
+     known-folded mask location has a Viper counterpart, and locations of predicates with direct
+     permission are not reset.\<close>
+  have IdOnKnownCondPredMask:
+    "\<forall>lp. mb (Null, PredSnapshotField lp) > 0 \<longrightarrow>
+          hb (Null, PredKnownFoldedField lp) = hbr (Null, PredKnownFoldedField lp)"
+    using PredPermPos ResetLive NewHeapPredMask
+    by simp
+
+  \<comment>\<open>Third axiom: locations that are known-folded for a predicate with direct permission are framed.\<close>
+  have IdOnKnownCondKnownFolded:
+    "\<forall>lp kfm. mb (Null, PredSnapshotField lp) > 0 \<longrightarrow>
+              hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm)) \<longrightarrow>
+              (\<forall>r f. kfm (r, f) \<longrightarrow> hb (r, f) = hbr (r, f))"
+  proof (intro allI impI)
+    fix lp kfm r f
+    assume PermPos: "mb (Null, PredSnapshotField lp) > 0"
+       and Kfm: "hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))"
+       and Flag: "kfm (r, f)"
+
+    have NotPredKnownFolded: "\<And>lp'. (r, f) \<noteq> (Null, PredKnownFoldedField lp')"
+      using ResetNormalFieldsHb Kfm Flag
+      unfolding knownfolded_masks_normal_fields_def
+      by fastforce
+
+    have ResetSame: "hbr (r, f) = hb'' (r, f)"
+      using ResetOutside NotPredKnownFolded
+      by blast
+
+    have "hb (r, f) = hb'' (r, f)"
+    proof (cases "(r, f) \<in> (vpr_heap_locations_bpl Pr (field_translation Tr) :: (ref \<times> 'a vb_field) set)")
+      case True
+      from this obtain heap_loc field_bpl field_ty_vpr where
+        HeapLocProperties:
+        "r = Address (fst heap_loc)"
+        "f = NormalField field_bpl field_ty_vpr"
+        "declared_fields Pr (snd heap_loc) = Some field_ty_vpr"
+        "(field_translation Tr) (snd heap_loc) = Some field_bpl"
+        unfolding vpr_heap_locations_bpl_def
+        by blast
+
+      have "get_mp_nm (get_nm_total_full \<omega>) lp > 0"
+        using PermPos MaskRel
+        unfolding mask_rel_def
+        by (metis get_mp_total.simps get_mp_total_full.simps get_nm_total_full.simps
+                  less_preal.rep_eq zero_preal.rep_eq)
+
+      hence "pred_folds_perm lp heap_loc (get_nm_total_full \<omega>)"
+        using KFRelPos[OF LookupHeapVar, unfolded heap_knownfolded_rel_pos_def] Kfm Flag HeapLocProperties
+        by blast
+
+      hence "\<not> nm_loc_sum heap_loc (get_nm_total_full \<omega>) 0"
+        using pred_folds_perm_contains_heap_loc contains_heap_loc_not_nm_loc_sum_zero
+        by blast
+
+      hence "get_hh_total_full \<omega> heap_loc = get_hh_total_full \<omega>' heap_loc"
+        using HeapLocFramed
+        by blast
+
+      thus ?thesis
+        using HeapRel NewHeapRel HeapLocProperties ProgramTotal
+        unfolding heap_rel_def
+        by simp
+    next
+      case False
+      thus ?thesis
+        using NewHeapProperty ProgramTotal
+        by simp
+    qed
+
+    thus "hb (r, f) = hbr (r, f)"
+      using ResetSame
+      by simp
+  qed
+
+  let ?ns1 = "update_var (var_context ctxt) ns hvar_exh (AbsV (AHeap hbr))"
   have Red1:  "red_ast_bpl P ctxt ((BigBlock name (Havoc hvar_exh #
                                                  Assume (FunExp id_on_known_locs_name [] [Var hvar, Var hvar_exh, Var mvar]) #
                                                  Assign hvar (Var hvar_exh) #
@@ -1091,9 +1313,11 @@ proof -
     using ExhaleHeapFresh
         apply blast
        apply (rule HeapVarWellTy)
-      apply (rule NewHeapWellTy)
+      apply (rule ResetWellTy)
      apply simp
-    apply (rule IdOnKnownCond)
+      apply (rule IdOnKnownCondReset)
+     apply (rule IdOnKnownCondPredMask)
+    apply (rule IdOnKnownCondKnownFolded)
     done
 
   have StateRel1: "state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega> ?ns1"
@@ -1106,18 +1330,22 @@ proof -
     using LookupDeclExhaleHeap
     unfolding lookup_var_decl_def lookup_var_ty_def
      apply simp
-    using NewHeapWellTy TypeInterp
+    using ResetWellTy TypeInterp
     by auto
 
-  let ?ns2 = "update_var (var_context ctxt) ?ns1 hvar (AbsV (AHeap hb''))"
-  have "red_ast_bpl P ctxt ((BigBlock name (Assign hvar (Var hvar_exh) # cs) str tr, cont), Normal ?ns1)
+  have NmEq: "get_nm_total_full \<omega> = get_nm_total_full \<omega>'"
+    using \<open>\<omega>' \<in> _\<close> havoc_locs_state_same_mask
+    by fastforce
+
+  let ?ns2 = "update_var (var_context ctxt) ?ns1 hvar (AbsV (AHeap hbr))"
+  have Red2: "red_ast_bpl P ctxt ((BigBlock name (Assign hvar (Var hvar_exh) # cs) str tr, cont), Normal ?ns1)
                            ((BigBlock name cs str tr, cont), Normal ?ns2)"
     apply (subst \<open>hvar = _\<close>)+
     apply (rule red_ast_bpl_one_assign)
-    using NewHeapWellTy TypeInterp LookupHeapVarTy
+    using ResetWellTy TypeInterp LookupHeapVarTy
     by (auto intro: RedVar)
 
-  moreover have "state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega>' ?ns2"
+  have StateRel2: "state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega>' ?ns2"
   proof (rule state_rel_heap_update_2[OF StateRel1])
     show "\<omega> = \<omega> \<and> \<omega>' = \<omega>' \<and> heap_var Tr = heap_var_def Tr"
       using WellDefSame
@@ -1145,7 +1373,7 @@ proof -
       using ProgramTotal
       unfolding heap_var_rel_def
       apply (subst \<open>hvar = _\<close>)+
-      using LookupHeapVarTy NewHeapWellTy NewHeapRel DomainType havoc_locs_state_well_typed_heap[OF \<open>\<omega>' \<in> _\<close>]
+      using LookupHeapVarTy ResetWellTy ResetHeapRel DomainType havoc_locs_state_well_typed_heap[OF \<open>\<omega>' \<in> _\<close>]
       by auto
   next
     fix x
@@ -1169,20 +1397,30 @@ proof -
     show "heap_knownfolded_var_rel (knownfolded_state_rel_opt (state_rel_opt Tr)) Pr
             (var_context ctxt) (field_translation Tr) (heap_var Tr) \<omega>' ?ns2"
       unfolding heap_knownfolded_var_rel_def
-      apply (rule exI[of _ hb''])
+      apply (rule exI[of _ hbr])
       apply (intro conjI)
-        apply (simp add: \<open>hvar = _\<close>)
-      using state_rel_heap_knownfolded_var_rel[OF assms(1)]
-      unfolding heap_knownfolded_var_rel_def
-       apply (simp add: LookupHeapVar NewHeapProperty vpr_heap_locations_bpl_def)
-      apply (intro impI)
-      using NewHeapProperty \<open>Pr = _\<close> HeapKnownFoldedRel *
-      unfolding heap_knownfolded_rel_def vpr_heap_locations_bpl_def
+         apply (simp add: \<open>hvar = _\<close>)
+    using ResetKfmExists
+        apply blast
+        apply (rule ResetNormalFields)
+      using ResetKFRel *
+       apply simp
+      apply (rule impI)
+      apply (rule heap_knownfolded_rel_imp_pos)
+      using ResetKFRel *
       by simp
   qed (insert assms, auto)
 
-  ultimately show "\<exists>ns'. ?red ns' \<and> ?rel ns'"
-    using Red1 red_ast_bpl_transitive
+  \<comment>\<open>The exhale heap has reset the known-folded masks of the predicates that lost all of their
+     permission, so the unguarded known-folded relation holds again and the original translation
+     record can be restored.\<close>
+  have StateRelOut: "state_rel_def_same Pr StateCons TyRep Tr_out AuxPred ctxt \<omega>' ?ns2"
+    apply (rule state_rel_kf_exhale_restore[OF StateRel2[simplified TrExhale]])
+    using ResetKFRel NmEq TrExhale \<open>hvar = heap_var Tr\<close>
+    by simp
+
+  show "\<exists>ns'. ?red ns' \<and> ?rel ns'"
+    using Red1 Red2 StateRelOut red_ast_bpl_transitive
     by blast
 qed
 

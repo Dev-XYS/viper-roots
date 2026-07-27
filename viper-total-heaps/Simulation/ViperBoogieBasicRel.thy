@@ -36,7 +36,7 @@ record state_rel_options =
   knownfolded_state_rel_opt :: knownfolded_rel_options
 
 definition default_state_rel_options :: state_rel_options
-  where "default_state_rel_options \<equiv> \<lparr> consistent_state_rel_opt = True, knownfolded_state_rel_opt = \<lparr> kf_turned_on = True \<rparr> \<rparr>"
+  where "default_state_rel_options \<equiv> \<lparr> consistent_state_rel_opt = True, knownfolded_state_rel_opt = \<lparr> kf_turned_on = True, kf_pos_turned_on = False \<rparr> \<rparr>"
 
 text \<open>The following record abstracts over elements in the Boogie encoding that are used to represent
 Viper counterparts.\<close>
@@ -211,6 +211,120 @@ proof -
     by blast
 qed
 
+text \<open>When a predicate loses all of its permission, the known-folded mask that the Boogie heap stores
+      for it becomes stale. The exhale havoc is the point at which this can be repaired: the
+      \<open>IdenticalOnKnownLocations\<close> axioms do not constrain the known-folded mask of a predicate without
+      direct permission, so the exhale heap may reset it to the empty known-folded mask.\<close>
+
+fun reset_knownfolded_heap :: "'a nested_mask \<Rightarrow> 'a bpl_heap_ty \<Rightarrow> 'a bpl_heap_ty"
+  where
+    "reset_knownfolded_heap nm hb (Null, PredKnownFoldedField lp) =
+       (if get_mp_nm nm lp = 0 then Some zero_knownfolded_mask
+        else hb (Null, PredKnownFoldedField lp))"
+  | "reset_knownfolded_heap nm hb loc = hb loc"
+
+lemma reset_knownfolded_heap_not_pred_knownfolded:
+  assumes "\<And>lp. loc \<noteq> (Null, PredKnownFoldedField lp)"
+  shows "reset_knownfolded_heap nm hb loc = hb loc"
+  using assms
+  by (cases loc; rename_tac r f; case_tac r; case_tac f; simp)
+
+lemma reset_knownfolded_heap_vpr_loc:
+  assumes "loc \<in> vpr_heap_locations_bpl Pr tr_field"
+  shows "reset_knownfolded_heap nm hb loc = hb loc"
+  apply (rule reset_knownfolded_heap_not_pred_knownfolded)
+  using assms
+  unfolding vpr_heap_locations_bpl_def
+  by force
+
+lemma reset_knownfolded_heap_knownfolded_rel:
+  assumes KFPos: "heap_knownfolded_rel_pos Pr tr_field nm hb"
+  shows "heap_knownfolded_rel Pr tr_field nm (reset_knownfolded_heap nm hb)"
+  unfolding heap_knownfolded_rel_def
+proof (intro allI impI)
+  fix lp kfm l field_ty_vpr field_bpl
+  assume Kfm: "reset_knownfolded_heap nm hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))"
+     and "declared_fields Pr (snd l) = Some field_ty_vpr"
+     and "tr_field (snd l) = Some field_bpl"
+     and Flag: "kfm (Address (fst l), NormalField field_bpl field_ty_vpr)"
+
+  have "get_mp_nm nm lp \<noteq> 0"
+  proof
+    assume "get_mp_nm nm lp = 0"
+    hence "kfm = (\<lambda>_. False)"
+      using Kfm
+      by (simp add: zero_knownfolded_mask_def)
+    thus False
+      using Flag
+      by simp
+  qed
+
+  hence "hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))"
+    using Kfm
+    by simp
+
+  thus "pred_folds_perm lp l nm"
+    using KFPos \<open>get_mp_nm nm lp \<noteq> 0\<close> assms Flag \<open>declared_fields _ _ = _\<close> \<open>tr_field _ = _\<close>
+    unfolding heap_knownfolded_rel_pos_def
+    by (metis all_pos order_less_le)
+qed
+
+lemma reset_knownfolded_heap_knownfolded_exists:
+  assumes "\<And>lp. \<exists>kfm. hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))"
+  shows "\<exists>kfm. reset_knownfolded_heap nm hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))"
+  using assms
+  by (simp add: zero_knownfolded_mask_def)
+
+lemma reset_knownfolded_heap_masks_normal_fields:
+  assumes "knownfolded_masks_normal_fields hb"
+  shows "knownfolded_masks_normal_fields (reset_knownfolded_heap nm hb)"
+  using assms
+  unfolding knownfolded_masks_normal_fields_def
+  by (simp add: zero_knownfolded_mask_def split: if_split_asm)
+
+
+lemma reset_knownfolded_heap_well_typed:
+  assumes HeapWellTy: "vbpl_absval_ty_opt TyRep (AHeap hb) = Some (THeapId TyRep, [])"
+  shows "vbpl_absval_ty_opt TyRep (AHeap (reset_knownfolded_heap nm hb)) = Some (THeapId TyRep, [])"
+proof (rule heap_bpl_well_typed)
+  fix r f fieldKind t v
+  assume FieldTy: "field_ty_fun_opt TyRep f = Some (TFieldId TyRep, [fieldKind, t])" and
+         Lookup: "reset_knownfolded_heap nm hb (r, f) = Some v"
+  show "type_of_vbpl_val TyRep v = t"
+  proof (cases "\<exists>lp. (r,f) = (Null, PredKnownFoldedField lp)")
+    case True
+    from this obtain lp where "r = Null" and "f = PredKnownFoldedField lp"
+      by blast
+    show ?thesis
+    proof (cases "get_mp_nm nm lp = 0")
+      case True
+      hence "v = zero_knownfolded_mask"
+        using Lookup \<open>r = _\<close> \<open>f = _\<close>
+        by simp
+      thus ?thesis
+        using FieldTy \<open>f = _\<close>
+        unfolding zero_knownfolded_mask_def
+        by auto
+    next
+      case False
+      hence "hb (r, f) = Some v"
+        using Lookup \<open>r = _\<close> \<open>f = _\<close>
+        by simp
+      thus ?thesis
+        using HeapWellTy FieldTy
+        by (metis heap_bpl_well_typed_elim)
+    qed
+  next
+    case False
+    hence "hb (r, f) = Some v"
+      using Lookup reset_knownfolded_heap_not_pred_knownfolded
+      by (metis (mono_tags, opaque_lifting))
+    thus ?thesis
+      using HeapWellTy FieldTy
+      by (metis heap_bpl_well_typed_elim)
+  qed
+qed
+
 definition mask_rel :: "ViperLang.program \<Rightarrow> (field_ident \<rightharpoonup> vname) \<Rightarrow> preal mask \<Rightarrow> 'a predicate_mask \<Rightarrow> 'a bpl_mask_ty \<Rightarrow> bool"
   where "mask_rel Pr tr_field mh mp mb \<equiv>
     (\<forall> l field_ty_vpr field_bpl. declared_fields Pr (snd l) = Some field_ty_vpr \<longrightarrow>
@@ -218,7 +332,12 @@ definition mask_rel :: "ViperLang.program \<Rightarrow> (field_ident \<rightharp
                       mb (Address (fst l), NormalField field_bpl field_ty_vpr) = Rep_preal (mh l))
  \<and>  (\<forall>f t. mb (Null, NormalField f t) = 0)
  \<and>  (\<forall>r f. mb (r,f) \<ge> 0 \<and> (is_bounded_field_bpl f \<longrightarrow> mb (r,f) \<le> 1))
- \<and>  (\<forall>ploc. Rep_preal (mp ploc) = mb (Null, PredSnapshotField ploc))"
+ \<and>  (\<forall>ploc. Rep_preal (mp ploc) = mb (Null, PredSnapshotField ploc))
+ \<and>  (\<forall>ploc. mb (Null, PredKnownFoldedField ploc) = 0)
+     \<comment>\<open>The encoding never stores permission at a known-folded mask field location. This is what
+        permits the exhale havoc to reset the known-folded mask of a predicate that lost all of its
+        permission (see \<^const>\<open>reset_knownfolded_heap\<close>): the axiom that frames all locations with
+        direct permission does not apply to such a location.\<close>"
 
 lemma mask_rel_intro:
   assumes "\<And>l field_ty_vpr field_bpl.
@@ -227,7 +346,8 @@ lemma mask_rel_intro:
              mb (Address (fst l), NormalField field_bpl field_ty_vpr) = Rep_preal (mh l)" and
           "\<And>f t. mb (Null, NormalField f t) = 0" and
           "\<And>r f. mb (r,f) \<ge> 0 \<and> (is_bounded_field_bpl f \<longrightarrow> mb (r,f) \<le> 1)" and
-          "\<And>ploc. Rep_preal (mp ploc) = mb (Null, PredSnapshotField ploc)"
+          "\<And>ploc. Rep_preal (mp ploc) = mb (Null, PredSnapshotField ploc)" and
+          "\<And>ploc. mb (Null, PredKnownFoldedField ploc) = 0"
   shows "mask_rel Pr tr_field mh mp mb"
   using assms
   unfolding mask_rel_def
@@ -3018,6 +3138,11 @@ next
       apply (simp add: mask_bpl_upd_normal_field_def)
       using MaskRel0[simplified mask_rel_def]
       by simp
+  next
+    show "\<forall>ploc. mask_bpl_upd_normal_field mb (Address addr) f_bpl ty_vpr (Rep_preal p) (Null, PredKnownFoldedField ploc) = 0"
+      apply (simp add: mask_bpl_upd_normal_field_def)
+      using MaskRel0[simplified mask_rel_def]
+      by simp
   qed
 
   thus "mask_var_rel Pr (var_context ctxt) TyRep (field_translation Tr) (mask_var Tr) ?\<omega>' ?ns'"
@@ -3160,10 +3285,62 @@ lemma state_rel_enable_consistency_2:
 
 
 abbreviation disable_knownfolded_rel_opt :: "tr_vpr_bpl \<Rightarrow> tr_vpr_bpl"
-  where "disable_knownfolded_rel_opt Tr \<equiv> Tr \<lparr> state_rel_opt := (state_rel_opt Tr) \<lparr> knownfolded_state_rel_opt := \<lparr> kf_turned_on = False \<rparr> \<rparr> \<rparr>"
+  where "disable_knownfolded_rel_opt Tr \<equiv> Tr \<lparr> state_rel_opt := (state_rel_opt Tr) \<lparr> knownfolded_state_rel_opt := \<lparr> kf_turned_on = False, kf_pos_turned_on = False \<rparr> \<rparr> \<rparr>"
 
 abbreviation enable_knownfolded_rel_opt :: "tr_vpr_bpl \<Rightarrow> tr_vpr_bpl"
-  where "enable_knownfolded_rel_opt Tr \<equiv> Tr \<lparr> state_rel_opt := (state_rel_opt Tr) \<lparr> knownfolded_state_rel_opt := \<lparr> kf_turned_on = True \<rparr> \<rparr> \<rparr>"
+  where "enable_knownfolded_rel_opt Tr \<equiv> Tr \<lparr> state_rel_opt := (state_rel_opt Tr) \<lparr> knownfolded_state_rel_opt := \<lparr> kf_turned_on = True, kf_pos_turned_on = False \<rparr> \<rparr> \<rparr>"
+
+text \<open>Translation record used while exhaling: the unguarded known-folded relation is given up (a
+      predicate can lose all of its permission during the exhale), but the permission-guarded one is
+      kept, since it is preserved by every exhale step and is what the framing axioms of
+      \<open>IdenticalOnKnownLocations\<close> require.\<close>
+
+abbreviation exhale_knownfolded_rel_opt :: "tr_vpr_bpl \<Rightarrow> tr_vpr_bpl"
+  where "exhale_knownfolded_rel_opt Tr \<equiv> Tr \<lparr> state_rel_opt := (state_rel_opt Tr) \<lparr> knownfolded_state_rel_opt := \<lparr> kf_turned_on = False, kf_pos_turned_on = True \<rparr> \<rparr> \<rparr>"
+
+lemma state_rel_kf_exhale_weaken:
+  assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns"
+      and "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))"
+    shows "state_rel Pr StateCons TyRep (exhale_knownfolded_rel_opt Tr) AuxPred ctxt \<omega>def \<omega> ns"
+  using assms heap_knownfolded_rel_imp_pos
+  unfolding state_rel_def state_rel0_def heap_knownfolded_var_rel_def
+  by force
+
+text \<open>Counterpart of \<^term>\<open>state_rel_kf_exhale_weaken\<close>: once the exhale heap has re-established the
+      unguarded known-folded relation (by resetting the known-folded masks of predicates without
+      permission), the original translation record can be restored.\<close>
+
+lemma state_rel_kf_exhale_restore:
+  assumes StateRel: "state_rel Pr StateCons TyRep (exhale_knownfolded_rel_opt Tr) AuxPred ctxt \<omega>def \<omega> ns"
+      and KFRel: "\<And>hb. lookup_var (var_context ctxt) ns (heap_var Tr) = Some (AbsV (AHeap hb)) \<Longrightarrow>
+                        heap_knownfolded_rel Pr (field_translation Tr) (get_nm_total_full \<omega>) hb"
+    shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns"
+proof -
+  obtain hb where hb:
+    "lookup_var (var_context ctxt) ns (heap_var Tr) = Some (AbsV (AHeap hb))"
+    "\<forall>lp. \<exists>kfm. hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))"
+    "knownfolded_masks_normal_fields hb"
+    using state_rel_heap_knownfolded_var_rel[OF StateRel]
+    unfolding heap_knownfolded_var_rel_def
+    by auto
+
+  have "heap_knownfolded_var_rel (knownfolded_state_rel_opt (state_rel_opt Tr)) Pr (var_context ctxt)
+          (field_translation Tr) (heap_var Tr) \<omega> ns"
+    unfolding heap_knownfolded_var_rel_def
+    apply (rule exI[of _ hb])
+    apply (intro conjI)
+    using hb
+       apply blast+
+    using KFRel hb(1)
+     apply blast
+    using KFRel hb(1) heap_knownfolded_rel_imp_pos
+    by blast
+
+  thus ?thesis
+    using StateRel
+    unfolding state_rel_def state_rel0_def
+    by auto
+qed
 
 lemma state_rel_kf_disable_consistency:
   assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns"

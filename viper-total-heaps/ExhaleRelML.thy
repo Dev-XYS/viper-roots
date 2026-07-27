@@ -321,7 +321,9 @@ ML \<open>
     (Rmsg' "exh pred upd PlocRel" (prove_ploc_rel' ctxt info pred_name exp_rel_info) ctxt) THEN'
     (Rmsg' "exh pred upd AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd ProgEq" (assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm info] ctxt) ctxt) THEN'
-    (Rmsg' "exh pred upd KFRelOff" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt)
+    (Rmsg' "exh pred upd KFRelOff" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+    (Rmsg' "exh pred upd ConsOn" (assm_full_simp_solved_with_thms_tac
+                                    ([#tr_def_thm info] @ @{thms default_state_rel_options_def}) ctxt) ctxt)
 
   fun atomic_exhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) exh_pred_acc_hint =
     case exh_pred_acc_hint of
@@ -358,6 +360,17 @@ ML \<open>
     simp_then_if_not_solved_blast_tac ctxt THEN'
     resolve_tac ctxt @{thms red_ast_bpl_rel_input_implies_output} THEN'
     assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info, @{thm state_rel_aux_pred_remove}] ctxt
+
+  (* Variant of exhale_revert_state_relation for the statement-level exhale: the relation reached
+     here is the input of the havoc simulation, which still uses the translation record that the
+     exhale was weakened to (see exhale_knownfolded_rel_opt). The final step therefore must leave the
+     relation unchanged instead of simplifying towards the statement's relation, which would drop
+     the state relation altogether while the output relation is still schematic. *)
+  fun exhale_revert_state_relation_keep_rel ctxt =
+    resolve_tac ctxt @{thms red_ast_bpl_rel_weaken_input} THEN'
+    resolve_tac ctxt @{thms state_rel_set_def_to_eval} THEN'
+    simp_then_if_not_solved_blast_tac ctxt THEN'
+    resolve_tac ctxt @{thms red_ast_bpl_rel_refl}
 
 \<close>
 

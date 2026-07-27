@@ -94,7 +94,10 @@ fun upd_kfm_field_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_inf
   (Rmsg' "kfm upd field acc PredType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
   (Rmsg' "kfm upd field acc PlocRel" (prove_ploc_sm_rel' ctxt info pred_name exp_rel_info) ctxt) THEN'
   (Rmsg' "kfm upd field acc RefExpRel" (exp_rel_tac exp_rel_info ctxt |> SOLVED') ctxt) THEN'
-  (Rmsg' "kfm upd field acc FieldRelSingle" ((#field_rel_single_tac info) ctxt) ctxt)
+  (Rmsg' "kfm upd field acc FieldRelSingle" ((#field_rel_single_tac info) ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd field acc KFPosOff"
+     (assm_full_simp_solved_with_thms_tac
+        ([#tr_def_thm info] @ @{thms default_state_rel_options_def}) ctxt) ctxt)
 
 (* Discharges the assumptions of @{thm fold_knownfolded_pred_upd_rel} once the rule has been applied
    to a goal whose assertion is \<open>Atomic (AccPredicate pid_fold e_args_fold_vpr (PureExp e_p_fold_vpr))\<close>
@@ -172,7 +175,10 @@ fun upd_kfm_pred_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info
   (Rmsg' "kfm upd pred acc StateConsOn" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info, @{thm default_state_rel_options_def}] ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PermPosConstExpr conjI" (resolve_tac ctxt @{thms conjI}) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PermPosConstExpr eval" (prove_vpr_const_perm_eval_tac ctxt |> SOLVED') ctxt) THEN'
-  (Rmsg' "kfm upd pred acc PermPosConstExpr pos" (assm_full_simp_solved_tac ctxt) ctxt)
+  (Rmsg' "kfm upd pred acc PermPosConstExpr pos" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc KFPosOff"
+     (assm_full_simp_solved_with_thms_tac
+        ([#tr_def_thm info] @ @{thms default_state_rel_options_def}) ctxt) ctxt)
 
 (* Normalizes the assertion embedded in the goal (e.g. unfolds \<^const>\<open>substitute_args_assertion\<close>
    and \<^const>\<open>syntactic_mult\<close>, which wrap the predicate body as it comes out of @{thm fold_stmt_rel})

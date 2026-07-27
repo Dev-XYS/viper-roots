@@ -1622,9 +1622,10 @@ proof -
       apply (rule exI[of _ ?hb])
       apply (intro conjI)
         apply (metis "*" GlobalsLocalsDisj HeapTy lookup_var_global_disj lookup_vdecls_ty_map_of surjective_pairing)
-       apply simp
-      unfolding heap_knownfolded_rel_def
-      by force
+        apply simp
+        apply (simp add: knownfolded_masks_normal_fields_def)
+       apply (simp add: heap_knownfolded_rel_def)
+      by (simp add: heap_knownfolded_rel_pos_def)
 
   next
     show "field_rel (program_total ctxt_vpr) (var_context ctxt) (field_translation Tr) ns"

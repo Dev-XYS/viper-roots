@@ -218,6 +218,19 @@ lemma rel_propagate_pre_2_only_state_rel:
   unfolding red_ast_bpl_rel_def
   by metis  
 
+text \<open>Like \<^term>\<open>rel_propagate_pre_2_only_state_rel\<close>, but the relation reached by the propagation
+      step need not be the output relation of the simulation. This is required when the simulation
+      itself changes the relation, as the exhale havoc does (it restores the translation record that
+      was weakened for the duration of the exhale).\<close>
+
+lemma rel_propagate_pre_4_only_state_rel:
+  assumes "red_ast_bpl_rel R0 R1 P ctxt \<gamma>0 \<gamma>1"
+      and "rel_general R1 R2 Success Fail P ctxt \<gamma>1 \<gamma>2"
+    shows "rel_general R0 R2 Success Fail P ctxt \<gamma>0 \<gamma>2"
+  using assms rel_propagate_pre
+  unfolding red_ast_bpl_rel_def
+  by metis
+
 lemma rel_propagate_pre_3_only_state_rel: 
   assumes "red_ast_bpl_rel R0 R0 P ctxt \<gamma>0 \<gamma>1"
       and "rel_general R0 R1 Success Fail P ctxt \<gamma>1 \<gamma>2"

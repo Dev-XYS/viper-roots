@@ -465,12 +465,25 @@ lemma store_knownfolded_mask_fun_interp_single_wf:
 
 subsection \<open>Identical on known locations\<close>
 
+text \<open>The three conjuncts model the three axioms that the Viper-to-Boogie translation emits for
+      \<open>IdenticalOnKnownLocations\<close> (see \<open>identicalOnKnownLocsAxioms\<close> in Carbon's \<open>DefaultHeapModule\<close>):
+      \<^item> \<open>Frame all locations with direct permissions\<close>,
+      \<^item> \<open>Frame all predicate mask locations of predicates with direct permission\<close> (the non-liberal
+        variant), where \<open>PredicateMaskField\<close> maps \<^term>\<open>PredSnapshotField lp\<close> to
+        \<^term>\<open>PredKnownFoldedField lp\<close> and \<open>IsPredicateField\<close> is \<^const>\<open>is_PredSnapshotField\<close>,
+      \<^item> \<open>Frame all locations with known folded permissions\<close>.\<close>
+
 fun identical_on_known_locs ::  "'a sem_fun_bpl"
-  where 
-    "identical_on_known_locs ts vs = 
-      (case (ts, vs) of 
+  where
+    "identical_on_known_locs ts vs =
+      (case (ts, vs) of
          ([], [AbsV (AHeap h), AbsV (AHeap h_exhale), AbsV (AMask m)]) \<Rightarrow>
-           Some (BoolV (\<forall>r f. m (r, f) > 0 \<longrightarrow> h (r, f) = h_exhale (r, f)))
+           Some (BoolV ( (\<forall>r f. m (r, f) > 0 \<longrightarrow> h (r, f) = h_exhale (r, f)) \<and>
+                         (\<forall>lp. m (Null, PredSnapshotField lp) > 0 \<longrightarrow>
+                               h (Null, PredKnownFoldedField lp) = h_exhale (Null, PredKnownFoldedField lp)) \<and>
+                         (\<forall>lp kfm. m (Null, PredSnapshotField lp) > 0 \<longrightarrow>
+                               h (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm)) \<longrightarrow>
+                               (\<forall>r f. kfm (r, f) \<longrightarrow> h (r, f) = h_exhale (r, f)))))
        | _ \<Rightarrow> None)"
 
 lemma identical_on_known_locs_fun_interp_single_wf:
@@ -804,7 +817,14 @@ lemma red_ast_bpl_identical_on_known_locs:
           HeapTy: "vbpl_absval_ty_opt TyRep (AHeap h) = Some ((THeapId TyRep) ,[])" and
           NewHeapTy: "vbpl_absval_ty_opt TyRep (AHeap h_new) = Some ((THeapId TyRep) ,[])" and
           MaskTy: "vbpl_absval_ty_opt TyRep (AMask m) = Some ((TMaskId TyRep), [])" and
-          IdenticalOnKnownCond: "(\<forall>r f. m (r, f) > 0 \<longrightarrow> h (r, f) = h_new (r, f))"
+          IdenticalOnKnownCond: "(\<forall>r f. m (r, f) > 0 \<longrightarrow> h (r, f) = h_new (r, f))" and
+          IdenticalOnKnownCondPredMask:
+            "(\<forall>lp. m (Null, PredSnapshotField lp) > 0 \<longrightarrow>
+                   h (Null, PredKnownFoldedField lp) = h_new (Null, PredKnownFoldedField lp))" and
+          IdenticalOnKnownCondKnownFolded:
+            "(\<forall>lp kfm. m (Null, PredSnapshotField lp) > 0 \<longrightarrow>
+                       h (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm)) \<longrightarrow>
+                       (\<forall>r f. kfm (r, f) \<longrightarrow> h (r, f) = h_new (r, f)))"
         shows "red_ast_bpl P ctxt 
                                    ((BigBlock name (Havoc hvar_exh # 
                                                     Assume (FunExp id_on_known_locs_name [] [Var hvar, Var hvar_exh, Var mvar]) #                                                    
@@ -829,7 +849,7 @@ proof (rule red_ast_bpl_havoc_assume[OF LookupDeclExhaleHeap])
       apply simp
     using TypeInterp HeapTy NewHeapTy MaskTy
      apply simp
-    apply (simp add: IdenticalOnKnownCond)
+    apply (simp add: IdenticalOnKnownCond IdenticalOnKnownCondPredMask IdenticalOnKnownCondKnownFolded)
     done
 qed (insert assms, auto)
 

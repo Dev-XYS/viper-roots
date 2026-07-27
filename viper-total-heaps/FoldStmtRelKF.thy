@@ -399,7 +399,7 @@ lemma fold_stmt_rel_kf:
       and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
-      and StateRelImpliesKFRel: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns"
+      and StateRelImpliesKFRel: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> heap_knownfolded_var_rel (\<lparr> kf_turned_on = True, kf_pos_turned_on = False \<rparr>) (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns"
       and StateRelWeakening: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> R\<^sub>w \<omega> ns"
       and ArgsRestriction: "list_all no_unfolding_pure_exp e_args_vpr \<and> list_all no_perm_pure_exp e_args_vpr \<and> list_all no_old_pure_exp e_args_vpr \<and> list_all no_result_pure_exp e_args_vpr"
       and ArgsAreVarOrLit: "list_all is_var_or_lit e_args_vpr"
@@ -420,7 +420,7 @@ lemma fold_stmt_rel_kf:
       and StateRelStrengthening:
             "\<And>\<omega> ns v_args_vpr.
                 R\<^sub>w'' \<omega> ns \<Longrightarrow>
-                heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns \<Longrightarrow>
+                heap_knownfolded_var_rel (\<lparr> kf_turned_on = True, kf_pos_turned_on = False \<rparr>) (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns \<Longrightarrow>
                 R' \<omega> ns"
       and StepInhale:
             "\<And>v_args_vpr v_p_vpr.
@@ -650,7 +650,7 @@ proof (rule stmt_rel_intro)
     by fastforce
 
   \<comment> \<open>Fifth step: known-folded permission mask update\<close>
-  have kf_restore: "heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega>' ns\<^sub>5"
+  have kf_restore: "heap_knownfolded_var_rel (\<lparr> kf_turned_on = True, kf_pos_turned_on = False \<rparr>) (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega>' ns\<^sub>5"
   proof -
     have s2: "red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>\<^sub>2, Normal ns\<^sub>2)" using conjunct1[OF ns\<^sub>2] .
     have s3: "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>2, Normal ns\<^sub>2) (\<gamma>\<^sub>3, Normal ns\<^sub>3)" using conjunct1[OF ns\<^sub>3] .
@@ -664,6 +664,7 @@ proof (rule stmt_rel_intro)
     obtain hb where
       Lookup: "lookup_var (var_context ctxt_bpl) ns hvar = Some (AbsV (AHeap hb))" and
       KfmExists: "\<forall>lp. \<exists>kfm. hb (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))" and
+      KfmNormalFields: "knownfolded_masks_normal_fields hb" and
       KfRel: "heap_knownfolded_rel (program_total ctxt_vpr) FieldTr (get_nm_total_full \<omega>) hb"
       using StateRelImpliesKFRel[OF \<open>R \<omega> ns\<close>]
       unfolding heap_knownfolded_var_rel_def
@@ -702,7 +703,7 @@ proof (rule stmt_rel_intro)
     show ?thesis
       unfolding heap_knownfolded_var_rel_def
       apply (rule exI[of _ hb])
-      using Lookup5 KfmExists KfRel'
+      using Lookup5 KfmExists KfmNormalFields KfRel'
       by auto
   qed
 
@@ -950,13 +951,14 @@ qed
 
 lemma turn_on_knownfolded_rel':
   assumes "state_rel_def_same Pr StateCons TyRep (disable_knownfolded_rel_opt Tr) AuxPred ctxt_bpl \<omega> ns"
-      and "heap_knownfolded_var_rel (\<lparr> kf_turned_on = True \<rparr>) Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega> ns"
+      and "heap_knownfolded_var_rel (\<lparr> kf_turned_on = True, kf_pos_turned_on = False \<rparr>) Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega> ns"
       and "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))"
+      and "\<not> kf_pos_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))"
     shows "state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns"
   apply (subgoal_tac "enable_knownfolded_rel_opt Tr = Tr")
   using turn_on_knownfolded_rel[OF assms(1), simplified, OF assms(2)] assms(3)
    apply presburger
-  using assms(3)
+  using assms(3,4)
   by auto
 
 
