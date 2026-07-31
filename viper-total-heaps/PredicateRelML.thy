@@ -167,6 +167,7 @@ fun no_heap_assignment_until_tac ctxt : int -> tactic =
   no_heap_assignment_until_step_tac ctxt THEN_ALL_NEW
     (fn i => (assm_full_simp_solved_tac ctxt i) ORELSE (no_heap_assignment_until_tac ctxt i))
 
+
 fun upd_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
   (Rmsg' "exh pred upd progress" (rewrite_rel_general_tac ctxt) ctxt) THEN'
   (Rmsg' "exh pred upd rule" (resolve_tac ctxt @{thms exhale_rel_pred_acc_upd_rel}) ctxt) THEN'
@@ -210,8 +211,37 @@ fun atomic_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) (no_de
     | _ => error("Unfold only supports PredAccExhHint")
 
 
+fun kfm_upd_rel_unfold_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
+  (Rmsg' "unfold kf upd rule" (resolve_tac ctxt @{thms unfold_knownfolded_upd_rel}) ctxt) THEN'
+  (Rmsg' "unfold kf upd StateRelIn" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd StateRelOut" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd KFMPosOff" (assm_full_simp_solved_with_thms_tac
+                                              ([#tr_def_thm info] @ @{thms default_state_rel_options_def}) ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd KFMOn" (assm_full_simp_solved_with_thms_tac
+                                          ([#tr_def_thm info] @ @{thms default_state_rel_options_def}) ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd KFMRel" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd KFMNewOpt" (assm_full_simp_solved_with_thms_tac
+                                              ([#tr_def_thm info] @ @{thms default_state_rel_options_def}) ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd HeapVarDefSame" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd NullConst" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd ZeroPMaskConst" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd HeapVar" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd FieldTranslation" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd HeapUpdateWf" (resolve_tac ctxt [@{thm heap_update_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]] THEN'
+                                                assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd KnownFoldedUpdBpl" (assm_full_simp_solved_with_thms_tac
+                                                       [@{thm update_heap_concrete_def}, #ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd PlocRel" (prove_ploc_sm_rel' ctxt info pred_name exp_rel_info) ctxt) THEN'
+  (Rmsg' "unfold kf upd TyInterpEq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "unfold kf upd PredType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt)
+
 fun pred_unfold_tac ctxt pred_name (inhale_info: atomic_inhale_rel_hint inhale_rel_info) (exhale_info: atomic_exhale_rel_hint exhale_rel_info) (basic_info : basic_stmt_rel_info) atomic_exhale_hint inhale_hint =
-  let val pred_data = lookup_predicate_data basic_info pred_name in
+  let val pred_data = lookup_predicate_data basic_info pred_name
+      val exp_rel_info =
+        case atomic_exhale_hint of
+          PredAccExhHint (_, _, exp_rel_info, _, _, _) => exp_rel_info
+        | _ => error("Unfold only supports PredAccExhHint")
+  in
   (Rmsg' "unfold stmt rule" (resolve_tac ctxt @{thms unfold_stmt_rel}) ctxt) THEN'
   (Rmsg' "unfold stmt PredDecl" (assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm basic_info, #predicate_lookup_thm pred_data] ctxt) ctxt) THEN'
   (Rmsg' "unfold stmt PredArgs" (assm_full_simp_solved_with_thms_tac (@{thms predicate_decl.defs}@[#predicate_args_thm pred_data]) ctxt) ctxt) THEN'
@@ -226,7 +256,7 @@ fun pred_unfold_tac ctxt pred_name (inhale_info: atomic_inhale_rel_hint inhale_r
   (Rmsg' "unfold stmt StateRelImpliesExtCons 3" (assm_full_simp_solved_with_thms_tac [@{thm default_state_rel_options_def}, #tr_def_thm basic_info] ctxt) ctxt) THEN'
   (Rmsg' "unfold stmt StateRelImpliesExtCons 4" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info] ctxt) ctxt) THEN'
 
-  (Rmsg' "unfold stmt StateRelImpliesKFRel" (fastforce_tac ctxt @{thms state_rel_def state_rel0_def}) ctxt) THEN'
+  (Rmsg' "unfold stmt StateRelImpliesKFRel" (fastforce_tac ctxt (#tr_def_thm basic_info :: @{thms state_rel_def state_rel0_def})) ctxt) THEN'
 
   (Rmsg' "unfold stmt StateRelWeakening" (eresolve_tac ctxt @{thms state_rel_kf_disable_consistency}) ctxt) THEN'
 
@@ -239,7 +269,9 @@ fun pred_unfold_tac ctxt pred_name (inhale_info: atomic_inhale_rel_hint inhale_r
   (Rmsg' "unfold stmt StepExhale" (atomic_exhale_pred_acc_in_unfold_tac ctxt basic_info (#no_def_checks_tac_opt exhale_info) atomic_exhale_hint) ctxt) THEN'
   (Rmsg' "unfold stmt simp synmult & subst" (asm_full_simp_tac ctxt) ctxt) THEN'
   (Rmsg' "unfold stmt StepInhale" (inhale_rel_tac ctxt inhale_info inhale_hint) ctxt) THEN'
-  (SUBGOAL (fn (t,_) => raise TERM ("breakpoint working", [t])))
+  (Rmsg' "unfold stmt StepKFUpdate" (kfm_upd_rel_unfold_tac ctxt basic_info pred_name exp_rel_info) ctxt) THEN'
+  (Rmsg' "unfold stmt NoHeapAssignBetween" (no_heap_assignment_until_tac ctxt |> SOLVED') ctxt) THEN'
+  (Rmsg' "unfold stmt PPSyntacticRestriction" (program_point_restriction_tac ctxt |> SOLVED') ctxt)
   end
 
 \<close>

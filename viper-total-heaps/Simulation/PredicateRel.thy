@@ -1541,6 +1541,7 @@ lemma unfold_knownfolded_upd_rel:
     KFMNewOpt: "kf_turned_on kf_opt" and
 
     HeapVarDefSame: "heap_var_def Tr = heap_var Tr" and
+    FieldTranslation: "FieldTr = field_translation Tr" and
 
     NullConst: "const_repr Tr CNull = nullConst" and
     ZeroPMaskConst: "const_repr Tr CKnownFoldedZeroMask = zeroPMask" and
@@ -1560,7 +1561,7 @@ lemma unfold_knownfolded_upd_rel:
                                          red_pure_exps_total ctxt_vpr (Some \<omega>\<^sub>0) e_args_vpr \<omega> (Some v_args_vpr) \<and>
                                          pred_ty_correct_premise ctxt_vpr pid v_args_vpr \<and>
                                          unfold_rel ctxt_vpr pid v_args_vpr (Abs_preal v_p_vpr) (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>) \<and>
-                                         heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns))
+                                         heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) FieldTr hvar \<omega>\<^sub>0 ns))
                      (uncurry (\<lambda>\<omega>\<^sub>0 \<omega> ns. R' \<omega> ns))
                      (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
                      (\<lambda>\<omega>\<^sub>0_\<omega>. False)
@@ -1580,7 +1581,7 @@ proof (rule rel_intro; blast?)
     "red_pure_exps_total ctxt_vpr (Some \<omega>\<^sub>0) e_args_vpr \<omega> (Some v_args_vpr)" and
     "pred_ty_correct_premise ctxt_vpr pid v_args_vpr" and
     "unfold_rel ctxt_vpr pid v_args_vpr (Abs_preal v_p_vpr) (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>)" and
-    "heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns"
+    "heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) FieldTr (heap_var Tr) \<omega>\<^sub>0 ns"
     by (simp_all add: \<open>\<omega>\<^sub>0_\<omega> = (\<omega>\<^sub>0, \<omega>)\<close> \<open>hvar = _\<close>)
 
   with PlocRel[unfolded ploc_sm_rel_vpr_bpl'_def] evals_with_None
@@ -1596,7 +1597,7 @@ proof (rule rel_intro; blast?)
 
   hence "heap_knownfolded_rel Pr (field_translation Tr') (get_nm_total (get_total_full \<omega>\<^sub>0)) hb"
     by (metis lookup_heap tr_vpr_bpl.update_convs(9) KFMNewOpt tr_vpr_bpl.ext_inject get_nm_total_full.elims
-        \<open>heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns\<close>
+        \<open>heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) FieldTr (heap_var Tr) \<omega>\<^sub>0 ns\<close> FieldTranslation
         tr_vpr_bpl.surjective heap_knownfolded_var_rel_def option.sel KFMRel vbpl_absval.inject(4) Semantics.val.sel(2))
 
   let ?hb' = "hb( (Null, PredKnownFoldedField (pid, v_args_vpr)) \<mapsto> zero_knownfolded_mask )"
@@ -1663,7 +1664,7 @@ proof (rule rel_intro; blast?)
     unfolding heap_knownfolded_var_rel_def zero_knownfolded_mask_def
        apply (simp add: lookup_heap)
        apply (simp add: \<open>heap_var Tr = heap_var Tr'\<close> lookup_heap)
-      apply (metis \<open>heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns\<close>
+      apply (metis \<open>heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) FieldTr (heap_var Tr) \<omega>\<^sub>0 ns\<close>
         \<open>heap_var Tr = heap_var Tr'\<close> heap_knownfolded_var_rel_masks_normal_fields knownfolded_masks_normal_fields_upd lookup_heap)
     using \<open>heap_knownfolded_rel Pr (field_translation Tr') (get_nm_total (get_total_full \<omega>\<^sub>0)) hb\<close>
       \<open>unfold_rel ctxt_vpr pid v_args_vpr (Abs_preal v_p_vpr) (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>)\<close> unfold_set_kfm_to_zero
