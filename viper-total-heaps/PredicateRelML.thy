@@ -167,6 +167,34 @@ fun no_heap_assignment_until_tac ctxt : int -> tactic =
   no_heap_assignment_until_step_tac ctxt THEN_ALL_NEW
     (fn i => (assm_full_simp_solved_tac ctxt i) ORELSE (no_heap_assignment_until_tac ctxt i))
 
+fun upd_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
+  (Rmsg' "exh pred upd progress" (rewrite_rel_general_tac ctxt) ctxt) THEN'
+  (Rmsg' "exh pred upd rule" (resolve_tac ctxt @{thms exhale_rel_pred_acc_upd_rel}) ctxt) THEN'
+  (Rmsg' "exh pred upd StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
+  (Rmsg' "exh pred upd TempPermNotInAux" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
+  (Rmsg' "exh pred upd StateRelOut" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
+  (Rmsg' "exh pred upd WfCons" (resolve_tac ctxt [#consistency_wf_thm info]) ctxt) THEN'
+  (Rmsg' "exh pred upd WfTyRep" (resolve_tac ctxt [#wf_ty_repr_thm info]) ctxt) THEN'
+  (Rmsg' "exh pred upd MaskVarDefSame" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "exh pred upd TyInterp" (resolve_tac ctxt [#type_interp_econtext info]) ctxt) THEN'
+  (Rmsg' "exh pred upd NullConst" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "exh pred upd MaskVar" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "exh pred upd MaskUpdateWf" (resolve_tac ctxt [@{thm mask_update_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]] THEN'
+                                      assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "exh pred upd MaskReadWf" (resolve_tac ctxt [@{thm mask_read_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]] THEN'
+                                    assm_full_simp_solved_tac ctxt) ctxt) THEN'
+  (Rmsg' "exh pred upd PredType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "exh pred upd NewPermBpl" (simp_tac_with_thms @{thms update_mask_concrete_def} ctxt) ctxt) THEN'
+  (Rmsg' "exh pred upd MaskUpdateBpl" (simp_tac_with_thms @{thms read_mask_concrete_def update_mask_concrete_def} ctxt THEN'
+                                      assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "exh pred upd PlocBpl" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+  (Rmsg' "exh pred upd PlocRel" (prove_ploc_rel ctxt info pred_name exp_rel_info) ctxt) THEN'
+  (Rmsg' "exh pred upd AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "exh pred upd ProgEq" (assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "exh pred upd KFRelOff" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+  (Rmsg' "exh pred upd ConsOn" (assm_full_simp_solved_with_thms_tac
+                                  ([#tr_def_thm info] @ @{thms default_state_rel_options_def}) ctxt) ctxt)
+
 fun atomic_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) exh_pred_acc_hint =
     case exh_pred_acc_hint of
       PredAccExhHint (pred_name, exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm, exp_rel_perm_access_thm) =>
@@ -178,7 +206,7 @@ fun atomic_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) (no_de
         (store_temporary_perm_pred_exh_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
         (prove_perm_non_negative_pred_exh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
         (prove_sufficient_perm_pred_tac ctxt info pred_name exp_rel_info lookup_aux_var_state_rel_thm exp_rel_perm_access_thm) THEN'
-        (upd_exhale_pred_acc_tac ctxt info pred_name exp_rel_info)
+        (upd_exhale_pred_acc_in_unfold_tac ctxt info pred_name exp_rel_info)
     | _ => error("Unfold only supports PredAccExhHint")
 
 

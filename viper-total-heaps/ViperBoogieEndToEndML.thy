@@ -180,6 +180,11 @@ fun finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr ctxt t =
      asm_full_simp_tac (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt)
      (* For some unknown reason, we could not delete those lemmas to prove this case.
         Todo: Investigate this. *)
+  | Const (@{const_name FHasPerm}, _) =>
+     (SUBGOAL (fn (t,_) => (writeln "FHasPerm function"; all_tac))) THEN'
+     (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint hasperm", [t]))) THEN' *)
+     SUBGOAL (fn (_,_) => (writeln (cat_lines (map (Thm.string_of_thm @{context}) del_thms)); all_tac)) THEN'
+     asm_full_simp_tac (del_simps [] (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt))
   | _ =>
      asm_full_simp_tac (del_simps del_thms (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt))
 

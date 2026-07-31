@@ -1531,29 +1531,30 @@ qed
 lemma unfold_knownfolded_upd_rel:
   assumes
     StateRelIn: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow>
-                          state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns" and
-    StateRelOut: "\<And>\<omega> ns. state_rel_def_same Pr StateCons TyRep (enable_knownfolded_rel_opt Tr) AuxPred ctxt_bpl \<omega> ns \<Longrightarrow> R' \<omega> ns" and
+                          state_rel_def_same Pr StateCons TyRep Tr' AuxPred ctxt_bpl \<omega> ns" and
+    StateRelOut: "\<And>\<omega> ns. state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns \<Longrightarrow> R' \<omega> ns" and
 
-    KFMOptTurnedOff: "\<not> kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))" and
+    (* KFMOff: "\<not> kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr'))" and *)
+    KFMPosOff: "\<not> kf_pos_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))" and
+    KFMOn: "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))" and
+    KFMRel: "Tr' = disable_knownfolded_rel_opt Tr" and
     KFMNewOpt: "kf_turned_on kf_opt" and
+
     HeapVarDefSame: "heap_var_def Tr = heap_var Tr" and
-
-    PlocRel: "ploc_sm_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
-
-    TyInterpEq: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
 
     NullConst: "const_repr Tr CNull = nullConst" and
     ZeroPMaskConst: "const_repr Tr CKnownFoldedZeroMask = zeroPMask" and
     HeapVar: "hvar = heap_var Tr" and
 
-    PredType: "pred_snap_field_type TyRep pid = Some pred_ty" and
-
     HeapUpdateWf: "heap_update_wf TyRep ctxt_bpl heap_upd_bpl" and
+    KnownFoldedUpdBpl: "h_upd_bpl = heap_upd_bpl (Var hvar) (Var nullConst) e_ploc_bpl (Var zeroPMask)
+                                      [pred_ty, TConSingle (TKnownFoldedMaskId TyRep)]" and
 
-    KnownFoldedUpdBpl: "h_upd_bpl = heap_upd_bpl (Var (heap_var Tr)) (Var nullConst) e_ploc_bpl (Var zeroPMask)
-                                      [pred_ty, TConSingle (TKnownFoldedMaskId TyRep)]"
- and
-    KFPosOffU: "\<not> kf_pos_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))"
+    PlocRel: "ploc_sm_rel_vpr_bpl' R ctxt_vpr ctxt_bpl e_args_vpr pid e_ploc_bpl" and
+
+    TyInterpEq: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
+
+    PredType: "pred_snap_field_type TyRep pid = Some pred_ty"
   shows "rel_general (uncurry (\<lambda>\<omega>\<^sub>0 \<omega> ns. R \<omega> ns \<and>
                                          ctxt_vpr, (Some \<omega>\<^sub>0) \<turnstile> \<langle>e_p_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p_vpr) \<and>
                                          red_pure_exps_total ctxt_vpr (Some \<omega>\<^sub>0) e_args_vpr \<omega> (Some v_args_vpr) \<and>
@@ -1587,14 +1588,16 @@ proof (rule rel_intro; blast?)
     by blast
 
   obtain hb where
-    lookup_heap: "lookup_var (var_context ctxt_bpl) ns (heap_var Tr) = Some (AbsV (AHeap hb))" and
-    lookup_heap_ty: "lookup_var_ty (var_context ctxt_bpl) (heap_var Tr) = Some (TConSingle (THeapId TyRep))" and
+    lookup_heap: "lookup_var (var_context ctxt_bpl) ns (heap_var Tr') = Some (AbsV (AHeap hb))" and
+    lookup_heap_ty: "lookup_var_ty (var_context ctxt_bpl) (heap_var Tr') = Some (TConSingle (THeapId TyRep))" and
     heap_ty: "vbpl_absval_ty_opt TyRep (AHeap hb) = Some ((THeapId TyRep) ,[])"
     using state_rel_obtain_heap[OF StateRelIn[OF \<open>R \<omega> ns\<close>]]
     by metis
 
-  hence "heap_knownfolded_rel Pr (field_translation Tr) (get_nm_total (get_total_full \<omega>\<^sub>0)) hb"
-    by (metis (no_types, opaque_lifting) Semantics.val.inject(2) \<open>heap_knownfolded_var_rel _ _ _ _ _ _ _\<close> get_nm_total_full.simps heap_knownfolded_var_rel_def option.inject vbpl_absval.inject(4) KFMNewOpt)
+  hence "heap_knownfolded_rel Pr (field_translation Tr') (get_nm_total (get_total_full \<omega>\<^sub>0)) hb"
+    by (metis lookup_heap tr_vpr_bpl.update_convs(9) KFMNewOpt tr_vpr_bpl.ext_inject get_nm_total_full.elims
+        \<open>heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns\<close>
+        tr_vpr_bpl.surjective heap_knownfolded_var_rel_def option.sel KFMRel vbpl_absval.inject(4) Semantics.val.sel(2))
 
   let ?hb' = "hb( (Null, PredKnownFoldedField (pid, v_args_vpr)) \<mapsto> zero_knownfolded_mask )"
 
@@ -1602,61 +1605,70 @@ proof (rule rel_intro; blast?)
     unfolding \<open>h_upd_bpl = _\<close>
     apply (rule heap_update_wf_apply[OF HeapUpdateWf, where ?h=hb and ?r=Null and ?f="PredKnownFoldedField (pid,v_args_vpr)"])
           apply (rule red_expr_red_exprs.RedVar)
-          apply fact+
+    using KFMRel lookup_heap \<open>hvar = _\<close>
+          apply fastforce
+         apply fact
         apply (rule red_expr_red_exprs.RedVar)
-    using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] NullConst
+    using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] NullConst KFMRel
         apply force
        apply (simp add: ploc_bpl_eval)
       apply (simp add: PredType)
      apply (rule red_expr_red_exprs.RedVar)
     using state_rel_boogie_const_rel[OF StateRelIn[OF \<open>R \<omega> ns\<close>], unfolded boogie_const_rel_def] ZeroPMaskConst
     unfolding zero_knownfolded_mask_def
-     apply fastforce
+    using KFMRel
+     apply force
     apply simp
     done
+
+  have "Tr = enable_knownfolded_rel_opt Tr'"
+    using KFMRel KFMOn KFMPosOff
+    by fastforce
+
+  have "heap_var Tr = heap_var Tr'"
+    by (simp add: KFMRel)
 
   show "\<exists>ns'. red_ast_bpl P ctxt_bpl (?\<gamma>, Normal ns) (?\<gamma>', Normal ns') \<and> uncurry (\<lambda>\<omega>\<^sub>0_\<omega>. R') \<omega>\<^sub>0_\<omega>' ns'"
     apply (rule exI, intro conjI)
      apply (rule red_ast_bpl_one_simple_cmd)
      apply (rule RedAssign[where ?ty="TConSingle (THeapId TyRep)" and ?v="AbsV (AHeap ?hb')"])
-    using lookup_heap_ty \<open>hvar = _\<close>
-       apply blast
+    using lookup_heap_ty \<open>hvar = _\<close> KFMRel
+       apply simp
       apply (simp add: TyInterpEq zero_knownfolded_mask_def)
       apply (meson heap_bpl_well_typed_elim heap_ty)
      apply (simp add: h_upd_eval)
     unfolding \<open>\<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>'\<close>[symmetric] \<open>\<omega>\<^sub>0_\<omega> = (_, _)\<close>
     apply simp
     apply (rule StateRelOut)
+    apply (subst \<open>Tr = _\<close>)
     apply (rule turn_on_knownfolded_rel)
-    unfolding zero_knownfolded_mask_def \<open>hvar = _\<close>
+    unfolding zero_knownfolded_mask_def \<open>hvar = _\<close> \<open>heap_var Tr = _\<close>
      apply (rule kfm_update_state_rel)
-         apply (rule StateRelIn[OF \<open>R \<omega> ns\<close>])
-        apply fact
-    using KFMOptTurnedOff
-       apply blast
+           apply (rule StateRelIn[OF \<open>R \<omega> ns\<close>])
+          apply fact
+    using \<open>heap_knownfolded_rel Pr (field_translation Tr') (get_nm_total (get_total_full \<omega>\<^sub>0)) hb\<close>
+      \<open>unfold_rel ctxt_vpr pid v_args_vpr (Abs_preal v_p_vpr) (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>)\<close>
+      unfold_set_kfm_to_zero apply fastforce
     unfolding TyInterpEq
+        apply simp
+        apply (meson heap_bpl_well_typed_elim heap_ty)
+       apply (simp add: HeapVarDefSame KFMRel)
       apply simp
-      apply (meson heap_bpl_well_typed_elim heap_ty)
-     apply fact
-      apply simp
-    using KFPosOffU
-     apply blast
+     apply (simp add: KFMRel)
     unfolding heap_knownfolded_var_rel_def
     apply (rule exI[of _ ?hb'])
     apply (intro conjI)
-       apply (simp add: zero_knownfolded_mask_def)
+        apply (simp add: zero_knownfolded_mask_def)
     using \<open>heap_knownfolded_var_rel _ _ _ _ _ _ _\<close>
-      unfolding heap_knownfolded_var_rel_def zero_knownfolded_mask_def
-      apply (simp add: lookup_heap)
-      apply (rule knownfolded_masks_normal_fields_upd
-                    [OF heap_knownfolded_var_rel_masks_normal_fields
-                          [OF \<open>heap_knownfolded_var_rel _ _ _ _ _ _ _\<close> lookup_heap]])
-      apply simp
-     apply simp
-     apply (rule unfold_set_kfm_to_zero)
-      apply fact+
-    apply simp
-    done
+    unfolding heap_knownfolded_var_rel_def zero_knownfolded_mask_def
+       apply (simp add: lookup_heap)
+       apply (simp add: \<open>heap_var Tr = heap_var Tr'\<close> lookup_heap)
+      apply (metis \<open>heap_knownfolded_var_rel kf_opt Pr (var_context ctxt_bpl) (field_translation Tr) (heap_var Tr) \<omega>\<^sub>0 ns\<close>
+        \<open>heap_var Tr = heap_var Tr'\<close> heap_knownfolded_var_rel_masks_normal_fields knownfolded_masks_normal_fields_upd lookup_heap)
+    using \<open>heap_knownfolded_rel Pr (field_translation Tr') (get_nm_total (get_total_full \<omega>\<^sub>0)) hb\<close>
+      \<open>unfold_rel ctxt_vpr pid v_args_vpr (Abs_preal v_p_vpr) (get_total_full \<omega>\<^sub>0) (get_total_full \<omega>)\<close> unfold_set_kfm_to_zero
+     apply fastforce
+    by fastforce
 qed
 
 
