@@ -32,6 +32,20 @@ ML \<open>
 
 \<close>
 
+text \<open>Placeholder for an axiom whose proof is not supported yet. Closes the current subgoal only,
+  unlike \<open>sorry\<close>, which would abandon the remaining axioms as well. Requires \<open>quick_and_dirty\<close>.\<close>
+
+method_setup axiom_proof_sorry =
+  \<open>Scan.succeed (fn ctxt => SIMPLE_METHOD' (Skip_Proof.cheat_tac ctxt))\<close>
+  "admit the current subgoal"
+
+
+text \<open>Closing step of the predicate mask framing axioms: introduce the antecedent of the axiom and
+  discharge the remaining equality.\<close>
+
+method axiom_prove_pred_mask_frame =
+  (intro impI)+, (elim conjE)+, (rule select_heap_aux_frame_pred_mask_field; assumption)
+
 method fun_interp_wf_aux_tac for fid :: fun_enum_bpl uses fun_wf_thm ty_repr_def wf_ty_repr_thm fun_repr_inj_thm =
       ((rule exI, rule conjI),
       (rule fun_interp_vpr_bpl_concrete_lookup[where ?fid=fid, OF fun_repr_inj_thm]),
@@ -160,11 +174,26 @@ and axiom_aux_list_tac ctxt lookup_const_thms del_thms (axiom_tac_data : axiom_t
         K no_tac
       ]
 
+\<comment>\<open>Facts that let a function application be typed without computing the type of its arguments:
+   \<^term>\<open>type_of_vbpl_val T (AbsV (ARef r))\<close> cannot be computed because \<open>type_of_val.simps\<close> is
+   deleted, and the type of \<^term>\<open>AbsV (AField (pred_mask_field_val T f))\<close> cannot be computed at
+   all as long as the field \<^term>\<open>f\<close> is a variable.
+
+   The type representation occurs in these rules and the surrounding simp steps unfold it to
+   varying degrees, so each rule is supplied both as stated and normalised w.r.t. the concrete
+   type representation, to match whichever form the goal is in.\<close>
+fun arg_ty_thms ctxt del_thms ty_repr_def wf_ty_repr =
+  let
+    val base = @{thm type_of_pred_mask_field_val} OF [wf_ty_repr]
+    val ctxt' = del_simps del_thms (add_simps (ty_repr_def :: @{thms ty_repr_basic_def}) ctxt)
+  in [@{thm type_of_vbpl_val_ref}, base, Simplifier.simplify ctxt' base] end
+
 fun finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr ctxt t =
+  let val arg_ty_thms = arg_ty_thms ctxt del_thms ty_repr_def wf_ty_repr in
   case t of
     Const (@{const_name FReadHeap}, _) =>
-     asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps [ty_repr_def, @{thm lift_fun_bpl_def}, @{thm heap_upd_ty_preserved_2_concrete} OF [wf_ty_repr]] ctxt)) THEN'
-     asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps @{thms ty_repr_basic_def} ctxt))
+     asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps ([ty_repr_def, @{thm lift_fun_bpl_def}, @{thm heap_upd_ty_preserved_2_concrete} OF [wf_ty_repr]] @ arg_ty_thms) ctxt)) THEN'
+     asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps (@{thms ty_repr_basic_def} @ arg_ty_thms) ctxt))
   | Const (@{const_name FReadMask}, _) =>
      asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps [ty_repr_def, @{thm lift_fun_bpl_def}] ctxt)) THEN'
      asm_full_simp_tac (del_simps @{thms fun_upd_apply} (add_simps @{thms ty_repr_basic_def} ctxt))
@@ -175,7 +204,23 @@ fun finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr ctxt t =
      (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
      asm_full_simp_tac (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt)
   | Const (@{const_name FPredicateMaskField}, _) =>
-     asm_full_simp_tac (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt)
+     \<comment>\<open>If the field argument is concrete, evaluate the application as usual. This must be tried
+        first: the callers of the tactic expect the concrete result in that case.\<close>
+     ((asm_full_simp_tac (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt)) |> SOLVED')
+     ORELSE'
+     \<comment>\<open>Otherwise the field is a variable (a quantified field of frame-fragment type need not be a
+        predicate snapshot field, so it cannot be inverted) and the application only reduces to the
+        opaque \<^const>\<open>pred_mask_field_val\<close>. \<open>fun_interp_vpr_bpl.simps\<close> is deleted so that the
+        application is not unfolded into \<^const>\<open>lift_fun_bpl\<close> before the rule is resolved.\<close>
+     ((asm_full_simp_tac (del_simps (@{thms fun_interp_vpr_bpl.simps} @ del_thms) (add_simps arg_ty_thms ctxt)) THEN'
+       resolve_tac ctxt [@{thm fun_interp_vpr_bpl_predicate_mask_field}] THEN'
+       \<comment>\<open>the three premises: well-formedness, closedness of the type argument, and the type of
+          the field argument. Deliberately without message wrappers, so that a failure fails the
+          tactic instead of aborting the whole proof.\<close>
+       (assm_full_simp_solved_with_thms_tac [ty_repr_def, wf_ty_repr] ctxt) THEN'
+       (assm_full_simp_solved_tac ctxt) THEN'
+       (assm_full_simp_solved_with_thms_tac (ty_repr_def :: @{thms ty_repr_basic_def}) ctxt))
+      |> SOLVED')
   | Const (@{const_name FPredicateLoc}, _) $ _ $ _ =>
      asm_full_simp_tac (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt)
      (* For some unknown reason, we could not delete those lemmas to prove this case.
@@ -187,6 +232,7 @@ fun finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr ctxt t =
      asm_full_simp_tac (del_simps [] (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt))
   | _ =>
      asm_full_simp_tac (del_simps del_thms (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt))
+  end
 
 fun axiom_tac ctxt fun_interp_inst_def_thm lookup_const_thms lookup_fields_thms del_thms ty_repr_def wf_ty_repr fun_repr_inj_thm =
   let val axiom_tac_data : axiom_tac_data = {

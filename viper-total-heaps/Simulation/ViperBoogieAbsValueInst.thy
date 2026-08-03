@@ -332,6 +332,9 @@ lemma type_of_vbpl_val_case_of:
   apply (simp split: val.split)
   done
 
+lemma type_of_vbpl_val_ref: "type_of_vbpl_val T (AbsV (ARef r)) = TConSingle (TRefId T)"
+  by simp
+
 lemma vbpl_absval_ty_opt_heap_simp_alt [simp]:
  "vbpl_absval_ty_opt T (AHeap h) = 
       Some_if 

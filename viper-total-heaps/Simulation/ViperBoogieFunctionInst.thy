@@ -652,6 +652,97 @@ proof (rule fun_interp_single_wf_intro)
 qed
 
 
+subsubsection \<open>The result of \<^const>\<open>predicate_mask_field\<close> as an opaque, well-typed value\<close>
+
+text \<open>When an axiom quantifies over a field of type \<^term>\<open>TCon (TFieldId T) [t, TConSingle (TFrameFragmentId T)]\<close>,
+  the quantified value cannot be inverted into a \<^const>\<open>PredSnapshotField\<close>: a
+  \<^term>\<open>DummyField t (TConSingle (TFrameFragmentId T))\<close> has the very same type (see \<^const>\<open>field_ty_fun_opt\<close>).
+  Consequently the field stays a variable while the axiom's body is evaluated, and
+  \<^const>\<open>predicate_mask_field\<close> applied to it cannot be reduced by computation.
+
+  Instead of case splitting, we name the result \<open>pred_mask_field_val\<close> and provide (a) the
+  equation that lets the tactic evaluate the application and (b) the typing lemma that lets the
+  \<^emph>\<open>enclosing\<close> function application (\<open>readHeap\<close>) discharge its \<^const>\<open>lift_fun_bpl\<close> side condition
+  without ever inspecting the field. The shape of the field is only recovered at the very end of
+  the axiom proof, where the \<open>IsPredicateField\<close> conjunct of the antecedent is available as an
+  assumption (see \<open>select_heap_aux_frame_pred_mask_field\<close> below).\<close>
+
+definition pred_mask_field_val :: "'a ty_repr_bpl \<Rightarrow> 'a vb_field \<Rightarrow> 'a vb_field"
+  where "pred_mask_field_val T f =
+     (case f of
+        PredSnapshotField lp \<Rightarrow> PredKnownFoldedField lp
+      | NormalField field_id vty \<Rightarrow> DummyField (TConSingle (TNormalFieldId T)) (TConSingle (TKnownFoldedMaskId T))
+      | PredKnownFoldedField lp \<Rightarrow> DummyField (the (pred_snap_field_type T (fst lp))) (TConSingle (TKnownFoldedMaskId T))
+      | DummyField t1 t2 \<Rightarrow> DummyField t1 (TConSingle (TKnownFoldedMaskId T)))"
+
+lemma pred_mask_field_val_pred_snapshot_field:
+  "pred_mask_field_val T (PredSnapshotField lp) = PredKnownFoldedField lp"
+  by (simp add: pred_mask_field_val_def)
+
+lemma predicate_mask_field_eq_pred_mask_field_val:
+  assumes WfTyRepr: "wf_ty_repr_bpl T"
+      and FieldTy: "type_of_vbpl_val T (AbsV (AField f)) = TCon (TFieldId T) [t, TConSingle (TFrameFragmentId T)]"
+    shows "predicate_mask_field T [t'] [AbsV (AField f)] = Some (AbsV (AField (pred_mask_field_val T f)))"
+proof (cases f)
+  case (PredKnownFoldedField lp)
+  \<comment>\<open>excluded by the type of \<^term>\<open>f\<close>: a known-folded field carries \<^const>\<open>TKnownFoldedMaskId\<close>\<close>
+  show ?thesis
+  proof (cases "pred_snap_field_type T (fst lp)")
+    case None
+    \<comment>\<open>then \<^term>\<open>f\<close> has the dummy type, which has no type arguments\<close>
+    thus ?thesis
+      using FieldTy PredKnownFoldedField by simp
+  next
+    case (Some p)
+    hence "TKnownFoldedMaskId T = TFrameFragmentId T"
+      using FieldTy PredKnownFoldedField by simp
+    hence False
+      using wf_ty_repr_bpl_inj_tcon_id_repr[OF WfTyRepr] by (simp add: inj_eq)
+    thus ?thesis by simp
+  qed
+qed (simp_all add: pred_mask_field_val_def)
+
+lemma type_of_pred_mask_field_val:
+  assumes WfTyRepr: "wf_ty_repr_bpl T"
+      and Closed: "closed t"
+      and FieldTy: "type_of_vbpl_val T (AbsV (AField f)) = TCon (TFieldId T) [t, TConSingle (TFrameFragmentId T)]"
+    shows "type_of_vbpl_val T (AbsV (AField (pred_mask_field_val T f))) =
+             TCon (TFieldId T) [t, TConSingle (TKnownFoldedMaskId T)]"
+proof -
+  have "\<exists>v. predicate_mask_field T [t] [AbsV (AField f)] = Some v \<and>
+             type_of_vbpl_val T v =
+               instantiate [t] (TCon (TFieldId T) [TVar 0, TConSingle (TKnownFoldedMaskId T)])"
+    apply (rule predicate_mask_field_fun_interp_single_wf
+                  [OF WfTyRepr, simplified fun_interp_single_wf.simps, rule_format])
+    by (simp_all add: Closed FieldTy del: type_of_val.simps vbpl_absval_ty.simps)
+  thus ?thesis
+    using predicate_mask_field_eq_pred_mask_field_val[OF WfTyRepr FieldTy] by simp
+qed
+
+text \<open>The functional content of the two \<open>IdenticalOnKnownLocations\<close> framing axioms for predicate
+  mask fields: reading the known-folded mask of a predicate location out of two heaps that agree on
+  all locations with permission gives the same result. Stated directly in terms of
+  \<^const>\<open>select_heap_aux\<close> so that the whole residual goal of the axiom is discharged by a single
+  \<open>rule\<close> application.\<close>
+
+lemma select_heap_aux_frame_pred_mask_field:
+  assumes IsPred: "is_PredSnapshotField f"
+      and Perm: "0 < m (Null, f)"
+      and Identical:
+            "\<forall>a b. 0 < m (Null, PredSnapshotField (a, b)) \<longrightarrow>
+                   h (Null, PredKnownFoldedField (a, b)) = ha (Null, PredKnownFoldedField (a, b))"
+    shows "select_heap_aux T t h Null (pred_mask_field_val T f) =
+             select_heap_aux T t ha Null (pred_mask_field_val T f)"
+proof -
+  from IsPred obtain a b where "f = PredSnapshotField (a, b)"
+    by (cases f) auto
+  thus ?thesis
+    using Perm Identical
+    by (simp add: select_heap_aux_def pred_mask_field_val_def)
+qed
+
+
+
 subsection \<open>Global function map\<close>
 
 text \<open>TODO: this is currently not modular. Ideally, different modules would define these interpretations
@@ -853,5 +944,14 @@ proof (rule red_ast_bpl_havoc_assume[OF LookupDeclExhaleHeap])
     done
 qed (insert assms, auto)
 
+
+lemma fun_interp_vpr_bpl_predicate_mask_field:
+  assumes WfTyRepr: "wf_ty_repr_bpl T"
+      and Closed: "closed t"
+      and FieldTy: "type_of_vbpl_val T (AbsV (AField f)) = TCon (TFieldId T) [t, TConSingle (TFrameFragmentId T)]"
+    shows "fun_interp_vpr_bpl Pr T F FPredicateMaskField [t] [AbsV (AField f)] =
+             Some (AbsV (AField (pred_mask_field_val T f)))"
+  using predicate_mask_field_eq_pred_mask_field_val[OF WfTyRepr FieldTy] Closed FieldTy
+  by (simp add: lift_fun_bpl_def)
 
 end
