@@ -434,6 +434,24 @@ fun select_knownfolded_mask :: "'a ty_repr_bpl \<Rightarrow> 'a sem_fun_bpl"
              Some (BoolV (m (r, f)))
         | _ \<Rightarrow> None)"
 
+text \<open>The value \<open>readPMask\<close> reads out of a known-folded mask whose concrete shape is unknown.\<close>
+
+definition knownfolded_mask_of :: "'a vbpl_val \<Rightarrow> ref \<times> 'a vb_field \<Rightarrow> bool"
+  where "knownfolded_mask_of v = (case v of AbsV (AKnownFoldedMask pm) \<Rightarrow> pm | _ \<Rightarrow> (\<lambda>_. False))"
+
+lemma select_knownfolded_mask_opaque:
+  assumes WfTyRepr: "wf_ty_repr_bpl T"
+      and MaskTy: "type_of_vbpl_val T v = TConSingle (TKnownFoldedMaskId T)"
+    shows "select_knownfolded_mask T [t1, t2] [v, AbsV (ARef r), AbsV (AField g)] =
+             Some (BoolV (knownfolded_mask_of v (r, g)))"
+proof -
+  from knownfolded_mask_inversion_type_of_vbpl_val[OF WfTyRepr] MaskTy
+  obtain pm where "v = AbsV (AKnownFoldedMask pm)"
+    by auto
+  thus ?thesis
+    by (simp add: knownfolded_mask_of_def)
+qed
+
 lemma select_knownfolded_mask_fun_interp_single_wf:
   assumes WfTyRepr: "wf_ty_repr_bpl T"
   shows "fun_interp_single_wf 
@@ -473,25 +491,67 @@ text \<open>The three conjuncts model the three axioms that the Viper-to-Boogie 
         \<^term>\<open>PredKnownFoldedField lp\<close> and \<open>IsPredicateField\<close> is \<^const>\<open>is_PredSnapshotField\<close>,
       \<^item> \<open>Frame all locations with known folded permissions\<close>.\<close>
 
-fun identical_on_known_locs ::  "'a sem_fun_bpl"
+text \<open>The third conjunct below is phrased in terms of \<^const>\<open>select_heap_aux\<close>, i.e. in terms of the
+  value that \<open>readHeap\<close> returns, and not in terms of the underlying partial heap being \<^const>\<open>Some\<close>.
+  This matters because the Boogie axioms that this function must satisfy read the known-folded mask
+  with \<open>readHeap\<close>. The two agree wherever the heap is defined; where it is not, \<^const>\<open>select_heap_aux\<close>
+  yields a value of the right type chosen by \<^const>\<open>Eps\<close>, and only the formulation below constrains it.
+
+  Note the resulting dependency: this function can only be established for heaps that are known to
+  store a known-folded mask at every predicate location holding permission. The state relation
+  guarantees that via \<open>heap_knownfolded_var_rel\<close>.\<close>
+
+fun identical_on_known_locs ::  "'a ty_repr_bpl \<Rightarrow> 'a sem_fun_bpl"
   where
-    "identical_on_known_locs ts vs =
+    "identical_on_known_locs T ts vs =
       (case (ts, vs) of
          ([], [AbsV (AHeap h), AbsV (AHeap h_exhale), AbsV (AMask m)]) \<Rightarrow>
            Some (BoolV ( (\<forall>r f. m (r, f) > 0 \<longrightarrow> h (r, f) = h_exhale (r, f)) \<and>
                          (\<forall>lp. m (Null, PredSnapshotField lp) > 0 \<longrightarrow>
                                h (Null, PredKnownFoldedField lp) = h_exhale (Null, PredKnownFoldedField lp)) \<and>
                          (\<forall>lp kfm. m (Null, PredSnapshotField lp) > 0 \<longrightarrow>
-                               h (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm)) \<longrightarrow>
+                               select_heap_aux T (TConSingle (TKnownFoldedMaskId T)) h Null (PredKnownFoldedField lp)
+                                 = AbsV (AKnownFoldedMask kfm) \<longrightarrow>
                                (\<forall>r f. kfm (r, f) \<longrightarrow> h (r, f) = h_exhale (r, f)))))
        | _ \<Rightarrow> None)"
+
+text \<open>For a heap that is populated at the known-folded locations, the read-based formulation of the
+  third conjunct coincides with the store-based one, which is how it is established in practice.\<close>
+
+lemma knownfolded_frame_read_of_store:
+  assumes Defined: "\<And>lp. \<exists>kfm. h (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))"
+      and Store: "\<forall>lp kfm. m (Null, PredSnapshotField lp) > 0 \<longrightarrow>
+                           h (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm)) \<longrightarrow>
+                           (\<forall>r f. kfm (r, f) \<longrightarrow> h (r, f) = h_exhale (r, f))"
+    shows "\<forall>lp kfm. m (Null, PredSnapshotField lp) > 0 \<longrightarrow>
+                    select_heap_aux T (TConSingle (TKnownFoldedMaskId T)) h Null (PredKnownFoldedField lp)
+                      = AbsV (AKnownFoldedMask kfm) \<longrightarrow>
+                    (\<forall>r f. kfm (r, f) \<longrightarrow> h (r, f) = h_exhale (r, f))"
+proof (intro allI impI)
+  fix lp kfm r f
+  assume Perm: "m (Null, PredSnapshotField lp) > 0"
+     and Read: "select_heap_aux T (TConSingle (TKnownFoldedMaskId T)) h Null (PredKnownFoldedField lp)
+                  = AbsV (AKnownFoldedMask kfm)"
+     and Flag: "kfm (r, f)"
+
+  from Defined obtain kfm' where
+    Kfm': "h (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm'))"
+    by blast
+
+  \<comment>\<open>the heap is populated here, so the read returns the stored mask\<close>
+  hence "kfm = kfm'"
+    using Read by (simp add: select_heap_aux_def)
+
+  thus "h (r, f) = h_exhale (r, f)"
+    using Store Perm Kfm' Flag by blast
+qed
 
 lemma identical_on_known_locs_fun_interp_single_wf:
   assumes WfTyRepr: "wf_ty_repr_bpl T"
   shows "fun_interp_single_wf 
               (vbpl_absval_ty T) 
               (0,[TConSingle (THeapId T), TConSingle (THeapId T), TConSingle (TMaskId T)], (TPrim TBool))
-              identical_on_known_locs"
+              (identical_on_known_locs T)"
   apply (rule fun_interp_single_wf_intro)
   by (clarsimp dest!: all_inversion_type_of_vbpl_val[OF WfTyRepr] split: val.split vbpl_absval.split)
 
@@ -719,6 +779,75 @@ proof -
     using predicate_mask_field_eq_pred_mask_field_val[OF WfTyRepr FieldTy] by simp
 qed
 
+text \<open>The same fact phrased for \<^const>\<open>field_ty_fun_opt\<close>, which is what
+  \<^const>\<open>select_heap_aux\<close> needs to determine the type of the value it reads.\<close>
+
+lemma field_ty_fun_opt_pred_mask_field_val:
+  assumes WfTyRepr: "wf_ty_repr_bpl T"
+      and Closed: "closed t"
+      and FieldTy: "type_of_vbpl_val T (AbsV (AField f)) = TCon (TFieldId T) [t, TConSingle (TFrameFragmentId T)]"
+    shows "field_ty_fun_opt T (pred_mask_field_val T f) =
+             Some (TFieldId T, [t, TConSingle (TKnownFoldedMaskId T)])"
+proof -
+  have "vbpl_absval_ty T (AField (pred_mask_field_val T f)) =
+          (TFieldId T, [t, TConSingle (TKnownFoldedMaskId T)])"
+    using type_of_pred_mask_field_val[OF WfTyRepr Closed FieldTy]
+    by (simp add: prod_eq_iff)
+  \<comment>\<open>the dummy type has no type arguments, so the type is provided by \<^const>\<open>field_ty_fun_opt\<close>\<close>
+  from vbpl_absval_ty_not_dummy[OF this] show ?thesis
+    by simp
+qed
+
+text \<open>The premises are ordered so that \<^term>\<open>t\<close> is determined by the field typing before
+  \<open>closed t\<close> is required: as a conditional rewrite rule the conditions are solved left to right,
+  and \<^term>\<open>t\<close> does not occur in the conclusion.\<close>
+
+lemma type_of_select_heap_aux_pred_mask_field_val:
+  assumes WfTyRepr: "wf_ty_repr_bpl T"
+      and HeapTy: "type_of_vbpl_val T (AbsV (AHeap h)) = TConSingle (THeapId T)"
+      and FieldTy: "type_of_vbpl_val T (AbsV (AField f)) = TCon (TFieldId T) [t, TConSingle (TFrameFragmentId T)]"
+      and Closed: "closed t"
+    shows "type_of_vbpl_val T (select_heap_aux T (TConSingle (TKnownFoldedMaskId T)) h r (pred_mask_field_val T f)) =
+             TConSingle (TKnownFoldedMaskId T)"
+  by (rule select_heap_aux_well_typed[OF WfTyRepr _ HeapTy
+        field_ty_fun_opt_pred_mask_field_val[OF WfTyRepr Closed FieldTy]]) simp
+
+text \<open>The functional content of the known-folded framing axiom: if a location is flagged in the
+  known-folded mask of a predicate that holds permission, then the two heaps agree on it. The
+  known-folded mask is the one \<open>readHeap\<close> returns, which is why the third conjunct of
+  \<^const>\<open>identical_on_known_locs\<close> is phrased that way.\<close>
+
+lemma select_heap_aux_frame_known_folded:
+  assumes IsPred: "is_PredSnapshotField f"
+      and Perm: "0 < m (Null, f)"
+      and PmTy: "pmty = TConSingle (TKnownFoldedMaskId T)"
+      and Identical:
+            "\<forall>lp kfm. 0 < m (Null, PredSnapshotField lp) \<longrightarrow>
+                      select_heap_aux T (TConSingle (TKnownFoldedMaskId T)) h Null (PredKnownFoldedField lp)
+                        = AbsV (AKnownFoldedMask kfm) \<longrightarrow>
+                      (\<forall>r f. kfm (r, f) \<longrightarrow> h (r, f) = ha (r, f))"
+      and Flag: "knownfolded_mask_of (select_heap_aux T pmty h Null (pred_mask_field_val T f)) (r, g)"
+    shows "select_heap_aux T t h r g = select_heap_aux T t ha r g"
+proof -
+  from IsPred obtain a b where FEq: "f = PredSnapshotField (a, b)"
+    by (cases f) auto
+
+  let ?v = "select_heap_aux T (TConSingle (TKnownFoldedMaskId T)) h Null (PredKnownFoldedField (a, b))"
+
+  \<comment>\<open>if the read does not yield a mask then the flag cannot hold\<close>
+  obtain kfm where VEq: "?v = AbsV (AKnownFoldedMask kfm)"
+    using Flag FEq PmTy
+    by (auto simp: knownfolded_mask_of_def pred_mask_field_val_pred_snapshot_field
+             split: val.splits vbpl_absval.splits)
+
+  have "h (r, g) = ha (r, g)"
+    using Identical Perm FEq VEq Flag PmTy
+    by (simp add: knownfolded_mask_of_def pred_mask_field_val_pred_snapshot_field)
+
+  thus ?thesis
+    by (simp add: select_heap_aux_def)
+qed
+
 text \<open>The functional content of the two \<open>IdenticalOnKnownLocations\<close> framing axioms for predicate
   mask fields: reading the known-folded mask of a predicate location out of two heaps that agree on
   all locations with permission gives the same result. Stated directly in terms of
@@ -770,7 +899,7 @@ fun fun_interp_vpr_bpl_aux :: "ViperLang.program \<Rightarrow> 'a ty_repr_bpl \<
   | "fun_interp_vpr_bpl_aux Pr T F FHasPerm =
        (has_perm_in_mask, (2,[TConSingle (TMaskId T), TConSingle (TRefId T), (TCon (TFieldId T) [(TVar 0),(TVar 1)])], (TPrim TBool)))"
   | "fun_interp_vpr_bpl_aux Pr T F FIdenticalOnKnownLocs =
-       (identical_on_known_locs, (0,[TConSingle (THeapId T), TConSingle (THeapId T), TConSingle (TMaskId T)], (TPrim TBool)))"
+       (identical_on_known_locs T, (0,[TConSingle (THeapId T), TConSingle (THeapId T), TConSingle (TMaskId T)], (TPrim TBool)))"
   | "fun_interp_vpr_bpl_aux Pr T F FIsPredicateField =
        (is_predicate_field, (2, [TCon (TFieldId T) [(TVar 0),(TVar 1)]], (TPrim TBool)))"
   | "fun_interp_vpr_bpl_aux Pr T F FIsWandField =
@@ -915,7 +1044,9 @@ lemma red_ast_bpl_identical_on_known_locs:
           IdenticalOnKnownCondKnownFolded:
             "(\<forall>lp kfm. m (Null, PredSnapshotField lp) > 0 \<longrightarrow>
                        h (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm)) \<longrightarrow>
-                       (\<forall>r f. kfm (r, f) \<longrightarrow> h (r, f) = h_new (r, f)))"
+                       (\<forall>r f. kfm (r, f) \<longrightarrow> h (r, f) = h_new (r, f)))" and
+          KnownFoldedMaskDefined:
+            "\<And>lp. \<exists>kfm. h (Null, PredKnownFoldedField lp) = Some (AbsV (AKnownFoldedMask kfm))"
         shows "red_ast_bpl P ctxt 
                                    ((BigBlock name (Havoc hvar_exh # 
                                                     Assume (FunExp id_on_known_locs_name [] [Var hvar, Var hvar_exh, Var mvar]) #                                                    
@@ -940,7 +1071,8 @@ proof (rule red_ast_bpl_havoc_assume[OF LookupDeclExhaleHeap])
       apply simp
     using TypeInterp HeapTy NewHeapTy MaskTy
      apply simp
-    apply (simp add: IdenticalOnKnownCond IdenticalOnKnownCondPredMask IdenticalOnKnownCondKnownFolded)
+    apply (simp add: IdenticalOnKnownCond IdenticalOnKnownCondPredMask
+                     knownfolded_frame_read_of_store[OF KnownFoldedMaskDefined IdenticalOnKnownCondKnownFolded])
     done
 qed (insert assms, auto)
 
@@ -952,6 +1084,17 @@ lemma fun_interp_vpr_bpl_predicate_mask_field:
     shows "fun_interp_vpr_bpl Pr T F FPredicateMaskField [t] [AbsV (AField f)] =
              Some (AbsV (AField (pred_mask_field_val T f)))"
   using predicate_mask_field_eq_pred_mask_field_val[OF WfTyRepr FieldTy] Closed FieldTy
+  by (simp add: lift_fun_bpl_def)
+
+
+lemma fun_interp_vpr_bpl_read_knownfolded_mask:
+  assumes WfTyRepr: "wf_ty_repr_bpl T"
+      and MaskTy: "type_of_vbpl_val T v = TConSingle (TKnownFoldedMaskId T)"
+      and FieldTy: "type_of_vbpl_val T (AbsV (AField g)) = TCon (TFieldId T) [t1, t2]"
+      and Closed1: "closed t1" and Closed2: "closed t2"
+    shows "fun_interp_vpr_bpl Pr T F FReadKnownFoldedMask [t1, t2] [v, AbsV (ARef r), AbsV (AField g)] =
+             Some (BoolV (knownfolded_mask_of v (r, g)))"
+  using select_knownfolded_mask_opaque[OF WfTyRepr MaskTy] Closed1 Closed2 MaskTy FieldTy
   by (simp add: lift_fun_bpl_def)
 
 end

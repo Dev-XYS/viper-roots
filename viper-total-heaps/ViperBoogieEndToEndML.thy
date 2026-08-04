@@ -32,6 +32,12 @@ ML \<open>
 
 \<close>
 
+text \<open>Closing step of the known-folded framing axiom.\<close>
+
+method axiom_prove_known_folded_frame uses ty_repr_def =
+  (intro impI)+, (elim conjE)+,
+  (rule select_heap_aux_frame_known_folded; (assumption | simp add: ty_repr_def ty_repr_basic_def))
+
 text \<open>Placeholder for an axiom whose proof is not supported yet. Closes the current subgoal only,
   unlike \<open>sorry\<close>, which would abandon the remaining axioms as well. Requires \<open>quick_and_dirty\<close>.\<close>
 
@@ -182,11 +188,20 @@ and axiom_aux_list_tac ctxt lookup_const_thms del_thms (axiom_tac_data : axiom_t
    The type representation occurs in these rules and the surrounding simp steps unfold it to
    varying degrees, so each rule is supplied both as stated and normalised w.r.t. the concrete
    type representation, to match whichever form the goal is in.\<close>
-fun arg_ty_thms ctxt del_thms ty_repr_def wf_ty_repr =
+\<comment>\<open>The concrete type representation occurs in these rules in whichever form the surrounding simp
+   steps have left it in: folded, with the predicate map as a literal, or with the map eta expanded.
+   Each rule is therefore supplied in all of those forms.\<close>
+fun ty_repr_variants ctxt del_thms ty_repr_def thm =
   let
-    val base = @{thm type_of_pred_mask_field_val} OF [wf_ty_repr]
-    val ctxt' = del_simps del_thms (add_simps (ty_repr_def :: @{thms ty_repr_basic_def}) ctxt)
-  in [@{thm type_of_vbpl_val_ref}, base, Simplifier.simplify ctxt' base] end
+    fun norm extra =
+      Simplifier.full_simplify
+        (del_simps del_thms (add_simps (ty_repr_def :: extra @ @{thms ty_repr_basic_def}) ctxt)) thm
+  in [thm, norm [], norm @{thms fun_upd_def}] end
+
+fun arg_ty_thms ctxt del_thms ty_repr_def wf_ty_repr =
+  [@{thm type_of_pred_mask_field_val}, @{thm type_of_select_heap_aux_pred_mask_field_val}]
+    |> maps (fn thm => ty_repr_variants ctxt del_thms ty_repr_def (thm OF [wf_ty_repr]))
+    |> cons @{thm type_of_vbpl_val_ref}
 
 fun finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr ctxt t =
   let val arg_ty_thms = arg_ty_thms ctxt del_thms ty_repr_def wf_ty_repr in
@@ -198,10 +213,33 @@ fun finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr ctxt t =
      asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps [ty_repr_def, @{thm lift_fun_bpl_def}] ctxt)) THEN'
      asm_full_simp_tac (del_simps @{thms fun_upd_apply} (add_simps @{thms ty_repr_basic_def} ctxt))
   | Const (@{const_name FReadKnownFoldedMask}, _) =>
-     asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps [ty_repr_def, @{thm lift_fun_bpl_def}] ctxt)) THEN'
-     asm_full_simp_tac (del_simps @{thms fun_upd_apply} (add_simps @{thms ty_repr_basic_def} ctxt))
+     \<comment>\<open>As for \<^const>\<open>FPredicateMaskField\<close>: evaluate the application if the known-folded mask
+        argument is concrete, and otherwise (it is the opaque result of reading a predicate's mask
+        field out of the heap) fall back to \<^const>\<open>knownfolded_mask_of\<close>. The opaque value carries
+        the type representation in unfolded form while the enclosing application still has it
+        folded, so rule and goal are normalised with one and the same simp set.\<close>
+     ((asm_full_simp_tac (del_simps (@{thm fun_upd_apply}::del_thms) (add_simps [ty_repr_def, @{thm lift_fun_bpl_def}] ctxt)) THEN'
+       asm_full_simp_tac (del_simps @{thms fun_upd_apply} (add_simps @{thms ty_repr_basic_def} ctxt))) |> SOLVED')
+     ORELSE'
+     (let
+        val norm_ctxt = del_simps (@{thms fun_interp_vpr_bpl.simps} @ del_thms)
+                          (add_simps (ty_repr_def :: @{thm fun_upd_def} :: @{thms ty_repr_basic_def} @ arg_ty_thms) ctxt)
+        val norm = Simplifier.full_simplify norm_ctxt
+        val read_pmask_thm = norm (@{thm fun_interp_vpr_bpl_read_knownfolded_mask} OF [wf_ty_repr])
+      in
+        (asm_full_simp_tac norm_ctxt THEN'
+         resolve_tac ctxt [read_pmask_thm] THEN'
+         \<comment>\<open>the type of the known-folded mask, the type of the field, and the two type arguments\<close>
+         assm_full_simp_solved_with_thms_tac
+           (ty_repr_def :: @{thm fun_upd_def} ::
+            ty_repr_variants ctxt del_thms ty_repr_def wf_ty_repr @
+            @{thms ty_repr_basic_def} @ arg_ty_thms) ctxt THEN'
+         assm_full_simp_solved_with_thms_tac (ty_repr_def :: @{thms ty_repr_basic_def}) ctxt THEN'
+         assm_full_simp_solved_tac ctxt THEN'
+         assm_full_simp_solved_tac ctxt)
+        |> SOLVED'
+      end)
   | Const (@{const_name FIsPredicateField}, _) =>
-     (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint", [t]))) THEN' *)
      asm_full_simp_tac (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt)
   | Const (@{const_name FPredicateMaskField}, _) =>
      \<comment>\<open>If the field argument is concrete, evaluate the application as usual. This must be tried
@@ -226,9 +264,6 @@ fun finterp_eval_concrete_tac del_thms ty_repr_def wf_ty_repr ctxt t =
      (* For some unknown reason, we could not delete those lemmas to prove this case.
         Todo: Investigate this. *)
   | Const (@{const_name FHasPerm}, _) =>
-     (SUBGOAL (fn (t,_) => (writeln "FHasPerm function"; all_tac))) THEN'
-     (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint hasperm", [t]))) THEN' *)
-     SUBGOAL (fn (_,_) => (writeln (cat_lines (map (Thm.string_of_thm @{context}) del_thms)); all_tac)) THEN'
      asm_full_simp_tac (del_simps [] (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt))
   | _ =>
      asm_full_simp_tac (del_simps del_thms (add_simps (ty_repr_def::(@{thms lift_fun_bpl_def ty_repr_basic_def ty_bpl_normal_field})) ctxt))

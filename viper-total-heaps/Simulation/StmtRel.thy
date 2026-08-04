@@ -1317,7 +1317,8 @@ proof -
      apply simp
       apply (rule IdOnKnownCondReset)
      apply (rule IdOnKnownCondPredMask)
-    apply (rule IdOnKnownCondKnownFolded)
+     apply (rule IdOnKnownCondKnownFolded)
+    apply (rule KfmExistsHb)
     done
 
   have StateRel1: "state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega> ?ns1"
