@@ -70,9 +70,19 @@ lemma assertion_framing_cond_assert_false:
   unfolding assertion_framing_state_def
   by (auto intro: InhCondAssertFalse)
 
+text \<open>\<^term>\<open>p\<close> ranges over the scaling factor a predicate body can be folded/unfolded at, which is
+  always strictly positive in practice (Viper only allows folding/unfolding at a positive amount).
+  The \<open>0 < p\<close> guard here must be strict, not just \<open>0 \<le> p\<close>: (1) \<^const>\<open>red_inhale\<close>'s \<open>InhAcc\<close> rule
+  fails whenever the inhaled permission is negative (via \<^const>\<open>th_result_rel\<close>'s \<open>p \<ge> 0\<close> guard), so
+  a negative \<^term>\<open>p\<close> would falsify \<^const>\<open>assertion_framing_state\<close> for any assertion containing an
+  accessibility predicate; and (2), separately, \<open>p = 0\<close> must also be excluded: scaling by \<open>0\<close> can
+  turn a genuinely self-framing assertion into a failing one, e.g. \<^term>\<open>Atomic (Acc (Var 0) f (PureExp (ELit (LPerm 1)))) && Atomic (Pure (Binop (FieldAccess (Var 0) f) Gt (ELit (LInt 0))))\<close>
+  (\<open>acc(x.f) && x.f > 0\<close>) is self-framing at \<open>p = 1\<close> (the \<open>acc\<close> grants the permission the following
+  read needs), but at \<open>p = 0\<close> the scaled assertion grants zero permission and the subsequent read of
+  \<open>x.f\<close> then fails for lack of permission.\<close>
 definition assertion_self_framing :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> assertion \<Rightarrow> vtyp list \<Rightarrow> bool"
   where
-    "assertion_self_framing ctxt StateCons A tys \<equiv> \<forall>vs p. vals_well_typed (absval_interp_total ctxt) vs tys \<longrightarrow>
+    "assertion_self_framing ctxt StateCons A tys \<equiv> \<forall>vs p. vals_well_typed (absval_interp_total ctxt) vs tys \<longrightarrow> 0 < p \<longrightarrow>
        assertion_self_framing_store ctxt StateCons (syntactic_mult p A) (nth_option vs)"
 
 

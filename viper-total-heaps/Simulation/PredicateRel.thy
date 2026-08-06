@@ -425,7 +425,7 @@ lemma inhale_simulates_unfold:
       and PredDecl: "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
       and PredBody: "ViperLang.predicate_decl.body pdecl = Some pbody"
       and CtxtWfPred: "ctxt_pred_syn_wf ctxt"
-      and SelfFraming: "\<And>q. assertion_self_framing_store ctxt StateCons (syntactic_mult q pbody) (nth_option vs)"
+      and SelfFraming: "\<And>q. 0 < q \<Longrightarrow> assertion_self_framing_store ctxt StateCons (syntactic_mult q pbody) (nth_option vs)"
       and "\<phi>\<^sub>d = rm_from_lpm_total \<phi> (pid,vs) q"
       and "(\<forall>lbl \<phi>. trace lbl = Some \<phi> \<longrightarrow> StateCons_t \<phi>)"
       and AmountPos: "q > 0"  \<comment> \<open>It is okay because Viper checks if the unfolding amount is positive.\<close>
@@ -506,7 +506,7 @@ proof -
      apply (smt (verit, del_insts) add_divide_distrib div_self less_divide_eq_1 prat_non_negative)
     by simp
 
-  have Framed: "\<And>q. assertion_framing_state ctxt StateCons (syntactic_mult q pbody)
+  have Framed: "\<And>q. 0 < q \<Longrightarrow> assertion_framing_state ctxt StateCons (syntactic_mult q pbody)
                       \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr>"
     using assertion_self_framing_store_def SelfFraming
     by (metis full_total_state.update_convs(1) update_store_total.simps)
@@ -523,7 +523,8 @@ proof -
   show ?thesis
     apply (rule extcons_state_can_be_inhaled[OF PredDecl PredBody _ Framed ShiftExtCons, simplified 1])
     using CtxtWfPred PredBody PredDecl ctxt_pred_syn_wf_def
-          apply blast
+           apply blast
+          apply simp
          apply (simp add: assms(9))
         apply simp
     using final_intcons WfCons[simplified wf_total_consistency_def]
@@ -612,7 +613,7 @@ proof (rule stmt_rel_intro)
   have args_well_ty: "vals_well_typed (absval_interp_total ctxt_vpr) v_args ty_args"
     using extcons_pred_well_typed ExtCons PredArgs PredDecl \<open>0 < v_p\<close> order_le_imp_less_or_eq order_less_trans positive_real_preal preal_not_0_gt_0 perm_suff
     by fastforce
-  with SelfFraming have FramingArgs: "\<And>p. assertion_self_framing_store ctxt_vpr StateCons (syntactic_mult p pbody) (nth_option v_args)"
+  with SelfFraming have FramingArgs: "\<And>p. 0 < p \<Longrightarrow> assertion_self_framing_store ctxt_vpr StateCons (syntactic_mult p pbody) (nth_option v_args)"
     using assertion_self_framing_def
     by blast
 
@@ -680,7 +681,7 @@ proof (rule stmt_rel_intro)
     apply (subst substitute_synmult_commute[symmetric])
      apply (simp add: PermPos order_less_imp_le)
     apply (rule framing_with_substitution)
-    using FramingArgs[of p, unfolded assertion_self_framing_store_def, simplified]
+    using FramingArgs[of p, OF PermPos, unfolded assertion_self_framing_store_def, simplified]
           apply blast
          apply (rule eval_with_different_pred_heap(2)[OF _ _ _ _ _ e_args_eval])
     unfolding \<open>\<phi>\<^sub>d = _\<close>
@@ -2011,7 +2012,7 @@ proof (rule stmt_rel_intro)
     using StateRelImpliesExtCons \<open>R \<omega> ns\<close>
         apply force
        apply (smt (verit, best) WfCons get_mh_total_full.simps intcons wf_total_consistency_def)
-      apply (metis CtxtPredSF PredBody PredDecl \<open>pdecl' = pdecl\<close> assertion_self_framing_def assertion_self_framing_store_def ctxt_pred_self_framing_inh_def full_total_state.cases_scheme full_total_state.select_convs(1) full_total_state.update_convs(1) update_nm_total_full_store_unchanged update_store_total.simps v_args_ty)
+      apply (metis CtxtPredSF PermPos PredBody PredDecl \<open>pdecl' = pdecl\<close> assertion_self_framing_def assertion_self_framing_store_def ctxt_pred_self_framing_inh_def full_total_state.cases_scheme full_total_state.select_convs(1) full_total_state.update_convs(1) update_nm_total_full_store_unchanged update_store_total.simps v_args_ty)
     unfolding plus_full_total_state_ext_def
      apply simp
     unfolding plus_total_state_ext_def
@@ -2294,7 +2295,7 @@ next
       using StateRelImpliesExtCons \<open>R \<omega> ns\<close>
           apply force
          apply (smt (verit, best) WfCons get_mh_total_full.simps intcons wf_total_consistency_def)
-        apply (metis CtxtPredSF PredBody PredDecl \<open>pdecl' = pdecl\<close> assertion_self_framing_def assertion_self_framing_store_def ctxt_pred_self_framing_inh_def full_total_state.cases_scheme full_total_state.select_convs(1) full_total_state.update_convs(1) update_nm_total_full_store_unchanged update_store_total.simps v_args_ty)
+        apply (metis CtxtPredSF PermPos PredBody PredDecl \<open>pdecl' = pdecl\<close> assertion_self_framing_def assertion_self_framing_store_def ctxt_pred_self_framing_inh_def full_total_state.cases_scheme full_total_state.select_convs(1) full_total_state.update_convs(1) update_nm_total_full_store_unchanged update_store_total.simps v_args_ty)
       unfolding plus_full_total_state_ext_def
        apply simp
       unfolding plus_total_state_ext_def

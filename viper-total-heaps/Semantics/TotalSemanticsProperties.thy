@@ -2199,7 +2199,7 @@ lemma extcons_state_can_be_inhaled:
   assumes PredDecl: "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
       and PredBody: "ViperLang.predicate_decl.body pdecl = Some pbody"
       and SupPred: "supported_pred_body pbody"
-      and SelfFraming: "\<And>q. assertion_framing_state ctxt StateCons (syntactic_mult q pbody) \<omega>"
+      and SelfFraming: "\<And>q. 0 < q \<Longrightarrow> assertion_framing_state ctxt StateCons (syntactic_mult q pbody) \<omega>"
       and ExtCons: "consistent_external_wrt_ploc ctxt \<lparr> get_hh_total = hh, get_nm_total = nm \<rparr> (pid,vs) p"
       and \<omega>hh: "get_hh_total_full \<omega> = hh"
       and \<omega>Store: "get_store_total \<omega> = nth_option vs"
@@ -2220,8 +2220,11 @@ proof -
     "consistent_external ctxt \<lparr> get_hh_total = hh, get_nm_total = nm \<rparr>"
     using SatStep_case PredDecl PredBody ExtCons
     by fastforce+
+  moreover have RepPPos: "0 < Rep_preal p"
+    using assms(11)
+    by (metis less_preal.rep_eq zero_preal.rep_eq)
   moreover have "assertion_framing_state ctxt StateCons (syntactic_mult (Rep_preal p) pbody) \<omega>"
-    using SelfFraming
+    using SelfFraming[OF RepPPos]
     by (simp add: calculation(1))
   ultimately show ?thesis
     apply (cases "p > 0")
@@ -4925,13 +4928,16 @@ proof (induction arbitrary: \<phi>' and \<phi>' rule: consistent_external_wrt_pl
                   apply (simp add: diff_only_0_locs)
                  apply (simp add: diff_only_0_locs)
     unfolding \<open>\<omega>\<^sub>0 = _\<close>
-    using SFinh[unfolded ctxt_pred_self_framing_inh_def
-                assertion_self_framing_def
-                assertion_self_framing_store_def,
-                THEN spec[of _ pid], THEN spec[of _ pdecl], THEN spec[of _ pbody],
-                THEN mp, THEN mp, THEN spec[of _ vs], THEN spec[of _ "Rep_preal p"],
-                THEN mp, THEN spec[of _ \<omega>\<^sub>b]] IH
-                apply blast
+                apply (rule SFinh[unfolded ctxt_pred_self_framing_inh_def
+                                  assertion_self_framing_def
+                                  assertion_self_framing_store_def,
+                                  THEN spec[of _ pid], THEN spec[of _ pdecl], THEN spec[of _ pbody],
+                                  THEN mp, THEN mp, THEN spec[of _ vs], THEN spec[of _ "Rep_preal p"],
+                                  THEN mp, THEN mp, THEN spec[of _ \<omega>\<^sub>b]])
+                   apply (simp add: IH.IH(1))
+                  apply (simp add: IH.hyps(1))
+                 apply (simp add: IH.IH(2))
+                apply (simp add: less_preal.rep_eq zero_preal.rep_eq)
     unfolding \<open>\<omega>\<^sub>b = _\<close>
                apply simp
                apply (simp add: ConsCons_t IH.prems(1))

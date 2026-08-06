@@ -506,7 +506,7 @@ proof (rule stmt_rel_intro)
     using StateRelImpliesExtCons \<open>R \<omega> ns\<close>
         apply force
        apply (smt (verit, best) WfCons get_mh_total_full.simps intcons wf_total_consistency_def)
-      apply (metis CtxtPredSF PredBody PredDecl \<open>pdecl' = pdecl\<close> assertion_self_framing_def assertion_self_framing_store_def ctxt_pred_self_framing_inh_def full_total_state.cases_scheme full_total_state.select_convs(1) full_total_state.update_convs(1) update_nm_total_full_store_unchanged update_store_total.simps v_args_ty)
+      apply (metis CtxtPredSF PermPos PredBody PredDecl \<open>pdecl' = pdecl\<close> assertion_self_framing_def assertion_self_framing_store_def ctxt_pred_self_framing_inh_def full_total_state.cases_scheme full_total_state.select_convs(1) full_total_state.update_convs(1) update_nm_total_full_store_unchanged update_store_total.simps v_args_ty)
     unfolding plus_full_total_state_ext_def
      apply simp
     unfolding plus_total_state_ext_def
@@ -847,7 +847,7 @@ next
       using StateRelImpliesExtCons \<open>R \<omega> ns\<close>
           apply force
          apply (smt (verit, best) WfCons get_mh_total_full.simps intcons wf_total_consistency_def)
-        apply (metis CtxtPredSF PredBody PredDecl \<open>pdecl' = pdecl\<close> assertion_self_framing_def assertion_self_framing_store_def ctxt_pred_self_framing_inh_def full_total_state.cases_scheme full_total_state.select_convs(1) full_total_state.update_convs(1) update_nm_total_full_store_unchanged update_store_total.simps v_args_ty)
+        apply (metis CtxtPredSF PermPos PredBody PredDecl \<open>pdecl' = pdecl\<close> assertion_self_framing_def assertion_self_framing_store_def ctxt_pred_self_framing_inh_def full_total_state.cases_scheme full_total_state.select_convs(1) full_total_state.update_convs(1) update_nm_total_full_store_unchanged update_store_total.simps v_args_ty)
       unfolding plus_full_total_state_ext_def
        apply simp
       unfolding plus_total_state_ext_def
