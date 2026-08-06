@@ -186,6 +186,7 @@ text \<open>\<^const>\<open>framing_exh\<close> expresses an exhale relation inv
 lemma framing_exh_is_assertion_red_invariant_exh:
   assumes MonoStateCons: "mono_prop_downward StateCons"
       and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
+      and CtxtPredWf: "ctxt_pred_syn_wf ctxt_vpr"
     shows "is_exh_rel_invariant ctxt_vpr StateCons (\<lambda>A. no_perm_assertion A \<and> no_unfolding_assertion A)
                                                    (\<lambda>e. no_perm_pure_exp e \<and> no_unfolding_pure_exp e)
                                                    (framing_exh ctxt_vpr StateCons)"
@@ -259,7 +260,7 @@ next
         by simp
     next
       show "ctxt_pred_syn_wf ctxt_vpr"
-        using WfCons[unfolded wf_total_consistency_def]
+        using CtxtPredWf
         by simp
     qed (simp)
 
@@ -281,7 +282,7 @@ next
     next
       show "consistent_external ctxt_vpr (get_total_full \<omega>')"
         using \<omega>def_valid
-        using RedExh WfCons extcons_preserved_by_red_exhale total_consistency_ctxt_wf(1)
+        using RedExh WfCons CtxtPredWf extcons_preserved_by_red_exhale
         by blast
     qed (insert \<omega>def_valid, auto)
   qed

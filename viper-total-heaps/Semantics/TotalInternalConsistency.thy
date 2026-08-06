@@ -55,8 +55,7 @@ definition wf_total_consistency :: "'a total_context \<Rightarrow> _ \<Rightarro
                (\<forall>ctxt p lp \<omega>::'a full_total_state. ctxt_pred_syn_wf ctxt \<longrightarrow>
                          consistent_external ctxt (get_total_full \<omega>) \<longrightarrow>
                          p \<le> get_mp_total_full \<omega> lp \<longrightarrow>
-                         consistent_external ctxt (get_total_full (rm_from_lpm_total_full \<omega> lp p))) \<and>  \<comment> \<open>Again, these are redundant.\<close>
-               ctxt_pred_syn_wf ctxt \<and> ctxt_pred_self_framing_sat ctxt Rt  \<comment> \<open>These really shouldn't be here.\<close>"
+                         consistent_external ctxt (get_total_full (rm_from_lpm_total_full \<omega> lp p)))  \<comment> \<open>Again, these are redundant.\<close>"
 
 
 lemma total_consistencyI:
@@ -146,13 +145,9 @@ lemma total_consistency_red_stmt_extcons_preserve:
   by blast
 
 
-lemma total_consistency_ctxt_wf:
-  assumes "wf_total_consistency ctxt R Rt"
-    shows "ctxt_pred_syn_wf ctxt"
-      and "ctxt_pred_self_framing_sat ctxt Rt"
-  using assms
-  unfolding wf_total_consistency_def
-  by fastforce+
+text \<open>\<^const>\<open>ctxt_pred_syn_wf\<close> and \<^const>\<open>ctxt_pred_self_framing_sat\<close> are no longer derivable from
+  \<^const>\<open>wf_total_consistency\<close> alone (they do not concern the well-formedness of state consistency);
+  callers that need them must take them as explicit extra premises.\<close>
 
 
 lemma total_consistency_rm_from_lpm_int:

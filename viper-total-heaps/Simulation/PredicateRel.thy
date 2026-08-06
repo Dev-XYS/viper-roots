@@ -529,7 +529,7 @@ proof -
         apply simp
     using final_intcons WfCons[simplified wf_total_consistency_def]
        apply (simp add: assms(10))
-    using WfCons[unfolded wf_total_consistency_def]
+    using CtxtWfPred WfCons[simplified wf_total_consistency_def] AmountPos
       apply simp
     by fact+
 qed
@@ -1042,6 +1042,7 @@ lemma exhale_rel_pred_acc_upd_rel:
     StateRelOut: "\<And>\<omega> ns. state_rel Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> \<omega> ns \<Longrightarrow> R' \<omega> ns" and
 
     WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t" and
+    CtxtPredWf: "ctxt_pred_syn_wf ctxt_vpr" and
 
     WfTyRep: "wf_ty_repr_bpl TyRep" and
     MaskVarDefSame: "mask_var_def Tr = mask_var Tr" and
@@ -1123,7 +1124,7 @@ proof -
      apply (metis Abs_preal_inverse InitRel Rep_preal_inverse \<open>\<omega>' = _\<close> less_preal.rep_eq mem_Collect_eq order_le_less perm_suff state_rel_consistent)
     unfolding \<open>\<omega>' = _\<close>
     apply (rule total_consistency_rm_from_lpm_ext[OF WfCons])
-    using total_consistency_ctxt_wf(1)[OF WfCons] ProgEq
+    using CtxtPredWf ProgEq
       apply (simp add: total_context.defs ctxt_pred_syn_wf_def)
     using InitRel state_rel_consistent
      apply blast
@@ -2103,7 +2104,7 @@ proof (rule stmt_rel_intro)
           apply (simp add: \<open>\<omega>1 = _\<close>)
          apply (simp add: \<open>\<omega>1 = _\<close>)
         apply (simp add: \<open>\<omega>1 = _\<close>)
-    using PredDecl WfCons \<open>Rep_preal (Abs_preal v_p) = p\<close> \<open>pbody' = pbody\<close> \<open>pdecl' = pdecl\<close> \<open>predicate_decl.body pdecl' = Some pbody'\<close> ctxt_pred_syn_wf_def prat_non_negative syntactic_mult_supported total_consistency_ctxt_wf(1)
+    using PredDecl WfCons CtxtPredWf \<open>Rep_preal (Abs_preal v_p) = p\<close> \<open>pbody' = pbody\<close> \<open>pdecl' = pdecl\<close> \<open>predicate_decl.body pdecl' = Some pbody'\<close> ctxt_pred_syn_wf_def prat_non_negative syntactic_mult_supported
        apply blast
     using BodyNoUnfolding
       apply auto[1]
@@ -2384,7 +2385,7 @@ next
              apply (rule \<open>\<omega>0 = _\<close>)+
            apply simp
           apply (rule v_args_eval)
-      using PredDecl WfCons \<open>Rep_preal (Abs_preal v_p) = p\<close> \<open>pbody' = pbody\<close> \<open>pdecl' = pdecl\<close> \<open>predicate_decl.body pdecl' = Some pbody'\<close> ctxt_pred_syn_wf_def prat_non_negative syntactic_mult_supported total_consistency_ctxt_wf(1)
+      using PredDecl WfCons CtxtPredWf \<open>Rep_preal (Abs_preal v_p) = p\<close> \<open>pbody' = pbody\<close> \<open>pdecl' = pdecl\<close> \<open>predicate_decl.body pdecl' = Some pbody'\<close> ctxt_pred_syn_wf_def prat_non_negative syntactic_mult_supported
          apply blast
       using BodyNoUnfolding
         apply auto[1]

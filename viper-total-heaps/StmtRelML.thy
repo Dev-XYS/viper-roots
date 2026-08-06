@@ -50,6 +50,8 @@ ML \<open>
       in stmt_rel_single_stmt_tac, then "good state" assumptions would be expected) *)
     | ScopeHint (lookup_decl_thm, body_hint) =>
        (Rmsg' "Scope init" (resolve_tac ctxt [@{thm scoped_var_stmt_rel_simplify_tr} OF [#consistency_wf_thm (#basic_stmt_rel_info info)]]) ctxt) THEN'
+       (Rmsg' "Scope ctxt pred wf" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+       (Rmsg' "Scope ctxt pred self framing" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
        (Rmsg' "Scope domain type eq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm (#basic_stmt_rel_info info)] ctxt) ctxt) THEN'
        (Rmsg' "Scope type interp eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
        (Rmsg' "Scope empty rtype" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
@@ -213,6 +215,8 @@ ML \<open>
     (case atomic_hint of
        FieldAssignHint (rcv_wf_rel_info, rhs_wf_rel_info, rcv_exp_rel_info, rhs_exp_rel_info) =>
        (Rmsg' "FieldAssign 1" (resolve_tac ctxt [@{thm field_assign_rel_inst} OF [#wf_ty_repr_thm info, #consistency_wf_thm info]]) ctxt) THEN'
+       (Rmsg' "FieldAssign CtxtPredWf" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+       (Rmsg' "FieldAssign CtxtPredSelfFraming" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
        (Rmsg' "FieldAssign RStateRel" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
        (Rmsg' "FieldAssign HeapVarDefSame" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
        (Rmsg' "FieldAssign DomainType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
@@ -391,6 +395,8 @@ ML \<open>
      | MethodCallHint (callee_name, rets_lookup_decl_thms, inhale_info_call, exhale_info_call, exh_pre_complete_hint, inh_post_complete_hint) =>
         let val callee_data = Symtab.lookup (#method_data_table basic_info) callee_name |> Option.valOf in
         (Rmsg' "MethodCall Start" (resolve_tac ctxt [@{thm method_call_stmt_rel_inst} OF [#consistency_wf_thm basic_info, #consistency_down_mono_thm basic_info]]) ctxt) THEN'
+        (Rmsg' "MethodCall CtxtPredWf" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+        (Rmsg' "MethodCall CtxtPredSelfFraming" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (Rmsg' "MethodCall Program Eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (Rmsg' "MethodCall ConsistencyEnabled" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info, @{thm default_state_rel_options_def}] ctxt) ctxt) THEN'
         (Rmsg' "MethodCall MdeclSome" (assm_full_simp_solved_with_thms_tac [#method_lookup_thm callee_data] ctxt) ctxt) THEN'

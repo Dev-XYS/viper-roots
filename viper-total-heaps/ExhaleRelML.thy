@@ -305,6 +305,7 @@ ML \<open>
     (Rmsg' "exh pred upd StateRelOut" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
     (Rmsg' "exh pred upd AuxDomTemp" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
     (Rmsg' "exh pred upd WfCons" (resolve_tac ctxt [#consistency_wf_thm info]) ctxt) THEN'
+    (Rmsg' "exh pred upd CtxtPredWf" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd WfTyRep" (resolve_tac ctxt [#wf_ty_repr_thm info]) ctxt) THEN'
     (Rmsg' "exh pred upd MaskVarDefDiff" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd TyInterp" (resolve_tac ctxt [#type_interp_econtext info]) ctxt) THEN'

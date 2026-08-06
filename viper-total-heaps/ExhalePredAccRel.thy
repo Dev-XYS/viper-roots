@@ -128,6 +128,7 @@ lemma exhale_rel_pred_acc_upd_rel_general:
     AuxDomTemp: "temp_perm \<notin> dom AuxPred" and
 
     WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t" and
+    CtxtPredWf: "ctxt_pred_syn_wf ctxt_vpr" and
     WfTyRep: "wf_ty_repr_bpl TyRep" and
     MaskVarDefDiff: "mask_var_def Tr \<noteq> mask_var Tr" and
     TyInterp: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
@@ -229,7 +230,7 @@ proof -
      apply (metis Abs_preal_inverse InitRel Rep_preal_inverse \<open>\<omega>' = _\<close> less_preal.rep_eq mem_Collect_eq order_le_less perm_suff state_rel_consistent)
     unfolding \<open>\<omega>' = _\<close>
     apply (rule total_consistency_rm_from_lpm_ext[OF WfCons])
-    using total_consistency_ctxt_wf(1)[OF WfCons] ProgEq
+    using CtxtPredWf ProgEq
       apply (simp add: total_context.defs ctxt_pred_syn_wf_def)
     using InitRel state_rel_consistent
      apply blast
