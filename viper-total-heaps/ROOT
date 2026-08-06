@@ -21,6 +21,8 @@ session TotalViperSemantics in Semantics = TotalViperDeps +
     TotalExternalConsistency
     TotalFoldUnfold
     TotalFraming
+    TotalFramingIndep
+    SyntacticMultVarBridge
     TotalInhaleExhale
     TotalIntConsPreservation
     TotalInternalConsistency
@@ -46,6 +48,7 @@ session TotalViperSimulation in Simulation = TotalViperSemantics +
     ExprWfRel
     InhaleRel
     KnownFolded
+    PredicateDefinednessRel
     PredicateRel
     Simulation
     StmtRel
