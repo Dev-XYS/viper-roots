@@ -89,6 +89,10 @@ lemma predicate_definedness_check_correct:
 \<comment>\<open>Viper properties\<close>
       and SupPred: "supported_pred_body pbody"
       and SupAssertion: "supported_assertion pbody"
+\<comment>\<open>needed to lift framing from the empty state to an arbitrary state, see
+   @{thm [source] assertion_self_framing_of_empty_state}\<close>
+      and NoUnfolding: "no_unfolding_assertion pbody"
+      and ConsMono: "mono_prop_downward_ord StateCons"
       and OnlyArgsInBody: "\<And>x. x \<in> free_var_assertion pbody \<Longrightarrow> x < length tys"
       and LambdaEq: "\<Lambda> = nth_option (tys @ [TPerm])"
       and NEq: "n = length tys"
@@ -143,7 +147,7 @@ lemma predicate_definedness_check_correct:
                            unique_constants_distinct gs unique_consts \<and>
                            axioms_sat (vbpl_absval_ty TyRep) (constants, []) (fun_interp ctxt) (global_to_nstate (state_restriction gs constants)) axioms"
     shows "assertion_self_framing ctxt_vpr StateCons pbody tys"
-proof (rule assertion_self_framing_of_empty_state[OF SupPred])
+proof (rule assertion_self_framing_of_empty_state[OF SupPred NoUnfolding ConsMono])
   fix vs and p :: real and tr hh
   assume WtVs: "vals_well_typed (absval_interp_total ctxt_vpr) vs tys"
      and PermPos: "0 < p"

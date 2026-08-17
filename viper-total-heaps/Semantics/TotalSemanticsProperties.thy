@@ -4907,6 +4907,8 @@ lemma ctxt_pred_self_framing_inh_implies_extcons_irrelevant_perm_0_locs:
       and CtxtSynWf: "ctxt_pred_syn_wf ctxt"
       and "StateCons_t \<phi>"
       and "differ_only_in_0_perm_locs \<phi> \<phi>'"
+      \<comment>\<open>\<^const>\<open>assertion_self_framing\<close> only speaks about well-typed heaps\<close>
+      and "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total \<phi>)"
     shows "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
            consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) p"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
@@ -4917,6 +4919,23 @@ proof (induction arbitrary: \<phi>' and \<phi>' rule: consistent_external_wrt_pl
   note diff_only_0_locs = IH.prems(2)[unfolded differ_only_in_0_perm_locs_def]
   define \<omega>\<^sub>b where "\<omega>\<^sub>b = \<lparr> get_store_total = Map.empty, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := 0 \<rparr> \<rparr>"
   define \<omega>\<^sub>0 where "\<omega>\<^sub>0 = update_store_total \<omega>\<^sub>b (nth_option vs)"
+
+  \<comment>\<open>the zero-mask state is consistent, which \<^const>\<open>assertion_self_framing\<close> now requires\<close>
+  have ConsZero: "StateCons_t (\<phi>\<lparr> get_nm_total := 0 \<rparr>)"
+  proof -
+    let ?\<omega>f = "\<lparr> get_store_total = Map.empty, get_trace_total = Map.empty, get_total_full = \<phi> \<rparr>"
+    let ?\<omega>z = "\<lparr> get_store_total = Map.empty, get_trace_total = Map.empty, get_total_full = \<phi>\<lparr> get_nm_total := 0 \<rparr> \<rparr>"
+    have "StateCons ?\<omega>f"
+      using ConsCons_t IH.prems(1) by simp
+    moreover have "?\<omega>f \<succeq> ?\<omega>z"
+      by (rule full_total_state_gte_implies_succ)
+         (simp_all add: less_eq_full_total_stateI less_eq_total_stateI nm_0_le_any)
+    ultimately have "StateCons ?\<omega>z"
+      using ConsMono mono_prop_downwardD by blast
+    thus ?thesis
+      using ConsCons_t by simp
+  qed
+
   show ?case
     apply (rule SatStep)
          apply fact+
@@ -4933,11 +4952,13 @@ proof (induction arbitrary: \<phi>' and \<phi>' rule: consistent_external_wrt_pl
                                   assertion_self_framing_store_def,
                                   THEN spec[of _ pid], THEN spec[of _ pdecl], THEN spec[of _ pbody],
                                   THEN mp, THEN mp, THEN spec[of _ vs], THEN spec[of _ "Rep_preal p"],
-                                  THEN mp, THEN mp, THEN spec[of _ \<omega>\<^sub>b]])
+                                  THEN spec[of _ \<omega>\<^sub>b], THEN mp, THEN mp, THEN mp, THEN mp])
                    apply (simp add: IH.IH(1))
                   apply (simp add: IH.hyps(1))
                  apply (simp add: IH.IH(2))
                 apply (simp add: less_preal.rep_eq zero_preal.rep_eq)
+               apply (simp add: \<omega>\<^sub>b_def IH.prems(3))
+              apply (simp add: \<omega>\<^sub>b_def ConsCons_t ConsZero)
     unfolding \<open>\<omega>\<^sub>b = _\<close>
                apply simp
                apply (simp add: ConsCons_t IH.prems(1))
@@ -4954,7 +4975,7 @@ proof (induction arbitrary: \<phi>' and \<phi>' rule: consistent_external_wrt_pl
        apply blast
       apply (rule CtxtSynWf)
      apply (rule ConsMono)
-    by (simp add: IH.IH(5) IH.prems(1,2))
+    by (simp add: IH.IH(5) IH.prems(1,2,3))
 
 next
   case IH: (SatAll \<phi>)
@@ -4966,7 +4987,8 @@ next
       apply simp
     using ConsMonoSub[unfolded mono_prop_downward_sub_mask_total_def] IH.prems(1) diff_only_0_locs
      apply simp
-    by (simp add: IH.prems(2) diff_only_0_locs differ_only_in_0_perm_locs_submask)
+     apply (simp add: IH.prems(2) diff_only_0_locs differ_only_in_0_perm_locs_submask)
+    by (simp add: IH.prems(3))
 qed
 
 

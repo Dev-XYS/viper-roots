@@ -1,7 +1,7 @@
 section \<open>Framed Assertions\<close>
 
 theory TotalFraming
-  imports TotalInhaleExhale NestedMaskProperties TotalStateInst
+  imports TotalInhaleExhale NestedMaskProperties TotalStateInst TotalStateProperties
 begin
 
 
@@ -76,8 +76,10 @@ text \<open>\<^term>\<open>p\<close> must range only over strictly positive scal
   \<open>p = 0\<close> (the read of \<open>x.f\<close> then has no permission).\<close>
 definition assertion_self_framing :: "'a total_context \<Rightarrow> ('a full_total_state \<Rightarrow> bool) \<Rightarrow> assertion \<Rightarrow> vtyp list \<Rightarrow> bool"
   where
-    "assertion_self_framing ctxt StateCons A tys \<equiv> \<forall>vs p. vals_well_typed (absval_interp_total ctxt) vs tys \<longrightarrow> 0 < p \<longrightarrow>
-       assertion_self_framing_store ctxt StateCons (syntactic_mult p A) (nth_option vs)"
+    "assertion_self_framing ctxt StateCons A tys \<equiv> \<forall>vs p \<omega>. vals_well_typed (absval_interp_total ctxt) vs tys \<longrightarrow> 0 < p \<longrightarrow>
+       total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>) \<longrightarrow>
+       StateCons (update_store_total \<omega> (nth_option vs)) \<longrightarrow>
+       assertion_framing_state ctxt StateCons (syntactic_mult p A) (update_store_total \<omega> (nth_option vs))"
 
 
 
@@ -106,6 +108,8 @@ definition pred_self_framing :: "'a total_context \<Rightarrow> ('a total_state 
           get_hh_total_full \<omega>' = get_hh_total \<phi>' \<longrightarrow>
           consistent_external_wrt_ploc ctxt \<phi> (pid,vs) frac \<longrightarrow>
           StateCons_t \<phi> \<longrightarrow>
+          \<^cancel>\<open>predicate bodies are only self-framing on well-typed heaps, see \<^const>\<open>assertion_self_framing\<close>\<close>
+          total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total \<phi>) \<longrightarrow>
           consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) frac"
 
 (*

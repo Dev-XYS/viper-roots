@@ -1361,6 +1361,16 @@ lemma state_rel0_heap_var_rel:
 
 lemmas state_rel_heap_var_rel = state_rel0_heap_var_rel[OF state_rel_state_rel0]
 
+text \<open>The heap of a related state is well-typed. \<^const>\<open>assertion_self_framing\<close> and the external
+  consistency lemmas built on it only speak about well-typed heaps, so this is what the relational
+  proofs feed them.\<close>
+lemma state_rel_heap_well_typed:
+  assumes "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns"
+  shows "total_heap_well_typed Pr (domain_type TyRep) (get_hh_total_full \<omega>)"
+  using state_rel_heap_var_rel[OF assms]
+  unfolding heap_var_rel_def
+  by blast
+
 lemma state_rel0_heap_var_def_rel:
   assumes "state_rel0 Pr StateCons A \<Lambda> TyRep Tr AuxPred \<omega>def \<omega> ns"
   shows "heap_var_rel Pr \<Lambda> TyRep (field_translation Tr) (heap_var_def Tr) \<omega>def ns"

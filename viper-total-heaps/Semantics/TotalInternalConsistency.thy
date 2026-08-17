@@ -45,8 +45,11 @@ definition wf_total_consistency :: "'a total_context \<Rightarrow> _ \<Rightarro
                \<comment>\<open>The following statement ensures that states in the body of a scope preserve consistency.\<close>
                (\<forall>\<omega> v. R \<omega> \<longrightarrow> R (shift_and_add_state_total \<omega> v)) \<and>
                (\<forall>\<omega>. R \<omega> \<longleftrightarrow> (Rt (get_total_full \<omega>) \<and> (\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> Rt \<phi>))) \<and>
+               \<^cancel>\<open>the well-typed heap is needed because \<^const>\<open>ctxt_pred_self_framing_sat\<close> only
+                  constrains well-typed heaps\<close>
                (\<forall>\<omega> \<omega>' \<Lambda> stmt. consistent_external ctxt (get_total_full \<omega>) \<longrightarrow> R \<omega> \<longrightarrow>
                               ctxt_pred_syn_wf ctxt \<longrightarrow> ctxt_pred_self_framing_sat ctxt Rt \<longrightarrow>
+                              total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>) \<longrightarrow>
                               red_stmt_total ctxt R \<Lambda> stmt \<omega> (RNormal \<omega>') \<longrightarrow>
                               consistent_external ctxt (get_total_full \<omega>')) \<and>
                (\<forall>\<phi>. Rt \<phi> \<longrightarrow> wf_mask_simple (get_mh_total \<phi>)) \<and>
@@ -138,6 +141,7 @@ lemma total_consistency_red_stmt_extcons_preserve:
       and "ctxt_pred_syn_wf ctxt"
       and "ctxt_pred_self_framing_sat ctxt Rt"
       and "R \<omega>"
+      and "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>)"
       and "red_stmt_total ctxt R \<Lambda> stmt \<omega> (RNormal \<omega>')"
     shows "consistent_external ctxt (get_total_full \<omega>')"
   using assms

@@ -377,7 +377,7 @@ ML \<open>
         (Rmsg' "AtomicExh2 Consistency 2" (assm_full_simp_solved_with_thms_tac [@{thm default_state_rel_options_def}, #tr_def_thm basic_info] ctxt) ctxt) THEN'
         (Rmsg' "AtomicExh2 Consistency 3" (resolve_tac ctxt @{thms conjI}) ctxt) THEN'
         (Rmsg' "AtomicExh2 Consistency 4" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-        (Rmsg' "AtomicExh2 Consistency 5" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info, @{thm extcons_fun_interp_irrelevant'}] ctxt) ctxt) THEN'
+        (Rmsg' "AtomicExh2 Consistency 5" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info, #vpr_program_ctxt_eq_thm basic_info, @{thm extcons_fun_interp_irrelevant'}, @{thm state_rel_heap_well_typed}] ctxt) ctxt) THEN'
         (* (Rmsg' "AtomicExh2 Consistency" (fastforce_tac ctxt @{thms framing_exh_def}) ctxt) THEN' *)
         (Rmsg' "AtomicExh3 Invariant" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (normal_exhale_rel_tac ctxt exhale_info exh_complete_hint)

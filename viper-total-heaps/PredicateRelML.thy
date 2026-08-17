@@ -257,6 +257,9 @@ fun pred_unfold_tac ctxt pred_name (inhale_info: atomic_inhale_rel_hint inhale_r
   (Rmsg' "unfold stmt StateRelImpliesExtCons 3" (assm_full_simp_solved_with_thms_tac [@{thm default_state_rel_options_def}, #tr_def_thm basic_info] ctxt) ctxt) THEN'
   (Rmsg' "unfold stmt StateRelImpliesExtCons 4" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info] ctxt) ctxt) THEN'
 
+  (Rmsg' "unfold stmt StateRelImpliesHeapWt" (forward_tac ctxt @{thms state_rel_heap_well_typed} THEN'
+                                                assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm basic_info, #ty_repr_def_thm basic_info] ctxt) ctxt) THEN'
+
   (Rmsg' "unfold stmt StateRelImpliesKFRel" (fastforce_tac ctxt (#tr_def_thm basic_info :: @{thms state_rel_def state_rel0_def})) ctxt) THEN'
 
   (Rmsg' "unfold stmt StateRelWeakening" (eresolve_tac ctxt @{thms state_rel_kf_disable_consistency}) ctxt) THEN'
@@ -355,6 +358,9 @@ fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atom
   (Rmsg' "fold stmt StateRelImpliesExtCons 2" (forward_tac ctxt @{thms state_rel_consistent}) ctxt) THEN'
   (Rmsg' "fold stmt StateRelImpliesExtCons 3" (assm_full_simp_solved_with_thms_tac [@{thm default_state_rel_options_def}, #tr_def_thm basic_info] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt StateRelImpliesExtCons 4" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info] ctxt) ctxt) THEN'
+
+  (Rmsg' "fold stmt StateRelImpliesHeapWt" (forward_tac ctxt @{thms state_rel_heap_well_typed} THEN'
+                                              assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm basic_info, #ty_repr_def_thm basic_info] ctxt) ctxt) THEN'
 
   (Rmsg' "fold stmt StateRelImpliesKFRel" (fastforce_tac ctxt (#tr_def_thm basic_info :: @{thms state_rel_def state_rel0_def default_state_rel_options_def})) ctxt) THEN'
 

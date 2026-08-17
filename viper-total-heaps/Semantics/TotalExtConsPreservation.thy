@@ -341,6 +341,8 @@ lemma extcons_preserved_by_changing_0_locs':
       and "mono_prop_downward_sub_mask_total StateCons_t"
       and "StateCons_t \<phi>"
       and "differ_only_in_0_perm_locs \<phi> \<phi>'"
+      \<comment>\<open>\<^const>\<open>pred_self_framing\<close> only speaks about well-typed heaps\<close>
+      and "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total \<phi>)"
     shows "consistent_external_wrt_ploc ctxt \<phi> lp p \<Longrightarrow>
            consistent_external_wrt_ploc ctxt \<phi>' lp p" and
           "consistent_external ctxt \<phi> \<Longrightarrow>
@@ -356,9 +358,11 @@ proof (rule SatAll)
                   Some (q, nm') = get_fnm_total \<phi> (pred_id, vs) \<Longrightarrow>
                   StateCons_t (\<phi>\<lparr> get_nm_total := nm' \<rparr>) \<Longrightarrow>
                   differ_only_in_0_perm_locs (\<phi>\<lparr> get_nm_total := nm' \<rparr>) \<phi>' \<Longrightarrow>
+                  total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total (\<phi>\<lparr> get_nm_total := nm' \<rparr>)) \<Longrightarrow>
                   consistent_external_wrt_ploc ctxt \<phi>' (pred_id, vs) (Rep_posreal q)"
      and intcons: "StateCons_t \<phi>"
      and diff_only: "differ_only_in_0_perm_locs \<phi> \<phi>'"
+     and heapwt: "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total \<phi>)"
      and lpm: "Some (q,nm') = get_fnm_total \<phi>' (pred_id,vs)"
   show "consistent_external_wrt_ploc ctxt (\<phi>'\<lparr> get_nm_total := nm' \<rparr>) (pred_id,vs) (Rep_posreal q)"
     apply (rule IH)
@@ -366,7 +370,8 @@ proof (rule SatAll)
       apply fastforce
      apply (metis \<open>get_nm_total \<phi> = get_nm_total \<phi>'\<close> assms(2) get_fnm_total.simps intcons lpm mono_prop_downward_sub_mask_total_def)
     unfolding differ_only_in_0_perm_locs_def
-    by (metis all_pos diff_only differ_only_in_0_perm_locs_def get_fnm_total.simps lpm nle_le sub_mask_smaller total_state.select_convs(1) total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
+     apply (metis all_pos diff_only differ_only_in_0_perm_locs_def get_fnm_total.simps lpm nle_le sub_mask_smaller total_state.select_convs(1) total_state.select_convs(2) total_state.surjective total_state.update_convs(2))
+    by (simp add: heapwt)
 qed
 
 
@@ -376,6 +381,7 @@ lemma extcons_preserved_by_changing_0_locs:
       and "ctxt_pred_self_framing_sat ctxt StateCons_t"
       and "StateCons_t \<phi>"
       and "mono_prop_downward_sub_mask_total StateCons_t"
+      and "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total \<phi>)"
     shows "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
            consistent_external_wrt_ploc ctxt \<phi>' (pid,vs) p"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
@@ -389,6 +395,7 @@ lemma extcons_preserved_by_red_stmt_exhale:
       and "red_stmt_total ctxt StateCons \<Lambda> (Exhale A) \<omega> (RNormal \<omega>')"
       and "ctxt_pred_syn_wf ctxt"
       and "ctxt_pred_self_framing_sat ctxt consistent_internal_total"
+      and HeapWt: "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>)"
     shows "consistent_external ctxt (get_total_full \<omega>')"
 proof -
   from assms(3) obtain \<omega>_exh where
@@ -411,6 +418,8 @@ proof -
     using assms(2) exh exhale_normal_result_smaller greater_full_total_state_total_state intcons_total_mono_prop_downward mono_prop_downwardD
       apply blast
      apply (simp add: intcons_mono_prop_downward_sub_mask_total)
+    using HeapWt exhale_only_changes_total_state_aux[OF exh]
+     apply simp
     by fact
 qed
 
@@ -431,6 +440,7 @@ lemma extcons_preserved_by_field_assignment_helper:
   assumes "nm_loc_sum loc (get_nm_total \<phi>) 0"
       and "ctxt_pred_self_framing_sat ctxt consistent_internal_total"
       and "consistent_internal_total \<phi>"
+      and HeapWt: "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total \<phi>)"
     shows "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
            consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v) (pid,vs) p"
       and "consistent_external ctxt \<phi> \<Longrightarrow>
@@ -441,11 +451,11 @@ proof -
     by (metis assms(1) nm_loc_sum.elims(2))
   show "consistent_external_wrt_ploc ctxt \<phi> (pid,vs) p \<Longrightarrow>
         consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v) (pid,vs) p"
-    using extcons_preserved_by_changing_0_locs(1)[OF * _ assms(2), of "upd_hh_loc_total \<phi> loc v"]
+    using extcons_preserved_by_changing_0_locs(1)[OF * _ assms(2), of "upd_hh_loc_total \<phi> loc v"] HeapWt
     by (simp add: assms(3) intcons_mono_prop_downward_sub_mask_total)
   show "consistent_external ctxt \<phi> \<Longrightarrow>
         consistent_external ctxt (upd_hh_loc_total \<phi> loc v)"
-    using extcons_preserved_by_changing_0_locs(2)[OF * _ assms(2), of "upd_hh_loc_total \<phi> loc v"]
+    using extcons_preserved_by_changing_0_locs(2)[OF * _ assms(2), of "upd_hh_loc_total \<phi> loc v"] HeapWt
     by (simp add: assms(3) intcons_mono_prop_downward_sub_mask_total)
 qed
 
@@ -455,6 +465,7 @@ lemma extcons_preserved_by_field_assignment:
       and "consistent_internal (get_nm_total \<phi>)"
       and "get_mh_total \<phi> loc = 1"
       and "ctxt_pred_self_framing_sat ctxt consistent_internal_total"
+      and HeapWt: "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total \<phi>)"
     shows "consistent_external ctxt (upd_hh_loc_total \<phi> loc v)"
 proof -
   have zero_perm: "\<And>lp lpm. get_fnm_total \<phi> lp = Some lpm \<Longrightarrow> nm_loc_sum loc (snd lpm) 0"
@@ -473,7 +484,7 @@ proof -
       using consistent_external.cases[OF assms(1)]
       by metis
     show "consistent_external_wrt_ploc ctxt (upd_hh_loc_total \<phi> loc v\<lparr>get_nm_total := nm'\<rparr>) (pid,vs) (Rep_posreal q)"
-      using extcons_preserved_by_field_assignment_helper(1)[of loc "\<phi>\<lparr>get_nm_total := nm'\<rparr>", OF _ assms(4) _ extcons_nm, of v]
+      using extcons_preserved_by_field_assignment_helper(1)[of loc "\<phi>\<lparr>get_nm_total := nm'\<rparr>", OF _ assms(4) _ _ extcons_nm, of v] HeapWt
       by (metis \<open>nm_loc_sum loc nm' 0\<close> assms(2) consistent_internal_total_def intcons_mono_prop_downward_sub_mask_total lpm mono_prop_downward_sub_mask_total_def total_state.select_convs(1) total_state.surjective total_state.update_convs(1) total_state.update_convs(2) total_state_update_nm_read upd_hh_loc_total.simps)
   qed
 qed
@@ -640,14 +651,45 @@ qed
 
 subsection \<open>Preserved by \<^const>\<open>red_stmt_total\<close>\<close>
 
+text \<open>Well-typedness of the heap is an invariant of the semantics: the heap only changes through a
+  field assignment, which stores a value of the field's declared type, and through
+  \<^const>\<open>havoc_locs_state\<close>, which by definition only produces well-typed heaps.\<close>
+lemma map_result_total_RNormalE:
+  assumes "RNormal \<omega>' = map_result_total f res"
+  obtains \<omega> where "res = RNormal \<omega>" and "\<omega>' = f \<omega>"
+  using assms
+  by (cases res) auto
+
+lemma red_stmt_total_preserves_heap_well_typed:
+  assumes "red_stmt_total ctxt R \<Lambda> stmt \<omega> res"
+      and "res = RNormal \<omega>'"
+      and "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>)"
+    shows "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>')"
+  using assms
+  apply (induction arbitrary: \<omega>' rule: red_stmt_total.induct)
+                      apply (auto simp: total_heap_well_typed_def has_type_get_type reset_state_after_call_def
+                            dest: inhale_only_changes_mask fold_rel_normal_only_changes_mask
+                            dest!: havoc_locs_state_well_typed_heap[unfolded total_heap_well_typed_def]
+                            elim: unfold_rel.cases
+                            elim!: map_result_total_RNormalE)
+  \<comment>\<open>the method call: the state after the call keeps the heap of the state after inhaling the
+     postcondition, and the precondition's exhale must have succeeded\<close>
+  apply (case_tac resPre)
+    apply simp_all
+  apply (erule conjE)+
+  apply (erule map_result_total_RNormalE)
+  apply (simp add: reset_state_after_call_def)
+  done
+
 lemma extcons_preserved_by_red_stmt:
   assumes "consistent_external ctxt (get_total_full \<omega>)"
       and "consistent_internal_total_full \<omega>"
       and "red_stmt_total ctxt consistent_internal_total_full \<Lambda> stmt \<omega> (RNormal \<omega>')"
       and "ctxt_pred_syn_wf ctxt"
       and "ctxt_pred_self_framing_sat ctxt consistent_internal_total"
+      and "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>)"
     shows "consistent_external ctxt (get_total_full \<omega>')"
-  using assms(1-3)
+  using assms(1-3,6)
 proof (induction stmt arbitrary: \<Lambda> \<omega> \<omega>')
   case (Inhale A)
   then show ?case
@@ -671,7 +713,8 @@ next
 next
   case IH: (Seq s1 s2)
   then show ?case
-    by (meson RedSeqNormal_case intcons_preserved_by_red_stmt)
+    by (meson RedSeqNormal_case intcons_preserved_by_red_stmt
+              red_stmt_total_preserves_heap_well_typed)
 next
   case IH: (LocalAssign x e)
   then show ?case
@@ -687,7 +730,7 @@ next
     using IH.prems(3)
     by blast
   then show ?case
-    using extcons_preserved_by_field_assignment[OF IH(1)] IH.prems(2) assms(5) get_writeable_locs_def
+    using extcons_preserved_by_field_assignment[OF IH(1)] IH.prems(2,4) assms(5) get_writeable_locs_def
           consistent_internal_total_def consistent_internal_total_full_def
     by fastforce
 next
@@ -717,8 +760,10 @@ next
     by blast
   then obtain \<omega>Pre where "resPre = RNormal \<omega>Pre"
     by (metis result_total.exhaust)
-  hence "consistent_external ctxt (get_total_full \<omega>Pre)"
-    by (metis IH.prems(1) IH.prems(2) assms(4) assms(5) consistent_internal_total_full_def extcons_preserved_by_red_stmt_exhale full_total_state.select_convs(3) red_exh)
+  have "consistent_external ctxt (get_total_full \<omega>Pre)"
+    by (rule extcons_preserved_by_red_stmt_exhale
+               [OF _ _ red_exh[unfolded \<open>resPre = RNormal \<omega>Pre\<close>] assms(4,5)])
+       (insert IH.prems(1,2,4), simp_all add: consistent_internal_total_full_def)
   obtain \<omega>Post where "resPost = RNormal \<omega>Post"
     by (metis \<open>resPre = RNormal \<omega>Pre\<close> map_result_total.elims red_inh)
   hence "consistent_external ctxt (get_total_full \<omega>Post)"
@@ -752,10 +797,13 @@ next
     apply simp
     using IH.prems(1)
     by blast
+  have **: "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt)
+              (get_hh_total_full (shift_and_add_state_total \<omega> v))"
+    using IH.prems(4) by simp
   obtain \<omega>\<^sub>m where "res = RNormal \<omega>\<^sub>m"
     by (metis map map_result_total.elims)
   have "consistent_external ctxt (get_total_full \<omega>\<^sub>m)"
-    using IH(1)[OF * _ red[simplified \<open>res = _\<close>]] IH.prems(2)
+    using IH(1)[OF * _ red[simplified \<open>res = _\<close>] **] IH.prems(2)
     unfolding consistent_internal_total_full_def consistent_internal_total_def
     by simp
 

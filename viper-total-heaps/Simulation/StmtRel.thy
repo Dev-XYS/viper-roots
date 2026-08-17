@@ -451,6 +451,8 @@ lemma field_assign_rel:
       and CtxtPredSF: "ctxt_pred_self_framing_sat ctxt_vpr StateCons_t"
       and Consistent: "StateConsEnabled \<Longrightarrow> (\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and>
                          consistent_external ctxt_vpr (get_total_full \<omega>))"
+      \<comment>\<open>needed to preserve external consistency, see @{thm [source] total_consistency_red_stmt_extcons_preserve}\<close>
+      and HeapWt: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)"
       and HeapUpdWf: "heap_update_wf TyRep ctxt heap_upd_bpl"
       and DomainTypeEq: "domain_type TyRep = absval_interp_total ctxt_vpr"
       and "type_interp ctxt = vbpl_absval_ty TyRep"
@@ -520,7 +522,7 @@ proof (rule stmt_rel_intro)
       "StateConsEnabled \<Longrightarrow> StateCons \<omega>' \<and>
         consistent_external ctxt_vpr (get_total_full \<omega>')"
       using total_consistency_red_stmt_preserve[OF WfConsistency] Consistent[OF _ \<open>R \<omega> ns\<close>]
-        CtxtPredWf CtxtPredSF
+        CtxtPredWf CtxtPredSF HeapWt[OF \<open>R \<omega> ns\<close>]
         total_consistency_red_stmt_extcons_preserve[OF WfConsistency]
       by blast
 
@@ -663,6 +665,10 @@ proof (rule field_assign_rel[OF WfConsistency CtxtPredWf CtxtPredSF, where ?\<ta
   thus "declared_fields (program_total ctxt_vpr) f_vpr = Some ?\<tau>_vpr \<and> vpr_to_bpl_ty TyRep (the (declared_fields (program_total ctxt_vpr) f_vpr)) = Some \<tau>_bpl"
     by simp
 
+  show "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)"
+    using RStateRel state_rel_heap_well_typed \<open>domain_type TyRep = absval_interp_total ctxt_vpr\<close>
+    by metis
+
   fix \<omega> ns hb addr v
   assume "R \<omega> ns"
      and NewValVprTy: "get_type (domain_type TyRep) v = ?\<tau>_vpr"
@@ -754,6 +760,8 @@ lemma exhale_stmt_rel:
       and CtxtPredWf: "ctxt_pred_syn_wf ctxt_vpr"
       and CtxtPredSF: "ctxt_pred_self_framing_sat ctxt_vpr StateCons_t"
       and Consistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and> consistent_external ctxt_vpr (get_total_full \<omega>)"
+      \<comment>\<open>needed to preserve external consistency, see @{thm [source] total_consistency_red_stmt_extcons_preserve}\<close>
+      and HeapWt: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)"
       \<comment>\<open>The following premise shows the advantage of allowing different input and output relations for
          \<^term>\<open>exhale_rel\<close>. It allows abstracting over any potential setup code that is required for
          encoding an exhale. Note that if we only allowed the same input and output relation, then
@@ -779,7 +787,8 @@ proof (rule stmt_rel_intro)
     using Consistent[OF \<open>R \<omega> ns\<close>] WfConsistency total_consistency_red_stmt_preserve
     by blast
   have extcons: "consistent_external ctxt_vpr (get_total_full \<omega>')"
-    using Consistent WfConsistency CtxtPredWf CtxtPredSF \<open>R \<omega> ns\<close> local.RedExhale total_consistency_red_stmt_extcons_preserve
+    using Consistent WfConsistency CtxtPredWf CtxtPredSF \<open>R \<omega> ns\<close> HeapWt[OF \<open>R \<omega> ns\<close>] local.RedExhale
+          total_consistency_red_stmt_extcons_preserve
     by blast
 
   from RedExhale show "red_stmt_total ctxt_vpr StateCons \<Lambda>_vpr (Exhale A) \<omega> (RNormal \<omega>') \<Longrightarrow>
@@ -822,6 +831,7 @@ lemma exhale_stmt_rel_inst:
       and CtxtPredWf: "ctxt_pred_syn_wf ctxt_vpr"
       and CtxtPredSF: "ctxt_pred_self_framing_sat ctxt_vpr StateCons_t"
       and Consistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and> consistent_external ctxt_vpr (get_total_full \<omega>)"
+      and HeapWt: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)"
       and InvHolds: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> Q A \<omega> \<omega>"
       and ExhRel: "exhale_rel (rel_ext_eq R) (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt) Q ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>2"
       and UpdHavoc: "rel_general (uncurry (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt)) (\<lambda>\<omega> ns. R_out (snd \<omega>) ns)
@@ -909,7 +919,8 @@ lemma exhale_stmt_rel_inst_no_inv:
   assumes WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and CtxtPredWf: "ctxt_pred_syn_wf ctxt_vpr"
       and CtxtPredSF: "ctxt_pred_self_framing_sat ctxt_vpr StateCons_t"
-      and Consistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and> consistent_external ctxt_vpr (get_total_full \<omega>)"
+      and Consistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and> consistent_external ctxt_vpr (get_total_full \<omega>) \<and>
+                          total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)"
       and InvHolds: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> True" \<comment>\<open>not required, but makes proof generation uniform (same number of premises for each case)\<close>
       and "exhale_rel (rel_ext_eq R) (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt) (\<lambda>_ _ _. True) ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>2"
 
@@ -920,14 +931,15 @@ lemma exhale_stmt_rel_inst_no_inv:
                        consistent_external ctxt_vpr (get_total_full (snd \<omega>'))
                 ) (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'"
     shows "stmt_rel R R ctxt_vpr StateCons \<Lambda>_vpr P ctxt (Exhale A) \<gamma> \<gamma>'"
-  using assms
-  by (rule exhale_stmt_rel_inst)
+  apply (rule exhale_stmt_rel_inst[OF WfConsistency CtxtPredWf CtxtPredSF _ _ InvHolds assms(6) UpdHavoc])
+  using Consistent by blast+
 
 lemma exhale_stmt_rel_inst_framing_inv:
   assumes WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and CtxtPredWf: "ctxt_pred_syn_wf ctxt_vpr"
       and CtxtPredSF: "ctxt_pred_self_framing_sat ctxt_vpr StateCons_t"
-      and StateRelAndConsistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega> ns \<and> StateCons \<omega> \<and> consistent_external ctxt_vpr (get_total_full \<omega>)"
+      and StateRelAndConsistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega> ns \<and> StateCons \<omega> \<and> consistent_external ctxt_vpr (get_total_full \<omega>) \<and>
+                          total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)"
       and InvHolds: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> framing_exh ctxt_vpr StateCons A \<omega> \<omega>"
       and ExhRel: "exhale_rel (rel_ext_eq R) (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt) (framing_exh ctxt_vpr StateCons) ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>2"
       and UpdHavoc: "rel_general (uncurry (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt)) (\<lambda>\<omega> ns. (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt) (snd \<omega>) ns)
@@ -937,7 +949,7 @@ lemma exhale_stmt_rel_inst_framing_inv:
                        consistent_external ctxt_vpr (get_total_full (snd \<omega>'))
                 ) (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'"
     shows "stmt_rel R (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt) ctxt_vpr StateCons \<Lambda>_vpr P ctxt (Exhale A) \<gamma> \<gamma>'"
-  apply (rule exhale_stmt_rel_inst[OF WfConsistency CtxtPredWf CtxtPredSF _ _ ExhRel UpdHavoc])
+  apply (rule exhale_stmt_rel_inst[OF WfConsistency CtxtPredWf CtxtPredSF _ _ _ ExhRel UpdHavoc])
   using assms
   by auto
 
@@ -3573,8 +3585,11 @@ proof (rule stmt_rel_intro_2)
            apply presburger
           using CtxtProg DomainTyRep \<open>StateCons \<omega> \<and> StateCons \<omega> \<and> _ \<and> _\<close> extcons_fun_interp_irrelevant'
           by force
+        have HeapWtOmega: "total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)"
+          using state_rel_heap_well_typed[OF StateRel_ns'] CtxtProg DomainTyRep
+          by simp
         from total_consistency_red_stmt_extcons_preserve[OF WfConsistency ExtConsOmega CtxtPredWf CtxtPredSF StateConsOmega
-               RedStmtVpr[simplified \<open>res = RNormal \<omega>'\<close>]]
+               HeapWtOmega RedStmtVpr[simplified \<open>res = RNormal \<omega>'\<close>]]
         show ?thesis
           using total_consistency_red_stmt_preserve[OF WfConsistency StateConsOmega RedStmtVpr[simplified \<open>res = RNormal \<omega>'\<close>]]
                 CtxtProg DomainTyRep extcons_fun_interp_irrelevant''

@@ -2,6 +2,12 @@ theory PredicateRel
   imports InhaleRel ExhaleRel StmtRel TotalViperSemantics.TotalExtConsPreservation BoogieSyntaxBasedProperties
 begin
 
+text \<open>Updating the store and the total state are independent; stated as a permutative rewrite so
+  that the simplifier can normalise either order.\<close>
+lemma full_total_state_upd_store_total_commute:
+  "\<omega>\<lparr> get_total_full := \<phi>, get_store_total := \<sigma> \<rparr> = \<omega>\<lparr> get_store_total := \<sigma>, get_total_full := \<phi> \<rparr>"
+  by (rule full_total_state.equality) simp_all
+
 
 subsection \<open>Inhale\<close>
 
@@ -425,10 +431,19 @@ lemma inhale_simulates_unfold:
       and PredDecl: "ViperLang.predicates (program_total ctxt) pid = Some pdecl"
       and PredBody: "ViperLang.predicate_decl.body pdecl = Some pbody"
       and CtxtWfPred: "ctxt_pred_syn_wf ctxt"
-      and SelfFraming: "\<And>q. 0 < q \<Longrightarrow> assertion_self_framing_store ctxt StateCons (syntactic_mult q pbody) (nth_option vs)"
+      \<comment>\<open>\<^const>\<open>assertion_self_framing\<close> instantiated for this predicate's arguments; it only speaks
+         about well-typed heaps and consistent states, which is why the two premises below are needed\<close>
+      and SelfFraming: "\<And>q \<omega>. 0 < q \<Longrightarrow>
+             total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total_full \<omega>) \<Longrightarrow>
+             StateCons (update_store_total \<omega> (nth_option vs)) \<Longrightarrow>
+             assertion_framing_state ctxt StateCons (syntactic_mult q pbody) (update_store_total \<omega> (nth_option vs))"
       and "\<phi>\<^sub>d = rm_from_lpm_total \<phi> (pid,vs) q"
       and "(\<forall>lbl \<phi>. trace lbl = Some \<phi> \<longrightarrow> StateCons_t \<phi>)"
       and AmountPos: "q > 0"  \<comment> \<open>It is okay because Viper checks if the unfolding amount is positive.\<close>
+      \<comment>\<open>the two side conditions of \<^const>\<open>assertion_self_framing\<close>; kept last so that the
+         positional references to the assumptions above stay valid\<close>
+      and HeapWt: "total_heap_well_typed (program_total ctxt) (absval_interp_total ctxt) (get_hh_total \<phi>)"
+      and ConsPhiD: "StateCons \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr>"
     shows "red_inhale ctxt StateCons (syntactic_mult (Rep_preal q) pbody)
                       \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr>
              (RNormal \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>' \<rparr>)"
@@ -508,8 +523,9 @@ proof -
 
   have Framed: "\<And>q. 0 < q \<Longrightarrow> assertion_framing_state ctxt StateCons (syntactic_mult q pbody)
                       \<lparr> get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr>"
-    using assertion_self_framing_store_def SelfFraming
-    by (metis full_total_state.update_convs(1) update_store_total.simps)
+    using SelfFraming[where ?\<omega> = "\<lparr> get_store_total = Map.empty, get_trace_total = trace, get_total_full = \<phi>\<^sub>d \<rparr>"]
+          HeapWt ConsPhiD \<open>\<phi>\<^sub>d = _\<close> \<open>get_hh_total \<phi>' = get_hh_total \<phi>\<close>
+    by simp
 
   have 2: "get_hh_total_full \<lparr>get_store_total = nth_option vs, get_trace_total = trace, get_total_full = \<phi>'\<rparr> = get_hh_total \<phi>"
     apply simp
@@ -548,6 +564,8 @@ lemma unfold_stmt_rel:
       and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
+      \<comment>\<open>\<^const>\<open>assertion_self_framing\<close> only speaks about well-typed heaps\<close>
+      and StateRelImpliesHeapWt: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)"
       and StateRelImpliesKFRel: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> heap_knownfolded_var_rel opt (program_total ctxt_vpr) (var_context ctxt_bpl) FieldTr hvar \<omega> ns"
       and StateRelWeakening: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> R\<^sub>w \<omega> ns"
       and ArgsRestriction: "list_all no_unfolding_pure_exp e_args \<and> list_all no_perm_pure_exp e_args"
@@ -613,7 +631,10 @@ proof (rule stmt_rel_intro)
   have args_well_ty: "vals_well_typed (absval_interp_total ctxt_vpr) v_args ty_args"
     using extcons_pred_well_typed ExtCons PredArgs PredDecl \<open>0 < v_p\<close> order_le_imp_less_or_eq order_less_trans positive_real_preal preal_not_0_gt_0 perm_suff
     by fastforce
-  with SelfFraming have FramingArgs: "\<And>p. 0 < p \<Longrightarrow> assertion_self_framing_store ctxt_vpr StateCons (syntactic_mult p pbody) (nth_option v_args)"
+  with SelfFraming have FramingArgs: "\<And>p \<omega>\<^sub>s. 0 < p \<Longrightarrow>
+          total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>\<^sub>s) \<Longrightarrow>
+          StateCons (update_store_total \<omega>\<^sub>s (nth_option v_args)) \<Longrightarrow>
+          assertion_framing_state ctxt_vpr StateCons (syntactic_mult p pbody) (update_store_total \<omega>\<^sub>s (nth_option v_args))"
     using assertion_self_framing_def
     by blast
 
@@ -623,7 +644,29 @@ proof (rule stmt_rel_intro)
   have LabelCons: "\<forall>lbl \<phi>. get_trace_total \<omega> lbl = Some \<phi> \<longrightarrow> StateCons_t \<phi>"
     by (smt (verit, best) StateRelImpliesIntCons WfCons \<open>R \<omega> ns\<close> wf_total_consistency_def)
 
-  from inhale_simulates_unfold[OF UnfoldRel ExtCons WfCons Cons_t PredDecl PredBody CtxtPredWf FramingArgs _ LabelCons]
+  have HeapWtOmega: "total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total (get_total_full \<omega>))"
+    using StateRelImpliesHeapWt[OF \<open>R \<omega> ns\<close>]
+    by simp
+
+  \<comment>\<open>removing the unfolded predicate's permission preserves consistency\<close>
+  have ConsPhiD: "StateCons \<lparr> get_store_total = nth_option v_args, get_trace_total = get_trace_total \<omega>,
+                              get_total_full = rm_from_lpm_total (get_total_full \<omega>) (pid,v_args) (Abs_preal v_p) \<rparr>"
+  proof -
+    let ?\<omega>\<^sub>a = "\<lparr> get_store_total = nth_option v_args, get_trace_total = get_trace_total \<omega>,
+                  get_total_full = get_total_full \<omega> \<rparr>"
+    have "StateCons ?\<omega>\<^sub>a"
+      by (rule total_consistencyI[OF WfCons]) (simp_all add: Cons_t LabelCons)
+    moreover have "Abs_preal v_p \<le> get_mp_total_full ?\<omega>\<^sub>a (pid,v_args)"
+      using perm_suff by simp
+    ultimately have "StateCons (rm_from_lpm_total_full ?\<omega>\<^sub>a (pid,v_args) (Abs_preal v_p))"
+      using WfCons[simplified wf_total_consistency_def]
+      by blast
+    thus ?thesis
+      by simp
+  qed
+
+  from inhale_simulates_unfold[OF UnfoldRel ExtCons WfCons Cons_t PredDecl PredBody CtxtPredWf FramingArgs
+                                  _ LabelCons _ HeapWtOmega ConsPhiD]
   obtain \<phi>\<^sub>d where
     \<phi>\<^sub>d: "\<phi>\<^sub>d = rm_from_lpm_total (get_total_full \<omega>) (pid,v_args) (Abs_preal v_p)" and
     step_inhale': "red_inhale ctxt_vpr StateCons (syntactic_mult (Rep_preal (Abs_preal v_p)) pbody)
@@ -681,8 +724,12 @@ proof (rule stmt_rel_intro)
     apply (subst substitute_synmult_commute[symmetric])
      apply (simp add: PermPos order_less_imp_le)
     apply (rule framing_with_substitution)
-    using FramingArgs[of p, OF PermPos, unfolded assertion_self_framing_store_def, simplified]
-          apply blast
+    using FramingArgs[OF PermPos,
+                      where ?\<omega>\<^sub>s = "\<lparr> get_store_total = get_store_total \<omega>,
+                                     get_trace_total = get_trace_total \<omega>, get_total_full = \<phi>\<^sub>d \<rparr>",
+                      simplified]
+          HeapWtOmega ConsPhiD \<open>\<phi>\<^sub>d = _\<close>
+          apply simp
          apply (rule eval_with_different_pred_heap(2)[OF _ _ _ _ _ e_args_eval])
     unfolding \<open>\<phi>\<^sub>d = _\<close>
                apply (simp_all add: ArgsRestriction)
@@ -1916,6 +1963,8 @@ lemma fold_stmt_rel:
       and WfCons: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and StateRelImpliesIntCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega>"
       and StateRelImpliesExtCons: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> consistent_external ctxt_vpr (get_total_full \<omega>)"
+      \<comment>\<open>\<^const>\<open>assertion_self_framing\<close> only speaks about well-typed heaps\<close>
+      and StateRelImpliesHeapWt: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)"
       and ArgsRestriction: "list_all no_unfolding_pure_exp e_args_vpr \<and> list_all no_perm_pure_exp e_args_vpr \<and> list_all no_old_pure_exp e_args_vpr \<and> list_all no_result_pure_exp e_args_vpr"
       and ArgsAreVarOrLit: "list_all is_var_or_lit e_args_vpr"
         \<comment> \<open>Additional restriction (beyond \<open>ArgsRestriction\<close>) needed to close the \<open>framing_exh\<close>
@@ -2006,6 +2055,38 @@ proof (rule stmt_rel_intro)
   have intcons: "StateCons (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>)"
     using StateRelImpliesIntCons WfCons \<open>rel_ext_eq R \<omega> \<omega> ns\<close> total_consistency_store_update_2
     by blast
+  \<comment>\<open>the zero-mask state has \<^term>\<open>\<omega>\<close>'s heap and is consistent, which is what
+     \<^const>\<open>assertion_self_framing\<close> requires\<close>
+  have ConsZeroMask: "StateCons (upd_nm_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) 0)"
+  proof -
+    have "\<omega>\<lparr> get_store_total := nth_option v_args \<rparr> \<succeq>
+          upd_nm_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) 0"
+      by (rule full_total_state_gte_implies_succ)
+         (simp_all add: less_eq_full_total_stateI less_eq_total_stateI nm_0_le_any)
+    thus ?thesis
+      using intcons WfCons[simplified wf_total_consistency_def, THEN conjunct1] mono_prop_downwardD
+      by blast
+  qed
+
+  have SelfFramingZeroMask:
+       "assertion_framing_state ctxt_vpr StateCons (syntactic_mult p pbody)
+          (upd_nm_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) 0)"
+  proof -
+    have SelfFramingBody: "assertion_self_framing ctxt_vpr StateCons pbody (predicate_decl.args pdecl)"
+      using CtxtPredSF PredDecl PredBody \<open>pdecl' = pdecl\<close>
+      unfolding ctxt_pred_self_framing_inh_def
+      by blast
+    have "assertion_framing_state ctxt_vpr StateCons (syntactic_mult p pbody)
+            (update_store_total (upd_nm_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) 0)
+                                (nth_option v_args))"
+      by (rule SelfFramingBody[unfolded assertion_self_framing_def, rule_format,
+                               OF v_args_ty[simplified \<open>pdecl' = pdecl\<close>] PermPos])
+         (insert StateRelImpliesHeapWt[OF \<open>R \<omega> ns\<close>] ConsZeroMask,
+          simp_all add: full_total_state_upd_store_total_commute)
+    thus ?thesis
+      by (simp add: full_total_state_upd_store_total_commute)
+  qed
+
   have framing_exh: "framing_exh ctxt_vpr StateCons (syntactic_mult p pbody)
           (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>)"
     apply (rule framing_exhI[where ?\<omega>_inh="upd_nm_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) 0" and ?\<omega>sum="\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>"])
@@ -2013,7 +2094,7 @@ proof (rule stmt_rel_intro)
     using StateRelImpliesExtCons \<open>R \<omega> ns\<close>
         apply force
        apply (smt (verit, best) WfCons get_mh_total_full.simps intcons wf_total_consistency_def)
-      apply (metis CtxtPredSF PermPos PredBody PredDecl \<open>pdecl' = pdecl\<close> assertion_self_framing_def assertion_self_framing_store_def ctxt_pred_self_framing_inh_def full_total_state.cases_scheme full_total_state.select_convs(1) full_total_state.update_convs(1) update_nm_total_full_store_unchanged update_store_total.simps v_args_ty)
+      apply (rule SelfFramingZeroMask)
     unfolding plus_full_total_state_ext_def
      apply simp
     unfolding plus_total_state_ext_def
@@ -2289,6 +2370,36 @@ next
     have intcons: "StateCons (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>)"
       using StateRelImpliesIntCons WfCons \<open>rel_ext_eq R \<omega> \<omega> ns\<close> total_consistency_store_update_2
       by blast
+    have ConsZeroMask: "StateCons (upd_nm_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) 0)"
+    proof -
+      have "\<omega>\<lparr> get_store_total := nth_option v_args \<rparr> \<succeq>
+            upd_nm_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) 0"
+        by (rule full_total_state_gte_implies_succ)
+           (simp_all add: less_eq_full_total_stateI less_eq_total_stateI nm_0_le_any)
+      thus ?thesis
+        using intcons WfCons[simplified wf_total_consistency_def, THEN conjunct1] mono_prop_downwardD
+        by blast
+    qed
+
+    have SelfFramingZeroMask:
+         "assertion_framing_state ctxt_vpr StateCons (syntactic_mult p pbody)
+            (upd_nm_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) 0)"
+    proof -
+      have SelfFramingBody: "assertion_self_framing ctxt_vpr StateCons pbody (predicate_decl.args pdecl)"
+        using CtxtPredSF PredDecl PredBody \<open>pdecl' = pdecl\<close>
+        unfolding ctxt_pred_self_framing_inh_def
+        by blast
+      have "assertion_framing_state ctxt_vpr StateCons (syntactic_mult p pbody)
+              (update_store_total (upd_nm_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) 0)
+                                  (nth_option v_args))"
+        by (rule SelfFramingBody[unfolded assertion_self_framing_def, rule_format,
+                                 OF v_args_ty[simplified \<open>pdecl' = pdecl\<close>] PermPos])
+           (insert StateRelImpliesHeapWt[OF \<open>R \<omega> ns\<close>] ConsZeroMask,
+            simp_all add: full_total_state_upd_store_total_commute)
+      thus ?thesis
+        by (simp add: full_total_state_upd_store_total_commute)
+    qed
+
     have framing_exh: "framing_exh ctxt_vpr StateCons (syntactic_mult p pbody)
             (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>)"
       apply (rule framing_exhI[where ?\<omega>_inh="upd_nm_total_full (\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>) 0" and ?\<omega>sum="\<omega>\<lparr> get_store_total := nth_option v_args \<rparr>"])
@@ -2296,7 +2407,7 @@ next
       using StateRelImpliesExtCons \<open>R \<omega> ns\<close>
           apply force
          apply (smt (verit, best) WfCons get_mh_total_full.simps intcons wf_total_consistency_def)
-        apply (metis CtxtPredSF PermPos PredBody PredDecl \<open>pdecl' = pdecl\<close> assertion_self_framing_def assertion_self_framing_store_def ctxt_pred_self_framing_inh_def full_total_state.cases_scheme full_total_state.select_convs(1) full_total_state.update_convs(1) update_nm_total_full_store_unchanged update_store_total.simps v_args_ty)
+        apply (rule SelfFramingZeroMask)
       unfolding plus_full_total_state_ext_def
        apply simp
       unfolding plus_total_state_ext_def
