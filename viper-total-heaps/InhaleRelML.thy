@@ -246,13 +246,15 @@ ML \<open>
     (Rmsg' "inh pred acc upd MaskReadWf" (resolve_tac ctxt [ @{thm mask_read_wf_concrete} OF [#ctxt_wf_thm info, #wf_ty_repr_thm info]]) ctxt THEN'
                                           assm_full_simp_solved_tac ctxt) THEN'
     (Rmsg' "inh pred acc upd PredType" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info] ctxt) ctxt) THEN'
-    (* (SUBGOAL (fn (t,_) => raise TERM ("inh pred breakpoint", [t]))) THEN' *)
     (Rmsg' "inh pred acc upd 2" (assm_full_simp_solved_with_thms_tac [@{thm update_mask_concrete_def}, #ty_repr_def_thm info] ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd 3" (assm_full_simp_solved_with_thms_tac (#ty_repr_def_thm info::(@{thms update_mask_concrete_def read_mask_concrete_def})) ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd PlocBpl" (simp_tac_with_thms [] ctxt) ctxt) THEN'
     (Rmsg' "inh pred acc upd PlocRel" (prove_ploc_rel ctxt info pred_name exp_rel_info) ctxt) THEN'
     (Rmsg' "inh pred acc upd AbsInterpEq" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm info, @{thm ty_repr_basic_def}] ctxt) ctxt) THEN'
-    (Rmsg' "inh pred acc upd ProgEq" (simp_tac_with_thms [] ctxt) ctxt)
+    (Rmsg' "inh pred acc upd ProgEq" (simp_tac_with_thms [] ctxt) ctxt) THEN'
+    (Rmsg' "inh pred acc upd KFPosOff" (assm_full_simp_solved_with_thms_tac
+                                         ([#tr_def_thm info, #ty_repr_def_thm info] @
+                                            @{thms default_state_rel_options_def}) ctxt) ctxt)
 
   fun atomic_inhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) inh_pred_acc_hint =
     case inh_pred_acc_hint of
