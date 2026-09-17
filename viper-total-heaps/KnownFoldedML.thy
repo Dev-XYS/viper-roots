@@ -41,25 +41,14 @@ fun find_pred_kfm_sat_premise_assertion (t : term) : term option =
    closed (constant) permission expression built up from literals via arithmetic operators
    (this is the shape of the \<open>PermPosConstExpr\<close> premise of @{thm fold_knownfolded_acc_upd_rel} and
    @{thm fold_knownfolded_pred_upd_rel}). *)
-(* TODO(generalize): this currently only handles a permission expression of the shape
-   \<open>Binop (ELit _) bop (Binop (ELit _) bop' (ELit _))\<close> (i.e. exactly the nesting depth that
-   arises from a \<open>1/1\<close> literal permission multiplied by the \<open>Fold\<close> statement's own permission
-   amount, as in @{const fold_stmt_rel}'s \<open>syntactic_mult\<close>), by literally replaying the
-   corresponding \<open>apply\<close> script. A generic version that recurses on arbitrary nesting via
-   \<open>REPEAT_ALL_NEW (FIRST' [resolve_tac \<dots>, simp \<dots>])\<close> (or an explicit ML recursion using
-   \<open>ORELSE\<close>) was tried but either left the \<open>eval_binop\<close> side-condition with an uninstantiated
-   schematic permission value, or diverged; revisit this once there is a broader set of examples
-   to test a generic solution against. *)
-fun prove_vpr_const_perm_eval_tac ctxt =
-  resolve_tac ctxt @{thms TotalExpressions.RedBinop} THEN'
-  resolve_tac ctxt @{thms TotalExpressions.RedLit} THEN'
-  resolve_tac ctxt @{thms TotalExpressions.RedBinop} THEN'
-  resolve_tac ctxt @{thms TotalExpressions.RedLit} THEN'
-  resolve_tac ctxt @{thms TotalExpressions.RedLit} THEN'
-  assm_full_simp_solved_tac ctxt THEN'
-  assm_full_simp_solved_tac ctxt THEN'
-  assm_full_simp_solved_tac ctxt THEN'
-  assm_full_simp_solved_tac ctxt
+fun prove_vpr_const_perm_eval_tac ctxt i st =
+  ((resolve_tac ctxt @{thms TotalExpressions.RedLit})
+   ORELSE'
+   (resolve_tac ctxt @{thms TotalExpressions.RedBinop} THEN'
+    (fn j => fn t => prove_vpr_const_perm_eval_tac ctxt j t) THEN'
+    (fn j => fn t => prove_vpr_const_perm_eval_tac ctxt j t) THEN'
+    assm_full_simp_solved_tac ctxt THEN'
+    assm_full_simp_solved_tac ctxt)) i st
 
 (* Discharges the assumptions of @{thm fold_knownfolded_acc_upd_rel} once the rule has been applied
    to a goal whose assertion is \<open>Atomic (Acc e_r_vpr f (PureExp e_p_vpr))\<close>. Mirrors the manual proof
