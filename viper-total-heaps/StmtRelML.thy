@@ -372,12 +372,23 @@ ML \<open>
         (Rmsg' "AtomicExh1 Start" (resolve_tac ctxt [(#exhale_stmt_rel_thm exh_complete_hint) OF [(#consistency_wf_thm basic_info)]]) ctxt) THEN'
         (* (Rmsg' "AtomicExh2 Consistency" (fastforce_tac ctxt @{thms framing_exh_def}) ctxt) THEN' *)
         (* (Rmsg' "AtomicExh2 Consistency" (simp_tac_with_thms @{thms framing_exh_def} ctxt) ctxt) THEN' *)
+        (Rmsg' "AtomicExh1 CtxtPredWf" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+        (Rmsg' "AtomicExh1 CtxtPredSelfFraming"
+               (resolve_tac ctxt [@{thm ctxt_pred_self_framing_inh_implies_sat}] THEN'
+                assm_full_simp_solved_tac ctxt THEN'
+                resolve_tac ctxt [@{thm intcons_mono_prop_downward_sub_mask_total}] THEN'
+                resolve_tac ctxt [@{thm intcons_total_full_mono_prop_downward}] THEN'
+                assm_full_simp_solved_with_thms_tac [@{thm consistent_internal_total_full_def}] ctxt THEN'
+                assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (Rmsg' "AtomicExh2 Consistency 0?" (TRY' (eresolve_tac ctxt @{thms conjE})) ctxt) THEN'
         (Rmsg' "AtomicExh2 Consistency 1" (forward_tac ctxt @{thms state_rel_consistent}) ctxt) THEN'
         (Rmsg' "AtomicExh2 Consistency 2" (assm_full_simp_solved_with_thms_tac [@{thm default_state_rel_options_def}, #tr_def_thm basic_info] ctxt) ctxt) THEN'
         (Rmsg' "AtomicExh2 Consistency 3" (resolve_tac ctxt @{thms conjI}) ctxt) THEN'
         (Rmsg' "AtomicExh2 Consistency 4" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-        (Rmsg' "AtomicExh2 Consistency 5" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info, #vpr_program_ctxt_eq_thm basic_info, @{thm extcons_fun_interp_irrelevant'}, @{thm state_rel_heap_well_typed}] ctxt) ctxt) THEN'
+        (Rmsg' "AtomicExh2 Consistency 5" (resolve_tac ctxt @{thms conjI}) ctxt) THEN'
+        (Rmsg' "AtomicExh2 Consistency 5a" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info, #vpr_program_ctxt_eq_thm basic_info, @{thm extcons_fun_interp_irrelevant'}] ctxt) ctxt) THEN'
+        (Rmsg' "AtomicExh2 Consistency 5b" (forward_tac ctxt @{thms state_rel_heap_well_typed} THEN'
+                                             assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm basic_info, #ty_repr_def_thm basic_info] ctxt) ctxt) THEN'
         (* (Rmsg' "AtomicExh2 Consistency" (fastforce_tac ctxt @{thms framing_exh_def}) ctxt) THEN' *)
         (Rmsg' "AtomicExh3 Invariant" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (normal_exhale_rel_tac ctxt exhale_info exh_complete_hint)
