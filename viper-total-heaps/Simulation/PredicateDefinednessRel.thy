@@ -22,12 +22,20 @@ lemma supported_atomic_assert_real_mult_permexpr:
            atomic_assert_pred_rec not_supported_exp_no_rec (Acc e_r f (real_mult_permexpr p e_p))"
   using assms by (cases e_p; simp add: real_to_expr.simps)
 
+lemma supported_atomic_assert_pred_real_mult_permexpr:
+  assumes "supported_atomic_assert (AccPredicate pid es e_p)"
+      and "atomic_assert_pred_rec not_supported_exp_no_rec (AccPredicate pid es e_p)"
+    shows "supported_atomic_assert (AccPredicate pid es (real_mult_permexpr p e_p)) \<and>
+           atomic_assert_pred_rec not_supported_exp_no_rec (AccPredicate pid es (real_mult_permexpr p e_p))"
+  using assms by (cases e_p; simp add: real_to_expr.simps)
+
 lemma syntactic_mult_supported_assertion:
   assumes "supported_assertion A"
   shows "supported_assertion (syntactic_mult p A)"
   using assms
   by (induction A rule: syntactic_mult.induct)
-     (auto dest: supported_atomic_assert_real_mult_permexpr)
+     (auto dest: supported_atomic_assert_real_mult_permexpr
+                 supported_atomic_assert_pred_real_mult_permexpr)
 
 lemma free_var_assertion_syntactic_mult:
   assumes "0 < p"

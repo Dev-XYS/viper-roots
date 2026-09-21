@@ -44,6 +44,17 @@ lemma inhale_perm_single_elem:
   unfolding inhale_perm_single_def
   by blast
 
+lemma inhale_perm_single_pred_elem:
+  assumes "\<omega>' = (if q = 0 then \<omega> else add_to_lpm_nonzero_total_full \<omega> lp (Abs_posreal q) (get_nm_total \<phi>_inh))" and
+          "get_hh_total \<phi>_inh = get_hh_total_full \<omega>" and
+          "consistent_external_wrt_ploc ctxt \<phi>_inh lp q" and
+          "R \<omega>'" and
+          "option_fold ((=) q) (q \<noteq> 0) p_opt"
+    shows "\<omega>' \<in> inhale_perm_single_pred ctxt R \<omega> lp p_opt"
+  using assms
+  unfolding inhale_perm_single_pred_def
+  by blast
+
 
 \<comment> \<open>Internal consistency must be included in \<open>red_exhale\<close>.
     Consider the Viper statement: \<open>inhale acc(x.f) && acc(x.f) && x.g == 1\<close>.

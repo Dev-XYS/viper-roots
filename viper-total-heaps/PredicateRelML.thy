@@ -333,7 +333,7 @@ fun atomic_inhale_pred_acc_in_fold_tac ctxt (info: basic_stmt_rel_info) inh_pred
       (Rmsg' "InhPred (fold) red_ast_bpl_relI" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
       (store_temporary_inh_perm_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
       (Rmsg' "InhPred (fold) perm non-neg (always true)" (resolve_tac ctxt @{thms bpl_assert_true_is_skip}) ctxt) THEN'
-      (true_implies_true_tac ctxt) THEN'
+      (true_implies_true_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
       (Rmsg' "InhPred (fold) propagate (reset state rel)" (resolve_tac ctxt @{thms rel_propagate_post_3}) ctxt) THEN'
       (inhale_rel_pred_acc_upd_rel_tac' ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info) THEN'
       (exhale_revert_state_relation ctxt info)
@@ -395,6 +395,7 @@ fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atom
 
   (Rmsg' "fold stmt NoHeapAssignBetween" (no_heap_assignment_until_tac ctxt |> SOLVED') ctxt) THEN'
   (Rmsg' "fold stmt PPSyntacticRestriction" (program_point_restriction_tac ctxt |> SOLVED') ctxt) THEN'
+  (Rmsg' "fold stmt good state final unfold bigblock" (unfold_bigblock_in_goal ctxt) ctxt) THEN'
   (Rmsg' "fold stmt good state final" ((progress_assume_good_state_rel_tac ctxt (#ctxt_wf_thm basic_info) (#tr_def_thm basic_info))) ctxt)
   end
 

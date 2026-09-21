@@ -184,12 +184,15 @@ ML \<open>
    (* We add RedLit_case to deal with the case when the permission is a literal *)
    (Rmsg' "Inh Assume Rcv Non-Null - Prove Assume Condition Holds" (fast_force_tac (add_simps @{thms inhale_acc_normal_premise_def} (ctxt addEs @{thms TotalExpressions.RedLit_case}) )) ctxt)
 
-  fun true_implies_true_tac ctxt =
+  fun true_implies_true_tac ctxt (info: basic_stmt_rel_info) lookup_aux_var_state_rel_thm =
     (Rmsg' "Inh Assume True \<Longrightarrow> True - Init 1" (resolve_tac ctxt @{thms rel_propagate_pre_assume}) ctxt) THEN'
     (Rmsg' "Inh Assume True \<Longrightarrow> True - Init 2" (resolve_tac ctxt @{thms conjI}) ctxt) THEN'
+    (Rmsg' "Inh Assume True \<Longrightarrow> True - Introduce Facts"
+            (EVERY' [intro_fact_lookup_no_perm_const_tac ctxt (#tr_def_thm info),
+            intro_fact_lookup_aux_var_tac ctxt lookup_aux_var_state_rel_thm]) ctxt) THEN'
     (Rmsg' "Inh Assume True \<Longrightarrow> True - Synthesize Assume Condition" (prove_red_expr_bpl_tac ctxt) ctxt) THEN'
     (* We add RedLit_case to deal with the case when the permission is a literal *)
-    (Rmsg' "Inh Assume True \<Longrightarrow> True - Prove Assume Condition Holds" (fast_force_tac (add_simps @{thms inhale_acc_normal_premise_def} (ctxt addEs @{thms TotalExpressions.RedLit_case}) )) ctxt)
+    (Rmsg' "Inh Assume True \<Longrightarrow> True - Prove Assume Condition Holds" (fast_force_tac (add_simps @{thms inhale_pred_normal_premise_def} (ctxt addEs @{thms TotalExpressions.RedLit_case}) )) ctxt)
 
   fun inhale_rel_field_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) exp_rel_info =
     (Rmsg' "inh field acc upd rule" (resolve_tac ctxt @{thms inhale_rel_field_acc_upd_rel}) ctxt) THEN'
@@ -268,7 +271,7 @@ ML \<open>
             (Rmsg' "InhField 2b red_ast_bpl_relI" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
             (store_temporary_inh_perm_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
             (prove_perm_non_negative_inh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
-            (true_implies_true_tac ctxt) THEN'
+            (true_implies_true_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
             (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint probe", [t]))) THEN' *)
             (inhale_rel_pred_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info)
     | _ => error("only support PredicateAccInhHint")

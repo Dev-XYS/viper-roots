@@ -103,7 +103,7 @@ fun upd_kfm_field_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_inf
    proof) in \<open>#lookup_fun_bpl_thms exp_rel_info\<close>; similarly \<open>LookupTyTemp\<close> needs the
    \<open>lookup_var_decl\<close> fact for whichever local Boogie variable ends up instantiated for
    \<open>new_kfm_var\<close> (e.g. \<open>lvar14(1)\<close>) to be included in \<open>#lookup_var_thms exp_rel_info\<close>. *)
-fun upd_kfm_pred_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info (kfm_temp_var_lookup_thms : thm list) =
+fun upd_kfm_pred_acc_tac ctxt (info: basic_stmt_rel_info) pred_name pid_fold exp_rel_info (kfm_temp_var_lookup_thms : thm list) =
   (Rmsg' "kfm upd pred acc rule" (resolve_tac ctxt @{thms fold_knownfolded_pred_upd_rel}) ctxt) THEN'
   (Rmsg' "kfm upd pred acc StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
   (Rmsg' "kfm upd pred acc StateRelOut"
@@ -153,7 +153,7 @@ fun upd_kfm_pred_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info
   (Rmsg' "kfm upd pred acc PlocSynProp1" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PlocSynProp2" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PlocSynProp3" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-  (Rmsg' "kfm upd pred acc PlocFoldRel" (prove_ploc_sm_rel' ctxt info pred_name exp_rel_info) ctxt) THEN'
+  (Rmsg' "kfm upd pred acc PlocFoldRel" (prove_ploc_sm_rel' ctxt info pid_fold exp_rel_info) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PlocFoldSynProp1" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PlocFoldSynProp2" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd pred acc PlocFoldSynProp3" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
@@ -212,8 +212,10 @@ fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info (kfm
               (Rmsg' "kfm upd Imp progress (unfolding bigblock)" (progress_red_bpl_rel_tac ctxt) ctxt)) i
          | Const (@{const_name Atomic}, _) $ (Const (@{const_name Acc}, _) $ _ $ _ $ _) =>
              upd_kfm_field_acc_tac ctxt info pred_name exp_rel_info i
-         | Const (@{const_name Atomic}, _) $ (Const (@{const_name AccPredicate}, _) $ _ $ _ $ _) =>
-             upd_kfm_pred_acc_tac ctxt info pred_name exp_rel_info kfm_temp_var_lookup_thms i
+         | Const (@{const_name Atomic}, _) $ (Const (@{const_name AccPredicate}, _) $ pid_fold_term $ _ $ _) =>
+             let val pid_fold = HOLogic.dest_string pid_fold_term in
+               upd_kfm_pred_acc_tac ctxt info pred_name pid_fold exp_rel_info kfm_temp_var_lookup_thms i
+             end
          | _ => raise TERM ("kfm_upd_rel_tac: unsupported assertion structure for known-folded mask update", [a])))
 
 \<close>

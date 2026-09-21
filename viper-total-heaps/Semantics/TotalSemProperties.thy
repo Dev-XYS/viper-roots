@@ -2458,6 +2458,49 @@ proof -
     by blast
 qed
 
+lemma inhale_perm_single_pred_elem_store_update:
+  assumes WfConsistent: "wf_total_consistency ctxt R Rt"
+      and OnlyStoreDifferent: "get_total_full \<omega> = get_total_full \<omega>' \<and> get_trace_total \<omega> = get_trace_total \<omega>'"
+      and Elem: "\<omega>Elem \<in> inhale_perm_single_pred ctxt R \<omega> lp popt"
+    shows "\<omega>Elem\<lparr>get_store_total := get_store_total \<omega>'\<rparr> \<in> inhale_perm_single_pred ctxt R \<omega>' lp popt"
+proof -
+  from Elem obtain \<phi>_inh q where
+    QCond: "option_fold ((=) q) (q \<noteq> 0) popt" and
+    ExtCons: "consistent_external_wrt_ploc ctxt \<phi>_inh lp q" and
+    HeapEq: "get_hh_total \<phi>_inh = get_hh_total_full \<omega>" and
+    ElemEq: "\<omega>Elem = (if q = 0 then \<omega> else add_to_lpm_nonzero_total_full \<omega> lp (Abs_posreal q) (get_nm_total \<phi>_inh))"
+    unfolding inhale_perm_single_pred_def
+    by blast
+
+  have StoreUpd: "\<omega>Elem\<lparr>get_store_total := get_store_total \<omega>'\<rparr> =
+                    (if q = 0 then \<omega>' else add_to_lpm_nonzero_total_full \<omega>' lp (Abs_posreal q) (get_nm_total \<phi>_inh))"
+    unfolding ElemEq
+    using OnlyStoreDifferent
+    by (cases "q = 0") (auto simp: full_total_state.equality)
+
+  have HeapEq': "get_hh_total \<phi>_inh = get_hh_total_full \<omega>'"
+    using HeapEq OnlyStoreDifferent
+    by simp
+
+  have "R (\<omega>Elem\<lparr>get_store_total := get_store_total \<omega>'\<rparr>)"
+    using total_consistency_store_update_2[OF WfConsistent] Elem
+    unfolding inhale_perm_single_pred_def
+    by blast
+
+  thus ?thesis
+    unfolding StoreUpd
+    using inhale_perm_single_pred_elem[OF _ HeapEq' ExtCons _ QCond]
+    by simp
+qed
+
+lemma inhale_perm_single_pred_Some_non_empty_preserve:
+  assumes WfConsistent: "wf_total_consistency ctxt R Rt"
+      and OnlyStoreDifferent: "get_total_full \<omega> = get_total_full \<omega>' \<and> get_trace_total \<omega> = get_trace_total \<omega>'"
+      and Nonempty: "inhale_perm_single_pred ctxt R \<omega> lp popt \<noteq> {}"
+    shows "inhale_perm_single_pred ctxt R \<omega>' lp popt \<noteq> {}"
+  using inhale_perm_single_pred_elem_store_update[OF WfConsistent OnlyStoreDifferent] Nonempty
+  by blast
+
 
 subsection \<open>Temp\<close>
 
@@ -2721,6 +2764,64 @@ proof (induction arbitrary: \<omega>2 rule: red_inhale.inducts)
     qed (simp)
   qed
 next
+  case (InhAccPred \<omega> e_args v_args e_p p W' pred_id res)
+  note WfConsistent = \<open>wf_total_consistency ctxt R Rt\<close>
+  show ?case
+  proof (rule red_inhale.InhAccPred)
+    show "red_pure_exps_total ctxt (Some \<omega>2) e_args \<omega>2 (Some v_args)"
+    proof (rule red_pure_exp_store_same_on_free_var(2))
+      show "red_pure_exps_total ctxt (Some \<omega>) e_args \<omega> (Some v_args)"
+        using InhAccPred by blast
+    next
+      show "Some \<omega> = Some \<omega>" by simp
+    next
+      fix x
+      assume "x \<in> \<Union> (set (map free_var_pure_exp e_args))"
+      thus "get_store_total \<omega> x = get_store_total \<omega>2 x"
+        using InhAccPred by fastforce
+    next
+      show "get_trace_total \<omega> = get_trace_total \<omega>2 \<and> get_total_full \<omega> = get_total_full \<omega>2"
+        using InhAccPred by blast
+    next
+      show "get_trace_total \<omega> = get_trace_total \<omega>2 \<and> get_total_full \<omega> = get_total_full \<omega>2"
+        using InhAccPred by blast
+    next
+      show "list_all supported_pure_exp e_args"
+        using InhAccPred by simp
+    qed
+  next
+    show "ctxt, Some \<omega>2 \<turnstile> \<langle>e_p;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+      using InhAccPred
+      by (simp add: red_pure_exp_store_same_on_free_var(1))
+  next
+    let ?W2' = "inhale_perm_single_pred ctxt R \<omega>2 (pred_id, v_args) (Some (Abs_preal p))"
+    show "?W2' = ?W2'"
+      by simp
+
+    from \<open>th_result_rel (0 \<le> p) (W' \<noteq> {}) W' res\<close>
+    show "th_result_rel (0 \<le> p) (?W2' \<noteq> {})
+             ?W2'
+             (map_result_total (get_store_total_update (\<lambda>_. get_store_total \<omega>2)) res)"
+    proof (rule th_result_rel_convert)
+      let ?f = "get_store_total_update (\<lambda>_. get_store_total \<omega>2)"
+
+      show "(W' \<noteq> {}) \<longleftrightarrow> (?W2' \<noteq> {})"
+        unfolding \<open>W' = _\<close>
+        using inhale_perm_single_pred_Some_non_empty_preserve[OF WfConsistent] InhAccPred
+        by metis
+
+      show "map_result_total ?f res = map_result_total ?f res"
+        by simp
+
+      fix \<omega>Elem
+      assume "\<omega>Elem \<in> W'"
+      show "\<omega>Elem\<lparr>get_store_total := get_store_total \<omega>2\<rparr> \<in> ?W2'"
+        using inhale_perm_single_pred_elem_store_update[OF WfConsistent] \<open>\<omega>Elem \<in> W'\<close> InhAccPred
+        unfolding \<open>W' = _\<close>
+        by blast
+    qed (simp)
+  qed
+next
   case (InhPure \<omega> e b)
   hence "ctxt, Some \<omega>2 \<turnstile> \<langle>e;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VBool b)"
     by (simp add: red_pure_exp_store_same_on_free_var(1))
@@ -2902,6 +3003,66 @@ proof (induction arbitrary: \<omega>2 res2)
         by (simp_all add: ExhAcc)      
     qed
   qed      
+next
+  case (ExhAccPred mp \<omega> e_args v_args e_p p pid pdecl)
+
+  hence ConstraintExp: "list_all supported_pure_exp e_args \<and> supported_pure_exp e_p"
+    by simp
+
+  have RedArgs: "red_pure_exps_total ctxt (Some \<omega>def2) e_args \<omega>2 (Some v_args)"
+  proof (rule red_pure_exp_store_same_on_free_var(2))
+    show "red_pure_exps_total ctxt (Some \<omega>def1) e_args \<omega> (Some v_args)"
+      using ExhAccPred by blast
+  next
+    show "Some \<omega>def1 = Some \<omega>def1" by simp
+  next
+    fix x
+    assume "x \<in> \<Union> (set (map free_var_pure_exp e_args))"
+    thus "get_store_total \<omega> x = get_store_total \<omega>2 x"
+      using ExhAccPred by fastforce
+  next
+    show "get_trace_total \<omega> = get_trace_total \<omega>2 \<and> get_total_full \<omega> = get_total_full \<omega>2"
+      using ExhAccPred by blast
+  next
+    show "get_trace_total \<omega>def1 = get_trace_total \<omega>def2 \<and> get_total_full \<omega>def1 = get_total_full \<omega>def2"
+      using ExhAccPred by blast
+  next
+    show "list_all supported_pure_exp e_args"
+      using ConstraintExp by simp
+  qed
+
+  have RedPerm: "ctxt, Some \<omega>def2 \<turnstile> \<langle>e_p;\<omega>2\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+  proof (rule red_pure_exp_store_same_on_free_var(1))
+    show "ctxt, Some \<omega>def1 \<turnstile> \<langle>e_p;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)"
+      using ExhAccPred by blast
+  next
+    show "Some \<omega>def1 = Some \<omega>def1" by simp
+  next
+    show "supported_pure_exp e_p"
+      using ConstraintExp by simp
+  next
+    fix x
+    assume "x \<in> free_var_pure_exp e_p"
+    thus "get_store_total \<omega> x = get_store_total \<omega>2 x"
+      using ExhAccPred by fastforce
+  next
+    show "get_trace_total \<omega> = get_trace_total \<omega>2 \<and> get_total_full \<omega> = get_total_full \<omega>2"
+      using ExhAccPred by blast
+  next
+    show "get_trace_total \<omega>def1 = get_trace_total \<omega>def2 \<and> get_total_full \<omega>def1 = get_total_full \<omega>def2"
+      using ExhAccPred by blast
+  qed
+
+  have EQ: "res2 = exh_if_total (0 \<le> p \<and> Abs_preal p \<le> get_mp_total_full \<omega>2 (pid, v_args)) (exhale_pred \<omega>2 (pid, v_args) (Abs_preal p))"
+    unfolding \<open>res2 = _\<close>
+    apply (rule HOL.sym, rule exh_if_total_map_stmt_result_total)
+     apply (simp add: ExhAccPred.hyps(1) ExhAccPred.prems(3))
+    using ExhAccPred.prems(3)
+    by (auto simp add: exhale_pred_def)
+
+  show ?case
+    unfolding EQ
+    by (rule red_exhale.ExhAccPred[OF refl RedArgs RedPerm ExhAccPred.hyps(4,5,6)])
 next
   case (ExhPure e \<omega> b)
   hence "supported_pure_exp e"

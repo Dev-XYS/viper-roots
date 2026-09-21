@@ -225,7 +225,7 @@ abbreviation supported_pure_exp
 fun supported_atomic_assert :: "pure_exp atomic_assert \<Rightarrow> bool"
   where
     "supported_atomic_assert (Acc e f Wildcard) = False" \<comment>\<open>wildcard permission amounts not supported\<close>
-  | "supported_atomic_assert (AccPredicate pred es q) = False" \<comment>\<open>predicates not supported\<close>
+  | "supported_atomic_assert (AccPredicate pred es Wildcard) = False" \<comment>\<open>wildcard permission amounts not supported\<close>
   | "supported_atomic_assert _ = True"
 
 abbreviation supported_assertion
@@ -242,13 +242,29 @@ lemma supported_pure_exp_no_unfolding:
   using pure_exp_pred.elims(3)
   by fastforce
 
+lemma supported_atomic_assert_pred_no_unfolding:
+  assumes "atomic_assert_pred supported_atomic_assert not_supported_exp_no_rec x"
+  shows "atomic_assert_pred (\<lambda>_. True) no_unfolding_pure_exp_no_rec x"
+  using assms
+proof (cases x)
+  case (Pure e)
+  then show ?thesis using assms by (auto simp: supported_pure_exp_no_unfolding)
+next
+  case (Acc e f q)
+  then show ?thesis using assms by (cases q) (auto simp: supported_pure_exp_no_unfolding)
+next
+  case (AccPredicate pred es q)
+  then show ?thesis using assms
+    by (cases q) (auto simp: supported_pure_exp_no_unfolding list_all_iff)
+qed
+
 lemma supported_assertion_no_unfolding:
   assumes "supported_assertion A"
   shows "no_unfolding_assertion A"
   using assms
   apply (induction A)
           apply (simp_all add: supported_pure_exp_no_unfolding)
-  by (metis atomic_assert_pred.elims(2) atomic_assert_pred.elims(3) atomic_assert_pred_rec.elims(3) atomic_assert_pred_rec.simps(1) atomic_assert_pred_rec.simps(3) supported_atomic_assert.simps(1) supported_atomic_assert.simps(2) supported_pure_exp_no_unfolding)
+  by (simp add: supported_atomic_assert_pred_no_unfolding)
 
 
 subsubsection \<open>No result expressions\<close>
