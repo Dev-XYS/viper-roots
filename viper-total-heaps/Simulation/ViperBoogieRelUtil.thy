@@ -1230,6 +1230,22 @@ abbreviation state_rel_capture_total_state :: \<comment>\<open>make type explici
           state_rel Pr StateCons TyRep Tr
                     (aux_pred_capture_state Pr TyRep FieldTr0 (knownfolded_state_rel_opt (state_rel_opt Tr)) AuxPred ctxt m h \<omega>) ctxt"
 
+text \<open>Same as @{const state_rel_capture_total_state}, but with the known-folded relation option
+      \<^term>\<open>Kf\<close> as an independent parameter instead of being tied to \<^term>\<open>Tr\<close>.\<close>
+
+abbreviation state_rel_capture_total_state_kf :: \<comment>\<open>make type explicit to ensure that the Viper states have the same type\<close>
+ "program
+     \<Rightarrow> ('a full_total_state \<Rightarrow> bool)
+        \<Rightarrow> 'a ty_repr_bpl
+           \<Rightarrow> tr_vpr_bpl
+             \<Rightarrow> (field_ident \<rightharpoonup> Lang.vname)
+              \<Rightarrow> knownfolded_rel_options
+                \<Rightarrow> (nat \<Rightarrow> ('a vbpl_absval Semantics.val \<Rightarrow> bool) option)
+                 \<Rightarrow> ('a vbpl_absval, 'b) econtext_bpl_general_scheme \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> 'a full_total_state \<Rightarrow> 'a vbpl_absval nstate \<Rightarrow> bool"
+  where "state_rel_capture_total_state_kf Pr StateCons TyRep Tr FieldTr0 Kf AuxPred ctxt m h \<omega> \<equiv>
+          state_rel Pr StateCons TyRep Tr
+                    (aux_pred_capture_state Pr TyRep FieldTr0 Kf AuxPred ctxt m h \<omega>) ctxt"
+
 lemma state_rel_capture_total_stateI:
   assumes "state_rel Pr StateCons TyRep Tr AuxPred' ctxt \<omega>def \<omega> ns"
       and "AuxPred' = ((AuxPred(m \<mapsto> pred_eq_mask Pr TyRep FieldTr0 ctxt m \<omega>0))
@@ -1544,14 +1560,17 @@ proof -
 qed
 
 lemma state_rel_capture_total_state_change_eval_state:
-  assumes StateRel: "state_rel_capture_total_state Pr StateCons TyRep Tr' FieldTr0 AuxPred ctxt m h \<omega>0 \<omega>def \<omega> ns"
+  assumes StateRel0: "state_rel_capture_total_state_kf Pr StateCons TyRep Tr' FieldTr0 Kf AuxPred ctxt m h \<omega>0 \<omega>def \<omega> ns" (* force reparse *)
       and "m \<noteq> h"
       and "FieldTr0 = field_translation Tr"
       and DisjAuxPred: "{m,h} \<inter> dom AuxPred = {}"
       and "\<omega>0 = \<omega>def"
       and "Tr = Tr'\<lparr>mask_var := m, heap_var := h, mask_var_def := m, heap_var_def := h\<rparr>"
+      and "Kf = knownfolded_state_rel_opt (state_rel_opt Tr')"
     shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega>0 ns"
 proof -
+  from StateRel0 have StateRel: "state_rel_capture_total_state Pr StateCons TyRep Tr' FieldTr0 AuxPred ctxt m h \<omega>0 \<omega>def \<omega> ns"
+    using \<open>Kf = _\<close> by simp
   from state_rel_aux_pred_sat_lookup_2[OF StateRel, where ?aux_var=m] \<open>m \<noteq> h\<close>
   obtain mb where LookupMask: "lookup_var (var_context ctxt) ns m = Some (AbsV (AMask mb))" and
                   LookupVarTyMask: "lookup_var_ty (var_context ctxt) m = Some (TConSingle (TMaskId TyRep))" and
@@ -1666,10 +1685,7 @@ proof -
               state_rel_state_well_typed[OF StateRel]
               \<open>\<omega>0 = \<omega>def\<close> \<open>Tr = _\<close>, simp_all)
 qed
-
-
 subsection \<open>Tracking the well-definedness state\<close>
-
 lemma state_rel_def_same_to_state_rel:
   assumes "rel_ext_eq (state_rel_def_same vpr_prog StateCons TyRep Tr AuxPred ctxt) \<omega>def \<omega> ns"
   shows "state_rel vpr_prog StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega> ns"

@@ -1580,10 +1580,10 @@ text \<open>The following lemma turns the goal into a form, which removes the in
       exhale does not change the well-definedness state).\<close>
 
 lemma exhale_rel_capture_state_abstract:
-  assumes ExhaleRel: "\<And>\<omega>def. exhale_rel (state_rel_capture_total_state Pr StateCons TyRep Tr FieldTr0 AuxPred ctxt m h \<omega>def)
-                              (state_rel_capture_total_state Pr StateCons TyRep Tr FieldTr0 AuxPred  ctxt m h \<omega>def) Q ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>'"
-  shows "exhale_rel (\<lambda>\<omega>def. (state_rel_capture_total_state Pr StateCons TyRep Tr FieldTr0 AuxPred ctxt m h \<omega>def \<omega>def))
-                    (\<lambda>\<omega>def. (state_rel_capture_total_state Pr StateCons TyRep Tr FieldTr0 AuxPred ctxt m h \<omega>def \<omega>def)) Q ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>'"
+  assumes ExhaleRel: "\<And>\<omega>def. exhale_rel (state_rel_capture_total_state_kf Pr StateCons TyRep Tr FieldTr0 Kf AuxPred ctxt m h \<omega>def)
+                              (state_rel_capture_total_state_kf Pr StateCons TyRep Tr FieldTr0 Kf AuxPred  ctxt m h \<omega>def) Q ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>'"
+  shows "exhale_rel (\<lambda>\<omega>def. (state_rel_capture_total_state_kf Pr StateCons TyRep Tr FieldTr0 Kf AuxPred ctxt m h \<omega>def \<omega>def))
+                    (\<lambda>\<omega>def. (state_rel_capture_total_state_kf Pr StateCons TyRep Tr FieldTr0 Kf AuxPred ctxt m h \<omega>def \<omega>def)) Q ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>'"
 
   apply (rule exhale_rel_intro_2)
   using exhale_rel_elim_2[OF ExhaleRel]

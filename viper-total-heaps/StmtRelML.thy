@@ -351,7 +351,8 @@ ML \<open>
     (Rmsg' "assert rel reset tac field translation eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "assert rel reset tac aux pred disjointness" ((#aux_var_disj_tac basic_info) ctxt) ctxt) THEN'
     (Rmsg' "assert rel reset tac well def same" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-    (Rmsg' "assert rel translation records update" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info] ctxt) ctxt)
+    (Rmsg' "assert rel translation records update" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info] ctxt) ctxt) THEN'
+    (Rmsg' "assert rel reset tac kf eq" (assm_full_simp_solved_tac ctxt) ctxt)
 
   fun assert_rel_reset_state_tac_pure (basic_info: basic_stmt_rel_info) ctxt =
     (Rmsg' "assert pure rel reset state init" (resolve_tac ctxt @{thms rel_propagate_pre_2_only_state_rel}) ctxt) THEN'
@@ -397,11 +398,10 @@ ML \<open>
      | ExhaleHint TrivialExhCompleteHint =>
         (Rmsg' "AtomicExh Trivial" (resolve_tac ctxt @{thms exhale_true_stmt_rel_2}) ctxt) THEN'
         (Rmsg' "AtomicExh Trivial State Rel Impies" (simp_then_if_not_solved_blast_tac ctxt) ctxt)
-     | AssertHint assert_complete_hint =>
+      | AssertHint assert_complete_hint =>
         (Rmsg' "AtomicAssert Start" (resolve_tac ctxt [#assert_stmt_rel_thm assert_complete_hint]) ctxt) THEN'
         (Rmsg' "AtomicAssert Init" ((#init_tac assert_complete_hint) basic_info (#setup_well_def_state_tac assert_complete_hint basic_info) ctxt) ctxt) THEN'
-        (assert_rel_tac ctxt exhale_info assert_complete_hint)
-     | UnfoldHint (pred_name, inhale_info, atomic_exhale_hint, inhale_hint) =>
+        (assert_rel_tac ctxt exhale_info assert_complete_hint)     | UnfoldHint (pred_name, inhale_info, atomic_exhale_hint, inhale_hint) =>
         (pred_unfold_tac ctxt pred_name inhale_info exhale_info basic_info atomic_exhale_hint (#inhale_rel_hint inhale_hint))
      | FoldHint (pred_name, exp_wf_rel_info, exp_rel_info, exhale_info, exhale_hint, atomic_inhale_hint, kfm_temp_var_lookup_thms) =>
         (pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info inhale_info exhale_info basic_info exhale_hint atomic_inhale_hint kfm_temp_var_lookup_thms)
