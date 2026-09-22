@@ -140,6 +140,16 @@ fun rewrite_rel_general_tac ctxt =
   fun lookup_predicate_data (info: basic_stmt_rel_info) pred_name : predicate_data =
     Symtab.lookup (#predicate_data_table info) pred_name |> Option.valOf
 
+  (* number of formal arguments of the predicate, extracted from predicate_args_thm
+     (which states \<open>predicate_decl.args pred_decl = [ty1, ..., tyN]\<close>) *)
+  fun predicate_num_args (pred_data: predicate_data) : int =
+    #predicate_args_thm pred_data
+    |> Thm.concl_of
+    |> HOLogic.dest_Trueprop
+    |> HOLogic.dest_eq |> snd
+    |> HOLogic.dest_list
+    |> length
+
 
 (* Tactic for proving that a Boogie expression reduces, i.e., goals of the form
    "red_expr_bpl ctxt e ns v" (where v is either a fixed value or contains schematic variables).

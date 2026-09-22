@@ -200,15 +200,17 @@ fun upd_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) pred_name
 fun atomic_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) exh_pred_acc_hint =
     case exh_pred_acc_hint of
       PredAccExhHint (pred_name, exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm, exp_rel_perm_access_thm) =>
+        let val pred_num_args = predicate_num_args (lookup_predicate_data info pred_name) in
         (Rmsg' "UnfoldExhPred 1" (resolve_tac ctxt @{thms unfold_exhale_pred_rel}) ctxt) THEN'
         (Rmsg' "UnfoldExhPred wf args list simp" (simp_only_tac @{thms append_Cons append_Nil} ctxt) ctxt) THEN'
-        (Rmsg' "UnfoldExhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'
+        (Rmsg' "UnfoldExhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt (pred_num_args+1)) ctxt) THEN'
         (Rmsg' "UnfoldExhPred 2 propagate" (resolve_tac ctxt @{thms rel_propagate_pre_2}) ctxt) THEN'
         (Rmsg' "UnfoldExhPred 3 propagate" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
         (store_temporary_perm_pred_exh_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
         (prove_perm_non_negative_pred_exh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
         (prove_sufficient_perm_pred_tac ctxt info pred_name exp_rel_info lookup_aux_var_state_rel_thm exp_rel_perm_access_thm) THEN'
         (upd_exhale_pred_acc_in_unfold_tac ctxt info pred_name exp_rel_info)
+        end
     | _ => error("Unfold only supports PredAccExhHint")
 
 
@@ -373,7 +375,7 @@ fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atom
   (Rmsg' "fold stmt PermPos" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
 
   (Rmsg' "fold stmt wf args list simp" (simp_only_tac @{thms append_Cons append_Nil} ctxt) ctxt) THEN'
-  (Rmsg' "fold stmt StepWfSubexp" (exps_wf_rel_tac basic_info exp_wf_rel_info exp_rel_info ctxt NONE 2) ctxt) THEN'
+  (Rmsg' "fold stmt StepWfSubexp" (exps_wf_rel_tac basic_info exp_wf_rel_info exp_rel_info ctxt NONE (predicate_num_args pred_data + 1)) ctxt) THEN'
   (Rmsg' "fold stmt StepPermPos (always assert true)" (resolve_tac ctxt @{thms red_bpl_assert_true}) ctxt) THEN'
   (Rmsg' "fold stmt simp synmult" (simp_tac_with_thms [] ctxt) ctxt) THEN'
 

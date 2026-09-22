@@ -262,10 +262,10 @@ ML \<open>
   fun atomic_inhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) inh_pred_acc_hint =
     case inh_pred_acc_hint of
       PredicateAccInhHint (pred_name, exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm) =>
+        let val pred_num_args = predicate_num_args (lookup_predicate_data info pred_name) in
         (Rmsg' "InhPred 1" (resolve_tac ctxt @{thms inhale_predicate_acc_rel}) ctxt) THEN'
           (Rmsg' "InhPred wf args list simp" (simp_only_tac @{thms append_Cons append_Nil} ctxt) ctxt) THEN'
-          (Rmsg' "InhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'
-            (* '2' is the number of the predicate arguments plus one. Needs to be program specific in the future. *)
+          (Rmsg' "InhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt (pred_num_args+1)) ctxt) THEN'
           (Rmsg' "InhPred unfold current bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'
           (Rmsg' "InhPred 2 propagate" (resolve_tac ctxt @{thms rel_propagate_pre_2}) ctxt) THEN'
             (Rmsg' "InhField 2b red_ast_bpl_relI" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
@@ -274,6 +274,7 @@ ML \<open>
             (true_implies_true_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
             (* (SUBGOAL (fn (t,_) => raise TERM ("breakpoint probe", [t]))) THEN' *)
             (inhale_rel_pred_acc_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info)
+        end
     | _ => error("only support PredicateAccInhHint")
 
   fun atomic_inhale_rel_inst_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) atomic_inh_hint = 

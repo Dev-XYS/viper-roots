@@ -329,9 +329,10 @@ ML \<open>
   fun atomic_exhale_pred_acc_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) exh_pred_acc_hint =
     case exh_pred_acc_hint of
       PredAccExhHint (pred_name, exp_wf_rel_info, exp_rel_info, lookup_aux_var_ty_thm, lookup_aux_var_state_rel_thm, exp_rel_perm_access_thm) =>
+        let val pred_num_args = predicate_num_args (lookup_predicate_data info pred_name) in
         (Rmsg' "ExhPred 1" (resolve_tac ctxt @{thms exhale_rel_pred_acc}) ctxt) THEN'
           (Rmsg' "ExhPred wf args list simp" (simp_only_tac @{thms append_Cons append_Nil} ctxt) ctxt) THEN'
-          (Rmsg' "ExhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt 2) ctxt) THEN'
+          (Rmsg' "ExhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt (pred_num_args+1)) ctxt) THEN'
           (Rmsg' "ExhPred unfold current bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'
           (Rmsg' "ExhPred 2 propagate" (resolve_tac ctxt @{thms rel_propagate_pre_2}) ctxt) THEN'
           (Rmsg' "ExhPred 3 propagate" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
@@ -339,6 +340,7 @@ ML \<open>
           (prove_perm_non_negative_pred_exh_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
           (prove_sufficient_perm_pred_tac ctxt info pred_name exp_rel_info lookup_aux_var_state_rel_thm exp_rel_perm_access_thm) THEN'
           (upd_exhale_pred_acc_tac ctxt info pred_name exp_rel_info)
+        end
     | _ => error("only support PredAccExhHint")
 
   fun atomic_exhale_rel_inst_tac ctxt (info: basic_stmt_rel_info) (no_def_checks_tac_opt: (Proof.context -> basic_stmt_rel_info -> int -> tactic) option) atomic_exh_hint =
