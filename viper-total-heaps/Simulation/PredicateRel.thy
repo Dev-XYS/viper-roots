@@ -2793,6 +2793,18 @@ proof -
 qed
 
 
+text \<open>A pure conjunct in a predicate body always has the zero mask as its sub-footprint
+  (\<^const>\<open>sat\<close>'s \<open>SatPure\<close> case), so it never requires any known-folded mask update.\<close>
+lemma fold_knownfolded_pure_upd_rel:
+  shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and>
+                               pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr
+                                 (Atomic (Pure e_vpr)) \<omega>)
+                     (\<lambda>\<omega> ns. R \<omega> ns)
+                     (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
+                     (\<lambda>\<omega>\<^sub>0_\<omega>. False)
+                     P ctxt_bpl \<gamma> \<gamma>"
+  by (rule rel_general_success_refl_2) auto
+
 lemma fold_knownfolded_acc_upd_rel:
   assumes
     StateRelIn: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow>

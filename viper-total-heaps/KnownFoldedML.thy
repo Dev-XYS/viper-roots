@@ -216,6 +216,8 @@ fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info (kfm
              let val pid_fold = HOLogic.dest_string pid_fold_term in
                upd_kfm_pred_acc_tac ctxt info pred_name pid_fold exp_rel_info kfm_temp_var_lookup_thms i
              end
+         | Const (@{const_name Atomic}, _) $ (Const (@{const_name Pure}, _) $ _) =>
+             (Rmsg' "kfm upd pure rule" (resolve_tac ctxt @{thms fold_knownfolded_pure_upd_rel}) ctxt) i
          | _ => raise TERM ("kfm_upd_rel_tac: unsupported assertion structure for known-folded mask update", [a])))
 
 \<close>
