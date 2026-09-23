@@ -56,7 +56,9 @@ fun prove_vpr_const_perm_eval_tac ctxt i st =
 fun upd_kfm_field_acc_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info =
   (Rmsg' "kfm upd field acc rule" (resolve_tac ctxt @{thms fold_knownfolded_acc_upd_rel}) ctxt) THEN'
   (Rmsg' "kfm upd field acc StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
-  (Rmsg' "kfm upd field acc StateRelOut" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
+  (Rmsg' "kfm upd field acc StateRelOut"
+     (((rotate_tac ~1 THEN' assume_tac ctxt) |> SOLVED')
+      ORELSE' (simp_then_if_not_solved_blast_tac ctxt |> SOLVED')) ctxt) THEN'
   (Rmsg' "kfm upd field acc HeapVarDefSame" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
   (Rmsg' "kfm upd field acc ExpSyntax" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
   (Rmsg' "kfm upd field acc TyInterpEq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
