@@ -303,7 +303,7 @@ ML \<open>
     (Rmsg' "exh pred upd rule" (resolve_tac ctxt @{thms exhale_rel_pred_acc_upd_rel_general}) ctxt) THEN'
     (Rmsg' "exh pred upd StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
     (Rmsg' "exh pred upd StateRelOut" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
-    (Rmsg' "exh pred upd AuxDomTemp" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
+    (Rmsg' "exh pred upd AuxDomTemp" (#aux_var_disj_tac info ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd WfCons" (resolve_tac ctxt [#consistency_wf_thm info]) ctxt) THEN'
     (Rmsg' "exh pred upd CtxtPredWf" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "exh pred upd WfTyRep" (resolve_tac ctxt [#wf_ty_repr_thm info]) ctxt) THEN'

@@ -326,7 +326,15 @@ ML \<open>
             @{thm red_ast_bpl_rel_transitive_with_inv_capture_state[where ?Q="\<lambda>\<omega>. fst \<omega> = snd \<omega>"]}
            (map (fn tac => tac basic_info) setup_assert_state_tacs)) ctxt) THEN'
     (Rmsg' "assert rel show state rel capture init 1" (resolve_tac ctxt @{thms red_ast_bpl_rel_input_implies_output}) ctxt) THEN'
-    (Rmsg' "assert rel show state rel capture init 2" (state_rel_capture_state_intro ctxt) ctxt) THEN'
+    (* The exhale of an assert runs on a temporary state, so the unguarded known-folded relation can be given up
+       while exhaling; the captured state keeps the original known-folded option. *)
+    (Rmsg' "assert rel show state rel capture init 2"
+       (asm_full_simp_tac ctxt THEN'
+        resolve_tac ctxt @{thms state_rel_capture_total_state_exhale_weaken} THEN'
+        resolve_tac ctxt @{thms state_rel_capture_total_stateI} THEN'
+        blast_tac ctxt THEN'
+        fastforce_tac ctxt [] THEN'
+        assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info, @{thm default_state_rel_options_def}] ctxt) ctxt) THEN'
     exhale_rel_setup_well_def_tac setup_well_def_tac ctxt THEN'
     (* abstract captured state such that AuxPred does not depend on state, otherwise automation does not work
        we abstract at this point, because at this point we can make sure that the input and output relation are the same,
@@ -350,8 +358,7 @@ ML \<open>
     (Rmsg' "assert rel reset tac field translation eq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
     (Rmsg' "assert rel reset tac aux pred disjointness" ((#aux_var_disj_tac basic_info) ctxt) ctxt) THEN'
     (Rmsg' "assert rel reset tac well def same" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
-    (Rmsg' "assert rel translation records update" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info] ctxt) ctxt) THEN'
-    (Rmsg' "assert rel reset tac kf eq" (assm_full_simp_solved_tac ctxt) ctxt)
+    (Rmsg' "assert rel translation records update" (assm_full_simp_solved_with_thms_tac [#tr_def_thm basic_info, @{thm default_state_rel_options_def}] ctxt) ctxt)
 
   fun assert_rel_reset_state_tac_pure (basic_info: basic_stmt_rel_info) ctxt =
     (Rmsg' "assert pure rel reset state init" (resolve_tac ctxt @{thms rel_propagate_pre_2_only_state_rel}) ctxt) THEN'

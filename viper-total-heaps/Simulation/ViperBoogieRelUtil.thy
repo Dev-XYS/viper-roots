@@ -1559,18 +1559,31 @@ proof -
     by blast
 qed
 
+text \<open>For asserts, the exhale runs on a temporary state that is discarded afterwards. The unguarded
+      known-folded relation can thus be given up for the duration of the exhale, while the captured
+      state keeps the original known-folded option \<^term>\<open>Kf\<close>.\<close>
+
+lemma state_rel_capture_total_state_exhale_weaken:
+  assumes "state_rel_capture_total_state Pr StateCons TyRep Tr FieldTr0 AuxPred ctxt m h \<omega>0 \<omega>def \<omega> ns"
+      and "kf_turned_on (knownfolded_state_rel_opt (state_rel_opt Tr))"
+    shows "state_rel_capture_total_state_kf Pr StateCons TyRep (exhale_knownfolded_rel_opt Tr) FieldTr0
+             (knownfolded_state_rel_opt (state_rel_opt Tr)) AuxPred ctxt m h \<omega>0 \<omega>def \<omega> ns"
+  using state_rel_kf_exhale_weaken[OF assms(1)[unfolded aux_pred_capture_state_def] assms(2)]
+  unfolding aux_pred_capture_state_def
+  by simp
+
 lemma state_rel_capture_total_state_change_eval_state:
-  assumes StateRel0: "state_rel_capture_total_state_kf Pr StateCons TyRep Tr' FieldTr0 Kf AuxPred ctxt m h \<omega>0 \<omega>def \<omega> ns" (* force reparse *)
+  assumes StateRel: "state_rel_capture_total_state_kf Pr StateCons TyRep Tr' FieldTr0 Kf AuxPred ctxt m h \<omega>0 \<omega>def \<omega> ns"
       and "m \<noteq> h"
       and "FieldTr0 = field_translation Tr"
       and DisjAuxPred: "{m,h} \<inter> dom AuxPred = {}"
       and "\<omega>0 = \<omega>def"
-      and "Tr = Tr'\<lparr>mask_var := m, heap_var := h, mask_var_def := m, heap_var_def := h\<rparr>"
-      and "Kf = knownfolded_state_rel_opt (state_rel_opt Tr')"
+      and "Tr = Tr'\<lparr>mask_var := m, heap_var := h, mask_var_def := m, heap_var_def := h,
+                     state_rel_opt := (state_rel_opt Tr')\<lparr>knownfolded_state_rel_opt := Kf\<rparr>\<rparr>"
     shows "state_rel Pr StateCons TyRep Tr AuxPred ctxt \<omega>def \<omega>0 ns"
 proof -
-  from StateRel0 have StateRel: "state_rel_capture_total_state Pr StateCons TyRep Tr' FieldTr0 AuxPred ctxt m h \<omega>0 \<omega>def \<omega> ns"
-    using \<open>Kf = _\<close> by simp
+  have KfEq: "knownfolded_state_rel_opt (state_rel_opt Tr) = Kf"
+    by (simp add: \<open>Tr = _\<close>)
   from state_rel_aux_pred_sat_lookup_2[OF StateRel, where ?aux_var=m] \<open>m \<noteq> h\<close>
   obtain mb where LookupMask: "lookup_var (var_context ctxt) ns m = Some (AbsV (AMask mb))" and
                   LookupVarTyMask: "lookup_var_ty (var_context ctxt) m = Some (TConSingle (TMaskId TyRep))" and
@@ -1581,10 +1594,10 @@ proof -
 
   obtain hb where LookupVarTyHeap: "lookup_var_ty (var_context ctxt) h = Some (TConSingle (THeapId TyRep))" and
                   LookupHeap: "lookup_var (var_context ctxt) ns h = Some (AbsV (AHeap hb))" and
-                  PredEqHeapAux: "pred_eq_heap_aux Pr TyRep (field_translation Tr) (knownfolded_state_rel_opt (state_rel_opt Tr)) \<omega>0 hb" and
+                  PredEqHeapAux: "pred_eq_heap_aux Pr TyRep (field_translation Tr) Kf \<omega>0 hb" and
                   TotalHeapWellTy: "total_heap_well_typed Pr (domain_type TyRep) (get_hh_total_full \<omega>0)"
     using state_rel_aux_pred_sat_lookup_2[OF StateRel, where ?aux_var=h] \<open>m \<noteq> h\<close> \<open>FieldTr0 = _\<close>
-    unfolding pred_eq_heap_def \<open>Tr = _\<close> aux_pred_capture_state_def
+    unfolding pred_eq_heap_def aux_pred_capture_state_def
     by auto
 
   show ?thesis
@@ -1674,7 +1687,7 @@ proof -
   next
     show "heap_knownfolded_var_rel (knownfolded_state_rel_opt (state_rel_opt Tr)) Pr
             (var_context ctxt) (field_translation Tr) (heap_var Tr) \<omega>0 ns"
-      unfolding heap_knownfolded_var_rel_def
+      unfolding heap_knownfolded_var_rel_def KfEq
       apply (rule exI[of _ hb])
       apply (intro conjI)
         apply (simp add: LookupHeap assms(6))
@@ -1685,6 +1698,7 @@ proof -
               state_rel_state_well_typed[OF StateRel]
               \<open>\<omega>0 = \<omega>def\<close> \<open>Tr = _\<close>, simp_all)
 qed
+
 subsection \<open>Tracking the well-definedness state\<close>
 lemma state_rel_def_same_to_state_rel:
   assumes "rel_ext_eq (state_rel_def_same vpr_prog StateCons TyRep Tr AuxPred ctxt) \<omega>def \<omega> ns"
