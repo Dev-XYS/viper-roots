@@ -1454,7 +1454,7 @@ lemma exhale_pure_stmt_rel_upd_havoc:
       and SuccessImp:
         "\<And> \<omega> \<omega>'. Success \<omega> \<omega>' \<Longrightarrow>
                  red_exhale ctxt_vpr (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
-                 snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({loc. get_mh_total_full (fst \<omega>) loc > 0 \<and> get_mh_total_full (snd \<omega>) loc = 0})"
+                 snd \<omega>' \<in> havoc_locs_state ctxt_vpr (snd \<omega>) ({ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 })"
       and "is_pure A"
     shows "rel_general R (\<lambda>\<omega> ns. R_out (snd \<omega>) ns)
                  Success (\<lambda>_. False) P ctxt \<gamma> \<gamma>"
@@ -1467,9 +1467,27 @@ proof (rule rel_intro)
     using exhale_pure_normal_same \<open>is_pure A\<close>
     by blast
 
+  hence "{ loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 } = {}"
+  proof -
+    assume Same: "fst \<omega> = snd \<omega>"
+    show ?thesis
+    proof (rule equals0I)
+      fix loc
+      assume "loc \<in> { loc. (\<exists>p. p > 0 \<and> nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p) \<and> nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0 }"
+      then obtain p where "p > 0" and "nm_loc_sum loc (get_nm_total_full (fst \<omega>)) p" and
+                          "nm_loc_sum loc (get_nm_total_full (snd \<omega>)) 0"
+        by blast
+      hence "p = 0"
+        using nm_loc_sum_unique Same
+        by metis
+      thus False
+        using \<open>p > 0\<close> by simp
+    qed
+  qed
+
   with SuccessAux havoc_locs_state_empty
   have "snd \<omega>' = snd \<omega>"
-    by (metis (mono_tags, lifting) Collect_empty_eq less_imp_neq)
+    by metis
 
   thus "\<exists>ns'. red_ast_bpl P ctxt (\<gamma>, Normal ns) (\<gamma>, Normal ns') \<and> R_out (snd \<omega>') ns'"
     using red_ast_bpl_refl \<open>R \<omega> ns\<close> RelImp

@@ -44,6 +44,11 @@ fun find_pred_kfm_sat_premise_assertion (t : term) : term option =
 fun prove_vpr_const_perm_eval_tac ctxt i st =
   ((resolve_tac ctxt @{thms TotalExpressions.RedLit})
    ORELSE'
+   (* val_of_lit does not unify with VPerm ?p syntactically (e.g. for WritePerm), so reduce it via simp *)
+   (resolve_tac ctxt [@{lemma "v = val_of_lit l \<Longrightarrow> ctxt, \<omega>_def \<turnstile> \<langle>ELit l; \<omega>\<rangle> [\<Down>]\<^sub>t Val v"
+                        by (simp add: TotalExpressions.RedLit)}] THEN'
+    (simp_tac ctxt |> SOLVED'))
+   ORELSE'
    (resolve_tac ctxt @{thms TotalExpressions.RedBinop} THEN'
     (fn j => fn t => prove_vpr_const_perm_eval_tac ctxt j t) THEN'
     (fn j => fn t => prove_vpr_const_perm_eval_tac ctxt j t) THEN'

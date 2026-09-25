@@ -271,13 +271,15 @@ ML \<open>
       (Rmsg' "exhale havoc TrExhale" (assm_full_simp_solved_with_thms_tac [tr_thm] ctxt) ctxt)
     end
 
-  fun exhale_pure_no_havoc_tac ctxt =
+  fun exhale_pure_no_havoc_tac ctxt (info: basic_stmt_rel_info) =
     (Rmsg' "exhale no havoc init" (resolve_tac ctxt @{thms exhale_pure_stmt_rel_upd_havoc}) ctxt) THEN'
     (* The "ORELSE' blast_tac" case was added because for some reason simp_then_if_not_solved_blast_tac did not work.
        For that example, when the goal was copied into the Isabelle GUI, then running simp_then_if_not_solved_blast_tac
        worked. It is not clear why. *)
-    (Rmsg' "exhale no havoc state rel" (simp_then_if_not_solved_blast_tac ctxt ORELSE' blast_tac ctxt) ctxt) THEN'
-    (Rmsg' "exhale no havoc success cond" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+    (Rmsg' "exhale no havoc state rel" (simp_then_if_not_solved_blast_tac ctxt ORELSE' blast_tac ctxt
+                                              ORELSE' assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+    (* blast is needed to instantiate the schematic context and assertion from the assumptions *)
+    (Rmsg' "exhale no havoc success cond" (assm_full_simp_solved_tac ctxt ORELSE' blast_tac ctxt) ctxt) THEN'
     (Rmsg' "exhale no havoc pure assertion cond" (assm_full_simp_solved_tac ctxt) ctxt)
 
   fun normal_exhale_rel_tac ctxt (info: 'a exhale_rel_info) (hint: 'a normal_exhale_rel_complete_hint) =
@@ -290,10 +292,13 @@ ML \<open>
        (resolve_tac ctxt @{thms red_ast_bpl_rel_to_state_rel} THEN'
         (* Give up the unguarded known-folded relation for the duration of the exhale, keeping the
            permission-guarded one, which every exhale step preserves. *)
-        ((resolve_tac ctxt @{thms state_rel_kf_exhale_weaken} THEN'
-          simp_then_if_not_solved_blast_tac ctxt THEN'
-          assm_full_simp_solved_with_thms_tac
-            [#tr_def_thm (#basic_info info), @{thm default_state_rel_options_def}] ctxt)
+        (* Only exhales with a havoc restore the record afterwards, so a pure exhale keeps the relation. *)
+        ((if is_some (#lookup_decl_exhale_heap hint) then
+            (resolve_tac ctxt @{thms state_rel_kf_exhale_weaken} THEN'
+             simp_then_if_not_solved_blast_tac ctxt THEN'
+             assm_full_simp_solved_with_thms_tac
+               [#tr_def_thm (#basic_info info), @{thm default_state_rel_options_def}] ctxt)
+          else (fn _ => no_tac))
          ORELSE' simp_then_if_not_solved_blast_tac ctxt)) ctxt) THEN'
     (Rmsg' "setup well-def state exhale" ((#setup_well_def_state_tac hint) (#basic_info info) ctxt) ctxt) THEN'
     exhale_rel_aux_tac ctxt info (#exhale_rel_hint hint) THEN'
@@ -306,7 +311,7 @@ ML \<open>
          SOME lookup_decl_exhale_heap_thm =>
             (Rmsg' "stmt rel exhale havoc rel intro" (resolve_tac ctxt @{thms rel_intro_no_fail}) ctxt) THEN'
             exhale_havoc_tac ctxt (#basic_info info) lookup_decl_exhale_heap_thm
-       | NONE => exhale_pure_no_havoc_tac ctxt
+       | NONE => exhale_pure_no_havoc_tac ctxt (#basic_info info)
     )
 
   fun exhale_rel_setup_well_def_tac (setup_well_def_tac: Proof.context -> int -> tactic) ctxt =
