@@ -46,7 +46,9 @@ fun prove_bpl_const_eval_tac ctxt i st =
    (resolve_tac ctxt @{thms Semantics.RedBinOp} THEN'
     (fn j => fn t => prove_bpl_const_eval_tac ctxt j t) THEN'
     (fn j => fn t => prove_bpl_const_eval_tac ctxt j t) THEN'
-    (normalise_lhs_refl_tac ctxt ORELSE' assm_full_simp_solved_tac ctxt))) i st
+    (* the definitions of Boogie's SMT-LIB division/modulo operations are not simp rules by default *)
+    (normalise_lhs_refl_tac (ctxt addsimps @{thms Semantics.smt_div_def Semantics.smt_mod_def Semantics.smt_real_div_def})
+       ORELSE' assm_full_simp_solved_tac ctxt))) i st
 
 fun perm_lit_const_rel_tac ctxt =
   resolve_tac ctxt @{thms exp_rel_perm_lit_const} THEN'

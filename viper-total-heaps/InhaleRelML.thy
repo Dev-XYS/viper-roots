@@ -150,13 +150,16 @@ ML \<open>
          lookup_aux_var_ty_thm
          (fn ctxt => Method.insert_tac ctxt @{thms eval_with_None} THEN' blast_tac ctxt)
 
-  fun prove_perm_non_negative_inh_tac ctxt (info: basic_stmt_rel_info) lookup_aux_var_state_rel_thm =
-      (Rmsg' "Inh Prove Perm Nonnegative - Init" (resolve_tac ctxt @{thms rel_propagate_pre_assert_2}) ctxt) THEN'
+  fun propagate_perm_non_negative_inh_tac ctxt (info: basic_stmt_rel_info) lookup_aux_var_state_rel_thm propagate_thm success_cond_simps =
+      (Rmsg' "Inh Prove Perm Nonnegative - Init" (resolve_tac ctxt [propagate_thm]) ctxt) THEN'
       (Rmsg' "Inh Prove Perm Nonnegative - Introduce Facts"
               (EVERY' [intro_fact_lookup_no_perm_const_tac ctxt (#tr_def_thm info),
               intro_fact_lookup_aux_var_tac ctxt lookup_aux_var_state_rel_thm]) ctxt) THEN'
       (Rmsg' "Inh Prove Perm Nonnegative - Boogie Expression Reduction" (prove_red_expr_bpl_tac ctxt) ctxt) THEN'
-      (Rmsg' "Inh Prove Perm Nonnegative - Success Condition" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+      (Rmsg' "Inh Prove Perm Nonnegative - Success Condition" (assm_full_simp_solved_with_thms_tac success_cond_simps ctxt) ctxt)
+
+  fun prove_perm_non_negative_inh_tac ctxt (info: basic_stmt_rel_info) lookup_aux_var_state_rel_thm =
+      propagate_perm_non_negative_inh_tac ctxt info lookup_aux_var_state_rel_thm @{thm rel_propagate_pre_assert_2} [] THEN'
       (Rmsg' "Inh Prove Perm Nonnegative - Finalize 1" (resolve_tac ctxt @{thms rel_general_success_refl_2}) ctxt) THEN'
        (* We add RedLit_case to deal with the case when the permission is a literal *)
       (Rmsg' "Inh Prove Perm Nonnegative - Finalize 2" (fast_force_tac (ctxt addEs @{thms TotalExpressions.RedLit_case})) ctxt) THEN'

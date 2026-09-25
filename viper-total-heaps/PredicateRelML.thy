@@ -20,6 +20,17 @@ lemma bpl_assert_const_true_is_skip:
   apply (simp add: Rel)
   done
 
+lemma rel_propagate_pre_assert_no_fail:
+  assumes RedExpBpl: "\<And>\<omega> ns \<omega>'. R0 \<omega> ns \<Longrightarrow> Success \<omega> \<omega>' \<Longrightarrow> red_expr_bpl ctxt e_bpl ns (BoolV (b \<omega>))"
+      and SuccessB: "\<And>\<omega> ns \<omega>'. R0 \<omega> ns \<Longrightarrow> Success \<omega> \<omega>' \<Longrightarrow> b \<omega>"
+      and Rel: "rel_general R0 R1 Success (\<lambda>_. False) P ctxt (BigBlock name cs str tr, cont) \<gamma>'"
+    shows "rel_general R0 R1 Success (\<lambda>_. False) P ctxt (BigBlock name ((cmd.Assert e_bpl)#cs) str tr, cont) \<gamma>'"
+  apply (rule rel_propagate_pre_assert_2[where b=b])
+    apply (blast intro: RedExpBpl)
+   apply (blast intro: SuccessB)
+  using Rel
+  by simp
+
 ML \<open>
 
 (* Skips all leading assert commands whose (closed) expression evaluates to true. Leaves the goal as it is
@@ -366,7 +377,13 @@ fun atomic_inhale_pred_acc_in_fold_tac ctxt (info: basic_stmt_rel_info) inh_pred
       (Rmsg' "InhPred (fold) propagate (store perm)" (resolve_tac ctxt @{thms rel_propagate_pre}) ctxt) THEN'
       (Rmsg' "InhPred (fold) red_ast_bpl_relI" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
       (store_temporary_inh_perm_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
-      (Rmsg' "InhPred (fold) perm non-neg (always true)" (resolve_tac ctxt @{thms bpl_assert_true_is_skip}) ctxt) THEN'
+      (* If the permission is a constant, Carbon may already have simplified the non-negativity check to
+         [assert true]. Otherwise, the check is on the temporary permission variable, which is handled as for
+         any other inhale. *)
+      (Rmsg' "InhPred (fold) perm non-neg"
+         ((resolve_tac ctxt @{thms bpl_assert_const_true_is_skip} THEN' prove_bpl_const_eval_tac ctxt)
+          ORELSE' propagate_perm_non_negative_inh_tac ctxt info lookup_aux_var_state_rel_thm
+                    @{thm rel_propagate_pre_assert_no_fail} @{thms inhale_pred_normal_premise_def}) ctxt) THEN'
       (true_implies_true_tac ctxt info lookup_aux_var_state_rel_thm) THEN'
       (Rmsg' "InhPred (fold) propagate (reset state rel)" (resolve_tac ctxt @{thms rel_propagate_post_3}) ctxt) THEN'
       (inhale_rel_pred_acc_upd_rel_tac' ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info) THEN'
