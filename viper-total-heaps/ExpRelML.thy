@@ -43,6 +43,10 @@ fun normalise_lhs_refl_tac ctxt =
 fun prove_bpl_const_eval_tac ctxt i st =
   ((resolve_tac ctxt @{thms Semantics.RedLit})
    ORELSE'
+   (resolve_tac ctxt @{thms Semantics.RedUnOp} THEN'
+    (fn j => fn t => prove_bpl_const_eval_tac ctxt j t) THEN'
+    assm_full_simp_solved_tac ctxt)
+   ORELSE'
    (resolve_tac ctxt @{thms Semantics.RedBinOp} THEN'
     (fn j => fn t => prove_bpl_const_eval_tac ctxt j t) THEN'
     (fn j => fn t => prove_bpl_const_eval_tac ctxt j t) THEN'

@@ -49,6 +49,10 @@ fun prove_vpr_const_perm_eval_tac ctxt i st =
                         by (simp add: TotalExpressions.RedLit)}] THEN'
     (simp_tac ctxt |> SOLVED'))
    ORELSE'
+   (resolve_tac ctxt @{thms TotalExpressions.RedUnop} THEN'
+    (fn j => fn t => prove_vpr_const_perm_eval_tac ctxt j t) THEN'
+    assm_full_simp_solved_tac ctxt)
+   ORELSE'
    (resolve_tac ctxt @{thms TotalExpressions.RedBinop} THEN'
     (fn j => fn t => prove_vpr_const_perm_eval_tac ctxt j t) THEN'
     (fn j => fn t => prove_vpr_const_perm_eval_tac ctxt j t) THEN'
