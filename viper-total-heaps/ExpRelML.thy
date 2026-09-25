@@ -8,7 +8,53 @@ lemmas state_rel_var_rel = store_rel_var_rel_2[OF state_rel0_store_rel[OF state_
 lemmas state_rel_lit_rel = boogie_const_lit_rel[OF state_rel0_boogie_const_rel[OF state_rel_state_rel0]]
 lemmas state_rel_state_well_typed = state_rel0_state_well_typed[OF state_rel_state_rel0]
 
+text \<open>Relates a permission literal to a closed Boogie expression that evaluates to the corresponding real
+  (e.g., the Viper literal \<open>2/5\<close> to the Boogie expression \<open>40 / 100\<close>).\<close>
+
+lemma exp_rel_perm_lit_const:
+  assumes RedConst: "\<And>ns. red_expr_bpl ctxt e_bpl ns (RealV p)"
+  shows "exp_rel_vpr_bpl R ctxt_vpr ctxt (ViperLang.ELit (LPerm p)) e_bpl"
+proof(rule exp_rel_vpr_bpl_intro)
+  fix StateCons \<omega> \<omega>_def \<omega>_def_opt ns v1
+  assume "R \<omega>_def_opt \<omega> ns"
+  assume "ctxt_vpr, \<omega>_def \<turnstile> \<langle>ViperLang.ELit (LPerm p);\<omega>\<rangle> [\<Down>]\<^sub>t Val v1"
+  hence "v1 = VPerm p"
+    using TotalExpressions.RedLit_case by fastforce
+  thus "\<exists>v2. red_expr_bpl ctxt e_bpl ns v2 \<and> val_rel_vpr_bpl v1 = v2"
+    using RedConst
+    by auto
+qed
+
 subsection \<open>ML tactics\<close>
+
+ML \<open>
+
+(* Normalises only the left-hand side of an equation goal and then closes it by reflexivity. Unlike
+   plain simp, this instantiates a schematic right-hand side (e.g. the value computed by eval_binop),
+   because simp would rewrite "c = ?p" (e.g. "40/100 = ?p") into a constraint on ?p instead of
+   assigning it. *)
+fun normalise_lhs_refl_tac ctxt =
+  CONVERSION (Conv.params_conv ~1 (fn ctxt' =>
+     Conv.concl_conv ~1 (HOLogic.Trueprop_conv (Conv.arg1_conv (Simplifier.rewrite ctxt')))) ctxt)
+  THEN' resolve_tac ctxt @{thms refl}
+
+(* Proves goals of the form [\<And>ns. red_expr_bpl ctxt e ns v] where [e] is a closed Boogie expression built
+   from literals via binary operators. [v] may be schematic. *)
+fun prove_bpl_const_eval_tac ctxt i st =
+  ((resolve_tac ctxt @{thms Semantics.RedLit})
+   ORELSE'
+   (resolve_tac ctxt @{thms Semantics.RedBinOp} THEN'
+    (fn j => fn t => prove_bpl_const_eval_tac ctxt j t) THEN'
+    (fn j => fn t => prove_bpl_const_eval_tac ctxt j t) THEN'
+    (normalise_lhs_refl_tac ctxt ORELSE' assm_full_simp_solved_tac ctxt))) i st
+
+fun perm_lit_const_rel_tac ctxt =
+  resolve_tac ctxt @{thms exp_rel_perm_lit_const} THEN'
+  prove_bpl_const_eval_tac ctxt
+
+\<close>
+
+subsection \<open>ML tactics for expression relations\<close>
 
 ML \<open>
 
@@ -153,6 +199,7 @@ and
       FIRST' [
         var_rel_tac (#lookup_var_rel_tac info) ctxt |> SOLVED',
         lit_tac (#vpr_lit_bpl_exp_rel_tac info) ctxt |> SOLVED',
+        perm_lit_const_rel_tac ctxt |> SOLVED',
         (fn i => fn st => unop_rel_tac info ctxt i st) |> SOLVED',
         (fn i => fn st => binop_eager_rel_tac info ctxt i st) |> SOLVED',
         (fn i => fn st => binop_lazy_rel_tac info ctxt i st) |> SOLVED',

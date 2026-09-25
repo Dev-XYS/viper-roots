@@ -48,7 +48,7 @@ fun prove_vpr_const_perm_eval_tac ctxt i st =
     (fn j => fn t => prove_vpr_const_perm_eval_tac ctxt j t) THEN'
     (fn j => fn t => prove_vpr_const_perm_eval_tac ctxt j t) THEN'
     assm_full_simp_solved_tac ctxt THEN'
-    assm_full_simp_solved_tac ctxt)) i st
+    (normalise_lhs_refl_tac ctxt ORELSE' assm_full_simp_solved_tac ctxt))) i st
 
 (* Discharges the assumptions of @{thm fold_knownfolded_acc_upd_rel} once the rule has been applied
    to a goal whose assertion is \<open>Atomic (Acc e_r_vpr f (PureExp e_p_vpr))\<close>. Mirrors the manual proof

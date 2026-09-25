@@ -3,6 +3,36 @@ theory PredicateRelML
 begin
 
 
+subsection \<open>Skipping constant assertions\<close>
+
+text \<open>Carbon emits checks on the permission of an unfold or fold statement (e.g., that the denominator of a
+  fractional permission is non-zero and that the permission is positive). If the permission is a constant
+  expression, these checks are closed boolean expressions that trivially evaluate to true, and they can
+  be skipped.\<close>
+
+lemma bpl_assert_const_true_is_skip:
+  assumes RedTrue: "\<And>ns. red_expr_bpl ctxt e_bpl ns (BoolV True)"
+      and Rel: "rel_general R R' Success Fail P ctxt (BigBlock name cs s tr, cont) \<gamma>'"
+    shows "rel_general R R' Success Fail P ctxt (BigBlock name (cmd.Assert e_bpl # cs) s tr, cont) \<gamma>'"
+  apply (rule rel_propagate_pre_assert_2[where b="\<lambda>_. True"])
+    apply (simp add: RedTrue)
+   apply simp
+  apply (simp add: Rel)
+  done
+
+ML \<open>
+
+(* Skips all leading assert commands whose (closed) expression evaluates to true. Leaves the goal as it is
+   if there is no such assert. *)
+fun strip_const_true_asserts_tac ctxt i st =
+  ((resolve_tac ctxt @{thms bpl_assert_const_true_is_skip} THEN'
+    prove_bpl_const_eval_tac ctxt THEN'
+    (fn j => fn t => strip_const_true_asserts_tac ctxt j t))
+   ORELSE' K all_tac) i st
+
+\<close>
+
+
 subsection \<open>Unfold\<close>
 
 
@@ -204,6 +234,9 @@ fun atomic_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) (no_de
         (Rmsg' "UnfoldExhPred 1" (resolve_tac ctxt @{thms unfold_exhale_pred_rel}) ctxt) THEN'
         (Rmsg' "UnfoldExhPred wf args list simp" (simp_only_tac @{thms append_Cons append_Nil} ctxt) ctxt) THEN'
         (Rmsg' "UnfoldExhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt (pred_num_args+1)) ctxt) THEN'
+        (* Carbon checks the permission (definedness and positivity) before the exhale; if it is a constant, these
+           checks are trivially true *)
+        (Rmsg' "UnfoldExhPred skip permission checks" (strip_const_true_asserts_tac ctxt) ctxt) THEN'
         (Rmsg' "UnfoldExhPred 2 propagate" (resolve_tac ctxt @{thms rel_propagate_pre_2}) ctxt) THEN'
         (Rmsg' "UnfoldExhPred 3 propagate" (resolve_tac ctxt @{thms red_ast_bpl_relI}) ctxt) THEN'
         (store_temporary_perm_pred_exh_tac ctxt info exp_rel_info lookup_aux_var_ty_thm) THEN'
@@ -268,10 +301,9 @@ fun pred_unfold_tac ctxt pred_name (inhale_info: atomic_inhale_rel_hint inhale_r
 
   (Rmsg' "unfold stmt ArgsRestriction" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "unfold stmt BodyNoUnfolding" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
-  (Rmsg' "unfold stmt PermSimp" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
+  (Rmsg' "unfold stmt PermConst" (prove_vpr_const_perm_eval_tac ctxt |> SOLVED') ctxt) THEN'
   (Rmsg' "unfold stmt PermPos" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
 
-  (Rmsg' "unfold stmt StepPermPos (always assert true)" (resolve_tac ctxt @{thms bpl_assert_true_is_skip}) ctxt) THEN'
   (Rmsg' "unfold stmt StepExhale" (atomic_exhale_pred_acc_in_unfold_tac ctxt basic_info (#no_def_checks_tac_opt exhale_info) atomic_exhale_hint) ctxt) THEN'
   (Rmsg' "unfold stmt simp synmult & subst" (asm_full_simp_tac ctxt) ctxt) THEN'
   (Rmsg' "unfold stmt StepInhale" (inhale_rel_tac ctxt inhale_info inhale_hint) ctxt) THEN'
@@ -371,12 +403,16 @@ fun pred_fold_tac ctxt pred_name exp_wf_rel_info exp_rel_info (inhale_info: atom
   (Rmsg' "fold stmt ArgsRestriction" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt ArgsAreVarOrLit" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
   (Rmsg' "fold stmt BodyNoUnfolding" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
-  (Rmsg' "fold stmt PermSimp" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
+  (Rmsg' "fold stmt PermConst" (prove_vpr_const_perm_eval_tac ctxt |> SOLVED') ctxt) THEN'
   (Rmsg' "fold stmt PermPos" (assm_full_simp_solved_with_thms_tac [] ctxt) ctxt) THEN'
 
   (Rmsg' "fold stmt wf args list simp" (simp_only_tac @{thms append_Cons append_Nil} ctxt) ctxt) THEN'
   (Rmsg' "fold stmt StepWfSubexp" (exps_wf_rel_tac basic_info exp_wf_rel_info exp_rel_info ctxt NONE (predicate_num_args pred_data + 1)) ctxt) THEN'
-  (Rmsg' "fold stmt StepPermPos (always assert true)" (resolve_tac ctxt @{thms red_bpl_assert_true}) ctxt) THEN'
+  (Rmsg' "fold stmt StepPermPos (skip constant permission checks)"
+     (strip_const_true_asserts_tac ctxt THEN'
+      resolve_tac ctxt @{thms rel_general_success_refl} THEN'
+      assm_full_simp_solved_tac ctxt THEN'
+      assm_full_simp_solved_tac ctxt) ctxt) THEN'
   (Rmsg' "fold stmt simp synmult" (simp_tac_with_thms [] ctxt) ctxt) THEN'
 
   (normal_exhale_rel_tac ctxt exhale_info exhale_hint) THEN'

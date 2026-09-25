@@ -409,7 +409,7 @@ lemma fold_stmt_rel_kf:
             substitution step below: see the comment there (in \<open>fold_stmt_rel\<close>) for why the general
             case is hard.\<close>
       and BodyNoUnfolding: "no_unfolding_assertion (syntactic_mult p pbody)"  \<comment> \<open>Should be lifted soon.\<close>
-      and PermSimp: "e_p_vpr = ELit (LPerm p)" \<comment> \<open>We only support literals as the permission.\<close>
+      and PermConst: "\<And>\<omega>\<^sub>0 \<omega>. ctxt_vpr, \<omega>\<^sub>0 \<turnstile> \<langle>e_p_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)" \<comment> \<open>The permission is a constant expression.\<close>
       and PermPos: "p > 0"
       and StepWfSubexp: "exprs_wf_rel (rel_ext_eq R) ctxt_vpr StateCons P ctxt_bpl (e_args_vpr @ [e_p_vpr]) \<gamma> \<gamma>\<^sub>2"
       and StepPermPos: "rel_general R R (=) (\<lambda>_. False) P ctxt_bpl \<gamma>\<^sub>2 \<gamma>\<^sub>3"
@@ -463,8 +463,8 @@ proof (rule stmt_rel_intro)
     using PredBody PredDecl \<open>_ = Some pbody'\<close> \<open>_ = Some pdecl'\<close>
     by auto
   have "v_p = p"
-    using PermSimp TotalExpressions.RedLit_case v_p_eval
-    by fastforce
+    using PermConst[of "Some \<omega>" \<omega>] v_p_eval
+    by (fastforce dest: eval_is_deterministic(1))
   hence "Rep_preal (Abs_preal v_p) = p"
     using Abs_preal_inverse \<open>0 < v_p\<close>
     by auto
@@ -652,7 +652,7 @@ proof (rule stmt_rel_intro)
     apply (intro conjI)
         apply (simp add: \<open>_ = Some pdecl'\<close> pred_ty_correct_premise_def v_args_ty)
        apply (metis (mono_tags, lifting) ArgsRestriction Ball_set_list_all exh_subst exhale_only_changes_total_state_aux red_pure_exp_only_differ_on_mask(2) v_args_eval)
-      apply (metis PermSimp \<open>v_p = p\<close> red_pure_exp_total_red_pure_exps_total.RedLit val_of_lit.simps(3))
+      apply (metis PermConst \<open>v_p = p\<close>)
     using \<open>0 < v_p\<close>
      apply auto[1]
     unfolding inhale_perm_single_pred_def
@@ -824,9 +824,14 @@ next
       by blast
   next
     case PermNonPos
-    then show ?thesis
-      using PermPos PermSimp TotalExpressions.RedLit_case
-      by fastforce
+    then obtain v_p where v_p_eval: "ctxt_vpr, Some \<omega> \<turnstile> \<langle>e_p_vpr;\<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm v_p)" and "v_p \<le> 0"
+      by blast
+    hence "v_p = p"
+      using PermConst[of "Some \<omega>" \<omega>]
+      by (fastforce dest: eval_is_deterministic(1))
+    thus ?thesis
+      using PermPos \<open>v_p \<le> 0\<close>
+      by simp
   next
     case ExhFail
     then obtain v_args v_p where
@@ -846,8 +851,8 @@ next
       using PredBody PredDecl \<open>_ = Some pbody'\<close> \<open>_ = Some pdecl'\<close>
       by auto
     have "v_p = p"
-      using PermSimp TotalExpressions.RedLit_case v_p_eval
-      by fastforce
+      using PermConst[of "Some \<omega>" \<omega>] v_p_eval
+      by (fastforce dest: eval_is_deterministic(1))
     hence "Rep_preal (Abs_preal v_p) = p"
       using Abs_preal_inverse \<open>0 < v_p\<close>
       by auto

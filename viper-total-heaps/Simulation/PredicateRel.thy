@@ -570,7 +570,7 @@ lemma unfold_stmt_rel:
       and StateRelWeakening: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow> R\<^sub>w \<omega> ns"
       and ArgsRestriction: "list_all no_unfolding_pure_exp e_args \<and> list_all no_perm_pure_exp e_args"
       and BodyNoUnfolding: "no_unfolding_assertion (syntactic_mult p pbody)"  \<comment> \<open>Should be lifted soon.\<close>
-      and PermSimp: "e_p = ELit (LPerm p)" \<comment> \<open>We only support literals as the permission.\<close>
+      and PermConst: "\<And>\<omega>\<^sub>0 \<omega>. ctxt_vpr, \<omega>\<^sub>0 \<turnstile> \<langle>e_p; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VPerm p)" \<comment> \<open>The permission is a constant expression.\<close>
       and PermPos: "p > 0"
       and StepExhale:
           "rel_general R\<^sub>w R\<^sub>w
@@ -613,9 +613,12 @@ proof (rule stmt_rel_intro)
     UnfoldRel: "unfold_rel ctxt_vpr pid v_args (Abs_preal v_p) (get_total_full \<omega>) \<phi>'" and
     "\<omega>' = \<omega>\<lparr> get_total_full := \<phi>' \<rparr>"
     by (blast elim: RedUnfold_case)
-  have "v_p > 0"
-    using PermSimp PermPos TotalExpressions.RedLit_case e_p_eval
-    by fastforce
+  have v_p_eq: "v_p = p"
+    using PermConst[of "Some \<omega>" \<omega>] e_p_eval
+    by (fastforce dest: eval_is_deterministic(1))
+  hence "v_p > 0"
+    using PermPos
+    by simp
   have perm_suff: "get_mp_total_full \<omega> (pid,v_args) \<ge> Abs_preal v_p"
     using unfold_rel_perm_sufficient[OF UnfoldRel]
     by simp
@@ -691,8 +694,7 @@ proof (rule stmt_rel_intro)
 
   \<comment> \<open>Simplification: permission is constant\<close>
   have "v_p = p"
-    using TotalExpressions.RedLit_case[OF e_p_eval[simplified PermSimp]]
-    by auto
+    by (rule v_p_eq)
   hence inh_perm_const: "Rep_preal (Abs_preal v_p) = p"
     using one_preal.rep_eq one_preal_def Abs_preal_inverse \<open>0 \<le> v_p\<close>
     by auto
@@ -765,7 +767,7 @@ proof (rule stmt_rel_intro)
 
   ultimately obtain ns' where bpl_step_kf: "red_ast_bpl P ctxt_bpl (\<gamma>\<^sub>3, Normal ns\<^sub>3) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
     using rel_success_elim[OF StepKFUpdate, where ?\<omega>="(\<omega>,\<omega>')", simplified] \<open>R\<^sub>w \<omega>' ns\<^sub>3\<close> e_args_eval e_p_eval UnfoldRel
-    by (metis PermSimp \<omega>'_rel \<open>v_p = p\<close> full_total_state.select_convs(3) red_pure_exp_total_red_pure_exps_total.RedLit snd_eqD val_of_lit.simps(3))
+    by (metis PermConst \<omega>'_rel \<open>v_p = p\<close> full_total_state.select_convs(3) snd_eqD)
 
   \<comment> \<open>Combine\<close>
   thus "\<exists>ns'. red_ast_bpl P ctxt_bpl (\<gamma>, Normal ns) (\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
@@ -789,8 +791,8 @@ next
            args_well_ty: "vals_well_typed (absval_interp_total ctxt_vpr) v_args (predicate_decl.args pred_decl)"
     from v_p_fail have v_p_fail': "\<not> (0 \<le> v_p \<and> Abs_preal v_p \<le> (get_mp_total_full \<omega>) (pid,v_args))"
       apply (simp add: preal_to_real)
-      using PermSimp TotalExpressions.RedLit_case e_p_eval PermPos
-      by fastforce
+      using PermConst[of "Some \<omega>" \<omega>] e_p_eval PermPos
+      by (fastforce dest: eval_is_deterministic(1))
 
     have step_exhale: "red_exhale ctxt_vpr \<omega> (Atomic (AccPredicate pid e_args (PureExp e_p))) \<omega> RFailure"
       using ExhAccPred[OF _ e_args_eval e_p_eval PredDecl _ PredBody, where ?mp="get_mp_total_full \<omega>"] v_p_fail' PredDecl args_well_ty pdecl'
