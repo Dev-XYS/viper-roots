@@ -1559,9 +1559,8 @@ proof -
     by blast
 qed
 
-text \<open>For asserts, the exhale runs on a temporary state that is discarded afterwards. The unguarded
-      known-folded relation can thus be given up for the duration of the exhale, while the captured
-      state keeps the original known-folded option \<^term>\<open>Kf\<close>.\<close>
+text \<open>An assert exhales on a temporary state, so the unguarded known-folded relation can be given up
+      while the captured state keeps the original option \<open>Kf\<close>.\<close>
 
 lemma state_rel_capture_total_state_exhale_weaken:
   assumes "state_rel_capture_total_state Pr StateCons TyRep Tr FieldTr0 AuxPred ctxt m h \<omega>0 \<omega>def \<omega> ns"

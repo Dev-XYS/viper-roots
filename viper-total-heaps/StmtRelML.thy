@@ -326,8 +326,7 @@ ML \<open>
             @{thm red_ast_bpl_rel_transitive_with_inv_capture_state[where ?Q="\<lambda>\<omega>. fst \<omega> = snd \<omega>"]}
            (map (fn tac => tac basic_info) setup_assert_state_tacs)) ctxt) THEN'
     (Rmsg' "assert rel show state rel capture init 1" (resolve_tac ctxt @{thms red_ast_bpl_rel_input_implies_output}) ctxt) THEN'
-    (* The exhale of an assert runs on a temporary state, so the unguarded known-folded relation can be given up
-       while exhaling; the captured state keeps the original known-folded option. *)
+    (* the exhale runs on a temporary state, so it may give up the unguarded known-folded relation *)
     (Rmsg' "assert rel show state rel capture init 2"
        (asm_full_simp_tac ctxt THEN'
         resolve_tac ctxt @{thms state_rel_capture_total_state_exhale_weaken} THEN'

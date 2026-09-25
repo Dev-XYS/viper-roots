@@ -1545,9 +1545,6 @@ proof (rule stmt_rel_intro_2)
   qed
 qed
 
-text \<open>The known-folded option \<open>Kf\<close> of the captured state is independent of the translation record \<open>Tr\<close>
-      (see @{const state_rel_capture_total_state_kf}).\<close>
-
 lemma red_ast_bpl_rel_transitive_with_inv_capture_state:
   assumes Rel1: "red_ast_bpl_rel R0 R1 P ctxt \<gamma>0 \<gamma>1"
       and Inv: "\<And> \<omega> ns. R0 \<omega> ns \<Longrightarrow> Q \<omega>"
