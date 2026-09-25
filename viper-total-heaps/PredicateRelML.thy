@@ -245,6 +245,8 @@ fun atomic_exhale_pred_acc_in_unfold_tac ctxt (info: basic_stmt_rel_info) (no_de
         (Rmsg' "UnfoldExhPred 1" (resolve_tac ctxt @{thms unfold_exhale_pred_rel}) ctxt) THEN'
         (Rmsg' "UnfoldExhPred wf args list simp" (simp_only_tac @{thms append_Cons append_Nil} ctxt) ctxt) THEN'
         (Rmsg' "UnfoldExhPred wf subexpressions" (exps_wf_rel_tac info exp_wf_rel_info exp_rel_info ctxt no_def_checks_tac_opt (pred_num_args+1)) ctxt) THEN'
+        (* the wf checks above only unfold the current bigblock if they emit Boogie commands *)
+        (Rmsg' "UnfoldExhPred unfold current bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'
         (* Carbon checks the permission (definedness and positivity) before the exhale; if it is a constant, these
            checks are trivially true *)
         (Rmsg' "UnfoldExhPred skip permission checks" (strip_const_true_asserts_tac ctxt) ctxt) THEN'

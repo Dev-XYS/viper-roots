@@ -402,6 +402,10 @@ ML \<open>
         (Rmsg' "AtomicExh2 Consistency 5a" (assm_full_simp_solved_with_thms_tac [#ty_repr_def_thm basic_info, #vpr_program_ctxt_eq_thm basic_info, @{thm extcons_fun_interp_irrelevant'}] ctxt) ctxt) THEN'
         (Rmsg' "AtomicExh2 Consistency 5b" (forward_tac ctxt @{thms state_rel_heap_well_typed} THEN'
                                              assm_full_simp_solved_with_thms_tac [#vpr_program_ctxt_eq_thm basic_info, #ty_repr_def_thm basic_info] ctxt) ctxt) THEN'
+        (* premise StateRel: trivial for exhale_stmt_rel_inst_no_inv, the state relation for exhale_stmt_rel_inst_framing_inv.
+           It must come after the consistency premise, whose steps instantiate the schematic variables of the state relation. *)
+        (Rmsg' "AtomicExh2 StateRel 0?" (TRY' (eresolve_tac ctxt @{thms conjE})) ctxt) THEN'
+        (Rmsg' "AtomicExh2 StateRel" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (* (Rmsg' "AtomicExh2 Consistency" (fastforce_tac ctxt @{thms framing_exh_def}) ctxt) THEN' *)
         (Rmsg' "AtomicExh3 Invariant" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
         (normal_exhale_rel_tac ctxt exhale_info exh_complete_hint)

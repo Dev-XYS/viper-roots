@@ -921,8 +921,9 @@ lemma exhale_stmt_rel_inst_no_inv:
       and CtxtPredSF: "ctxt_pred_self_framing_sat ctxt_vpr StateCons_t"
       and Consistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and> consistent_external ctxt_vpr (get_total_full \<omega>) \<and>
                           total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)"
+      and StateRel: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> True" \<comment>\<open>not required, but makes proof generation uniform (same number of premises for each case)\<close>
       and InvHolds: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> True" \<comment>\<open>not required, but makes proof generation uniform (same number of premises for each case)\<close>
-      and "exhale_rel (rel_ext_eq R) (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt) (\<lambda>_ _ _. True) ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>2"
+      and ExhRel: "exhale_rel (rel_ext_eq R) (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt) (\<lambda>_ _ _. True) ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>2"
 
       and UpdHavoc: "rel_general (uncurry (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt)) (\<lambda>\<omega> ns. R (snd \<omega>) ns)
                (\<lambda>\<omega> \<omega>'. red_exhale ctxt_vpr (fst \<omega>) A (fst \<omega>) (RNormal (snd \<omega>)) \<and>
@@ -931,15 +932,16 @@ lemma exhale_stmt_rel_inst_no_inv:
                        consistent_external ctxt_vpr (get_total_full (snd \<omega>'))
                 ) (\<lambda>_. False) P ctxt \<gamma>2 \<gamma>'"
     shows "stmt_rel R R ctxt_vpr StateCons \<Lambda>_vpr P ctxt (Exhale A) \<gamma> \<gamma>'"
-  apply (rule exhale_stmt_rel_inst[OF WfConsistency CtxtPredWf CtxtPredSF _ _ InvHolds assms(6) UpdHavoc])
+  apply (rule exhale_stmt_rel_inst[OF WfConsistency CtxtPredWf CtxtPredSF _ _ InvHolds ExhRel UpdHavoc])
   using Consistent by blast+
 
 lemma exhale_stmt_rel_inst_framing_inv:
   assumes WfConsistency: "wf_total_consistency ctxt_vpr StateCons StateCons_t"
       and CtxtPredWf: "ctxt_pred_syn_wf ctxt_vpr"
       and CtxtPredSF: "ctxt_pred_self_framing_sat ctxt_vpr StateCons_t"
-      and StateRelAndConsistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega> ns \<and> StateCons \<omega> \<and> consistent_external ctxt_vpr (get_total_full \<omega>) \<and>
+      and Consistent: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> StateCons \<omega> \<and> consistent_external ctxt_vpr (get_total_full \<omega>) \<and>
                           total_heap_well_typed (program_total ctxt_vpr) (absval_interp_total ctxt_vpr) (get_hh_total_full \<omega>)"
+      and StateRel: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt \<omega> ns"
       and InvHolds: "\<And> \<omega> ns. R \<omega> ns \<Longrightarrow> framing_exh ctxt_vpr StateCons A \<omega> \<omega>"
       and ExhRel: "exhale_rel (rel_ext_eq R) (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt) (framing_exh ctxt_vpr StateCons) ctxt_vpr StateCons P ctxt A \<gamma> \<gamma>2"
       and UpdHavoc: "rel_general (uncurry (state_rel Pr StateCons TyRep Tr' AuxPred' ctxt)) (\<lambda>\<omega> ns. (state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt) (snd \<omega>) ns)
