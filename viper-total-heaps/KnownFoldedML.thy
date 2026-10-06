@@ -191,7 +191,7 @@ fun kfm_upd_normalize_tac ctxt =
 (* Main entry point: discharges a goal of the shape
      \<open>rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and> pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr A \<omega>)
                   R' (=) (\<lambda>_. False) P ctxt_bpl \<gamma> \<gamma>'\<close>
-   by dispatching on the structure of the assertion \<open>A\<close> (\<open>Atomic (Acc \<dots>)\<close>, \<open>Star\<close>, \<open>Imp\<close>, or
+   by dispatching on the structure of the assertion \<open>A\<close> (\<open>Atomic (Acc \<dots>)\<close>, \<open>Star\<close>, \<open>Imp\<close>, \<open>CondAssert\<close>, or
    \<open>Atomic (AccPredicate \<dots>)\<close> for a nested folded predicate, which is not yet automated). *)
 fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info (kfm_temp_var_lookup_thms : thm list) : int -> tactic =
   (Rmsg' "kfm upd normalize assertion" (kfm_upd_normalize_tac ctxt) ctxt) THEN'
@@ -221,6 +221,26 @@ fun kfm_upd_rel_tac ctxt (info: basic_stmt_rel_info) pred_name exp_rel_info (kfm
               (Rmsg' "kfm upd Imp unfold bigblock" (rewrite_rel_general_tac ctxt) ctxt) THEN'
               (kfm_upd_rel_tac ctxt info pred_name exp_rel_info kfm_temp_var_lookup_thms) THEN'
               (Rmsg' "kfm upd Imp progress (unfolding bigblock)" (progress_red_bpl_rel_tac ctxt) ctxt)) i
+         | Const (@{const_name CondAssert}, _) $ _ $ _ $ _ =>
+             let
+               (* the premises for the two branches only differ in the assertion, so they are handled identically *)
+               fun branch_tac branch =
+                 (Rmsg' ("kfm upd Cond " ^ branch ^ " simp cont") (simplify_continuation ctxt) ctxt) THEN'
+                 (Rmsg' ("kfm upd Cond " ^ branch ^ " propagate (unfolding bigblock)") (resolve_tac ctxt @{thms rel_propagate_post}) ctxt) THEN'
+                 (Rmsg' ("kfm upd Cond " ^ branch ^ " unfold bigblock") (rewrite_rel_general_tac ctxt) ctxt) THEN'
+                 (kfm_upd_rel_tac ctxt info pred_name exp_rel_info kfm_temp_var_lookup_thms) THEN'
+                 (Rmsg' ("kfm upd Cond " ^ branch ^ " progress (unfolding bigblock)") (progress_red_bpl_rel_tac ctxt) ctxt)
+             in
+             ((Rmsg' "kfm upd Cond rule" (resolve_tac ctxt @{thms fold_knownfolded_cond_upd_rel}) ctxt) THEN'
+              (Rmsg' "kfm upd Cond StateRelIn" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
+              (Rmsg' "kfm upd Cond StateRelOut" (simp_then_if_not_solved_blast_tac ctxt |> SOLVED') ctxt) THEN'
+              (Rmsg' "kfm upd Cond HeapVarDefSame" (assm_full_simp_solved_with_thms_tac [#tr_def_thm info] ctxt) ctxt) THEN'
+              (Rmsg' "kfm upd Cond ExpSyntax" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+              (Rmsg' "kfm upd Cond TyInterpEq" (assm_full_simp_solved_tac ctxt) ctxt) THEN'
+              (Rmsg' "kfm upd Cond CondExpRel" (exp_rel_tac exp_rel_info ctxt |> SOLVED') ctxt) THEN'
+              (branch_tac "thn") THEN'
+              (branch_tac "els")) i
+             end
          | Const (@{const_name Atomic}, _) $ (Const (@{const_name Acc}, _) $ _ $ _ $ _) =>
              upd_kfm_field_acc_tac ctxt info pred_name exp_rel_info i
          | Const (@{const_name Atomic}, _) $ (Const (@{const_name AccPredicate}, _) $ pid_fold_term $ _ $ _) =>

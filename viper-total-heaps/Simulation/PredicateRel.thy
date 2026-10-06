@@ -3263,6 +3263,136 @@ qed
 
 
 
+lemma fold_knownfolded_cond_upd_rel:
+  assumes
+    StateRelIn: "\<And>\<omega> ns. R \<omega> ns \<Longrightarrow>
+                          state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns" and
+    StateRelOut: "\<And>\<omega> ns. state_rel_def_same Pr StateCons TyRep Tr AuxPred ctxt_bpl \<omega> ns \<Longrightarrow> R' \<omega> ns" and
+
+    HeapVarDefSame: "heap_var_def Tr = heap_var Tr" and
+
+    ExpSyntax: "supported_pred_expr e_cond_vpr \<and> no_unfolding_pure_exp e_cond_vpr" and
+
+    TyInterpEq: "type_interp ctxt_bpl = vbpl_absval_ty TyRep" and
+
+    CondExpRel: "exp_rel_vpr_bpl (\<lambda>\<omega>def \<omega> ns. \<omega>def = \<omega> \<and> R \<omega> ns) ctxt_vpr ctxt_bpl e_cond_vpr e_cond_bpl" and
+
+    StepThn:
+      "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and> pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr A \<omega>)
+                   (\<lambda>\<omega> ns. R' \<omega> ns)
+                   (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
+                   (\<lambda>\<omega>\<^sub>0_\<omega>. False)
+                   P ctxt_bpl (thnHd, (convert_list_to_cont thnTl (KSeq next cont))) (next, cont)"
+       (is "rel_general _ _ _ _ _ _ ?\<gamma>\<^sub>t _") and
+
+    StepEls:
+      "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and> pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr B \<omega>)
+                   (\<lambda>\<omega> ns. R' \<omega> ns)
+                   (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
+                   (\<lambda>\<omega>\<^sub>0_\<omega>. False)
+                   P ctxt_bpl (elsHd, (convert_list_to_cont elsTl (KSeq next cont))) (next, cont)"
+       (is "rel_general _ _ _ _ _ _ ?\<gamma>\<^sub>e _")
+
+  shows "rel_general (\<lambda>\<omega> ns. R \<omega> ns \<and> pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr (assert.CondAssert e_cond_vpr A B) \<omega>)
+                     (\<lambda>\<omega> ns. R' \<omega> ns)
+                     (\<lambda>\<omega>\<^sub>0_\<omega> \<omega>\<^sub>0_\<omega>'. \<omega>\<^sub>0_\<omega> = \<omega>\<^sub>0_\<omega>')
+                     (\<lambda>\<omega>\<^sub>0_\<omega>. False)
+                     P ctxt_bpl
+                     (if_bigblock name (Some e_cond_bpl) (thnHd # thnTl) (elsHd # elsTl), KSeq next cont)
+                     (next, cont)" (is "rel_general ?R\<^sub>0 _ _ _ _ _ ?\<gamma> ?\<gamma>'")
+proof (rule rel_intro; blast?)
+  fix \<omega> ns \<omega>'
+  assume "?R\<^sub>0 \<omega> ns" and "\<omega> = \<omega>'"
+  hence "R \<omega> ns"
+    by blast
+
+  from \<open>?R\<^sub>0 \<omega> ns\<close>[THEN conjunct2, THEN pred_kfm_sat_premiseD]
+  obtain nm_exh p\<^sub>s nm\<^sub>s where
+    red_args: "red_pure_exps_total ctxt_vpr None e_args_vpr \<omega> (Some v_args_vpr)" and
+    ty_correct: "pred_ty_correct_premise ctxt_vpr pid v_args_vpr" and
+    sub: "get_fnm_total_full \<omega> (pid, v_args_vpr) = Some (p\<^sub>s,nm\<^sub>s)" and
+    "nm_exh \<le> nm\<^sub>s" and
+    diff_sat: "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) (assert.CondAssert e_cond_vpr A B)" and
+    extcons: "consistent_external ctxt_vpr \<lparr> get_hh_total = get_hh_total_full \<omega>, get_nm_total = nm_exh \<rparr>"
+    by blast
+
+  then consider (True) "ctxt_vpr, None \<turnstile> \<langle>e_cond_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool True)" |
+               (False) "ctxt_vpr, None \<turnstile> \<langle>e_cond_vpr; \<omega>\<rangle> [\<Down>]\<^sub>t Val (VBool False)"
+    using sat_Cond_True_or_False
+    by blast
+
+  then show "\<exists>ns'. red_ast_bpl P ctxt_bpl (?\<gamma>, Normal ns) (?\<gamma>', Normal ns') \<and> R' \<omega>' ns'"
+  proof cases
+    case True
+
+    have "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) A"
+      using diff_sat
+      by (metis SatCond_case True ValueAndBasicState.val.inject(2) eval_is_deterministic_single extended_val.inject)
+    hence "pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr A \<omega>"
+      using pred_kfm_sat_premiseI[OF red_args ty_correct sub \<open>nm_exh \<le> nm\<^sub>s\<close> _ extcons]
+      by blast
+
+    then obtain ns' where
+      "R' \<omega> ns'" and red_thn: "red_ast_bpl P ctxt_bpl (?\<gamma>\<^sub>t, Normal ns) ((next, cont), Normal ns')"
+      using rel_success_elim[OF StepThn] \<open>R \<omega> ns\<close>
+      by blast
+
+    have h_upd_eval: "red_expr_bpl ctxt_bpl e_cond_bpl ns (LitV (LBool True))"
+      using exp_rel_vpr_bplD[OF CondExpRel] ExpSyntax \<open>R \<omega> ns\<close> True
+      by fastforce
+
+    have "red_ast_bpl P ctxt_bpl (?\<gamma>, Normal ns) (?\<gamma>', Normal ns')"
+      unfolding red_ast_bpl_def
+      apply (rule converse_rtranclp_into_rtranclp)
+       apply rule
+       apply (rule RedParsedIfTrue)
+      using h_upd_eval
+       apply force
+      using red_thn
+      unfolding red_ast_bpl_def
+      by simp
+
+   then show ?thesis
+     using \<open>R' \<omega> ns'\<close> \<open>\<omega> = \<omega>'\<close>
+     by blast
+  next
+    case False
+
+    have "sat ctxt_vpr \<omega> (get_mh_nm nm_exh) (get_mp_nm nm_exh) B"
+      using diff_sat
+      by (metis SatCond_case False ValueAndBasicState.val.inject(2) eval_is_deterministic_single extended_val.inject)
+    hence "pred_kfm_sat_premise ctxt_vpr pid None e_args_vpr v_args_vpr B \<omega>"
+      using pred_kfm_sat_premiseI[OF red_args ty_correct sub \<open>nm_exh \<le> nm\<^sub>s\<close> _ extcons]
+      by blast
+
+    then obtain ns' where
+      "R' \<omega> ns'" and red_els: "red_ast_bpl P ctxt_bpl (?\<gamma>\<^sub>e, Normal ns) ((next, cont), Normal ns')"
+      using rel_success_elim[OF StepEls] \<open>R \<omega> ns\<close>
+      by blast
+
+    have h_upd_eval: "red_expr_bpl ctxt_bpl e_cond_bpl ns (LitV (LBool False))"
+      using exp_rel_vpr_bplD[OF CondExpRel] ExpSyntax \<open>R \<omega> ns\<close> False
+      by fastforce
+
+    have "red_ast_bpl P ctxt_bpl (?\<gamma>, Normal ns) (?\<gamma>', Normal ns')"
+      unfolding red_ast_bpl_def
+      apply (rule converse_rtranclp_into_rtranclp)
+       apply rule
+       apply (rule RedParsedIfFalse)
+      using h_upd_eval
+       apply force
+      using red_els
+      unfolding red_ast_bpl_def
+      by simp
+
+   then show ?thesis
+     using \<open>R' \<omega> ns'\<close> \<open>\<omega> = \<omega>'\<close>
+     by blast
+  qed
+qed
+
+
+
 context begin
 \<comment> \<open>Some Boogie Properties (TODO: move somewhere else)\<close>
 
